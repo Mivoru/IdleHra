@@ -128,7 +128,19 @@ for (const asset of chosen) {
       continue;
     }
     const started = Date.now();
-    const out = await generate(asset);
+    // Modul: A 503 "Deadline expired" IS GOOGLE'S, NOT THE ASSET'S. It ended
+    // a 25-asset batch at its 14th; a failed call is not billed, so retry it.
+    let out;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        out = await generate(asset);
+        break;
+      } catch (e) {
+        if (attempt >= 3 || !/: (500|503) /.test(String(e.message))) throw e;
+        console.log(`retry ${name} (${attempt}): ${String(e.message).slice(0, 80)}`);
+        await new Promise((r) => setTimeout(r, 5000 * attempt));
+      }
+    }
     const file = join(STAGING, `${name}.${out.ext}`);
     writeFileSync(file, out.bytes);
     const usd = PRICE[asset.model.replace(/-preview$/, '')] ?? null;

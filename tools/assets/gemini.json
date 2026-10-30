@@ -59,6 +59,289 @@
       "model": "gemini-3.1-flash-image",
       "key": "pure green (#00FF00)",
       "prompt": "An old iron key on a short leather tag. On the tag, a clear simple branded icon of a blacksmith hammer lying above an anvil, large and easy to read. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view."
+    },
+    {
+      "id": "bg_lobby_pc",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client_web/public/chest/bg-pc.jpg",
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "Use the references for painting style only. A dark stone hall with three tall arched gates side by side: the left gate glowing cold green, the middle warm orange, the right misty violet. Torches on the walls, worn floor, no people. Wide, calm, the gates are the focus."
+    },
+    {
+      "id": "bg_lobby_mobile",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "9:16",
+      "references": [
+        "tools/assets/staging/bg_lobby_pc.jpg"
+      ],
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third."
+    },
+    {
+      "id": "bg_koschei_pc",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client_web/public/chest/bg-pc.jpg",
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "Use the references for painting style only. Inside a tall tower of black stone and bone: shelves of old books, hanging iron cages, cold green candlelight, dust in the air. The floor in the lower third is open for a fight. No people."
+    },
+    {
+      "id": "bg_koschei_mobile",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "9:16",
+      "references": [
+        "tools/assets/staging/bg_koschei_pc.jpg"
+      ],
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third."
+    },
+    {
+      "id": "bg_zmey_pc",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client_web/public/chest/bg-pc.jpg",
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "Use the references for painting style only. A mountain cave full of gold heaps, broken mine carts and lanterns, warm orange light, the tail of a huge dragon disappearing into the darkness at the back. The floor in the lower third is open for a fight. No people."
+    },
+    {
+      "id": "bg_zmey_mobile",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "9:16",
+      "references": [
+        "tools/assets/staging/bg_zmey_pc.jpg"
+      ],
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third."
+    },
+    {
+      "id": "bg_babayaga_pc",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client_web/public/chest/bg-pc.jpg",
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "Use the references for painting style only. A dark birch forest at night, a fence of bones topped with glowing skulls, a hut on huge chicken legs in the misty distance, violet moonlight. The ground in the lower third is open for a fight. No people."
+    },
+    {
+      "id": "bg_babayaga_mobile",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "9:16",
+      "references": [
+        "tools/assets/staging/bg_babayaga_pc.jpg"
+      ],
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third."
+    },
+    {
+      "id": "boss_koschei_portrait",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "3:4",
+      "references": [
+        "tools/assets/staging/ref_malakor.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own boss art). Koschei the Deathless: a tall gaunt skeletal sorcerer-king in a rusted iron crown and a tattered black cloak, a long needle glinting at his chest, cold green eyes. Behind him, small in the background, a duck, a hare and an egg in an old carved panel. Dark tower interior, green candlelight. Half-length portrait."
+    },
+    {
+      "id": "boss_koschei_sprite",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/boss_koschei_portrait.jpg"
+      ],
+      "prompt": "The character from the reference, full body, standing ready to cast, facing left, three-quarter view, the whole figure in frame with a margin."
+    },
+    {
+      "id": "boss_zmey_portrait",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "3:4",
+      "references": [
+        "tools/assets/staging/ref_malakor.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own boss art). Zmey Gorynych: a huge three-headed green dragon coiled on a heap of gold, each head with its own face - one furious, one sly, one sleepy - glowing orange cave light. Portrait of the three heads and chest."
+    },
+    {
+      "id": "boss_zmey_sprite",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/boss_zmey_portrait.jpg"
+      ],
+      "prompt": "The character from the reference, full body, three heads raised, facing left, three-quarter view, the whole figure in frame with a margin."
+    },
+    {
+      "id": "boss_babayaga_portrait",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "3:4",
+      "references": [
+        "tools/assets/staging/ref_malakor.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own boss art). Baba Yaga: a wild old witch with iron teeth and long grey hair, flying in a wooden mortar and steering with a pestle, a broom tied behind her, violet moonlight, birch forest behind. Half-length portrait."
+    },
+    {
+      "id": "boss_babayaga_sprite",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/boss_babayaga_portrait.jpg"
+      ],
+      "prompt": "The character from the reference, full body, in her mortar, facing left, three-quarter view, the whole figure in frame with a margin."
+    },
+    {
+      "id": "mob_bone_scribe",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A skeleton scribe in a torn grey robe, holding a quill like a dagger and an old book, faint green glow in its eye sockets. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_carrion_crow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A large ragged carrion crow with green-glowing eyes, wings spread. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_wisp",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A will-o'-the-wisp (bludicka): a small floating pale green flame, clearly green, not white, with a faint face, trailing light. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_permonik",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A permonik, a small bearded mine spirit from Czech folklore, with a miner's lamp and a pickaxe, a greedy grin, gold dust on his clothes. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_gold_snake",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A cave snake with gold scales, coiled to strike. The snake alone - no tools, no pots, no other objects. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_cave_bat",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A large cave bat with torn wings and orange eyes. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_iron_wolf",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A gaunt black wolf with iron teeth, snarling. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_bayun",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). The cat Bayun: a huge dark storyteller cat with half-closed glowing violet eyes, sitting proud. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "mob_skull_lantern",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_wolf.png"
+      ],
+      "prompt": "Use the reference for painting style only (the game's own monster art). A walking skull-lantern: a glowing skull on a pole from a bone fence, on spindly bone legs. Full body, facing left, three-quarter view, the whole creature in frame with a margin."
+    },
+    {
+      "id": "ab_deathless",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A green soul flame rising from a crown. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_bone_ward",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A ring of bones forming a shield, green glow. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_soul_drain",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A green spiral of light pulled into a skeletal hand. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_needle",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A long needle inside a cracked egg, green glow. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_three_heads",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Three dragon heads in silhouette, orange. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_fire_breath",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A cone of dragon fire, orange. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_regrowth",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A dragon head regrowing from a smoking stump, orange. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_gold_hide",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Gold dragon scales overlapping like armour. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_mortar_flight",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A wooden mortar and pestle in flight with motion streaks, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_hex",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A violet hex sigil over a sword blade. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_bone_fence",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A bone fence post topped with a glowing skull, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "ab_broom_sweep",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A twig broom sweeping in an arc, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
     }
   ]
 }

@@ -429,6 +429,1283 @@
       "estimatedUsd": 0.067,
       "seconds": 8,
       "at": "2026-10-30T14:49:45.940Z"
+    },
+    {
+      "id": "bg_koschei_pc",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the references for painting style only. Inside a tall tower of black stone and bone: shelves of old books, hanging iron cages, cold green candlelight, dust in the air. The floor in the lower third is open for a fight. No people. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_koschei_pc.jpg",
+      "bytes": 807403,
+      "usage": {
+        "promptTokenCount": 600,
+        "candidatesTokenCount": 1293,
+        "totalTokenCount": 2060,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 84
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 167,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 17,
+      "at": "2026-10-30T14:59:01.911Z"
+    },
+    {
+      "id": "boss_koschei_portrait",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the reference for painting style only (the game's own boss art). Koschei the Deathless: a tall gaunt skeletal sorcerer-king in a rusted iron crown and a tattered black cloak, a long needle glinting at his chest, cold green eyes. Behind him, small in the background, a duck, a hare and an egg in an old carved panel. Dark tower interior, green candlelight. Half-length portrait. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/boss_koschei_portrait.jpg",
+      "bytes": 730376,
+      "usage": {
+        "promptTokenCount": 383,
+        "candidatesTokenCount": 1312,
+        "totalTokenCount": 1866,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 125
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 171,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 17,
+      "at": "2026-10-30T14:59:19.021Z"
+    },
+    {
+      "id": "mob_permonik",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A permonik, a small bearded mine spirit from Czech folklore, with a miner's lamp and a pickaxe, a greedy grin, gold dust on his clothes. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_permonik.jpg",
+      "bytes": 587448,
+      "usage": {
+        "promptTokenCount": 399,
+        "candidatesTokenCount": 1503,
+        "totalTokenCount": 1902,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 141
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T14:59:29.215Z"
+    },
+    {
+      "id": "ab_needle",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A long needle inside a cracked egg, green glow. Round emblem icon, one bold shape, readable at small size, centred with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_needle.jpg",
+      "bytes": 537356,
+      "usage": {
+        "promptTokenCount": 99,
+        "candidatesTokenCount": 1344,
+        "totalTokenCount": 1443,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 99
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T14:59:36.196Z"
+    },
+    {
+      "id": "bg_lobby_pc",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the references for painting style only. A dark stone hall with three tall arched gates side by side: the left gate glowing cold green, the middle warm orange, the right misty violet. Torches on the walls, worn floor, no people. Wide, calm, the gates are the focus. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_lobby_pc.jpg",
+      "bytes": 840497,
+      "usage": {
+        "promptTokenCount": 609,
+        "candidatesTokenCount": 1300,
+        "totalTokenCount": 2126,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 93
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 217,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 18,
+      "at": "2026-10-30T15:00:13.151Z"
+    },
+    {
+      "id": "bg_zmey_pc",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the references for painting style only. A mountain cave full of gold heaps, broken mine carts and lanterns, warm orange light, the tail of a huge dragon disappearing into the darkness at the back. The floor in the lower third is open for a fight. No people. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_zmey_pc.jpg",
+      "bytes": 811787,
+      "usage": {
+        "promptTokenCount": 604,
+        "candidatesTokenCount": 1325,
+        "totalTokenCount": 2092,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 88
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 163,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 16,
+      "at": "2026-10-30T15:00:29.192Z"
+    },
+    {
+      "id": "bg_babayaga_pc",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the references for painting style only. A dark birch forest at night, a fence of bones topped with glowing skulls, a hut on huge chicken legs in the misty distance, violet moonlight. The ground in the lower third is open for a fight. No people. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_babayaga_pc.jpg",
+      "bytes": 832679,
+      "usage": {
+        "promptTokenCount": 602,
+        "candidatesTokenCount": 1316,
+        "totalTokenCount": 2100,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 86
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 182,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 18,
+      "at": "2026-10-30T15:00:46.863Z"
+    },
+    {
+      "id": "boss_zmey_portrait",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the reference for painting style only (the game's own boss art). Zmey Gorynych: a huge three-headed green dragon coiled on a heap of gold, each head with its own face - one furious, one sly, one sleepy - glowing orange cave light. Portrait of the three heads and chest. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/boss_zmey_portrait.jpg",
+      "bytes": 946918,
+      "usage": {
+        "promptTokenCount": 356,
+        "candidatesTokenCount": 1300,
+        "totalTokenCount": 1903,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 98
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 247,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 20,
+      "at": "2026-10-30T15:01:06.425Z"
+    },
+    {
+      "id": "boss_babayaga_portrait",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "Use the reference for painting style only (the game's own boss art). Baba Yaga: a wild old witch with iron teeth and long grey hair, flying in a wooden mortar and steering with a pestle, a broom tied behind her, violet moonlight, birch forest behind. Half-length portrait. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/boss_babayaga_portrait.jpg",
+      "bytes": 928371,
+      "usage": {
+        "promptTokenCount": 353,
+        "candidatesTokenCount": 1292,
+        "totalTokenCount": 1814,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 95
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 169,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 16,
+      "at": "2026-10-30T15:01:22.338Z"
+    },
+    {
+      "id": "mob_bone_scribe",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A skeleton scribe in a torn grey robe, holding a quill like a dagger and an old book, faint green glow in its eye sockets. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_bone_scribe.jpg",
+      "bytes": 649086,
+      "usage": {
+        "promptTokenCount": 392,
+        "candidatesTokenCount": 1480,
+        "totalTokenCount": 1872,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 134
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T15:01:31.852Z"
+    },
+    {
+      "id": "mob_carrion_crow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A large ragged carrion crow with green-glowing eyes, wings spread. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_carrion_crow.jpg",
+      "bytes": 692452,
+      "usage": {
+        "promptTokenCount": 380,
+        "candidatesTokenCount": 1459,
+        "totalTokenCount": 1839,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 122
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:01:40.380Z"
+    },
+    {
+      "id": "mob_wisp",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A will-o'-the-wisp (bludicka): a small floating pale-green flame with a faint face, trailing light. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_wisp.jpg",
+      "bytes": 424528,
+      "usage": {
+        "promptTokenCount": 393,
+        "candidatesTokenCount": 1455,
+        "totalTokenCount": 1848,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 135
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:01:49.380Z"
+    },
+    {
+      "id": "mob_gold_snake",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A cave snake with gold scales, coiled to strike. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_gold_snake.jpg",
+      "bytes": 744273,
+      "usage": {
+        "promptTokenCount": 375,
+        "candidatesTokenCount": 1495,
+        "totalTokenCount": 1870,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 117
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:01:58.386Z"
+    },
+    {
+      "id": "mob_cave_bat",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A large cave bat with torn wings and orange eyes. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_cave_bat.jpg",
+      "bytes": 606882,
+      "usage": {
+        "promptTokenCount": 375,
+        "candidatesTokenCount": 1574,
+        "totalTokenCount": 1949,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 117
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:02:07.769Z"
+    },
+    {
+      "id": "mob_iron_wolf",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A gaunt black wolf with iron teeth, snarling. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_iron_wolf.jpg",
+      "bytes": 623626,
+      "usage": {
+        "promptTokenCount": 376,
+        "candidatesTokenCount": 1521,
+        "totalTokenCount": 1897,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 118
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:02:16.932Z"
+    },
+    {
+      "id": "mob_bayun",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). The cat Bayun: a huge dark storyteller cat with half-closed glowing violet eyes, sitting proud. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_bayun.jpg",
+      "bytes": 581355,
+      "usage": {
+        "promptTokenCount": 385,
+        "candidatesTokenCount": 1487,
+        "totalTokenCount": 1872,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 127
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T15:02:27.254Z"
+    },
+    {
+      "id": "mob_skull_lantern",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A walking skull-lantern: a glowing skull on a pole from a bone fence, on spindly bone legs. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_skull_lantern.jpg",
+      "bytes": 500118,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1472,
+        "totalTokenCount": 1859,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:02:36.346Z"
+    },
+    {
+      "id": "bg_lobby_mobile",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_lobby_mobile.jpg",
+      "bytes": 846044,
+      "usage": {
+        "promptTokenCount": 310,
+        "candidatesTokenCount": 1267,
+        "totalTokenCount": 1577,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 52
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 19,
+      "at": "2026-10-30T15:06:10.770Z"
+    },
+    {
+      "id": "bg_koschei_mobile",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_koschei_mobile.jpg",
+      "bytes": 782250,
+      "usage": {
+        "promptTokenCount": 310,
+        "candidatesTokenCount": 1280,
+        "totalTokenCount": 1590,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 52
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 18,
+      "at": "2026-10-30T15:06:28.582Z"
+    },
+    {
+      "id": "bg_zmey_mobile",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_zmey_mobile.jpg",
+      "bytes": 755952,
+      "usage": {
+        "promptTokenCount": 310,
+        "candidatesTokenCount": 1266,
+        "totalTokenCount": 1576,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 52
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 17,
+      "at": "2026-10-30T15:06:45.470Z"
+    },
+    {
+      "id": "bg_babayaga_mobile",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "The same scene as the reference, tall portrait framing, the open floor in the lower third. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/bg_babayaga_mobile.jpg",
+      "bytes": 735597,
+      "usage": {
+        "promptTokenCount": 310,
+        "candidatesTokenCount": 1273,
+        "totalTokenCount": 1583,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 52
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 19,
+      "at": "2026-10-30T15:07:04.316Z"
+    },
+    {
+      "id": "boss_koschei_sprite",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "The character from the reference, full body, standing ready to cast, facing left, three-quarter view, the whole figure in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/boss_koschei_sprite.jpg",
+      "bytes": 452659,
+      "usage": {
+        "promptTokenCount": 359,
+        "candidatesTokenCount": 1551,
+        "totalTokenCount": 1910,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 101
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 11,
+      "at": "2026-10-30T15:07:15.058Z"
+    },
+    {
+      "id": "boss_zmey_sprite",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "The character from the reference, full body, three heads raised, facing left, three-quarter view, the whole figure in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/boss_zmey_sprite.jpg",
+      "bytes": 717254,
+      "usage": {
+        "promptTokenCount": 358,
+        "candidatesTokenCount": 1539,
+        "totalTokenCount": 1897,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 100
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T15:07:25.077Z"
+    },
+    {
+      "id": "boss_babayaga_sprite",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "The character from the reference, full body, in her mortar, facing left, three-quarter view, the whole figure in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/boss_babayaga_sprite.jpg",
+      "bytes": 650371,
+      "usage": {
+        "promptTokenCount": 358,
+        "candidatesTokenCount": 1497,
+        "totalTokenCount": 1855,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 100
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T15:07:35.439Z"
+    },
+    {
+      "id": "ab_deathless",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A green soul flame rising from a crown. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_deathless.jpg",
+      "bytes": 583011,
+      "usage": {
+        "promptTokenCount": 122,
+        "candidatesTokenCount": 1514,
+        "totalTokenCount": 1636,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 122
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:07:44.125Z"
+    },
+    {
+      "id": "ab_bone_ward",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A ring of bones forming a shield, green glow. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_bone_ward.jpg",
+      "bytes": 736121,
+      "usage": {
+        "promptTokenCount": 124,
+        "candidatesTokenCount": 1502,
+        "totalTokenCount": 1626,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 124
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T15:07:51.931Z"
+    },
+    {
+      "id": "ab_soul_drain",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A green spiral of light pulled into a skeletal hand. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_soul_drain.jpg",
+      "bytes": 573264,
+      "usage": {
+        "promptTokenCount": 124,
+        "candidatesTokenCount": 1479,
+        "totalTokenCount": 1603,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 124
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:08:00.474Z"
+    },
+    {
+      "id": "ab_needle",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A long needle inside a cracked egg, green glow. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_needle.jpg",
+      "bytes": 578249,
+      "usage": {
+        "promptTokenCount": 124,
+        "candidatesTokenCount": 1534,
+        "totalTokenCount": 1658,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 124
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T15:08:10.004Z"
+    },
+    {
+      "id": "ab_three_heads",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Three dragon heads in silhouette, orange. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_three_heads.jpg",
+      "bytes": 515779,
+      "usage": {
+        "promptTokenCount": 121,
+        "candidatesTokenCount": 1440,
+        "totalTokenCount": 1561,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 121
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:08:18.902Z"
+    },
+    {
+      "id": "ab_fire_breath",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A cone of dragon fire, orange. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_fire_breath.jpg",
+      "bytes": 485691,
+      "usage": {
+        "promptTokenCount": 121,
+        "candidatesTokenCount": 1478,
+        "totalTokenCount": 1599,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 121
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:08:27.592Z"
+    },
+    {
+      "id": "ab_regrowth",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A dragon head regrowing from a smoking stump, orange. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_regrowth.jpg",
+      "bytes": 509343,
+      "usage": {
+        "promptTokenCount": 126,
+        "candidatesTokenCount": 1357,
+        "totalTokenCount": 1483,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 126
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T15:08:34.381Z"
+    },
+    {
+      "id": "ab_gold_hide",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Gold dragon scales overlapping like armour. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_gold_hide.jpg",
+      "bytes": 634021,
+      "usage": {
+        "promptTokenCount": 120,
+        "candidatesTokenCount": 1407,
+        "totalTokenCount": 1527,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 120
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T15:08:41.939Z"
+    },
+    {
+      "id": "ab_mortar_flight",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A wooden mortar and pestle in flight with motion streaks, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_mortar_flight.jpg",
+      "bytes": 570606,
+      "usage": {
+        "promptTokenCount": 127,
+        "candidatesTokenCount": 1505,
+        "totalTokenCount": 1632,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 127
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:08:51.403Z"
+    },
+    {
+      "id": "ab_hex",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A violet hex sigil over a sword blade. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_hex.jpg",
+      "bytes": 544246,
+      "usage": {
+        "promptTokenCount": 123,
+        "candidatesTokenCount": 1409,
+        "totalTokenCount": 1532,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 123
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T15:08:59.449Z"
+    },
+    {
+      "id": "ab_bone_fence",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A bone fence post topped with a glowing skull, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_bone_fence.jpg",
+      "bytes": 468671,
+      "usage": {
+        "promptTokenCount": 125,
+        "candidatesTokenCount": 1502,
+        "totalTokenCount": 1627,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 125
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:09:08.366Z"
+    },
+    {
+      "id": "ab_broom_sweep",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A twig broom sweeping in an arc, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_broom_sweep.jpg",
+      "bytes": 570498,
+      "usage": {
+        "promptTokenCount": 123,
+        "candidatesTokenCount": 1528,
+        "totalTokenCount": 1651,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 123
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:09:17.113Z"
+    },
+    {
+      "id": "mob_wisp",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A will-o'-the-wisp (bludicka): a small floating pale green flame, clearly green, not white, with a faint face, trailing light. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_wisp.jpg",
+      "bytes": 487677,
+      "usage": {
+        "promptTokenCount": 398,
+        "candidatesTokenCount": 1477,
+        "totalTokenCount": 1875,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 140
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T15:10:54.614Z"
+    },
+    {
+      "id": "mob_gold_snake",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the reference for painting style only (the game's own monster art). A cave snake with gold scales, coiled to strike. The snake alone - no tools, no pots, no other objects. Full body, facing left, three-quarter view, the whole creature in frame with a margin. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/mob_gold_snake.jpg",
+      "bytes": 694485,
+      "usage": {
+        "promptTokenCount": 389,
+        "candidatesTokenCount": 1491,
+        "totalTokenCount": 1880,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 131
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:11:03.158Z"
+    },
+    {
+      "id": "ab_soul_drain",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A green spiral of light pulled into a skeletal hand. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ab_soul_drain.jpg",
+      "bytes": 649176,
+      "usage": {
+        "promptTokenCount": 123,
+        "candidatesTokenCount": 1487,
+        "totalTokenCount": 1610,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 123
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T15:11:11.859Z"
     }
   ]
 }
