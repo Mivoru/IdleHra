@@ -65,6 +65,43 @@ the new ring affixes) and measured before shipping, the way the affixes were.
 - **Loot chests:** herbs of the chest's region as a material line.
 - **Quest line / achievements:** first herb, first potion.
 
+### 1.2a Build plan (2026-10-30, after H1-H3 were approved)
+
+**What already exists and is reused:**
+- Herbalism is a profession in the tick (`HerbalismMasteryXp/Level`,
+  `AdvanceMastery`, the realtime and offline gathering paths handle type 3),
+  and `ContentRegistry` already has herb loot-table slots (401-412) - only
+  `gathering_nodes.json` has no herbalism node, so nothing reaches them.
+- A dormant potion engine (`ConsumableEngine`): payload slots
+  `ActiveOffensivePotionId` / `ActiveDefensivePotionId` with millisecond
+  countdowns, checkpoint persistence as an absolute expiry, the offline
+  projection and the wire already carry them. It was left inert on
+  2026-10-07 because no content fed it. A new consumable needs only an
+  items.json entry with the BaseId marker.
+- The images: 10 herbs and 8 potions are generated (tools/assets/staging,
+  prompts in ASSET_PROMPTS.md 9.2-9.3).
+
+**Steps (one PR each, each with exercise coverage):**
+1. **Herbs gathered:** 5 herbalism nodes in `gathering_nodes.json` (one per
+   region) and 10 herb items (normal + rare per region) in `items.json`,
+   wired to the existing loot slots. Green Thumb comes off pending. Herb
+   icons into the sprite pipeline.
+2. **Potions brewed:** 8 potion items (normal + strong = 16 entries) and
+   Alchemy recipes (`RecipeDefinition.ProfessionType` 5) from herbs, the
+   strong version from the rare herb or rare fish (R1's edge for the rare
+   catch). Crafting screen tab.
+3. **Potions drunk:** the effects through ConsumableEngine's slots (one
+   offensive, one defensive, plus a gathering slot if needed), each effect
+   read where its stat already is (XP, loot luck, gold, armour, attack speed,
+   gathering speed, rare find, boss damage) - online and offline alike (H2),
+   with a parity row each. Magnitudes sized against the War nodes and pets,
+   and **the wall scan run with each combat potion active**: a potion must
+   not lower a wall the way the rare-fish heal would have.
+4. **Larder and UI:** a Potions shelf beside the food, an auto-drink rule
+   ("keep X up"), the active potion and its timer in the header.
+5. **Sources and sinks:** herbs as a material line in loot chests; potions in
+   the quest line and achievements.
+
 ### 1.3 Decisions
 
 - **H1.** Build herbalism + potions as described? Recommendation: yes, as its
