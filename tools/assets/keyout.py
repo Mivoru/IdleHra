@@ -11,8 +11,10 @@
   python tools/assets/keyout.py preview OUT.jpg IN.png [IN.png ...]
       Each image on a dark and a light floor, side by side, for review.
 
-Modul: THE KEY IS PURE GREEN because no chest, ticket or icon in the asset
-list is green, while magenta sits next to the epic chest's violet glow.
+Modul: THE KEY IS PURE GREEN because almost nothing in the asset list is
+green, while magenta sits next to the epic chest's violet glow. Green things
+(Koschei's soul light, the wisp) are painted on MAGENTA instead; the key is
+sampled from the corners, so keyout follows whichever was used.
 """
 import sys
 from PIL import Image, ImageChops
@@ -52,9 +54,21 @@ def sampled_key(src):
     return tuple(sum(p[i] for p in px) // 4 for i in range(3))
 
 
-def keyout(src, dst, key, inner=60, outer=150):
+def keyout(src, dst, key, solid=0.25, clear=0.6):
+    """Alpha from GREENNESS (g - max(r, b)) as a share of the key's own.
+
+    Modul: NOT FROM RGB DISTANCE. A key painted as dark as (6, 151, 32) sits
+    about 120 away from black, so a distance threshold keyed Koschei's black
+    cloak half away. Greenness tells them apart at any brightness: the cloak,
+    grey stone and gold all have g <= max(r, b), the key has g far above.
+    """
     im = Image.open(src).convert('RGB')
-    kr, kg, kb = key
+    # The key's own channels (above half) against the rest: green -> g vs
+    # (r, b); magenta -> (r, b) vs g, for assets that are green themselves.
+    hot = [i for i in range(3) if key[i] >= 128] or [1]
+    cold = [i for i in range(3) if i not in hot] or [0]
+    keyness = lambda c: min(c[i] for i in hot) - max(c[i] for i in cold)
+    kgreen = max(1, keyness(key))
     px = im.load()
     w, h = im.size
     out = Image.new('RGBA', im.size)
@@ -62,11 +76,14 @@ def keyout(src, dst, key, inner=60, outer=150):
     for y in range(h):
         for x in range(w):
             r, g, b = px[x, y]
-            d = ((r - kr) ** 2 + (g - kg) ** 2 + (b - kb) ** 2) ** 0.5
-            a = 0 if d <= inner else 255 if d >= outer else int(255 * (d - inner) / (outer - inner))
-            if a and g > max(r, b):  # despill: green may not exceed the other two
-                g = max(r, b)
-            po[x, y] = (r, g, b, a)
+            c = [r, g, b]
+            share = keyness(c) / kgreen
+            a = 255 if share <= solid else 0 if share >= clear else int(255 * (clear - share) / (clear - solid))
+            if a and share > 0:  # despill: the key's channels may not exceed the rest
+                top = max(c[i] for i in cold)
+                for i in hot:
+                    c[i] = min(c[i], top)
+            po[x, y] = (c[0], c[1], c[2], a)
     # Modul: A MODEL SOMETIMES IGNORES THE KEY and paints its own floor; then
     # nothing keys out and the "transparent" asset is a grey square. Say so.
     corners = [po[0, 0][3], po[w - 1, 0][3], po[0, h - 1][3], po[w - 1, h - 1][3]]
