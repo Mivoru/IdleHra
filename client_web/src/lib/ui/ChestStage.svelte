@@ -86,8 +86,15 @@
     const w = (canvas.width = canvas.clientWidth * dpr);
     const h = (canvas.height = canvas.clientHeight * dpr);
     const [cr, cg, cb] = RARITY_LIGHT[r];
-    const cx = w / 2;
-    const cy = h * 0.55;
+    // Modul: THE CENTRE COMES FROM THE CHEST ON SCREEN, not from the canvas's
+    // own box. Measured 2026-10-30 on the Chest screen: the rays rose about a
+    // fifth of the stage to the LEFT of the chest, because the canvas's laid-out
+    // box was not the 150% its CSS asks for inside the modal. Whatever the
+    // layout does, the chest's rectangle is where the light belongs.
+    const canvasBox = canvas.getBoundingClientRect();
+    const chestBox = chestEl?.getBoundingClientRect() ?? canvasBox;
+    const cx = (chestBox.left + chestBox.width / 2 - canvasBox.left) * dpr;
+    const cy = (chestBox.top + chestBox.height * 0.45 - canvasBox.top) * dpr;
     const rays = rayCount(r);
     const sparks: Spark[] = [];
     const n = particleCount(r, reduceMotion(), navigator.hardwareConcurrency ?? 0);
@@ -108,7 +115,8 @@
       for (let i = 0; i < rays; i++) {
         const a = (i / rays) * Math.PI * 2 + t / 6000;
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, reach);
-        g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.28 * strength})`);
+        g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.5 * strength})`);
+        g.addColorStop(0.35, `rgba(${cr},${cg},${cb},${0.22 * strength})`);
         g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -173,7 +181,6 @@
     aspect-ratio: 1;
     display: grid;
     place-items: end center;
-    isolation: isolate;
   }
   .dust {
     position: absolute;

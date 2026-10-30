@@ -105,5 +105,16 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(LootChestTier.Silver, LootChestEngine.BossFirstClearChest(1));
             Assert.Equal(LootChestTier.Gold, LootChestEngine.BossFirstClearChest(5));
         }
+
+        [Fact]
+        public void AnAscensionChestIsMostOftenTheLowestTier()
+        {
+            var rng = new Random(9);
+            var counts = new int[5];
+            for (int i = 0; i < 20_000; i++) counts[(int)LootChestEngine.RollAscensionChest(rng)]++;
+            Assert.True(counts[1] > counts[2] && counts[2] > counts[3] && counts[3] > counts[4]);
+            Assert.InRange(counts[1] / 20_000.0, 0.47, 0.53);
+            Assert.InRange(counts[4] / 20_000.0, 0.035, 0.065);
+        }
 }
 }

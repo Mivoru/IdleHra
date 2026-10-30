@@ -138,7 +138,15 @@
   .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .actions button { min-height: 44px; }
   .odds { grid-column: 1 / -1; margin: 0; padding-left: 18px; }
-  .stage-wrap { width: min(80vw, 380px); margin: 0 auto; }
+  /* The vault the cosmetic chests open in, so a loot chest stands in a room
+     rather than on a dark rectangle. */
+  .stage-wrap {
+    width: min(80vw, 380px);
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #0d0c10 url('/chest/bg-pc.jpg') center 60% / cover;
+  }
   .reveal { width: min(92vw, 420px); text-align: center; }
   .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 4px; }
   .reveal .piece { font-weight: 600; }

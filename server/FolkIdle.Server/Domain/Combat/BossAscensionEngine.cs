@@ -92,7 +92,14 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 paid.Add(new AscensionReward(region, s, titleSlug, BossAscensionRegistry.TitleName(region, s), frameId, frameName));
+
+                // Loot chests (owner, 2026-10-30): every new step pays a chest of a
+                // random tier, the lowest most often, holding this region's loot.
+                Domain.Economy.LootChestEngine.Stage(db, playerId,
+                    Domain.Economy.LootChestEngine.RollAscensionChest(Random.Shared), region,
+                    Domain.Economy.LootChestSource.AscensionStep, utcNow);
             }
+            await db.SaveChangesAsync();
 
             await db.Database.ExecuteSqlRawAsync(
                 "UPDATE boss_ascension_progress SET \"HighestStep\" = {0}, \"UpdatedAtUtc\" = {1} " +
@@ -144,6 +151,10 @@ namespace FolkIdle.Server.Domain.Combat
             }
             await db.Database.ExecuteSqlRawAsync(
                 "DELETE FROM boss_ascension_progress WHERE \"PlayerId\" = {0} AND \"Region\" = {1}", playerId, (short)region);
+            // The chests the climb paid go with it, so a check leaves no shelf behind.
+            await db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"LootChests\" WHERE \"PlayerId\" = {0} AND \"Source\" = {1} AND \"Region\" = {2}",
+                playerId, (short)Domain.Economy.LootChestSource.AscensionStep, (short)region);
             if (step > 0)
             {
                 await db.Database.ExecuteSqlRawAsync(

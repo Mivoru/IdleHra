@@ -30,12 +30,13 @@ export function chestStills(art: ChestArt, rarity: ChestRarity): { closed: strin
 /**
  * The light of each rarity, as an RGB triple the canvas tints with. Common is
  * a warm white rather than grey, so even the plainest chest opens in light.
+ * Saturated on 2026-10-30 (owner): the pale tints read as one white light.
  */
 export const RARITY_LIGHT: Record<ChestRarity, readonly [number, number, number]> = {
-  1: [255, 236, 200],
-  2: [140, 200, 255],
-  3: [190, 120, 255],
-  4: [255, 190, 80],
+  1: [255, 226, 170],
+  2: [70, 170, 255],
+  3: [180, 90, 255],
+  4: [255, 170, 40],
 };
 
 /**
