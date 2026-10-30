@@ -26,6 +26,7 @@
   // and nothing else.
 
   import { onMount } from 'svelte';
+  import { fetchSkillTreeDefinition, type SkillTreeDefinition } from '../lib/net/rest';
   import { loadContent, type ContentRegistry, getArmourFamily } from '../lib/net/content';
   import { locationName, nodeLocation, LOCATION_NAMES } from '../lib/ui/locations';
   import { professionName, EQUIPMENT_SLOTS, HALT_REASONS, AGE_PHASES } from '../lib/ui/slots';
@@ -42,13 +43,6 @@
   import WikiScreenIndex from '../lib/ui/WikiScreenIndex.svelte';
   import WikiSeasonalEvent from '../lib/ui/WikiSeasonalEvent.svelte';
   import {
-    SKILL_TREE_NODES,
-    SKILL_TREE_ROOT_MAX,
-    SKILL_TREE_BOUGH_MAX,
-    SKILL_TREE_BOUGH_COST,
-    SKILL_TREE_CROWN_COST,
-    SKILL_TREE_BOUGH_NEEDS_ROOT,
-    SKILL_TREE_CROWN_NEEDS_BOUGH,
     INHERITANCE_STATS,
     INHERITANCE_MAX_LEVEL,
     INHERITANCE_PCT_PER_LEVEL,
@@ -285,7 +279,16 @@
     { region: 5, boss: 'Malakor', race: RACE_NAMES[6] },
   ];
 
-  const rootNodes = SKILL_TREE_NODES.filter((n) => n.ring === 'root');
+  // Modul: THE SERVER'S TREE, NOT A MIRROR (rework slice 2.5). This tab read
+  // SKILL_TREE_NODES, a hand-kept copy of today's tree in commands.ts, and
+  // would have gone on describing it after the switch. It reads the same
+  // definition the Skill Tree screen draws.
+  let treeDef = $state<SkillTreeDefinition | null>(null);
+  let treeError = $state(false);
+  fetchSkillTreeDefinition()
+    .then((d) => (treeDef = d))
+    .catch(() => (treeError = true));
+  const ROW_NAMES = ['First', 'Second', 'Third', 'Fourth', 'Fifth'];
 </script>
 
 <div class="wrap">
@@ -653,70 +656,62 @@
         {:else if activeTab === 'skills'}
           <p>
             One skill point a level, plus {SKILL_POINTS_PER_SEAL} for each Seal you hold and 2 for every
-            rebirth taken - both given back after every rebirth. The tree is three rings deep.
-            Spend them on the Skill Tree screen.
+            rebirth taken - both given back after every rebirth. Spend them on the Skill Tree screen.
           </p>
 
-          <h3 id="rings">Roots, boughs and crowns</h3>
-          <div class="scroll">
-            <table>
-              <thead>
-                <tr><th>Ring</th><th class="num">Max level</th><th class="num">Price</th><th>Opens when</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Root</strong> — five of them</td>
-                  <td class="num">{SKILL_TREE_ROOT_MAX}</td>
-                  <td class="num">1, then 2 from level 5</td>
-                  <td>Always open</td>
-                </tr>
-                <tr>
-                  <td><strong>Bough</strong> — two per root</td>
-                  <td class="num">{SKILL_TREE_BOUGH_MAX}</td>
-                  <td class="num">{SKILL_TREE_BOUGH_COST} a level</td>
-                  <td>Its root at level {SKILL_TREE_BOUGH_NEEDS_ROOT}</td>
-                </tr>
-                <tr>
-                  <td><strong>Crown</strong> — one per root</td>
-                  <td class="num">1</td>
-                  <td class="num">{SKILL_TREE_CROWN_COST}</td>
-                  <td>One of its boughs at level {SKILL_TREE_CROWN_NEEDS_BOUGH}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <h3 id="rings">Columns, rows and bridges</h3>
+          <p class="dim small">
+            The tree has four columns - Fortune, Might, Precision and Guard - of five rows each. A
+            row opens once its column holds enough points. Some rows are a <strong>fork</strong>:
+            taking one side closes the other until you respec or rebirth. A <strong>bridge</strong>
+            joins two neighbouring columns; it needs points in both, and its own points count for
+            both.
+          </p>
+          {#if treeDef}
+            <div class="scroll">
+              <table>
+                <thead>
+                  <tr><th>Row</th><th class="num">Opens at (points in its column)</th></tr>
+                </thead>
+                <tbody>
+                  {#each treeDef.RowGates as gate, row (row)}
+                    <tr><td>{ROW_NAMES[row] ?? `Row ${row + 1}`}</td><td class="num">{gate}</td></tr>
+                  {/each}
+                  <tr><td>Bridge</td><td class="num">{treeDef.BridgeGate} in both columns</td></tr>
+                </tbody>
+              </table>
+            </div>
+          {/if}
           <p class="dim tiny">
-            The two boughs under a root are <strong>exclusive</strong>: taking one
-            closes the other until you respec or rebirth. That is the one choice in the tree
-            you can get wrong, and it is why the respec exists.
+            A respec refunds every point: free once per run, then with a paid grant, or for gold.
           </p>
 
           <h3 id="nodes">Every node</h3>
-          {#each rootNodes as root (root.id)}
-            <div class="limb">
-              <div class="limb-head">
-                <strong>{root.name}</strong>
-                <span class="dim tiny">{root.blurb}</span>
-                <span class="rate">
-                  {root.perLevel}{root.unit === 'pct' ? '%' : ''} a level
-                </span>
+          {#if treeError}
+            <p class="dim small">The tree could not be loaded. Open the Skill Tree screen instead.</p>
+          {:else if !treeDef}
+            <p class="dim small">Reading the runes…</p>
+          {:else}
+            {#each treeDef.Columns as col (col.Id)}
+              <div class="limb">
+                <div class="limb-head">
+                  <strong>{col.Name}</strong>
+                </div>
+                <ul class="styled-list">
+                  {#each treeDef.Nodes.filter((n) => n.Column === col.Id).sort((a, b) => a.Row - b.Row || a.Lane - b.Lane) as node (node.Id)}
+                    <li>
+                      <strong>{node.Name}</strong>
+                      <span class="dim tiny ring">{node.Kind.toLowerCase()} · {node.MaxLevel} × {node.Costs[0]} pt</span>
+                      — {node.Effects[node.MaxLevel - 1]}
+                      {#if node.Kind === 'Bridge'}
+                        <span class="dim tiny">(with {treeDef.Columns[node.BridgeColumn]?.Name})</span>
+                      {/if}
+                    </li>
+                  {/each}
+                </ul>
               </div>
-              <ul class="styled-list">
-                {#each SKILL_TREE_NODES.filter((n) => n.root === root.id && n.ring !== 'root') as node (node.id)}
-                  <li>
-                    <strong>{node.name}</strong>
-                    <span class="dim tiny ring">{node.ring}</span>
-                    — {node.blurb}
-                    {#if node.perLevel > 0}
-                      <span class="rate">
-                        {node.perLevel}{node.unit === 'pct' ? '%' : ''} a level
-                      </span>
-                    {/if}
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/each}
+            {/each}
+          {/if}
           <p class="dim tiny">
             Spend the points on the Skill Tree screen (Hero menu).
           </p>

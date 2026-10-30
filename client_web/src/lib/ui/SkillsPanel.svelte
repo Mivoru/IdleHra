@@ -1,5 +1,7 @@
 <script lang="ts">
-  // Modul: THE SKILL TREE SCREEN, phase 1 of docs/design/SKILL_TREE_REWORK.md.
+  // Modul: THE SKILL TREE SCREEN, docs/design/SKILL_TREE_REWORK.md. Phase 1
+  // built it on today's tree; slice 2.5 drew the War half on it: four columns
+  // of five rows, forks inside a row, and bridges that join two columns.
   //
   // Square nodes, no button on any of them. Tap a node to open its detail;
   // hold it (or hover with a mouse) for a quick tooltip. Every change is a
@@ -19,14 +21,16 @@
   import { playerState, pushLocalNotice } from '../stores/game';
   import { backgroundUrl, skillIcon } from './sprites';
   import DisabledReason from './DisabledReason.svelte';
-  import { respecSkillTree, respecBlockedReason } from '../net/commands';
+  import { respecBlockedReason } from '../net/commands';
   import { play } from './audio';
   import {
     fetchSkillTreeDefinition,
     previewSkillTree,
     commitSkillTree,
     fetchSkillTreeState,
+    respecSkillTreeRest,
     type SkillTreeDefinition,
+    type SkillTreeState,
     type SkillTreeNodeDef,
     type SkillTreePreview,
     type StatSheetRow,
@@ -40,13 +44,19 @@
   // again whenever the points or the respec bytes on the snapshot move - a
   // purchase, a commit and a respec all move at least one - and a commit's own
   // answer carries the new levels at once.
-  let levels = $state<number[]>(new Array(20).fill(0));
+  // 64 slots, the server's rank buffer; War node ids index it (20-54).
+  const SLOTS = 64;
+  let levels = $state<number[]>(new Array(SLOTS).fill(0));
+  let treeState = $state<SkillTreeState | null>(null);
   let stateSeq = 0;
   async function loadState() {
     const seq = ++stateSeq;
     try {
       const st = await fetchSkillTreeState();
-      if (seq === stateSeq) levels = st.Levels;
+      if (seq === stateSeq) {
+        levels = st.Levels;
+        treeState = st;
+      }
     } catch {
       // The tree keeps its last known ranks; the next change asks again.
     }
@@ -66,7 +76,7 @@
   // Modul: THE DRAFT IS STORED AS ADDITIONS, not as a whole tree. Levels keep
   // arriving on the snapshot while the panel is open (a respec, or the commit
   // itself), and a draft kept as absolute levels would silently revert them.
-  let extra = $state<number[]>(new Array(20).fill(0));
+  let extra = $state<number[]>(new Array(SLOTS).fill(0));
   const draft = $derived(levels.map((l, i) => l + (extra[i] ?? 0)));
   const draftCount = $derived(extra.reduce((a, b) => a + b, 0));
 
@@ -122,22 +132,34 @@
     return 'locked';
   }
 
-  /** One limb per row: root, the two sides of its fork, its crown. */
-  const rows = $derived.by(() => {
+  /** One card per column, its five rows in order; bridges are drawn apart. */
+  const columns = $derived.by(() => {
     if (!def) return [];
     return def.Columns.map((col) => {
-      const of = def!.Nodes.filter((n) => n.Column === col.Id);
-      return {
-        col,
-        root: of.find((n) => n.Kind === 'Root')!,
-        boughs: of.filter((n) => n.Kind === 'Bough').sort((a, b) => a.Lane - b.Lane),
-        crown: of.find((n) => n.Kind === 'Crown')!,
-      };
+      const of = def!.Nodes.filter((n) => n.Column === col.Id && n.Kind !== 'Bridge');
+      const tiers = def!.RowGates.map((gate, row) => ({
+        row,
+        gate,
+        nodes: of.filter((n) => n.Row === row).sort((a, b) => a.Lane - b.Lane),
+      }));
+      return { col, tiers };
     });
   });
+  const bridges = $derived(def ? def.Nodes.filter((n) => n.Kind === 'Bridge') : []);
+  const byId = $derived(new Map((def?.Nodes ?? []).map((n) => [n.Id, n])));
 
-  const LIMB_HUE = ['#e8c15a', '#e2674a', '#57c7e3', '#d94a6a', '#a98cf0'];
-  const RUNE = ['ᚠ', 'ᛏ', 'ᛉ', 'ᚦ', 'ᚨ'];
+  /** Points in each column on the preview's basis - the server's count. */
+  const columnPoints = $derived(preview?.ColumnPoints ?? []);
+
+  const LIMB_HUE = ['#e8c15a', '#e2674a', '#57c7e3', '#7fb069'];
+  const RUNE = ['ᚠ', 'ᛏ', 'ᛉ', 'ᚦ'];
+  const KIND_LABEL: Record<string, string> = {
+    Minor: 'Minor',
+    Notable: 'Notable',
+    Fork: 'Fork (one side only)',
+    Bridge: 'Bridge (two columns)',
+    Keystone: 'Keystone',
+  };
 
   // ---- selection, hold and hover --------------------------------------------
 
@@ -146,7 +168,7 @@
   let holdTimer: ReturnType<typeof setTimeout> | null = null;
   let held = false;
 
-  const selectedNode = $derived(def && selected !== null ? def.Nodes[selected] : null);
+  const selectedNode = $derived(selected !== null ? (byId.get(selected) ?? null) : null);
 
   // Modul: 350 ms is long enough that a scroll or a tap never trips it and
   // short enough that a player who means it does not wonder whether it works.
@@ -190,7 +212,7 @@
   async function keepClear(button: HTMLElement) {
     clearOf = button;
     await tick();
-    const limb = button.closest('.limb') as HTMLElement | null;
+    const limb = button.closest('.tier, .bridge') as HTMLElement | null;
     if (!limb || !dockEl) return;
     const overlap = limb.getBoundingClientRect().bottom - dockEl.getBoundingClientRect().top + 12;
     if (overlap > 0) scrollerOf(limb).scrollBy({ top: overlap, behavior: 'smooth' });
@@ -214,8 +236,9 @@
     if (selected === null) clearOf = null;
     // Its own voice rather than the app-wide button click (data-no-click-sound
     // on the grove): a rune taps like wood, and a shut one knocks dull.
-    if (selected !== null && def) {
-      const st = statusOf(def.Nodes[id]);
+    const picked = selected !== null ? byId.get(selected) : undefined;
+    if (picked) {
+      const st = statusOf(picked);
       play(st === 'locked' || st === 'closed' ? 'runeLocked' : 'runeSelect');
     }
   }
@@ -249,12 +272,12 @@
   }
 
   function discard() {
-    extra = new Array(20).fill(0);
+    extra = new Array(SLOTS).fill(0);
   }
 
   let committing = $state(false);
 
-  async function confirm() {
+  async function confirmDraft() {
     if (draftCount === 0 || committing) return;
     committing = true;
     try {
@@ -274,19 +297,42 @@
     }
   }
 
-  // ---- respec (unchanged rules, see SkillTreeEngine.RespecAsync) ------------
+  // ---- respec (SkillTreeEngine.RespecAsync) ---------------------------------
+  //
+  // The free one, then a paid grant, then gold (decision D3) - the server
+  // prices the gold and refuses what the player cannot pay.
 
   const freeUsed = $derived(Number(snap?.FreeRespecUsed ?? 0) > 0);
   const grants = $derived(Number(snap?.PaidRespecGrants ?? 0));
   const respecBlocked = $derived(respecBlockedReason(freeUsed, grants));
   const spentTotal = $derived(levels.reduce((a, b) => a + b, 0));
+  const goldPrice = $derived(treeState?.RespecGoldPrice ?? 0);
+  const goldHeld = $derived(Number(snap?.Gold ?? treeState?.Gold ?? 0));
+  const withGold = $derived(respecBlocked !== null);
+  const goldShort = $derived(withGold && goldHeld < goldPrice ? `A respec costs ${goldPrice.toLocaleString()} gold; you have ${goldHeld.toLocaleString()}.` : null);
   let confirmingRespec = $state(false);
+  let respecing = $state(false);
 
-  function doRespec() {
-    const outcome = respecSkillTree(freeUsed, grants);
-    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
-    confirmingRespec = false;
-    discard();
+  async function doRespec() {
+    if (respecing) return;
+    respecing = true;
+    try {
+      const res = await respecSkillTreeRest(withGold);
+      if (res.Reason) pushLocalNotice(res.Reason, 'error');
+      else {
+        pushLocalNotice(
+          `Respec done - ${res.Refunded} point${res.Refunded === 1 ? '' : 's'} back${res.GoldSpent > 0 ? ` for ${res.GoldSpent.toLocaleString()} gold` : ''}.`,
+          'info',
+        );
+        void loadState();
+      }
+    } catch {
+      pushLocalNotice('The server did not answer. Nothing was refunded.', 'error');
+    } finally {
+      respecing = false;
+      confirmingRespec = false;
+      discard();
+    }
   }
 
   // ---- the stat preview ----------------------------------------------------
@@ -336,9 +382,9 @@
     <div>
       <h2>Skill tree</h2>
       <p class="dim small">
-        Tap a rune to see what it does, hold it for a quick look. Roots are cheap; each root
-        <strong>forks into two and only one can be taken</strong>; a crown waits above the fork you
-        chose. Nothing is spent until you confirm.
+        Tap a rune to see what it does, hold it for a quick look. Four columns of five rows: a row
+        opens once its column holds enough points, a <strong>fork</strong> lets you take only one
+        side, and a <strong>bridge</strong> joins two columns. Nothing is spent until you confirm.
       </p>
     </div>
     <span class="points" data-testid="skills-points">
@@ -352,67 +398,85 @@
   {:else if !def}
     <p class="dim small">Reading the runes…</p>
   {:else}
-    <div class="grove" role="list" aria-label="Skill tree limbs" data-no-click-sound>
-      {#each rows as row, i (row.col.Id)}
-        <div class="limb" role="listitem" style={`--hue: ${LIMB_HUE[i % LIMB_HUE.length]}`}>
-          <span class="limb-name">
-            {#if skillIcon(row.col.Icon)}<img class="emblem" src={skillIcon(row.col.Icon)} alt="" draggable="false" />{/if}
-            {row.col.Name}
-          </span>
-          <div class="path">
-            {#snippet rune(node: SkillTreeNodeDef, size: 'big' | 'small')}
-              {@const st = statusOf(node)}
-              {@const art = skillIcon(node.Icon)}
-              <button
-                class="rune {st} {size} kind-{node.Kind.toLowerCase()}"
-                class:selected={selected === node.Id}
-                aria-label={`${node.Name}, ${draft[node.Id] ?? 0} of ${node.MaxLevel}`}
-                aria-pressed={selected === node.Id}
-                data-testid={`skill-node-${node.Id}`}
-                onpointerdown={(e) => onDown(e, node.Id)}
-                onpointerup={onUp}
-                onpointercancel={onUp}
-                onpointerleave={() => { onUp(); if (tip?.id === node.Id) tip = null; }}
-                onpointerenter={(e) => onEnter(e, node.Id)}
-                oncontextmenu={(e) => e.preventDefault()}
-                onclick={(e) => onClick(node.Id, e)}
-              >
-                {#if art}
-                  <img class="art" src={art} alt="" draggable="false" loading="lazy" />
-                {:else}
-                  <span class="glyph" aria-hidden="true">{node.Kind === 'Crown' ? '✦' : RUNE[i % RUNE.length]}</span>
-                {/if}
-                <span class="badge">{draft[node.Id] ?? 0}/{node.MaxLevel}</span>
-                {#if st === 'locked'}<span class="pad" aria-hidden="true">🔒</span>{/if}
-              </button>
-            {/snippet}
+    {#snippet rune(node: SkillTreeNodeDef, size: 'big' | 'small', ci: number)}
+      {@const st = statusOf(node)}
+      {@const art = skillIcon(node.Icon)}
+      <div class="cell">
+        <button
+          class="rune {st} {size} kind-{node.Kind.toLowerCase()}"
+          class:selected={selected === node.Id}
+          aria-label={`${node.Name}, ${draft[node.Id] ?? 0} of ${node.MaxLevel}`}
+          aria-pressed={selected === node.Id}
+          data-testid={`skill-node-${node.Id}`}
+          onpointerdown={(e) => onDown(e, node.Id)}
+          onpointerup={onUp}
+          onpointercancel={onUp}
+          onpointerleave={() => { onUp(); if (tip?.id === node.Id) tip = null; }}
+          onpointerenter={(e) => onEnter(e, node.Id)}
+          oncontextmenu={(e) => e.preventDefault()}
+          onclick={(e) => onClick(node.Id, e)}
+        >
+          {#if art}
+            <img class="art" src={art} alt="" draggable="false" loading="lazy" />
+          {:else}
+            <span class="glyph" aria-hidden="true">{node.Kind === 'Keystone' ? '✦' : RUNE[ci % RUNE.length]}</span>
+          {/if}
+          <span class="badge">{draft[node.Id] ?? 0}/{node.MaxLevel}</span>
+          {#if st === 'locked'}<span class="pad" aria-hidden="true">🔒</span>{/if}
+        </button>
+        <span class="cap tiny">{node.Name}</span>
+      </div>
+    {/snippet}
 
-            {@render rune(row.root, 'big')}
-            <span class="wire" class:lit={(draft[row.root.Id] ?? 0) >= 5}></span>
-            <div class="fork">
-              {#each row.boughs as b (b.Id)}
-                <div class="fork-cell">
-                  {@render rune(b, 'small')}
-                  <span class="cap tiny">{b.Name}</span>
+    <div class="grove" role="list" aria-label="Skill tree columns" data-no-click-sound>
+      {#each columns as column, ci (column.col.Id)}
+        <div class="column" role="listitem" style={`--hue: ${LIMB_HUE[ci % LIMB_HUE.length]}`} data-testid={`skill-column-${column.col.Id}`}>
+          <span class="limb-name">
+            {#if skillIcon(column.col.Icon)}<img class="emblem" src={skillIcon(column.col.Icon)} alt="" draggable="false" />{/if}
+            {column.col.Name}
+            <span class="col-points tiny">{columnPoints[column.col.Id] ?? 0} pts</span>
+          </span>
+          <div class="tiers">
+            {#each column.tiers as tier (tier.row)}
+              {@const open = (columnPoints[column.col.Id] ?? 0) >= tier.gate}
+              <div class="tier" class:shut={!open}>
+                {#if tier.gate > 0}
+                  <span class="gate tiny" class:met={open}>{open ? '✓' : '🔒'} {tier.gate}</span>
+                {/if}
+                <div class="tier-nodes">
+                  {#each tier.nodes as node, k (node.Id)}
+                    {#if k > 0 && node.Kind === 'Fork'}<span class="or tiny" aria-hidden="true">or</span>{/if}
+                    {@render rune(node, node.Lane < 0 ? 'big' : 'small', ci)}
+                  {/each}
                 </div>
-              {/each}
-            </div>
-            <span class="wire" class:lit={(draft[row.crown.Id] ?? 0) > 0}></span>
-            {@render rune(row.crown, 'big')}
+              </div>
+            {/each}
           </div>
         </div>
       {/each}
     </div>
+
+    {#if bridges.length > 0}
+      <div class="bridges" role="list" aria-label="Bridges between columns" data-no-click-sound>
+        <span class="limb-name bridges-name">Bridges <span class="dim tiny">· {def.BridgeGate} points in both columns</span></span>
+        {#each bridges as b (b.Id)}
+          <div class="bridge" role="listitem" style={`--hue: ${LIMB_HUE[b.Column % LIMB_HUE.length]}; --hue2: ${LIMB_HUE[b.BridgeColumn % LIMB_HUE.length]}`}>
+            <span class="tiny bridge-cols">{def.Columns[b.Column]?.Name} + {def.Columns[b.BridgeColumn]?.Name}</span>
+            {@render rune(b, 'small', b.Column)}
+          </div>
+        {/each}
+      </div>
+    {/if}
 
     <div class="dock" bind:this={dockEl} bind:clientHeight={dockHeight}>
     {#if selectedNode}
       {@const n = selectedNode}
       {@const st = statusOf(n)}
       {@const why = canAdd(n)}
-      <div class="sheet" role="dialog" aria-label={n.Name} data-testid="skill-detail">
+      <div class="sheet" role="region" aria-label={n.Name} data-testid="skill-detail">
         <div class="sheet-head">
           <strong>{n.Name}</strong>
-          <span class="dim tiny">{n.Kind === 'Root' ? 'Root' : n.Kind === 'Bough' ? 'Branch (one per fork)' : 'Crown'} · {draft[n.Id] ?? 0}/{n.MaxLevel}</span>
+          <span class="dim tiny">{KIND_LABEL[n.Kind] ?? n.Kind} · {draft[n.Id] ?? 0}/{n.MaxLevel}</span>
           <button class="x" aria-label="Close" onclick={() => (selected = null)}>✕</button>
         </div>
         <p class="dim small">{n.Blurb}</p>
@@ -456,7 +520,7 @@
           <button
             class="primary"
             disabled={committing || previewing || !preview || preview.Reason !== null}
-            onclick={confirm}
+            onclick={confirmDraft}
             data-no-click-sound
             data-testid="skill-confirm"
           >Confirm{preview && preview.Reason === null ? ` (${preview.Cost} pt)` : ''}</button>
@@ -473,20 +537,23 @@
         </p>
       {:else if confirmingRespec}
         <span class="confirm">
-          <span class="dim tiny">Refund every point and unlock both forks again?</span>
-          <button onclick={doRespec}>Yes, respec</button>
+          <span class="dim tiny">
+            Refund every point and open every fork again{withGold ? ` for ${goldPrice.toLocaleString()} gold` : ''}?
+          </span>
+          <button onclick={doRespec} disabled={respecing} data-testid="skill-respec-yes">Yes, respec</button>
           <button onclick={() => (confirmingRespec = false)}>Cancel</button>
         </span>
       {:else if spentTotal > 0}
         <button
           class="respec"
-          disabled={respecBlocked !== null}
-          title={respecBlocked ?? (freeUsed ? `${grants} paid respec left` : 'Your free respec for this run')}
+          disabled={goldShort !== null}
+          title={withGold ? `${goldPrice.toLocaleString()} gold` : freeUsed ? `${grants} paid respec left` : 'Your free respec for this run'}
           onclick={() => (confirmingRespec = true)}
+          data-testid="skill-respec"
         >
-          Respec{' '}{#if !freeUsed}(free){:else}({grants} left){/if}
+          Respec{' '}{#if !freeUsed}(free){:else if grants > 0}({grants} left){:else}({goldPrice.toLocaleString()} gold){/if}
         </button>
-        <DisabledReason text={respecBlocked} />
+        <DisabledReason text={goldShort} />
       {/if}
     </div>
   {/if}
@@ -498,8 +565,8 @@
     <div class="dock-room" style={`height: ${dockHeight}px`} aria-hidden="true"></div>
   {/if}
 
-  {#if tip && def}
-    {@const t = def.Nodes[tip.id]}
+  {#if tip && byId.get(tip.id)}
+    {@const t = byId.get(tip.id)!}
     <div class="tip" role="tooltip" style={`left: ${tip.x}px; top: ${tip.y}px`}>
       <strong>{t.Name}</strong>
       <span class="tiny">{effectNow(t)}{#if effectNext(t)} → {effectNext(t)}{/if}</span>
@@ -557,16 +624,52 @@
 
   .grove { display: grid; gap: 0.6rem; margin-top: 0.75rem; }
 
-  .limb {
+  .column {
     display: grid;
-    grid-template-columns: 6.2rem 1fr;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.6rem;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem 0.6rem;
     border-radius: 10px;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--hue) 14%, transparent), transparent 70%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--hue) 14%, transparent), transparent 80%);
     border: 1px solid color-mix(in srgb, var(--hue) 28%, transparent);
   }
+  .col-points { margin-left: auto; color: #f3ecdc; letter-spacing: 0; text-transform: none; font-weight: 600; }
+  .tiers { display: grid; gap: 0.35rem; }
+  .tier {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid rgb(255 255 255 / 0.07);
+  }
+  .tier:first-child { border-top: none; }
+  .tier:first-child .tier-nodes { grid-column: 1 / -1; }
+  .gate { color: #c9c0ad; white-space: nowrap; }
+  .gate.met { color: var(--hue); }
+  .tier-nodes { display: flex; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+  .cell { display: grid; justify-items: center; gap: 0.2rem; min-width: 0; }
+  .or { align-self: center; opacity: 0.7; }
+
+  .bridges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: flex-end;
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 10px;
+    border: 1px dashed rgb(255 255 255 / 0.22);
+  }
+  .bridges-name { flex-basis: 100%; color: #f3ecdc; }
+  .bridge {
+    display: grid;
+    justify-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--hue) 18%, transparent), color-mix(in srgb, var(--hue2) 18%, transparent));
+  }
+  .bridge-cols { color: #ece6d8; white-space: nowrap; }
   .limb-name {
     display: flex;
     align-items: center;
@@ -577,22 +680,7 @@
     font-size: 0.8rem;
     color: var(--hue);
   }
-  .path { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
-  .fork { display: flex; flex-direction: column; gap: 0.3rem; }
-  .fork-cell { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
-  .cap { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 6.5rem; }
-
-  .wire {
-    flex: 0 1 1.4rem;
-    min-width: 0.6rem;
-    height: 3px;
-    border-radius: 2px;
-    background: rgb(255 255 255 / 0.14);
-  }
-  .wire.lit {
-    background: var(--hue);
-    box-shadow: 0 0 8px var(--hue);
-  }
+  .cap { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 5.5rem; text-align: center; }
 
   /* ---- a rune ---- */
   .rune {
@@ -614,7 +702,8 @@
   }
   .rune.big { width: 3.6rem; height: 3.6rem; }
   .rune.small { width: 3rem; height: 3rem; }
-  .rune.kind-crown { border-radius: 50%; }
+  .rune.kind-keystone { border-radius: 50%; }
+  .rune.kind-bridge { border-radius: 50% 10px; }
   .rune:active { transform: scale(0.94); }
   .glyph { font-size: 1.5rem; line-height: 1; }
   /* Painted icons fill the tile; the border, badge and glow stay the client's
@@ -660,7 +749,19 @@
 
   .rune.open { border-color: #e7b84f; color: #f3d27a; box-shadow: 0 0 0 1px rgb(231 184 79 / 0.3); }
   .rune.owned { border-color: var(--hue); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--hue) 55%, transparent); }
-  .rune.draft { border-style: dashed; border-color: #ffe27a; color: #ffe27a; animation: draft 1.6s ease-in-out infinite; }
+  .rune.draft { border-style: dashed; border-color: #ffe27a; color: #ffe27a; }
+  /* The pulse is a fixed glow whose OPACITY moves - the compositor animates
+     that alone; a pulsing box-shadow repainted the rune every frame. */
+  .rune.draft::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    box-shadow: 0 0 14px rgb(255 226 122 / 0.6);
+    opacity: 0;
+    pointer-events: none;
+    animation: draft 1.6s ease-in-out infinite;
+  }
   .rune.maxed {
     border-color: var(--hue);
     color: #fff;
@@ -673,7 +774,7 @@
   .rune.selected { outline: 2px solid #fff; outline-offset: 2px; }
 
   @keyframes draft {
-    50% { box-shadow: 0 0 14px rgb(255 226 122 / 0.6); }
+    50% { opacity: 1; }
   }
 
   /* ---- detail sheet ---- */
@@ -804,33 +905,29 @@
     cursor: not-allowed;
   }
 
-  /* Wide screens: five limbs standing side by side, root at the foot and crown
-     at the top, so the screen reads as the tree it is named after. */
+  /* Wide screens: four columns standing side by side, the first row at the
+     foot and the keystone at the top, so the screen reads as the tree it is
+     named after. */
   @media (min-width: 60rem) {
-    .grove { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
-    .limb {
-      grid-template-columns: 1fr;
-      justify-items: center;
-      background: linear-gradient(0deg, color-mix(in srgb, var(--hue) 16%, transparent), transparent 80%);
-    }
-    .limb-name { order: 2; }
-    .path { flex-direction: column-reverse; gap: 0.5rem; }
-    .fork { flex-direction: row; gap: 0.9rem; }
-    .fork-cell { flex-direction: column; }
-    .cap { max-width: 5.5rem; text-align: center; }
-    .wire { flex: none; width: 3px; height: 1.4rem; min-width: 0; }
-    .rune.big { width: 4.2rem; height: 4.2rem; }
-    .rune.small { width: 3.4rem; height: 3.4rem; }
+    .grove { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+    .column { background: linear-gradient(0deg, color-mix(in srgb, var(--hue) 16%, transparent), transparent 80%); }
+    .tiers { display: flex; flex-direction: column-reverse; gap: 0.35rem; }
+    .tier { grid-template-columns: 1fr; justify-items: center; border-top: none; border-bottom: 1px solid rgb(255 255 255 / 0.07); }
+    .tier:first-child { border-bottom: none; }
+    .tier-nodes { justify-content: center; }
+    .rune.big { width: 4rem; height: 4rem; }
+    .rune.small { width: 3.3rem; height: 3.3rem; }
+    .bridges { justify-content: center; }
   }
 
   @media (max-width: 26rem) {
-    .limb { grid-template-columns: 1fr; }
+    .tier { grid-template-columns: 2.3rem 1fr; }
     .rune.big { width: 3.2rem; height: 3.2rem; }
-    .rune.small { width: 2.75rem; height: 2.75rem; }
+    .rune.small { width: 2.9rem; height: 2.9rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .rune { transition: none; }
-    .rune.draft { animation: none; }
+    .rune.draft::after { animation: none; }
   }
 </style>

@@ -3964,20 +3964,21 @@ await go('Character');
 }
 
 // --- the skill tree's draft mode (rework phase 1, 2026-10-29) ----------------
-// Modul: SPENDS NOTHING, on purpose: a bought level can only come back through
-// the run's one free respec, so a step that committed would pass once and fail
-// forever. It drafts a level on screen and proves the preview is the SERVER's
-// answer (a cost and a moved stat), then sends an illegal draft (every node
-// at zero but one crown - it lowers what the fixture owns and skips the crown's
-// gate) to the commit and proves it is refused whole.
+// Modul: SPENDS NOTHING ON SCREEN, on purpose: a bought level can only come
+// back through a respec, so a step that committed and stopped would pass once
+// and fail forever. It drafts a level on screen and proves the preview is the
+// SERVER's answer (a cost and a moved stat), then sends an illegal draft (a
+// keystone with its column empty - the row gate refuses it) to the commit and
+// proves it is refused whole. The War half (slice 2.5) has its nodes at ids
+// 20-54 of a 64-slot rank array.
 {
   await go('Skill Tree');
-  await page.getByTestId('skill-node-0').waitFor({ timeout: 15000 }).catch(() => {});
+  await page.getByTestId('skill-node-20').waitFor({ timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1200);
-  // Precision's root first: crit chance is on the stat sheet, so its preview
-  // must show a moved number. A crown such as Golden Fleece moves none.
+  // Keen Eye first: crit chance is on the stat sheet, so its preview must show
+  // a moved number. Then Edge (damage), Vitality (health), Scavenger.
   let drafted = -1;
-  for (const id of [2, 3, 0, 1, 4]) {
+  for (const id of [36, 28, 44, 20]) {
     if (drafted >= 0) break;
     const node = page.getByTestId(`skill-node-${id}`);
     const cls = (await node.getAttribute('class').catch(() => '')) ?? '';
@@ -4003,18 +4004,28 @@ await go('Character');
     'a drafted skill level is priced and previewed by the server',
     drafted >= 0 && /costs \d+/.test(barText) && /→/.test(barText),
     drafted < 0
-      ? `no open node on the fixture (${await page.locator('[data-testid^="skill-node-"]').count()} nodes, #2 "${await page.getByTestId('skill-node-2').getAttribute('class').catch(() => 'absent')}", detail "${(await page.getByTestId('skill-detail').innerText().catch(() => 'none')).replace(/\s+/g, ' ')}")`
+      ? `no open node on the fixture (${await page.locator('[data-testid^="skill-node-"]').count()} nodes, #36 "${await page.getByTestId('skill-node-36').getAttribute('class').catch(() => 'absent')}", detail "${(await page.getByTestId('skill-detail').innerText().catch(() => 'none')).replace(/\s+/g, ' ')}")`
       : barText.replace(/\s+/g, ' '),
   );
   await bar.getByRole('button', { name: 'Discard' }).click().catch(() => {});
 
   const tree = await apiGet('/api/v1/skilltree').catch(() => null);
-  const crown = tree?.Nodes?.find((n) => n.Kind === 'Crown' && n.Column === 4);
-  if (crown) {
-    const illegal = new Array(20).fill(0);
-    illegal[crown.Id] = 1;
+  const keystone = tree?.Nodes?.find((n) => n.Kind === 'Keystone');
+  const state = await apiGet('/api/v1/skilltree/state').catch(() => null);
+  record('the skill tree is the War half: four columns, 35 nodes, a 64-slot rank array',
+    tree?.Columns?.length === 4 && tree?.Nodes?.length === 35 && tree?.Slots === 64 && state?.Levels?.length === 64,
+    `${tree?.Columns?.length} columns, ${tree?.Nodes?.length} nodes, ${tree?.Slots} slots, state ${state?.Levels?.length}`);
+  if (keystone && state?.Levels) {
+    // The fixture's own ranks, with the keystone added and its column's
+    // lower rows left as they are: unless the fixture already filled that
+    // column, the row gate refuses it.
+    const illegal = state.Levels.slice();
+    const filled = tree.Nodes.filter((n) => n.Column === keystone.Column).reduce((a, n) => a + (illegal[n.Id] ?? 0) * n.Costs[0], 0);
+    illegal[keystone.Id] = 1;
     const res = await apiPost('/api/v1/skilltree/commit', { Levels: illegal }).catch(() => null);
-    record('an illegal draft is refused whole, with a reason', typeof res?.Reason === 'string' && res.Spent === 0, res?.Reason ?? 'no answer');
+    record('an illegal draft is refused whole, with a reason',
+      filled < tree.RowGates[keystone.Row] ? typeof res?.Reason === 'string' && res.Spent === 0 : true,
+      res?.Reason ?? 'no answer');
   } else {
     record('an illegal draft is refused whole, with a reason', false, 'the definition did not answer');
   }

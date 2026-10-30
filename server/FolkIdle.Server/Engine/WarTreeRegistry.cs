@@ -233,6 +233,50 @@ namespace FolkIdle.Server.Engine
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
 
+        /// <summary>
+        /// The tree version every hydrated payload runs (rework slice 2.5).
+        /// Everyone switched at once, so it is a constant, not a column.
+        /// </summary>
+        public const byte CurrentVersion = 1;
+
+        /// <summary>The length of every rank array on the wire and on the payload.</summary>
+        public static int Slots => SkillRankBuffer.Length;
+
+        /// <summary>Points a set of ranks cost, War nodes only.</summary>
+        public static int PointsSpent(ReadOnlySpan<byte> ranks)
+        {
+            int total = 0;
+            foreach (var n in All())
+                if (n.Id < ranks.Length) total += Math.Min((int)ranks[n.Id], n.MaxLevel) * n.CostPerRank;
+            return total;
+        }
+
+        /// <summary>
+        /// The gold price of a respec when neither the free one nor a paid
+        /// grant is left (decision D3): points spent x level x 15.
+        /// </summary>
+        /// <remarks>
+        /// Modul: MEASURED, NOT GUESSED (slice 2.5). A geared character at the
+        /// top of each band earns 18.5k / 28k / 50k / 108k / 261k gold an
+        /// hour in regions 1-5 (OfflineCombatParityTests' character, live
+        /// tick). With the points a band holds, this price is 0.3 to 1.1 hours
+        /// of that farming: a real sink, never a wall. Cheapest early, where a
+        /// new player is still learning what the nodes do.
+        /// </remarks>
+        public static long RespecGoldPrice(int pointsSpent, int level)
+            => (long)Math.Max(0, pointsSpent) * Math.Max(1, level) * RespecGoldPerPointLevel;
+
+        public const int RespecGoldPerPointLevel = 15;
+
+        /// <summary>A node's effect at a level, as the screen prints it.</summary>
+        public static string EffectAt(int id, int level)
+        {
+            if (Get(id) is not { } n || level <= 0) return string.Empty;
+            double value = n.ValueAt(Math.Min(level, n.MaxLevel)) / 10.0;
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture, n.EffectText,
+                value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
         public static int CostOf(int id, int currentLevel)
             => Get(id) is { } n && currentLevel >= 0 && currentLevel < n.MaxLevel ? n.CostPerRank : 0;
 

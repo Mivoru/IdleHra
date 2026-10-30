@@ -104,26 +104,110 @@ namespace FolkIdle.Server.Engine
             return "You have used this run's free respec - a rebirth brings it back.";
         }
 
+        /// <summary>The War half's ranks (rework slice 2.5), one byte per rank-buffer slot; old-tree rows are ignored.</summary>
+        public static async Task<byte[]> LoadRanksAsync(FolkIdleDbContext db, long playerId)
+        {
+            var ranks = new byte[WarTreeRegistry.Slots];
+            var rows = await db.PlayerSkillTreeNodes
+                .AsNoTracking()
+                .Where(r => r.PlayerId == playerId)
+                .ToListAsync();
+            foreach (var row in rows)
+                if (WarTreeRegistry.Get(row.BranchId) is { } n)
+                    ranks[row.BranchId] = (byte)Math.Clamp(row.Level, 0, n.MaxLevel);
+            return ranks;
+        }
+
+        /// <summary>
+        /// Refunds every point a player spent on today's tree (ids 0-19), deletes
+        /// those rows, and grants a free respec. Returns the points handed back.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE SWITCH TO THE WAR HALF (rework slice 2.5), ON THE LOAD PATH,
+        /// NOT IN A MIGRATION. The refund is the old cost curve
+        /// (SkillTreeRegistry.GetUpgradeCost), which is C#, not SQL - and a
+        /// player who logs in a month later is refunded exactly as one who
+        /// logged in today. NATURALLY IDEMPOTENT: the rows it reads are the
+        /// rows it deletes, so the second run finds nothing.
+        ///
+        /// It MUST run before hydration reads the PlayerRecords row, on the
+        /// same context: the checkpoint flush writes AvailableSkillPoints back
+        /// from the payload, so a payload built from a stale row would write
+        /// the refund away again at the next flush.
+        ///
+        /// Root rows above today's cap of 10 were bought under the old cap of
+        /// 20 and never refunded (ReconcileRootCapAsync was never wired); those
+        /// levels are refunded here too, at the curve they were bought at.
+        /// </remarks>
+        public static async Task<int> ReconcileWarSwitchAsync(FolkIdleDbContext db, long playerId)
+        {
+            var old = await db.PlayerSkillTreeNodes
+                .Where(r => r.PlayerId == playerId && r.BranchId < WarTreeRegistry.FirstId)
+                .ToListAsync();
+            if (old.Count == 0) return 0;
+
+            int refund = LegacyRefundOf(old.Select(r => (r.BranchId, r.Level)));
+            db.PlayerSkillTreeNodes.RemoveRange(old);
+            var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player != null)
+            {
+                player.AvailableSkillPoints += refund;
+                // Everyone's tree changed under them, so everyone who had one
+                // gets a free choice of the new one.
+                player.FreeRespecUsed = false;
+            }
+            await db.SaveChangesAsync();
+            return refund;
+        }
+
+        /// <summary>What rows of today's tree cost: the curve per level, plus the old root levels above the cap of 10.</summary>
+        internal static int LegacyRefundOf(System.Collections.Generic.IEnumerable<(int BranchId, int Level)> rows)
+        {
+            int refund = 0;
+            foreach (var (id, level) in rows)
+            {
+                if (!SkillTreeRegistry.IsValidNode(id)) continue;
+                int capped = Math.Clamp(level, 0, SkillTreeRegistry.MaxLevelOf(id));
+                for (int l = 0; l < capped; l++) refund += SkillTreeRegistry.GetUpgradeCost(id, l);
+                if (id < SkillTreeRegistry.RootCount)
+                    for (int l = SkillTreeRegistry.RootMaxLevel; l < level; l++) refund += (l / 5) + 1;
+            }
+            return refund;
+        }
+
+        /// <summary>
+        /// Why a respec cannot happen right now, or null: the free one, a paid
+        /// grant, or (when asked) gold at WarTreeRegistry.RespecGoldPrice.
+        /// </summary>
+        public static string? RespecBlockedReason(bool freeRespecUsed, int paidGrants, bool payWithGold, long gold, long goldPrice)
+        {
+            if (!payWithGold) return RespecBlockedReason(freeRespecUsed, paidGrants);
+            if (goldPrice <= 0) return "Nothing to refund.";
+            if (gold < goldPrice) return $"A respec costs {goldPrice:N0} gold; you have {gold:N0}.";
+            return null;
+        }
+
         /// <summary>
         /// Refunds every point in the tree and clears every node.
         ///
         /// ALL OR NOTHING, deliberately. A partial respec would need a rule
-        /// for what happens to a crown whose prerequisite was just refunded
-        /// out from under it, and "all of it" has no such corner.
+        /// for what happens to a keystone whose gate was just refunded out
+        /// from under it, and "all of it" has no such corner.
         ///
-        /// The refund is recomputed from the cost curve rather than stored:
-        /// a "points spent" column would be a second source of truth for
-        /// something derivable, and the first time the curve changed the two
-        /// would disagree in the player's favour or against it.
+        /// The refund is recomputed from the costs rather than stored: a
+        /// "points spent" column would be a second source of truth for
+        /// something derivable.
         ///
-        /// Returns the points handed back, or -1 if the respec was refused.
+        /// payWithGold: spend gold (D3) instead of the free respec or a grant.
+        /// The gold row is debited in the same transaction, and the live
+        /// payload follows through the sync queue - the village's pattern.
         /// </summary>
-        public async Task<int> RespecAsync(long playerId)
+        public async Task<SkillTreeRespecResult> RespecAsync(long playerId, bool payWithGold = false)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
-            int refunded = -1;
+            var result = new SkillTreeRespecResult { Reason = "No such player." };
 
             var strategy = db.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
@@ -135,16 +219,10 @@ namespace FolkIdle.Server.Engine
                     var player = await db.PlayerRecords
                         .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
                         .SingleOrDefaultAsync();
-
                     if (player == null)
                     {
                         await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    if (RespecBlockedReason(player.FreeRespecUsed, player.PaidRespecGrants) != null)
-                    {
-                        await transaction.RollbackAsync();
+                        result = new SkillTreeRespecResult { Reason = "No such player." };
                         return;
                     }
 
@@ -152,45 +230,60 @@ namespace FolkIdle.Server.Engine
                         .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
                         .ToListAsync();
 
-                    int total = 0;
+                    var ranks = new byte[WarTreeRegistry.Slots];
                     foreach (var row in rows)
+                        if (WarTreeRegistry.Get(row.BranchId) is { } n) ranks[row.BranchId] = (byte)Math.Clamp(row.Level, 0, n.MaxLevel);
+                    int total = WarTreeRegistry.PointsSpent(ranks)
+                        + LegacyRefundOf(rows.Where(r => r.BranchId < WarTreeRegistry.FirstId).Select(r => (r.BranchId, r.Level)));
+
+                    var gold = payWithGold
+                        ? await db.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold")
+                        : null;
+                    long price = payWithGold ? WarTreeRegistry.RespecGoldPrice(total, player.CurrentLevel) : 0L;
+                    string? refusal = total <= 0
+                        ? "Nothing to refund."
+                        : RespecBlockedReason(player.FreeRespecUsed, player.PaidRespecGrants, payWithGold, gold?.Quantity ?? 0L, price);
+                    if (refusal != null)
                     {
-                        if (!SkillTreeRegistry.IsValidNode(row.BranchId)) continue;
-                        int level = Math.Clamp(row.Level, 0, SkillTreeRegistry.MaxLevelOf(row.BranchId));
-                        for (int l = 0; l < level; l++)
-                        {
-                            total += SkillTreeRegistry.GetUpgradeCost(row.BranchId, l);
-                        }
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeRespecResult { Reason = refusal };
+                        return;
                     }
 
                     db.PlayerSkillTreeNodes.RemoveRange(rows);
                     player.AvailableSkillPoints += total;
-
+                    if (payWithGold)
+                    {
+                        gold!.Quantity -= price;
+                        await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Respec, price);
+                    }
                     // The free one first, so a player who bought a grant still
-                    // has it after their free respec of the season.
-                    if (!player.FreeRespecUsed) player.FreeRespecUsed = true;
+                    // has it after their free respec of the run.
+                    else if (!player.FreeRespecUsed) player.FreeRespecUsed = true;
                     else player.PaidRespecGrants--;
 
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    refunded = total;
+                    result = new SkillTreeRespecResult { Refunded = total, GoldSpent = price };
 
                     // The tick thread owns the payload, so every cleared node
                     // goes back through the queue - the same route a purchase
-                    // takes. Zeroing them across threads is exactly the data
-                    // race this queue exists to avoid.
-                    for (int nodeId = 0; nodeId < SkillTreeRegistry.NodeCount; nodeId++)
+                    // takes. The gold rides the first notification only.
+                    bool first = true;
+                    foreach (var row in rows)
                     {
                         _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
                         {
                             PlayerId = playerId,
-                            BranchId = nodeId,
+                            BranchId = row.BranchId,
                             NewLevel = 0,
                             RemainingSkillPoints = player.AvailableSkillPoints,
                             FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
                             PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
+                            GoldSpent = first ? price : 0L,
                         });
+                        first = false;
                     }
                 }
                 catch
@@ -200,25 +293,24 @@ namespace FolkIdle.Server.Engine
                 }
             });
 
-            return refunded;
+            return result;
         }
 
         /// <summary>
-        /// Buys a whole drafted tree at once: every level in it, or none.
+        /// Buys a whole drafted tree at once: every rank in it, or none.
         /// </summary>
         /// <remarks>
-        /// Modul: the screen's draft mode. A player stacks up changes and
-        /// confirms them together, so a misclick never spends a point. The
-        /// check is SkillTreeRegistry.PlanReason, the same one the preview
-        /// runs, under the same row locks as PurchaseLevelAsync - a draft judged
-        /// legal against a stale balance is judged again here.
+        /// Modul: the screen's draft mode, on the War half since slice 2.5. The
+        /// check is WarTreeRegistry.PlanReason, the same one the preview runs,
+        /// under row locks - a draft judged legal against a stale balance is
+        /// judged again here.
         ///
         /// Result.Reason is null on success, or says why nothing was bought.
         /// </remarks>
         public async Task<SkillTreeCommitResult> CommitAsync(long playerId, byte[] target)
         {
             var result = new SkillTreeCommitResult { Reason = "Skill tree not loaded." };
-            if (target.Length != SkillTreeRegistry.NodeCount) return result;
+            if (target.Length != WarTreeRegistry.Slots) return result;
 
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -244,14 +336,17 @@ namespace FolkIdle.Server.Engine
                         .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
                         .ToListAsync();
 
-                    var current = new byte[SkillTreeRegistry.NodeCount];
+                    var current = new byte[WarTreeRegistry.Slots];
                     foreach (var row in rows)
-                    {
-                        if (!SkillTreeRegistry.IsValidNode(row.BranchId)) continue;
-                        current[row.BranchId] = (byte)Math.Clamp(row.Level, 0, SkillTreeRegistry.MaxLevelOf(row.BranchId));
-                    }
+                        if (WarTreeRegistry.Get(row.BranchId) is { } n) current[row.BranchId] = (byte)Math.Clamp(row.Level, 0, n.MaxLevel);
 
-                    string? reason = SkillTreeRegistry.PlanReason(current, target, player.AvailableSkillPoints, out int cost);
+                    string? reason = WarTreeRegistry.PlanReason(current, target, player.AvailableSkillPoints, out int cost);
+                    if (reason == null)
+                    {
+                        // A slot no War node sits in must stay empty.
+                        for (int id = 0; id < target.Length; id++)
+                            if (target[id] != 0 && WarTreeRegistry.Get(id) == null) { reason = "No such skill."; break; }
+                    }
                     if (reason != null)
                     {
                         await transaction.RollbackAsync();
@@ -259,7 +354,7 @@ namespace FolkIdle.Server.Engine
                         return;
                     }
 
-                    for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
+                    for (int id = 0; id < target.Length; id++)
                     {
                         if (target[id] == current[id]) continue;
                         var row = rows.FirstOrDefault(r => r.BranchId == id);
@@ -271,7 +366,7 @@ namespace FolkIdle.Server.Engine
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
+                    for (int id = 0; id < target.Length; id++)
                     {
                         if (target[id] == current[id]) continue;
                         _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
@@ -298,108 +393,28 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
-        /// Buys one level of one branch.
-        ///
-        /// THE POINTS AND THE LEVEL MOVE IN ONE TRANSACTION, under a row lock
-        /// on the player. Two purchases racing each other would otherwise both
-        /// read the same balance and both spend it - the same double-spend
-        /// shape the market's escrow is hardened against, and skill points are
-        /// no less real for being earned rather than bought.
+        /// Buys one rank of one War node: the old PurchaseSkillTreeLevel opcode,
+        /// for a bundle that has not reloaded. A commit of "current plus one".
+        /// An old bundle sends today's ids (0-19), which no longer name a node,
+        /// so it is refused rather than spending on a tree that is gone.
         /// </summary>
         public async Task PurchaseLevelAsync(long playerId, int branchId)
         {
-            if (!SkillTreeRegistry.IsValidNode(branchId))
-            {
-                return;
-            }
-
+            if (WarTreeRegistry.Get(branchId) == null) return;
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-            var strategy = db.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
-            {
-                db.ChangeTracker.Clear();
-                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-                try
-                {
-                    var player = await db.PlayerRecords
-                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
-                        .SingleOrDefaultAsync();
-
-                    if (player == null)
-                    {
-                        await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    var node = await db.PlayerSkillTreeNodes
-                        .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} AND \"BranchId\" = {1} FOR UPDATE", playerId, branchId)
-                        .SingleOrDefaultAsync();
-
-                    // Modul: THE WHOLE TREE, not just this node.
-                    //
-                    // Boughs have prerequisites and an exclusive sibling, and
-                    // crowns have a prerequisite of their own - none of which
-                    // can be judged from one row. Read inside the transaction
-                    // so two purchases racing on the same fork cannot both see
-                    // an untaken sibling and both take it.
-                    var allRows = await db.PlayerSkillTreeNodes
-                        .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
-                        .ToListAsync();
-
-                    var levels = new byte[SkillTreeRegistry.NodeCount];
-                    foreach (var row in allRows)
-                    {
-                        if (!SkillTreeRegistry.IsValidNode(row.BranchId)) continue;
-                        levels[row.BranchId] =
-                            (byte)Math.Clamp(row.Level, 0, SkillTreeRegistry.MaxLevelOf(row.BranchId));
-                    }
-
-                    if (!SkillTreeRegistry.CanPurchase(branchId, levels, player.AvailableSkillPoints))
-                    {
-                        await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    int currentLevel = node?.Level ?? 0;
-                    int cost = SkillTreeRegistry.GetUpgradeCost(branchId, currentLevel);
-
-                    player.AvailableSkillPoints -= cost;
-
-                    if (node == null)
-                    {
-                        node = new PlayerSkillTreeNode { PlayerId = playerId, BranchId = branchId, Level = 1 };
-                        db.PlayerSkillTreeNodes.Add(node);
-                    }
-                    else
-                    {
-                        node.Level = currentLevel + 1;
-                    }
-
-                    await db.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    // The tick thread owns the payload, so the new level
-                    // reaches it through the queue rather than being written
-                    // across threads - the pattern every other engine here uses.
-                    _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
-                    {
-                        PlayerId = playerId,
-                        BranchId = branchId,
-                        NewLevel = (byte)node.Level,
-                        RemainingSkillPoints = player.AvailableSkillPoints,
-                        FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
-                        PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
-                    });
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            });
+            var target = await LoadRanksAsync(db, playerId);
+            target[branchId]++;
+            await CommitAsync(playerId, target);
         }
+    }
+
+    /// <summary>What a respec did: Reason is null when it refunded.</summary>
+    public sealed class SkillTreeRespecResult
+    {
+        public string? Reason { get; set; }
+        public int Refunded { get; set; }
+        public long GoldSpent { get; set; }
     }
 
     /// <summary>What a drafted commit did: Reason is null when it bought everything.</summary>
@@ -430,5 +445,8 @@ namespace FolkIdle.Server.Engine
         // values, which is cheaper than a second queue.
         public byte FreeRespecUsed;
         public byte PaidRespecGrants;
+
+        /// <summary>Gold a respec debited from the row, for the live balance to follow; 0 otherwise.</summary>
+        public long GoldSpent;
     }
 }

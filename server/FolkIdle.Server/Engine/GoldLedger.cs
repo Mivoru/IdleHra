@@ -19,6 +19,8 @@ namespace FolkIdle.Server.Engine
         Cosmetics = 9,
         Guild = 10,
         GuildRaid = 11,
+        /// <summary>A skill tree respec paid in gold (rework slice 2.5, decision D3).</summary>
+        Respec = 12,
     }
 
     /// <summary>Where a credit of gold came from (task 79, phase 2). Stored as a short - append only.</summary>

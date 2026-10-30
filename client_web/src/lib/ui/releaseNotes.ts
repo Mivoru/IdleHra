@@ -35,6 +35,24 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.39.0',
+    date: '2026-10-30',
+    headline: 'A new skill tree. Every point you spent has been given back.',
+    sections: [
+      {
+        title: 'Skill Tree',
+        items: [
+          'The skill tree is new: four columns (Fortune, Might, Precision and Guard) of five rows each. A row opens once its column holds enough points.',
+          'Some rows are a fork, where you take one side. Three bridges join neighbouring columns and count for both.',
+          'New effects to build around: Crushing Blow, Echo, Riposte, Ruin, Perfect Sequence, Living Fortress, Know Your Prey and more. Watch for their callouts in a fight.',
+          'Every point you had spent on the old tree is back to spend, and your free respec is ready again.',
+          'Once your free respec and any paid respecs are used, you can respec for gold. The price grows with the points spent and your level.',
+          'Crafting speed, gathering speed and the offline bonus have left the tree. They will return in a crafting and gathering tree of their own.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.38.2',
     date: '2026-10-29',
     sections: [

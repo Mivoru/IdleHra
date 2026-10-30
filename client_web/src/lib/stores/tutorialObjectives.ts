@@ -92,9 +92,9 @@ const OBJECTIVES: readonly ObjectiveRule[] = [
     title: 'Unspent skill points',
     due: (s) => Number(s.AvailableSkillPoints) >= 1,
     body:
-      'The skill tree is separate from attributes and is spent on permanent bonuses. Ring 2 ' +
-      'forks: taking one side locks the other until you respec or are reborn, so it is worth reading before ' +
-      'you buy.',
+      'The skill tree is separate from attributes and is spent on permanent bonuses. A row opens once ' +
+      'its column holds enough points, and a fork locks its other side until you respec or are reborn, ' +
+      'so it is worth reading before you buy.',
   },
   {
     id: 'first_region_boss',

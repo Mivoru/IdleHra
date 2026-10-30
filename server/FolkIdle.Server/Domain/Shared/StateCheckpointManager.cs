@@ -808,6 +808,12 @@ namespace FolkIdle.Server.Domain.Shared
             var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
             await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
 
+            // Modul: the War half's switch (rework slice 2.5) refunds today's
+            // tree BEFORE the row is read below, on this same context - see
+            // SkillTreeEngine.ReconcileWarSwitchAsync for why the order matters.
+            int skillTreeRefund = await SkillTreeEngine.ReconcileWarSwitchAsync(dbContext, playerId);
+            if (skillTreeRefund > 0) Console.WriteLine($"Skill tree switch: player {playerId} refunded {skillTreeRefund} points from today's tree.");
+
             var player = await dbContext.PlayerRecords.FindAsync(playerId);
 
             // Modul: seed the name cache on the way past.
@@ -824,6 +830,7 @@ namespace FolkIdle.Server.Domain.Shared
                 var defaultPayload = new TickStatePayload
                 {
                     PlayerId = playerId,
+                    SkillTreeVersion = WarTreeRegistry.CurrentVersion,
                     // Modul: both "where may I be" fields start at region 1
                     // EXPLICITLY. Left at the struct default they are 0, and
                     // every gate here is a `requested > held` comparison - so a
@@ -1246,6 +1253,7 @@ namespace FolkIdle.Server.Domain.Shared
             // Modul: skill tree. Hydrated the same way and refreshed the same
             // way - SkillTreeSyncQueue carries a purchase back to the tick.
             byte[] skillTreeLevels = await SkillTreeEngine.LoadLevelsAsync(dbContext, playerId);
+            byte[] warRanks = await SkillTreeEngine.LoadRanksAsync(dbContext, playerId);
 
             // Task 87: the highest Boss Ascension step per boss, packed - the
             // tick's cache of boss_ascension_progress, for start-step validation.
@@ -1567,6 +1575,11 @@ namespace FolkIdle.Server.Domain.Shared
                 BossBestKillTenthsR4 = player.BossBestKillTenthsR4,
                 BossBestKillTenthsR5 = player.BossBestKillTenthsR5
             };
+
+            // The War half (rework slice 2.5): every hydrated payload runs it,
+            // and its ranks sit at their own ids beside today's (now empty) ones.
+            payload.SkillTreeVersion = WarTreeRegistry.CurrentVersion;
+            foreach (var warNode in WarTreeRegistry.All()) payload.SkillRanks[warNode.Id] = warRanks[warNode.Id];
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));
 
