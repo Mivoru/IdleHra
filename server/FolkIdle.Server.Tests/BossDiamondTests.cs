@@ -12,6 +12,7 @@ namespace FolkIdle.Server.Tests
     /// 10,900 an hour off region 1's boss. Killed here through the live tick, so
     /// the rule is checked where it runs rather than where it is written.
     /// </summary>
+    [Collection("Static loot queues")]
     public class BossDiamondTests
     {
         public BossDiamondTests()

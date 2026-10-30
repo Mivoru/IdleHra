@@ -16,6 +16,7 @@ namespace FolkIdle.Server.Tests
     /// calls the tick's own helper; this runs RunCombatTick and holds it to
     /// what the tick measures, so the two cannot drift apart again unseen.
     /// </summary>
+    [Collection("Static loot queues")]
     public class OfflineDefenceParityTests
     {
         private readonly ITestOutputHelper _output;

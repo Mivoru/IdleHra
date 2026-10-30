@@ -17,6 +17,7 @@ namespace FolkIdle.Server.Tests
     /// payload, and holds where the character ends up, when it got there and
     /// what it earned on the way to the live result.
     /// </summary>
+    [Collection("Static loot queues")]
     public class AutomationRuleParityTests
     {
         private const int LiveHours = 6;
