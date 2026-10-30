@@ -197,6 +197,90 @@ takes about one to three minutes. It can be lost.
 Total: an **XL phase**, about the size of phase 2b. It depends on loot chests
 (the equipment dungeon pays one) and should come after them.
 
+### 2.6a Difficulty, stages, unlocks and loot (added 2026-10-30)
+
+The owner's brief: difficulty that makes sense, a top stage much harder than
+Malakor (who is no longer a problem), and clear rules for when a stage
+unlocks and how difficulty and loot scale.
+
+**What production says (2026-10-30, read-only):** Mivoru cleared Malakor A10
+on 2026-10-02 (before the ladder was re-tuned to x85 attack at A10 on
+10-11) and finds it easy now; Tomda has every boss of regions 1-4 at A10 and
+Malakor at A1. The last measured headroom (x32 attack for the owner's
+character, x49 for a maxed profile) is from 2026-10-11, before the War tree,
+the stats fixes and the pets, so it is out of date. **Every number below is
+relative to the reference ladder; the absolute values come from re-running
+`AscensionCalibrationHarness` on a production copy (task 112) first.**
+
+#### Fifteen stages per dungeon, in three bands
+
+| Band | Stages | Strength | Unlock |
+|---|---|---|---|
+| **Regions** | 1-5 | Stage N is region N's boss strength (the monster ladder), slightly above it (x1.1) | Stage N needs region N's boss beaten, and stage N-1 of the same dungeon cleared |
+| **Ascension** | 6-10 | Malakor's own ladder: stage 6 = A2, 7 = A4, 8 = A6, 9 = A8, 10 = A10 | Stage 6 needs Malakor beaten once; each later stage, the one before it |
+| **Beyond** | 11-15 | Past anything in the game: stage 11 = A10 x1.5, then x1.4 a stage, so stage 15 is about **5.8x Malakor A10's attack** (health rises as attack^0.68, the Ascension split) | Stage 11 needs stage 10 cleared; each later stage, the one before it |
+
+The dungeons open at the **region 2 boss** (about level 25), the point where
+the regular loop has a ticket's worth of reasons to leave it. A new player
+sees the lobby locked with that sentence on it, not an empty screen.
+
+**The target for the top**, set against the measured headroom once task 112
+re-runs: **stage 10 is what a maxed endgame profile clears with effort**
+(the A10 role today), and **stage 15 needs about three times a maxed
+profile**, so it is a goal for several rebirths and the inheritance rework
+(section 4), not for one strong season. If the measurement shows today's
+characters already near A10's power, the Beyond band's base moves up, not the
+ratio: the shape (1.5x then 1.4x a stage) stays.
+
+#### What makes a dungeon hard, and why it is not just health
+
+The larder is the game's real difficulty ceiling: auto-eat heals a share of
+the bar, so a strong character's headroom grows faster than any monster
+table (the Malakor calibration note, and the "larder is the ceiling" lesson).
+A dungeon that let the larder run freely would be beaten by food, not by
+power. So:
+
+- **Provisions:** a run takes at most **5 meals** from the larder (auto-eat
+  as usual, then nothing). Healing becomes a resource across the six fights,
+  and a boss's damage per hit matters again.
+- **The fights chain:** health carries from wave to wave to the boss; there
+  is no rest between waves.
+- **No time limit.** A run ends in a kill or a death, so the simulation is
+  exact and the result is easy to read ("defeated by the boss at 40% of its
+  health").
+- **Waves** are five fights at about 40% of the boss's strength each, drawn
+  from the dungeon's own monsters (section 7 of the visuals doc), so the
+  waves wear the champion down before the boss.
+
+#### Loot by stage
+
+| | Stages 1-5 | 6-10 | 11-15 |
+|---|---|---|---|
+| **XP / Gold dungeon** | 20 + 8 x stage minutes of the champion's own income (28-60 min) | 68-100 min | 108-140 min |
+| **Equipment dungeon** | gear from region = stage, rarity floor Rare; a Common loot chest | region 5 gear, floor Epic; a Rare chest (stages 6-8) or an Epic chest (9-10) | region 5 gear, floor Legendary, one rarity step up on a share of rolls; an Epic chest (11-13) or a Legendary chest (14-15) |
+| **First clear** (once per stage) | 5 diamonds | 10 diamonds | 20 diamonds and a title at 15 ("Deathless", "Dragonbane", "Witch-bane") |
+
+**The ticket is the cost**, so the reward per ticket must beat what the same
+time in the ordinary loop pays at the stage a player can clear; the "income
+minutes" scale guarantees that, because it is the player's own income.
+Two tickets a day per kind at stage 15 is about 4.7 hours of extra income a
+day from the gold dungeon; **measure it against the weekly gold sinks before
+shipping**, and lower the per-stage minutes if it outruns them.
+
+**A lost run** pays a quarter of the stage's reward (no first-clear bonus),
+so trying a stage too early costs a ticket's value, not nothing and not
+everything.
+
+#### What is tested
+- The simulation of a run is the live combat model on the server (the same
+  helpers the tick uses), with the provisions cap, and parity-tested like the
+  offline combat path.
+- A test pins each band's strength against `BossAscensionRegistry`
+  (stage 10 = Malakor A10, stage 6 = A2), so a re-tune of Malakor moves the
+  dungeons with it rather than leaving them behind.
+- The calibration harness reports, for the owner's character and the maxed
+  profile, the highest stage each clears; the target is checked there.
+
 ### 2.6 Decisions for the owner
 
 - **D1. Fight model: A (simulated), B (interactive) or C (timer)?**
@@ -209,6 +293,10 @@ Total: an **XL phase**, about the size of phase 2b. It depends on loot chests
 - **D4. Which kind first?** Recommendation: the equipment dungeon. It pays
   what the game is shortest of at the top (better gear without RNG grinding)
   and it uses loot chests.
+- **D6. Stages and the top (2.6a):** 15 stages in three bands, stage 10 =
+  Malakor A10, stage 15 about 5.8x its attack and about three times a maxed
+  profile, a 5-meal provisions cap per run. Recommendation: yes, with the
+  absolute values set after task 112 re-measures the headroom.
 - **D5. Where does it sit in the roadmap?** Recommendation: after Hearth
   (phase 4) and the affix rework (phase 3), because the equipment dungeon pays
   affixed gear and its value depends on that rework. Loot chests can come
