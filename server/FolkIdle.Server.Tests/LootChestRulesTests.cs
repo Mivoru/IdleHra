@@ -111,10 +111,15 @@ namespace FolkIdle.Server.Tests
         {
             var rng = new Random(9);
             var counts = new int[5];
-            for (int i = 0; i < 20_000; i++) counts[(int)LootChestEngine.RollAscensionChest(rng)]++;
+            for (int i = 0; i < 20_000; i++) counts[(int)LootChestEngine.RollAscensionChest(rng, 1)]++;
             Assert.True(counts[1] > counts[2] && counts[2] > counts[3] && counts[3] > counts[4]);
             Assert.InRange(counts[1] / 20_000.0, 0.47, 0.53);
             Assert.InRange(counts[4] / 20_000.0, 0.035, 0.065);
+
+            // The bands get better; step 10 is Gold-or-better every time.
+            double GoldPlus(int step) { int g = 0; for (int i = 0; i < 20_000; i++) if (LootChestEngine.RollAscensionChest(rng, step) >= LootChestTier.Gold) g++; return g / 20_000.0; }
+            Assert.True(GoldPlus(8) > GoldPlus(5) + 0.07);
+            Assert.Equal(1.0, GoldPlus(10));
         }
 }
 }

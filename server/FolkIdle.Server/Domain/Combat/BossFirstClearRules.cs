@@ -94,6 +94,9 @@ namespace FolkIdle.Server.Domain.Combat
         // Regions 2 and 3 moved to their windows' centres (1.85 -> 1.87,
         // 3.08 -> 3.17); 1, 4 and 5 were still inside theirs and stay. Region
         // 2's window is under 1.5% wide - the narrowest wall in the game.
+        // Modul: 2026-10-30, roadmap 3.6 - crushing_blow_pct (gloves) entered the
+        // benchmark's pools; measured, the windows moved by under a step (region 2
+        // 1.860-1.883, region 3 3.134-3.205), so the shipped values stand.
         private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.87f, 3.17f, 5.13f, 7.15f };
 
         // The gear each boss is calibrated to need: all eight combat slots of

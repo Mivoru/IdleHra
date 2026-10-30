@@ -72,6 +72,15 @@ namespace FolkIdle.Server.Domain.Combat
         internal const float BurnDamageFraction = 0.25f;
         internal const float ThornsReflectionFraction = 0.20f;
 
+        /// <summary>
+        /// The share of each landed monster blow reflected back: the set's 20%
+        /// plus the gear's thorns_pct (roadmap 3.6). The ONE place they sum, read
+        /// by the live tick and by HuntingProjection alike.
+        /// </summary>
+        internal static double ThornsFractionFor(in TickStatePayload payload, in CombatStats stats)
+            => (stats.SetThornsReflectionActive ? ThornsReflectionFraction : 0.0)
+               + Math.Max(0, payload.CachedAffixTotals.ThornsTenthsPct) / 1000.0;
+
         // The Eternal Dreadnought 4-piece's cooldown reduction. Applied to the
         // cooldown stamped after a successful cast.
         private const float SetCooldownReductionFraction = 0.20f;
@@ -5083,7 +5092,8 @@ namespace FolkIdle.Server.Domain.Combat
                     // HuntingProjection takes the same terms as an expectation, and
                     // WarMechanicParityTests holds the two together.
                     var warHit = WarTreeRegistry.Resolve(in payload);
-                    bool crushed = warHit.CrushingChanceTenths > 0 && Random.Shared.NextDouble() < warHit.CrushingChance;
+                    double crushChance = warHit.CrushingChanceWith(in payload.CachedAffixTotals);
+                    bool crushed = crushChance > 0 && Random.Shared.NextDouble() < crushChance;
                     // "First" is a monster still at full health: no field to
                     // remember, and the projection can price exactly that.
                     bool firstStrike = warHit.FirstStrikeTenthsPct > 0 && payload.CurrentMonsterHp >= SpawnHpFor(in payload);
@@ -5111,6 +5121,9 @@ namespace FolkIdle.Server.Domain.Combat
                     // before this hit lands.
                     int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
                     if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
+                    // A2: step 10 cleared on this region's boss - +2% against its monsters.
+                    int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, activeMonster.RegionTier);
+                    if (mastery > 0) netDamage += (int)((long)netDamage * mastery / 1000L);
                     if (warHit.ExecuteTenthsPct > 0
                         && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
                         netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
@@ -5132,7 +5145,28 @@ namespace FolkIdle.Server.Domain.Combat
                         netDamage = (int)(netDamage * (1f + (combatStats.SetFireDamageMultiplierPct / 100f)));
                     }
 
+                    // A2 Ward: a warded boss takes nothing; each quarter of its bar
+                    // it loses raises a new ward for 3 s of the fight clock.
+                    bool warded = false;
+                    if (TryGetAscensionModifiers(in payload, out var wardMods) && wardMods.Ward)
+                    {
+                        long spawn = SpawnHpFor(in payload);
+                        if (payload.CurrentMonsterHp >= spawn) { payload.AscensionWardQuarters = 0; payload.AscensionWardUntilTenths = 0; }
+                        if (payload.CombatTargetTickAccumulator < payload.AscensionWardUntilTenths) { netDamage = 0; warded = true; }
+                    }
+
                     payload.CurrentMonsterHp -= netDamage;
+
+                    if (!warded && wardMods.Ward && payload.CurrentMonsterHp > 0)
+                    {
+                        long spawn = SpawnHpFor(in payload);
+                        int quartersLost = (int)Math.Min(3L, (spawn - payload.CurrentMonsterHp) * 4L / Math.Max(1L, spawn));
+                        if (quartersLost > payload.AscensionWardQuarters)
+                        {
+                            payload.AscensionWardQuarters = (byte)quartersLost;
+                            payload.AscensionWardUntilTenths = payload.CombatTargetTickAccumulator + AscensionModifiers.WardTenths;
+                        }
+                    }
 
                     // Modul: Bloodthirst, the Cruelty bough - a share of the
                     // damage dealt comes back as health.
@@ -5353,6 +5387,10 @@ namespace FolkIdle.Server.Domain.Combat
                     else if (TryGetAscensionModifiers(in payload, out var ascensionMods))
                     {
                         monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, in ascensionMods);
+                        // A2 Enrage: below 30% of its bar the boss hits a third harder.
+                        if (ascensionMods.Enrage
+                            && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * AscensionModifiers.EnrageBelowPct)
+                            monsterAttackPower = monsterAttackPower * AscensionModifiers.EnrageAttackPct / 100L;
                     }
                     float blockStrengthFraction = PlayerBlockFraction(in combatStats);
                     long finalDamage = LandedMonsterMilliDamage(
@@ -5388,9 +5426,10 @@ namespace FolkIdle.Server.Domain.Combat
                         Riposte(ref payload, in combatStats, in activeMonster);
 
                     long thornsReflected = 0;
-                    if (combatStats.SetThornsReflectionActive && payload.CurrentMonsterHp > 0)
+                    double thornsFraction = ThornsFractionFor(in payload, in combatStats);
+                    if (thornsFraction > 0 && payload.CurrentMonsterHp > 0)
                     {
-                        long reflectedDamage = (long)(finalDamage * ThornsReflectionFraction);
+                        long reflectedDamage = (long)(finalDamage * thornsFraction);
                         if (reflectedDamage > 0)
                         {
                             payload.CurrentMonsterHp -= reflectedDamage;

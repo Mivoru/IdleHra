@@ -217,6 +217,12 @@ namespace FolkIdle.Server.Engine
         public byte AscensionStep;
         public byte AscensionRegion;
         public System.Guid AscensionCharacterId;
+        // Modul: A2's Ward (2026-10-30). How many quarters of the boss's health
+        // have already raised a ward this fight, and the fight-clock tenth the
+        // current ward ends at. Reset whenever the boss stands at full health,
+        // so no reset point can be forgotten.
+        public byte AscensionWardQuarters;
+        public long AscensionWardUntilTenths;
         // Modul: the seasonal boss (The Cailleach), armed like an Ascension step
         // and disarmed with it (DisarmAscension clears both). ClearedMask is
         // the current event's first-cleared tiers, bit tier-1, hydrated from

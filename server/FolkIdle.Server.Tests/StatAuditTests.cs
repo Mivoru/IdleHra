@@ -126,6 +126,8 @@ namespace FolkIdle.Server.Tests
             ["affix:boss_dmg_pct"] = "world boss damage, WorldBossTickCoordinator (the probe fights a region monster)",
             ["affix:loot_luck_pct"] = "loot luck, StatsCalculator -> the drop roll, not CombatStats damage",
             ["affix:gold_find_pct"] = "gold per kill, CombatGoldReward",
+            ["affix:crushing_blow_pct"] = "a hit doubled, RunCombatTick / HuntingProjection.Landed (WarMechanicParityTests.Crushing_blow_from_gear)",
+            ["affix:thorns_pct"] = "the reflect on a landed monster blow, ThornsFractionFor (WarMechanicParityTests.Thorns_from_gear)",
             ["inheritance:LootLuck"] = "CombatLootEngine's drop roll (Inheritance term), not CombatStats.LootLuckPct",
             // The War half's nodes the probe cannot see; each is proven where it
             // lands by WarMechanicParityTests.

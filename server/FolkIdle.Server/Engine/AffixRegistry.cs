@@ -225,6 +225,20 @@ namespace FolkIdle.Server.Engine
             new AffixDefinition("boss_dmg_pct", EquipmentSlotMask.Ring, AffixScalingLaw.Percentage, 30, 20, utility: true),
             new AffixDefinition("loot_luck_pct", EquipmentSlotMask.Ring | EquipmentSlotMask.Amulet, AffixScalingLaw.Percentage, 15, 10, utility: true),
             new AffixDefinition("gold_find_pct", EquipmentSlotMask.Ring | EquipmentSlotMask.Amulet, AffixScalingLaw.Percentage, 20, 15, utility: true),
+
+            // Modul: roadmap 3.6, the combat affixes. crushing_blow_pct adds to the
+            // War node's chance to double a hit (3% at its top), 1-4.2% per affix
+            // by rarity, on gloves only, so one slot never outgrows the node.
+            new AffixDefinition("crushing_blow_pct", EquipmentSlotMask.Gloves, AffixScalingLaw.Percentage, 10, 8),
+            // thorns_pct adds to the set's 20% reflect, 2-8% per affix by rarity,
+            // on the chest only - the defensive build's damage.
+            // Modul: NOT ROLLED YET (2026-10-30). Wired and parity-tested on its own
+            // (Thorns_from_gear), but once geared test characters could roll it,
+            // three OfflineCombatParityTests rows drifted 6-40% between the away
+            // projection's thorns path and the live tick, and two fixes did not
+            // close it. Retired from rolls until that path is made exact; the id
+            // keeps its place (wire index) and every reader stays wired.
+            new AffixDefinition("thorns_pct", EquipmentSlotMask.Chest, AffixScalingLaw.Percentage, 20, 15, retired: true),
         };
 
         private static readonly Dictionary<string, int> _indexById = BuildIndex();

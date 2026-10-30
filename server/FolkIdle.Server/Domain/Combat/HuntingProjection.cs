@@ -191,6 +191,14 @@ namespace FolkIdle.Server.Domain.Combat
             public double FirstClearMonsterSwing { get; init; }
             public SwingsToKill? FirstClearKill { get; init; }
             public long FarmMilliHp { get; init; }
+            /// <summary>
+            /// The health a THORNS fight starts its count from: execute-adjusted
+            /// and with First Strike's opening already off, exactly as the swing
+            /// count path prices it (roadmap 3.6: a small gear thorns share used
+            /// to drop both, and parity broke by up to 13% on geared rows).
+            /// </summary>
+            public long ThornsFirstClearMilliHp { get; init; }
+            public long ThornsFarmMilliHp { get; init; }
             public double FarmMonsterSwing { get; init; }
             public SwingsToKill? FarmKill { get; init; }
 
@@ -224,7 +232,8 @@ namespace FolkIdle.Server.Domain.Combat
                 byte farmMask = BossFirstClearRules.MarkDefeated(mask, monsterId);
                 long firstClearHp = BossFirstClearRules.MaxHpFor(mask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
                 long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
-                bool thorns = stats.SetThornsReflectionActive;
+                double thornsFraction = SimulationEngine.ThornsFractionFor(in copy, in stats);
+                bool thorns = thornsFraction > 0;
                 int effectiveMaxHp = SimulationEngine.BarAsInt(maxMilliHp);
 
                 // Thorns end fights between the player's swings, which a swing
@@ -261,7 +270,7 @@ namespace FolkIdle.Server.Domain.Combat
                     FoodItem3 = copy.Food3_ItemId,
                     RationIntervalTicks = FoodRegistry.RationIntervalTicks(ContentRegistry.GetMonsterRegionTier(monsterId)),
                     RationRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId),
-                    ThornsFraction = thorns ? SimulationEngine.ThornsReflectionFraction : 0.0,
+                    ThornsFraction = thornsFraction,
                     RegenPerTick = timedEffects && copy.ActiveFoodBuffId > 0
                         ? Math.Max(1, effectiveMaxHp / ConsumableEngine.FoodRegenDivisor)
                         : 0,
@@ -269,6 +278,8 @@ namespace FolkIdle.Server.Domain.Combat
                         && ConsumableEngine.DeathWardItemId > 0
                         && copy.ActiveDefensivePotionId == ConsumableEngine.DeathWardItemId,
                     FirstClearMilliHp = firstClearHp,
+                    ThornsFirstClearMilliHp = Math.Max(1L, warFight.ExecuteAdjustedHp(firstClearHp) - opening),
+                    ThornsFarmMilliHp = Math.Max(1L, warFight.ExecuteAdjustedHp(farmHp) - opening),
                     FirstClearMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, mask, maxMilliHp),
                     FirstClearKill = firstClearKill,
                     FarmMilliHp = farmHp,
@@ -362,13 +373,13 @@ namespace FolkIdle.Server.Domain.Combat
             long fightIndex;
             if (s.FirstClearPending)
             {
-                s.MonsterHp = setup.FirstClearMilliHp;
+                s.MonsterHp = setup.ThornsFirstClearMilliHp;
                 kill = setup.FirstClearKill;
                 fightIndex = s.FirstClearFights++;
             }
             else
             {
-                s.MonsterHp = setup.FarmMilliHp;
+                s.MonsterHp = setup.ThornsFarmMilliHp;
                 kill = setup.FarmKill;
                 fightIndex = s.FarmFights++;
             }
@@ -759,10 +770,12 @@ namespace FolkIdle.Server.Domain.Combat
                     raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
                 // Crushing Blow, as the live swing rolls it: a share of hits doubled.
                 var war = WarTreeRegistry.Resolve(in payload);
-                double crushing = war.CrushingChance;
+                double crushing = war.CrushingChanceWith(in payload.CachedAffixTotals);
                 if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
                 int knowYourPrey = SimulationEngine.KnowYourPreyTenthsPct(in payload, in monster);
                 if (knowYourPrey > 0) net += (int)((long)net * knowYourPrey / 1000L);
+                int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, monster.RegionTier);
+                if (mastery > 0) net += (int)((long)net * mastery / 1000L);
                 net = (int)(net * SimulationEngine.LiveCodexDamageMultiplier(in payload));
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {

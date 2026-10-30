@@ -96,7 +96,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Loot chests (owner, 2026-10-30): every new step pays a chest of a
                 // random tier, the lowest most often, holding this region's loot.
                 Domain.Economy.LootChestEngine.Stage(db, playerId,
-                    Domain.Economy.LootChestEngine.RollAscensionChest(Random.Shared), region,
+                    Domain.Economy.LootChestEngine.RollAscensionChest(Random.Shared, s), region,
                     Domain.Economy.LootChestSource.AscensionStep, utcNow);
             }
             await db.SaveChangesAsync();

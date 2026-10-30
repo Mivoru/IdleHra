@@ -554,7 +554,7 @@
             Combat screen: <strong>Starved</strong> (win without eating a single bite during the
             fight; rations heal nothing and do not count), <strong>Young blood</strong> (win at or below a level cap - 15, 35, 45, 60 and
             75 for the five regions) and <strong>Swift</strong> (win within a time limit - 104, 143,
-            205, 225 and 286 seconds; the region's best gear at its level makes it, or come back
+            210, 232 and 301 seconds; the region's best gear at its level makes it, or come back
             stronger). They count on any kill, not only the first, and each pays a cosmetic
             chest once: Rare for the first two regions, Epic for the next two, Legendary for
             Malakor. Every one was measured to be winnable with the gear the boss is tuned for.
