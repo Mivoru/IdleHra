@@ -1,0 +1,16 @@
+{
+  "assets": [
+    {
+      "id": "sfx_achievement_chime",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "Warm two-note magical chime, soft bell and harp, uplifting achievement unlocked, clean, short, game UI",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_achievement_chime.mp3",
+      "bytes": 26792,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T12:38:24.909Z"
+    }
+  ]
+}

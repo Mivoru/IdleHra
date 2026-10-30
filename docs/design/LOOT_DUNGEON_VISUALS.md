@@ -344,6 +344,14 @@ memory, never in the repo). ElevenLabs covers all three kinds of asset:
 **images** and **video** through its "flows" API, and **sound effects** and
 **music**.
 
+**Measured 2026-10-30:** sound effects work on Creator
+(`sfx_achievement_chime` came back in 3 s). The flows API (images and video)
+answers `402 paid_plan_required: "This endpoint requires a Pro plan or
+above"`. So images and video need either the Pro plan or another tool;
+the script supports them already and works the day the plan allows it.
+`gpt-image-1` and `gpt-image-1.5` accept `background: "transparent"`, which
+makes the chroma-key step below unnecessary for items and chests.
+
 ### 11.1 A script, not hand work
 
 A small script, `tools/assets/eleven.mjs`, driven by a manifest
