@@ -274,6 +274,18 @@ the story:
 - **Boss intro:** the screen dims, the boss's portrait and name slide in with
   a title line ("Koschei the Deathless - his death is not here"), a roar, then
   the fight.
+- **Boss abilities** (proposal section 2.6a): each has an icon on the boss's
+  health bar that lights when it is about to fire, a name banner when it does,
+  and its own effect and sound. Koschei's Deathless: he falls, a green soul
+  flame spirals back into him, he rises with a dry laugh. Bone Ward: a ring of
+  bones closes around him and cracks as it absorbs. Zmey's Three Heads: three
+  segments on his bar; a head that falls drops with a crash and its stump
+  smokes, and Regrowth shows as a timer over the stump. Fire Breath: a cone of
+  flame and an orange burn tick on the champion's bar. Baba Yaga's Mortar
+  Flight: she blurs aside and "dodged" floats up. Hex: a violet sigil hangs
+  over the champion's weapon and its next hits show smaller numbers. Bone
+  Fence: a skull-lantern rises and takes her place on the stage. Broom Sweep:
+  the larder icon is swept off the screen and greys out for its seconds.
 - **Speed:** 1x, 2x and Skip. Skip goes straight to the result; the outcome
   was decided before the first frame.
 - **Result:** "Victory" or "Defeated at wave 4". Rewards fly out as in the

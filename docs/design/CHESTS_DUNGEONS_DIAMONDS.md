@@ -271,7 +271,64 @@ shipping**, and lower the per-stage minutes if it outruns them.
 so trying a stage too early costs a ticket's value, not nothing and not
 everything.
 
+**Owner's data point (2026-10-30):** the owner's strongest character beats
+Malakor **A6** at most (about x49 attack on today's ladder). So stage 10
+(A10, x85) sits about 1.7x above the strongest live player, and stage 15
+(about x490) about ten times above. The owner approved the bands, the
+provisions cap and the stage-15 target as recommended.
+
+#### Boss abilities that grow with the stage (owner idea, 2026-10-30)
+
+A plain boss is a bigger health bar. Each dungeon boss instead has **four
+abilities**: one from stage 1, and one more at stages 4, 8 and 11. An
+ability's numbers also grow within its band. Each one is chosen so that a
+**build** answers it (crit, speed, armour, sustain), so the three dungeons ask
+different things of a character, and each one is an **event** the fight feed
+reports, so the playback can show it.
+
+**Koschei the Deathless (XP dungeon) - "his death is not here"**
+
+| From stage | Ability | What it does | Grows to |
+|---|---|---|---|
+| 1 | **Deathless** | The first killing blow does not kill him: he rises at 15% health | 40% at stage 10; at stage 13+ he rises twice |
+| 4 | **Bone Ward** | Every 20 s a bone shield absorbs 5% of his max health | 12%, every 14 s |
+| 8 | **Soul Drain** | Heals for 10% of the damage he deals | 30% |
+| 11 | **The Needle** | His weakness: crits deal +25% to him, but non-crit hits deal -20% | +60% / -35% (crit builds shine, others struggle) |
+
+**Zmey Gorynych (Gold dungeon) - three heads, three tempers**
+
+| From stage | Ability | What it does | Grows to |
+|---|---|---|---|
+| 1 | **Three Heads** | His health is three bars, one per head. Each head lost cuts his damage by a third, but the heads left swing 15% faster | 30% faster |
+| 4 | **Fire Breath** | Every 6th swing is a breath that burns: 3% of max health a second for 3 s, armour ignored | 6% a second, every 5th swing |
+| 8 | **Regrowth** | A severed head grows back after 20 s unless the next head falls first | 10 s (speed builds shine) |
+| 11 | **Gold Hide** | Takes 20% less from every hit | 40% (armour penetration and big hits shine) |
+
+**Baba Yaga (Equipment dungeon) - she does not fight fair**
+
+| From stage | Ability | What it does | Grows to |
+|---|---|---|---|
+| 1 | **Mortar Flight** | Dodges 10% of attacks | 25% (accuracy shines) |
+| 4 | **Hex** | Every 15 s, the champion's next 3 hits deal 40% less | next 5 hits, every 10 s |
+| 8 | **Bone Fence** | At 50% health she raises a skull-lantern with 15% of her health that must fall before she can be hit again | 30%, at 66% and 33% |
+| 11 | **Broom Sweep** | Every 30 s sweeps the larder away: no meal can be eaten for 6 s | 10 s, every 20 s (burst healing and armour shine) |
+
+**How it is built.** The run is simulated swing by swing on the server, so
+each ability is a rule inside that loop with an exact, testable effect (the
+same discipline as the War keystones). Each fires an event
+(`BossAbility: id, value`) into the run's feed. The lobby shows the boss's
+abilities **at the chosen stage**, with their numbers, from the server, so a
+player can see why stage 9 beat them and what to change.
+
+**How it looks.** Each ability has an icon on the boss's bar, a name banner
+when it fires, its own effect and its own sound, described in the visuals
+document (`LOOT_DUNGEON_VISUALS.md` section 8): Koschei's green soul flame
+returning to his body, Zmey's head falling and the stump smoking, Baba Yaga's
+mortar blurring aside, a hex sigil over the champion's weapon.
+
 #### What is tested
+- Each boss ability has a test that its rule does exactly what its line says
+  at its first and last stage, and that it fires its feed event.
 - The simulation of a run is the live combat model on the server (the same
   helpers the tick uses), with the provisions cap, and parity-tested like the
   offline combat path.
