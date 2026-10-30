@@ -324,7 +324,7 @@ namespace FolkIdle.Server.Domain.Economy
         private const int MasterArtisanEventId = 3;
         private const int MasterArtisanBonusYieldPct = 25;
 
-        private static async Task GrantCraftedOutputAsync(FolkIdleDbContext context, long playerId, ContentRegistry.RecipeDefinition recipe, int quantityProduced)
+        internal static async Task GrantCraftedOutputAsync(FolkIdleDbContext context, long playerId, ContentRegistry.RecipeDefinition recipe, int quantityProduced)
         {
             // Modul: the MasterArtisan unit is the CALLER's now
             // (MasterArtisanExtraUnits), rolled once per craft, so the offline
@@ -346,22 +346,30 @@ namespace FolkIdle.Server.Domain.Economy
                 int regionTier = ResolveRegionTierForItem(recipe.ResultItemId);
 
                 // Modul: the drop record (task 26) - a craft creates pieces too,
-                // always Normal, so counts only. One upsert for the batch,
+                // Normal, or one step up from rare materials (R1), so counts only. One upsert for the batch,
                 // inside the craft's transaction.
                 var craftTally = new DropTally();
-                for (int i = 0; i < quantityProduced; i++) craftTally.Count(DropSource.Craft, regionTier, RarityTier.Normal);
+                // Modul: RARE MATERIALS MAKE A BETTER PIECE (owner decision R1,
+                // 2026-10-30). A Golden Birch Axe used to come out with exactly
+                // the Birch Axe's stats; a recipe that takes a rare material now
+                // crafts one quality step higher with one more affix roll.
+                bool rare = VillageManagementEngine.IsRareMaterial(ContentRegistry.GetItemBaseId(recipe.Mat1Id))
+                    || VillageManagementEngine.IsRareMaterial(ContentRegistry.GetItemBaseId(recipe.Mat2Id));
+                int craftedTier = rare ? RarityTier.Normal + 1 : RarityTier.Normal;
+                int affixCount = Math.Min(AffixRegistry.MaxAffixCount, RarityTier.GetAffixCount(craftedTier) + (rare ? 1 : 0));
+                for (int i = 0; i < quantityProduced; i++) craftTally.Count(DropSource.Craft, regionTier, craftedTier);
                 await DropRecord.WriteAsync(context, playerId, craftTally, DateTime.UtcNow);
 
                 for (int i = 0; i < quantityProduced; i++)
                 {
                     var rolled = new Dictionary<string, int>();
-                    AffixRegistry.RollAffixes(resultBaseId, regionTier, itemRarityTier: RarityTier.Normal, affixCount: RarityTier.GetAffixCount(RarityTier.Normal), destination: rolled);
+                    AffixRegistry.RollAffixes(resultBaseId, regionTier, itemRarityTier: craftedTier, affixCount: affixCount, destination: rolled);
 
                     context.EquipmentInstances.Add(new EquipmentInstance
                     {
                         BaseItemId = resultBaseId,
                         PlayerId = playerId,
-                        QualityTier = RarityTier.Normal,
+                        QualityTier = craftedTier,
                         AffixPayload = System.Text.Json.JsonSerializer.Serialize(rolled),
                         IsAffixLocked = false
                     });

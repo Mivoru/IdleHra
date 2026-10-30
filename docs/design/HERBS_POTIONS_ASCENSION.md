@@ -98,7 +98,21 @@ Birch Axe. Rare fish heal the same share as normal fish of their region.
 ### 2.3 Decision
 
 - **R1.** Give rare-material crafts a real edge as above? Recommendation: yes,
-  measured against the gathering economy (task 131).
+  measured against the gathering economy (task 131). **Approved 2026-10-30.**
+
+### 2.4 Built, and what waits (2026-10-30)
+
+- **Built:** a recipe that takes a rare material (`VillageManagementEngine
+  .IsRareMaterial`: the golden logs, rare ores and rare catch) crafts one
+  quality step higher with one more affix. Golden Birch Axe vs Birch Axe:
+  Common with 2 affixes vs Normal with 1.
+- **Rare fish x1.5 heal WAITS for a measurement.** The wall benchmark eats a
+  region's common fish (`FoodRegistry.FirstRawFishOfTier`), so the walls
+  would not see the change, but players would: they catch 5-15x what they
+  eat, so the rare catch alone covers most bites, and x1.5 would act as a
+  near-global +50% sustain - and the larder is this game's difficulty
+  ceiling. Next: run the wall scan with the benchmark eating the rare fish at
+  x1.2 and x1.5 and pick the largest value the walls hold at.
 
 ---
 
