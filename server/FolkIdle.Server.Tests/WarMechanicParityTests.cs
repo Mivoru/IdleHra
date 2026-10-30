@@ -222,6 +222,27 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// Roadmap 3.6: the gear's thorns_pct reflects a share of every landed
+        /// monster blow, through the one sum the set's thorns use
+        /// (SimulationEngine.ThornsFractionFor), away exactly as watched.
+        /// </summary>
+        [Fact]
+        public void Thorns_from_gear_pays_the_same_away_as_watched()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3);
+            with.CachedAffixTotals.ThornsTenthsPct = 600;
+            var without = War(3, r3);
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            var liveWithout = OfflineCombatParityTests.RunLive(without);
+            _output.WriteLine($"thorns affix 60% kills offline {offline.Kills:F0} / live {live.Kills:F0}, without {liveWithout.Kills:F0}");
+
+            Assert.True(live.Kills > liveWithout.Kills * 1.01, $"the live tick does not use it ({live.Kills:F0} vs {liveWithout.Kills:F0})");
+            Assert.True(Math.Abs(offline.Kills - live.Kills) <= Math.Max(live.Kills * 0.05, 1.0), $"offline {offline.Kills:F1}, live {live.Kills:F1}");
+        }
+
+        /// <summary>
         /// Bloodthirst heals rather than kills, so it shows in the larder: the
         /// same hour eats fewer fish with it, live and away alike.
         /// </summary>

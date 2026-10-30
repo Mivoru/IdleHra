@@ -72,6 +72,15 @@ namespace FolkIdle.Server.Domain.Combat
         internal const float BurnDamageFraction = 0.25f;
         internal const float ThornsReflectionFraction = 0.20f;
 
+        /// <summary>
+        /// The share of each landed monster blow reflected back: the set's 20%
+        /// plus the gear's thorns_pct (roadmap 3.6). The ONE place they sum, read
+        /// by the live tick and by HuntingProjection alike.
+        /// </summary>
+        internal static double ThornsFractionFor(in TickStatePayload payload, in CombatStats stats)
+            => (stats.SetThornsReflectionActive ? ThornsReflectionFraction : 0.0)
+               + Math.Max(0, payload.CachedAffixTotals.ThornsTenthsPct) / 1000.0;
+
         // The Eternal Dreadnought 4-piece's cooldown reduction. Applied to the
         // cooldown stamped after a successful cast.
         private const float SetCooldownReductionFraction = 0.20f;
@@ -5389,9 +5398,10 @@ namespace FolkIdle.Server.Domain.Combat
                         Riposte(ref payload, in combatStats, in activeMonster);
 
                     long thornsReflected = 0;
-                    if (combatStats.SetThornsReflectionActive && payload.CurrentMonsterHp > 0)
+                    double thornsFraction = ThornsFractionFor(in payload, in combatStats);
+                    if (thornsFraction > 0 && payload.CurrentMonsterHp > 0)
                     {
-                        long reflectedDamage = (long)(finalDamage * ThornsReflectionFraction);
+                        long reflectedDamage = (long)(finalDamage * thornsFraction);
                         if (reflectedDamage > 0)
                         {
                             payload.CurrentMonsterHp -= reflectedDamage;

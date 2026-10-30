@@ -81,6 +81,7 @@ export const KNOWN_AFFIX_IDS: readonly string[] = [
   'loot_luck_pct',
   'gold_find_pct',
   'crushing_blow_pct',
+  'thorns_pct',
 ];
 
 export interface ParsedAffixKey {

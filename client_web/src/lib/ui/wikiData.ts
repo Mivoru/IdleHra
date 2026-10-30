@@ -275,6 +275,7 @@ export const AFFIX_POOL: readonly { id: string; label: string; slots: string }[]
   { id: 'loot_luck_pct', label: 'Loot luck', slots: 'Ring, Amulet' },
   { id: 'gold_find_pct', label: 'Gold from kills', slots: 'Ring, Amulet' },
   { id: 'crushing_blow_pct', label: 'Crushing blow (chance a hit lands for double)', slots: 'Gloves' },
+  { id: 'thorns_pct', label: 'Thorns (share of each hit you take sent back)', slots: 'Chest' },
 ];
 
 // ---------------------------------------------------------------------------

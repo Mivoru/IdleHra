@@ -224,7 +224,8 @@ namespace FolkIdle.Server.Domain.Combat
                 byte farmMask = BossFirstClearRules.MarkDefeated(mask, monsterId);
                 long firstClearHp = BossFirstClearRules.MaxHpFor(mask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
                 long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
-                bool thorns = stats.SetThornsReflectionActive;
+                double thornsFraction = SimulationEngine.ThornsFractionFor(in copy, in stats);
+                bool thorns = thornsFraction > 0;
                 int effectiveMaxHp = SimulationEngine.BarAsInt(maxMilliHp);
 
                 // Thorns end fights between the player's swings, which a swing
@@ -261,7 +262,7 @@ namespace FolkIdle.Server.Domain.Combat
                     FoodItem3 = copy.Food3_ItemId,
                     RationIntervalTicks = FoodRegistry.RationIntervalTicks(ContentRegistry.GetMonsterRegionTier(monsterId)),
                     RationRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId),
-                    ThornsFraction = thorns ? SimulationEngine.ThornsReflectionFraction : 0.0,
+                    ThornsFraction = thornsFraction,
                     RegenPerTick = timedEffects && copy.ActiveFoodBuffId > 0
                         ? Math.Max(1, effectiveMaxHp / ConsumableEngine.FoodRegenDivisor)
                         : 0,
