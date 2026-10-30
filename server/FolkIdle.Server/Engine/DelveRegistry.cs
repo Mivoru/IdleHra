@@ -282,7 +282,13 @@ namespace FolkIdle.Server.Engine
         /// <summary>Each floor past 9 tolls this much more than the one before: floor 12 is ~2x the stake, floor 20 ~12x.</summary>
         // Modul: 2026-10-07, 1.25 -> 1.35 - see StakeFraction. The summary above said
         // "floor 12 ~2x, floor 20 ~12x" for 1.25; at 1.35 floor 12 is 2.5x and floor 20 is 27x.
-        public const double TollGrowth = 1.35;
+        // Modul: 2026-10-30, 1.35 -> 1.25 (owner). Measured on production: Deep
+        // spend fell from 41% of the gold minted (week of 2026-10-12) to 0.8% the
+        // two weeks after, because at 1.35 floor 20 cost 20% of wealth and floor 23
+        // 51%, for rewards the shared diamond ceiling had already used up. At 1.25
+        // floor 20 is 11% of wealth and floor 23 22%, and the Deep pays its own
+        // diamonds (MaxDeepDiamondsPerWeek).
+        public const double TollGrowth = 1.25;
 
         /// <summary>
         /// Diamonds a Deep floor pays when it is the player's new deepest floor of
@@ -297,7 +303,36 @@ namespace FolkIdle.Server.Engine
         /// existing ceiling of 60 is shared with the Delve proper - the Deep cannot
         /// raise the weekly total, only change where it comes from.
         /// </summary>
-        public const int DeepRecordDiamonds = 1;
+        public const int DeepRecordDiamonds = 2;
+
+        /// <summary>The first Deep floor whose weekly record pays DeepRecordDiamonds.</summary>
+        public const int FirstDiamondDeepFloor = 10;
+
+        /// <summary>
+        /// The Deep's OWN weekly diamond ceiling, apart from MaxDiamondsPerWeek.
+        ///
+        /// Modul: 2026-10-30, OWNER DECISION: THE DEEP STOPPED SHARING THE DELVE'S
+        /// CEILING. Three full Delve clears fill the 60, so for anyone who plays
+        /// the Delve the Deep's record diamond paid nothing, and depth paid only a
+        /// title once. Now floors 10-19 each pay 2 the first time they are reached
+        /// in an ISO week: 20 a week at floor 19 (about 7% of wealth to reach at
+        /// TollGrowth 1.25), about 260 over 90 days - still well under one premium
+        /// pass (950). Because the floors are entered one at a time, what a player
+        /// has earned this week is a function of DelveDeepestThisWeek alone
+        /// (DeepDiamondsEarned), so no second weekly counter is stored.
+        /// </summary>
+        public const int MaxDeepDiamondsPerWeek = 20;
+
+        /// <summary>The last floor that pays: FirstDiamondDeepFloor + the ceiling's worth of floors - 1 (19).</summary>
+        public const int LastDiamondDeepFloor = FirstDiamondDeepFloor + MaxDeepDiamondsPerWeek / DeepRecordDiamonds - 1;
+
+        /// <summary>Diamonds for reaching <paramref name="floor"/> as a new weekly-deepest floor.</summary>
+        public static int DeepDiamondsForFloor(int floor)
+            => floor >= FirstDiamondDeepFloor && floor <= LastDiamondDeepFloor ? DeepRecordDiamonds : 0;
+
+        /// <summary>The Deep diamonds a week whose deepest floor is <paramref name="deepestThisWeek"/> has paid.</summary>
+        public static int DeepDiamondsEarned(int deepestThisWeek)
+            => Math.Clamp(deepestThisWeek - FirstDiamondDeepFloor + 1, 0, LastDiamondDeepFloor - FirstDiamondDeepFloor + 1) * DeepRecordDiamonds;
 
         /// <summary>
         /// Per floor below 8, the pass chance is multiplied by this. 3% a floor

@@ -101,6 +101,9 @@
     DEEP_STAKE_PCT,
     DEEP_RECORD_DIAMONDS,
     DELVE_WEEKLY_DIAMOND_CEILING,
+    DEEP_WEEKLY_DIAMOND_CEILING,
+    DEEP_FIRST_DIAMOND_FLOOR,
+    DEEP_LAST_DIAMOND_FLOOR,
     DEEP_TOLL_GROWTH_PCT,
     DEEP_MIN_DOOR_CHANCE_PCT,
     DEEP_MAX_LANTERNS,
@@ -1631,8 +1634,9 @@
           <p class="dim small">
             Below the eighth floor of the Delve, the dark goes on. The Deep pays no
             power. It pays how far you went - a record, titles and a place on a weekly
-            board - and {DEEP_RECORD_DIAMONDS} diamond for each floor that is your new deepest of
-            the week, counted inside the same {DELVE_WEEKLY_DIAMOND_CEILING}-diamond weekly ceiling as the Delve above it.
+            board - and {DEEP_RECORD_DIAMONDS} diamonds for each of floors {DEEP_FIRST_DIAMOND_FLOOR}-{DEEP_LAST_DIAMOND_FLOOR}
+            the first time it is your deepest of the week: up to {DEEP_WEEKLY_DIAMOND_CEILING} a week, on top of the
+            Delve's own {DELVE_WEEKLY_DIAMOND_CEILING}.
           </p>
           <ul class="styled-list">
             <li><strong>Descending banks floors 1-8 first</strong>, exactly as climbing out would, then charges the first toll.</li>

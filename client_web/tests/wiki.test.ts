@@ -32,6 +32,9 @@ import {
   DEEP_STAKE_PCT,
   DEEP_RECORD_DIAMONDS,
   DELVE_WEEKLY_DIAMOND_CEILING,
+  DEEP_WEEKLY_DIAMOND_CEILING,
+  DEEP_FIRST_DIAMOND_FLOOR,
+  DEEP_LAST_DIAMOND_FLOOR,
   DEEP_TOLL_GROWTH_PCT,
   DEEP_MIN_DOOR_CHANCE_PCT,
   DEEP_MAX_LANTERNS,
@@ -390,6 +393,11 @@ describe('the tables the wiki restates still match the server', () => {
     expect(DEEP_MAX_LANTERNS).toBe(num(delve, /MaxLanternRefills = (\d+);/, 'lantern cap'));
     expect(DEEP_RECORD_DIAMONDS).toBe(num(delve, /DeepRecordDiamonds = (\d+);/, 'deep record diamonds'));
     expect(DELVE_WEEKLY_DIAMOND_CEILING).toBe(num(delve, /MaxDiamondsPerWeek = (\d+);/, 'weekly diamond ceiling'));
+    expect(DEEP_WEEKLY_DIAMOND_CEILING).toBe(num(delve, /MaxDeepDiamondsPerWeek = (\d+);/, 'deep weekly diamond ceiling'));
+    const firstDiamondFloor = num(delve, /FirstDiamondDeepFloor = (\d+);/, 'first diamond floor');
+    expect(DEEP_FIRST_DIAMOND_FLOOR).toBe(firstDiamondFloor);
+    // LastDiamondDeepFloor is derived on the server; the same arithmetic here.
+    expect(DEEP_LAST_DIAMOND_FLOOR).toBe(firstDiamondFloor + DEEP_WEEKLY_DIAMOND_CEILING / DEEP_RECORD_DIAMONDS - 1);
 
     const floors = [...titles.matchAll(/new TitleDefinition\("[a-z0-9_]+", "[^"]+", (\d+), "#[0-9a-f]{6}"\)/g)]
       .map((m) => Number(m[1]))

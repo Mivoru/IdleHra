@@ -159,7 +159,7 @@
       case 'FloorCleared':
         return outcome.View.IsDeep
           ? `Floor ${outcome.View.CurrentFloor} is yours` +
-            (outcome.DiamondsGranted > 0 ? ` - a new deepest this week: ${outcome.DiamondsGranted} diamond.` : '.') +
+            (outcome.DiamondsGranted > 0 ? ` - a new deepest this week: ${outcome.DiamondsGranted} diamonds.` : '.') +
             ' The dark goes on below.'
           : 'Through. The stair keeps going down.';
       case 'AtTheBottom':
@@ -467,6 +467,9 @@
          not told why concludes the feature is broken. -->
     <p class="week" class:capped={ceilingLeft === 0}>
       <span class="nowrap">Diamonds this week <strong>{view.DiamondsEarnedThisWeek}/{view.WeeklyDiamondCeiling}</strong></span>
+      {#if view.DeepEnabled && view.DeepestFloor > 0}
+        <span class="nowrap">Deep <strong>{view.DeepDiamondsEarnedThisWeek}/{view.DeepWeeklyDiamondCeiling}</strong></span>
+      {/if}
       {#if ceilingLeft === 0}
         <span>- cap reached; a run still pays gold back from the gate.</span>
       {/if}
