@@ -1412,6 +1412,17 @@ namespace FolkIdle.Server.Domain.Combat
                                     if (redisVal.HasValue)
                                     {
                                         byte[] stateDump = redisVal!;
+                                        // Modul: A DUMP FROM ANOTHER BUILD IS NOT THIS PAYLOAD. The
+                                        // dump is the raw struct, so any layout change (a new field,
+                                        // the rank buffer growing to 128) makes an old node's dump the
+                                        // wrong size, and MemoryMarshal.Read would throw on a short one
+                                        // or misread a long one. Disconnect instead: the client signs
+                                        // in again and the session loads from the database.
+                                        if (stateDump.Length != System.Runtime.CompilerServices.Unsafe.SizeOf<TickStatePayload>())
+                                        {
+                                            _networkSystem.ForceDisconnect(pId);
+                                            return;
+                                        }
                                         TickStatePayload payload;
                                         // Restrict the ref struct span to a synchronous scope
                                         unsafe
