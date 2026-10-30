@@ -2278,7 +2278,7 @@ await go('Chest');
   const silverAfter = after?.Chests?.find((c) => c.Tier === 2)?.Count ?? -1;
   const incomeAfter = await lootIncome();
   record('a loot chest opens on the Chest screen and pays into the wallet',
-    granted?.Id > 0 && /gold/.test(revealText) && silverAfter === silverBefore && incomeAfter > incomeBefore,
+    granted?.Id > 0 && /\d[\d\s,.]*[kKmM]?g\b/.test(revealText) && silverAfter === silverBefore && incomeAfter > incomeBefore,
     `granted ${granted?.Id ?? 'none'}, shelf ${silverBefore} -> ${silverAfter}, LootChest income ${incomeBefore} -> ${incomeAfter}, reveal "${revealText}"`);
   record('every loot chest tier publishes its odds',
     (after?.Chests ?? []).length === 4 && after.Chests.every((c) => c.Odds?.length >= 3),

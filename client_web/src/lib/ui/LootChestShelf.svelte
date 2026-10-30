@@ -109,7 +109,7 @@
       <div class="reveal panel" data-testid="loot-chest-reveal">
         <h3>{results.length > 1 ? `${results.length} chests opened` : 'Chest opened'}</h3>
         <ul>
-          {#if totalGold > 0}<li>{formatGold(totalGold)} gold</li>{/if}
+          {#if totalGold > 0}<li>{formatGold(totalGold)}</li>{/if}
           {#if totalDiamonds > 0}<li>{formatNumber(totalDiamonds)} diamonds</li>{/if}
           {#each materials as [item, qty]}<li>{formatNumber(qty)} × {prettifyBaseId(item)}</li>{/each}
           {#each results.filter((r) => r.Piece) as r}
