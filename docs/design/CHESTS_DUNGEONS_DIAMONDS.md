@@ -272,10 +272,20 @@ so trying a stage too early costs a ticket's value, not nothing and not
 everything.
 
 **Owner's data point (2026-10-30):** the owner's strongest character beats
-Malakor **A6** at most (about x49 attack on today's ladder). So stage 10
-(A10, x85) sits about 1.7x above the strongest live player, and stage 15
-(about x490) about ten times above. The owner approved the bands, the
-provisions cap and the stage-15 target as recommended.
+Malakor **A6** today (about x49 attack on today's ladder). That is where the
+strongest live player stands NOW, not a ceiling: that character is not
+Transcendent in every slot, not at the level cap, and far from maxed
+inheritance and rebirths. So it says stage 10 (A10, x85) is about 1.7x above
+today's best and stage 15 about ten times above, but the TARGETS are set
+against the theoretical maximum: **the maxed profile** the harness builds
+(Transcendent region-5 gear in every slot, the level cap, inheritance maxed,
+every rewarded rebirth, the best pets and trees). Stage 10 is what that
+profile clears with effort; stage 15 needs about three times its power, so it
+stays hard even for a player who has finished everything else. The maxed
+profile's power is re-measured whenever something new makes characters
+stronger (Hearth, the affix rework, the inheritance rework), and the Beyond
+band moves with it. The owner approved the bands, the provisions cap and the
+stage-15 target as recommended.
 
 #### Boss abilities that grow with the stage (owner idea, 2026-10-30)
 
