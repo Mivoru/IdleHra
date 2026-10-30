@@ -24,6 +24,7 @@
 // undocumented and unnoticed.
 
 import { villageGoldCost, villageMaterialCost } from '../net/commands';
+import { RAW_FISH_BASE_IDS } from '../net/content';
 
 // ---------------------------------------------------------------------------
 // Village
@@ -54,6 +55,16 @@ export const VILLAGE_TIER_MATERIALS: readonly {
   { levels: '15-19', log: 'frostpine_log', ore: 'silver_ore',    rareLog: 'golden_frostpine_log', rareOre: 'cobalt_ore' },
   { levels: '20+',   log: 'ebon_log',      ore: 'darksteel_ore', rareLog: 'golden_ebon_log',      rareOre: 'astralite_ore' },
 ];
+
+/**
+ * VillageManagementEngine.IsRareMaterial, mirrored: the golden logs and rare
+ * ores of the table above, and the rare catch (every second fish). The herbs'
+ * rare half joins it with the herbalism nodes.
+ */
+export function isRareMaterial(baseItemId: string): boolean {
+  if (VILLAGE_TIER_MATERIALS.some((t) => t.rareLog === baseItemId || t.rareOre === baseItemId)) return true;
+  return RAW_FISH_BASE_IDS.some((fish, i) => i % 2 === 1 && fish === baseItemId);
+}
 
 /** GetTierMaterials: `level / 5`, clamped to the last band. */
 export function villageTierIndex(currentLevel: number): number {

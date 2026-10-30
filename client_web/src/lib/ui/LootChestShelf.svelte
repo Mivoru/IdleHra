@@ -14,6 +14,9 @@
   import { prettifyBaseId } from '../net/content';
   import { formatGold, formatNumber } from './format';
   import ChestStage from './ChestStage.svelte';
+  import ItemIcon from './ItemIcon.svelte';
+  import { rarityColor } from './rarity';
+  import { isRareMaterial } from './wikiData';
   import Modal from './Modal.svelte';
   import { invalidateOwnedItems } from '../net/queryClient';
 
@@ -115,12 +118,24 @@
     {#if opened}
       <div class="reveal panel" data-testid="loot-chest-reveal">
         <h3>{results.length > 1 ? `${results.length} chests opened` : 'Chest opened'}</h3>
+        <!-- Modul: EACH LINE IN ITS OWN COLOUR (owner, 2026-10-31: "everything
+             is white"). Gold and diamonds in their wallet colours, a rare
+             material in the Rare colour, a piece in its rarity's colour - so
+             the best line of a five-chest haul is found without reading. -->
         <ul>
-          {#if totalGold > 0}<li>{formatGold(totalGold)}</li>{/if}
-          {#if totalDiamonds > 0}<li>{formatNumber(totalDiamonds)} diamonds</li>{/if}
-          {#each materials as [item, qty]}<li>{formatNumber(qty)} × {prettifyBaseId(item)}</li>{/each}
+          {#if totalGold > 0}<li class="gold" data-kind="gold">{formatGold(totalGold)}</li>{/if}
+          {#if totalDiamonds > 0}<li class="diamonds" data-kind="diamonds">{formatNumber(totalDiamonds)} diamonds</li>{/if}
+          {#each materials as [item, qty]}
+            <li class="mat" class:rare={isRareMaterial(item)} data-kind={isRareMaterial(item) ? 'rare-material' : 'material'}>
+              <ItemIcon baseItemId={item} name={prettifyBaseId(item)} size="sm" />
+              <span>{formatNumber(qty)} × {prettifyBaseId(item)}</span>
+            </li>
+          {/each}
           {#each results.filter((r) => r.Piece) as r}
-            <li class="piece">{r.Piece!.RarityName} {prettifyBaseId(r.Piece!.BaseItemId)}</li>
+            <li class="piece" data-kind="piece" style={`--line: ${rarityColor(r.Piece!.QualityTier)}`}>
+              <ItemIcon baseItemId={r.Piece!.BaseItemId} name={prettifyBaseId(r.Piece!.BaseItemId)} qualityTier={r.Piece!.QualityTier} size="sm" />
+              <span>{r.Piece!.RarityName} {prettifyBaseId(r.Piece!.BaseItemId)}</span>
+            </li>
           {/each}
         </ul>
         <button class="primary" onclick={close} data-testid="loot-chest-collect">Collect</button>
@@ -148,7 +163,12 @@
     background: #0d0c10 url('/chest/bg-pc.jpg') center 60% / cover;
   }
   .reveal { width: min(92vw, 420px); text-align: center; }
-  .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 4px; }
-  .reveal .piece { font-weight: 600; }
+  .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 6px; justify-items: center; }
+  .reveal li { display: inline-flex; align-items: center; gap: 8px; }
+  .reveal .gold { color: var(--gold); font-weight: 600; }
+  .reveal .diamonds { color: var(--diamond); font-weight: 600; }
+  .reveal .mat { color: var(--text-dim, #cfc6b8); }
+  .reveal .mat.rare { color: var(--rarity-4); font-weight: 600; }
+  .reveal .piece { color: var(--line); font-weight: 700; }
   .reveal button { min-height: 44px; min-width: 140px; }
 </style>
