@@ -169,6 +169,17 @@ jobs:
         working-directory: client_web
         run: npm run check:ratchet
 
+      # Modul: THE GUARD TESTS WERE RED ON MAIN FOR DAYS AND NOTHING FAILED.
+      #
+      # Several vitest files are guards rather than unit tests: no native
+      # confirm(), the GPU budget, the modal rule, the skill tree mirror of the
+      # server's node list. From #216 until 2026-10-30 four of them were red
+      # on main, because this job ran svelte-check and the generated-file
+      # checks but never vitest. A guard nobody runs guards nothing.
+      - name: Client unit and guard tests
+        working-directory: client_web
+        run: npm test
+
       # Modul: THE APK THIS JOB KEEPS HAS TO BE ABLE TO REACH A SERVER.
       #
       # This step ran as a bare `npx vite build`, and Vite INLINES the server
