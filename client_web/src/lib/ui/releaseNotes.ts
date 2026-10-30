@@ -35,6 +35,46 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.45.0',
+    date: '2026-10-30',
+    headline: 'Ascension rebuilt.',
+    sections: [
+      {
+        title: 'Ascension',
+        items: [
+          'Ascension starts over with a new ladder. From step 4 a monster hits a third harder once it drops below 30% health. From step 7 it also raises a short ward each time it loses a quarter of its health.',
+          'Clearing step 10 of a region gives you 2% more strength against that region for good.',
+          'Every step you clear drops a loot chest, and the chests get better from step 4, from step 7 and at step 10.',
+          'Every step you had already cleared has been paid out as a loot chest. A letter in your mail explains it. Your titles and frames stay.',
+        ],
+      },
+      {
+        title: 'Gear and crafting',
+        items: [
+          'New gloves can roll Crushing Blow.',
+          'A recipe made with a rare material now crafts a piece one quality higher, with one extra affix.',
+          "Swift boss challenges in regions 3, 4 and 5 now allow 210, 232 and 301 seconds.",
+        ],
+      },
+      {
+        title: 'Chests',
+        items: [
+          'Cosmetic chests now open the same way as loot chests.',
+          'The light behind an opening chest is centred on it and glows in the colour of its rarity.',
+          'A chest from a boss or from Ascension holds loot from its own region. A chest from the Deep holds loot from the highest region.',
+        ],
+      },
+      {
+        title: 'Hearth',
+        items: [
+          'Every Hearth skill has its own icon.',
+          'Green Thumb is locked until herbs arrive in the game, so no points are spent on it for nothing.',
+          'Bloodline Memory now describes what it actually does.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.44.0',
     date: '2026-10-30',
     sections: [
