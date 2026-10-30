@@ -57,6 +57,22 @@ namespace FolkIdle.Server.Domain.Combat
             return unlocked > RaceUnlockRegistry.LastRegion ? RaceUnlockRegistry.LastRegion : unlocked;
         }
 
+        /// <summary>
+        /// The same answer from the payload's boss mask, for the tick, which
+        /// has no codex in reach. Consecutive, as the set overload is.
+        /// </summary>
+        public static int HighestUnlockedRegion(byte defeatedRegionBossMask)
+        {
+            int unlocked = StartingRegion;
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                int bossId = RaceUnlockRegistry.GetRegionBossMonsterId(region);
+                if (bossId == 0 || !BossFirstClearRules.IsDefeated(defeatedRegionBossMask, bossId)) break;
+                unlocked = region + 1;
+            }
+            return unlocked > RaceUnlockRegistry.LastRegion ? RaceUnlockRegistry.LastRegion : unlocked;
+        }
+
         public static bool CanEnterRegion(int regionTier, IReadOnlySet<int> defeatedBossMonsterIds)
             => regionTier <= HighestUnlockedRegion(defeatedBossMonsterIds);
 

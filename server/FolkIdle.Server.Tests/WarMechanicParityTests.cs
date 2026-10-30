@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
 using Xunit;
 using Xunit.Abstractions;
@@ -54,6 +55,52 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "ruin r3", 3, r3, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 } };
             yield return new object[] { "perfect sequence r3", 3, r3, new[] { WarTreeRegistry.PerfectSequence }, new byte[] { 1 } };
             yield return new object[] { "bossbreaker on r2 boss", 4, RaceUnlockRegistry.GetRegionBossMonsterId(2), new[] { WarTreeRegistry.Bossbreaker }, new byte[] { 5 } };
+            // The bridges (owner, 2026-10-30). Character() beats every boss
+            // behind the monster, so region 3 is the highest unlocked one.
+            yield return new object[] { "piercing crit r3", 3, r3, new[] { WarTreeRegistry.PiercingCrit }, new byte[] { 3 } };
+            yield return new object[] { "counterstroke r3", 3, r3, new[] { WarTreeRegistry.Counterstroke }, new byte[] { 3 } };
+            yield return new object[] { "know your prey r3", 3, r3, new[] { WarTreeRegistry.KnowYourPrey }, new byte[] { 3 } };
+        }
+
+        /// <summary>
+        /// Know Your Prey pays gold as well as damage, the same away as
+        /// watched, and only on the frontier: a region already behind the
+        /// player gets nothing.
+        /// </summary>
+        [Fact]
+        public void Know_your_prey_pays_gold_on_the_frontier_only()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3, (WarTreeRegistry.KnowYourPrey, 3));
+            var without = War(3, r3);
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            var liveWithout = OfflineCombatParityTests.RunLive(without);
+            _output.WriteLine($"know your prey r3 gold {offline.Gold:F0}/{live.Gold:F0} (without {liveWithout.Gold:F0})");
+
+            Assert.True(live.Gold > liveWithout.Gold * 1.05, $"the live kill does not pay it ({live.Gold:F0} vs {liveWithout.Gold:F0} without)");
+            Assert.True(Math.Abs(offline.Gold - live.Gold) <= live.Gold * 0.05, $"gold: offline {offline.Gold:F0}, live {live.Gold:F0}");
+
+            var behind = with;
+            behind.DefeatedRegionBossMask = BossFirstClearRules.MarkDefeated(behind.DefeatedRegionBossMask, RaceUnlockRegistry.GetRegionBossMonsterId(3));
+            var monster = ContentRegistry.Monsters[r3 - 1];
+            Assert.Equal(r3, monster.Id);
+            Assert.Equal(100, FolkIdle.Server.Domain.Combat.SimulationEngine.KnowYourPreyTenthsPct(in with, in monster));
+            Assert.Equal(0, FolkIdle.Server.Domain.Combat.SimulationEngine.KnowYourPreyTenthsPct(in behind, in monster));
+        }
+
+        /// <summary>Counterstroke reads the Guard column's dodge and block: more defence, more crit.</summary>
+        [Fact]
+        public void Counterstroke_turns_defence_into_crit_chance()
+        {
+            var payload = War(3, RegularOf(3), (WarTreeRegistry.Counterstroke, 3));
+            var stats = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in payload);
+            float before = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in payload, in stats);
+            payload.SkillRanks[WarTreeRegistry.ShieldWall] = 5;
+            stats = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in payload);
+            float after = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in payload, in stats);
+            // Shield Wall 5 is +10 block; a third of it is +3.3 crit chance.
+            Assert.Equal(before + 3.3f, after, 2);
         }
 
         [Theory]

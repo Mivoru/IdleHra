@@ -45,6 +45,10 @@ namespace FolkIdle.Server.Domain.Combat
                 if (today > 0f || war > 0f) gold = (long)(gold * (1.0f + Math.Max(today, war)));
             }
 
+            // Know Your Prey: monsters of the highest unlocked region only.
+            int knowYourPrey = SimulationEngine.KnowYourPreyTenthsPct(in payload, in monster);
+            if (knowYourPrey > 0) gold = (long)(gold * (1.0f + knowYourPrey / 1000f));
+
             return gold;
         }
 
