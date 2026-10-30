@@ -11,42 +11,18 @@ is done, move its section to the archive (or a new archive file) rather than
 leaving it here marked DONE - a board that is mostly finished work is how
 the old one reached 420 KB and three contradictory START HERE blocks.
 
-## State on 2026-10-29
+## State on 2026-10-30
 
-- **Production** runs `main` through PR #202 (**1.0.1276, client 1.35.0**),
-  verified after the deploy: `deploy.sh` saw the manifest answer 1.0.1276 and
-  its zip serve 200, `/healthz` answers 200, and `smoke:screens` against
-  production rendered 30/30 screens clean. #199 before it (1.0.1269) was
-  verified the same way, plus `/api/v1/races` answering.
-  - #202 (1.0.1276): the tool affixes `gather_yield_pct` and
-    `gather_rare_find_pct` pay, each only for its own profession (axe
-    woodcutting, pickaxe mining, rod fishing).
-  - #197 (1.0.1263): inheritance Gathering yield pays, the Fortitude bough gives
-    armour, and the weapon damage affixes are labelled "Damage". It also commits
-    `docs/architecture/STATS_REFERENCE.md`, whose §16 is the defect list the
-    tasks below come from.
-  - #198: measurement tests only (`RaceUnitMeasurementTests`).
-  - #199 (1.0.1269): Draugr mastery lifesteal 10% / 12% (it was a hundredth of
-    that), Fairy mastery +15 and Draugr -15 attack speed, `RaceBonusRegistry`
-    with `GET /api/v1/races`, race cards in the Wiki and mastery lines in
-    Progression.
-  - #201: CI runs the server suite and the client checks **on every pull
-    request**. The image push, migrations and deploy stay push-to-main only.
-    The stale-build hook now blocks only on a server running from the same
-    checkout.
-- **Open, CI green, waiting for the owner as a separate release:**
-  - **#200** dodge curve + boss recalibration. Region 2 1.85 -> 1.87, region 3
-    3.08 -> 3.17, seasonal tier 6 AttackPct 20 -> 35, with always-on margin
-    tests. After it ships, check the region-2 and region-3 first clears and
-    seasonal tier 6 in production.
-  - It carries no release notes yet. Add them at deploy time.
-- **Tasks in flight (2026-10-29, later):**
-  - **120 merged** as #209: `exercise` re-seeds its fixture, the flaky steps
-    poll instead of sleeping, `EXERCISE_ONLY=<sections>` and
-    `EXERCISE_ONLY=list`, and the `OfflineCombatParityTests` flake (3 of 20
-    on `main`) is fixed.
-  - **122** #207 and **123** #206: cleanup, no behaviour change, CI green.
-  - **126** #208: the stat audit. Its first run found task 127 below.
+- **Production** runs `main` through PR #229 (**server 1.0.1356, client
+  1.39.1**): the War skill tree is live for every player (#225-#229), on top
+  of the stats fixes #197-#212 and the dodge curve #200.
+- **The plan is [`design/ROADMAP_2026_10_30.md`](design/ROADMAP_2026_10_30.md)**
+  (#230). Each task below names the roadmap section that holds its full plan.
+  The roadmap's section 9 collects the owner decisions, each with a
+  recommendation.
+- Tasks 121-127 are closed and moved to
+  [`archive/TASK_BOARD_111-plus.md`](archive/TASK_BOARD_111-plus.md), with
+  the PR each shipped in. 120 stays open for the steps #209 did not cover.
 
 ## State on 2026-10-14
 
@@ -89,7 +65,71 @@ something to learn:
 
 ## Open
 
-### 37. The Deep - measure the retune (due 2026-10-14)
+In the roadmap's order (section 1). Do them top to bottom unless the owner
+says otherwise.
+
+| # | Task | Roadmap | Size |
+|---|---|---|---|
+| 1 | 128. CI runs the client unit tests | 4.1 | S |
+| 2 | Board tidy (this rewrite) | 4.2 | S, done |
+| 3 | 120. `exercise` flakes | 2.1 | M |
+| 4 | 129. Flaky server tests | 2.2 | S-M |
+| 5 | 37, 111, 130, 131. Measurement batch | 3.1-3.4 | S each |
+| 6 | 132. Phase 4 - Hearth | 7 | L-XL |
+| 7 | 133. Phase 3 - affixes | 6 | L |
+| 8 | 112. Malakor re-measure | 3.5 | M |
+| 9 | 134. Phase 2b - the per-swing simulator | 5 | XL |
+| 10 | 135. Phase 5 - affix families and signatures | 8 | L |
+| - | 118. UI wave 3, when the event art exists | 4.4 | M |
+| - | 119. Safe-area triage, between phases | 4.3 | M |
+
+### 128. CI runs the client unit tests - TOOLING (roadmap 4.1)
+
+The `client` CI job never ran vitest, so four guard tests stayed red on
+`main` from #216 until 2026-10-30. **In PR #231**: `npm test` after
+`check:ratchet`. Acceptance: a deliberately broken guard turns the PR red,
+and the revert turns it green.
+
+### 129. Flaky server tests - BUG (roadmap 2.2)
+
+`OfflineCombatParityTests` and
+`AutomationAutoFuseTests.TheWorker_FusesTheStacksARequestsDropsLandedIn`
+fail only under full-suite load. Suspect the process-wide static queues
+(`CombatLootEngine.DropRequestQueue`, `GatheringGrantQueue`) shared by test
+classes that xUnit runs in parallel. Acceptance: 5 full local runs green.
+
+### 130. After the switch: what players build - MEASURE (roadmap 3.3)
+
+Due 1-2 weeks after 2026-10-30. Read-only query over `player_skill_tree`
+and `gold_spend_daily` (category 12, Respec): nodes bought, fork sides,
+keystones, gold respecs. Compare with the harness's predicted best builds.
+
+### 131. The gathering economy after #211 - MEASURE (roadmap 3.4)
+
+Material flow per active player before and after #211 (the extras now
+multiply). Run it with 111's queries. It feeds Hearth's D2.
+
+### 132. Phase 4 - the Hearth half of the skill tree - BUILD (roadmap 7)
+
+Gives back the craft time, gathering speed and offline bonus the switch
+took. Measure first (step 4.0, D2). The rank buffer decision (7.2) is the
+owner's. Masterwork waits for phase 3.
+
+### 133. Phase 3 - the affix rework - BUILD (roadmap 6)
+
+Includes the ring's pool (owner decision D4, from task 125). Keep the
+`KNOWN_AFFIX_IDS` order: it is a wire index.
+
+### 134. Phase 2b - one combat model, the per-swing simulator - BUILD (roadmap 5)
+
+The biggest engineering risk: a rewrite of the offline combat path. It
+unlocks Bleed, Momentum and similar mechanics.
+
+### 135. Phase 5 - affix families and signature affixes - BUILD (roadmap 8)
+
+Needs phase 3, and is best after 2b.
+
+### 37. The Deep - measure the retune (PAST DUE since 2026-10-14, roadmap 3.1)
 
 The retune (stake 0.2%, toll x1.35 a floor, 1 diamond per new deepest floor
 of the week) went live 2026-10-07. Week 1 before it: one payer, 683.8M spent,
@@ -99,7 +139,7 @@ retune capture"** on the owner's PC writes
 deepest floor past 13, a second payer, diamonds paid inside the cap. Full
 history: archive section 37.
 
-### 111. Rations - watch the first week (built 2026-10-07, not yet deployed)
+### 111. Rations - three weeks of data (live since 2026-10-07, roadmap 3.2)
 
 From region 2 a fighting character eats one ration every 10/8/7/6 s
 (regions 2-5): a fish of the monster's region or later, older fish at double
@@ -118,7 +158,7 @@ per region behind, no heal. Unpaid = hungry, kills pay half XP and gold.
 - If hunger hits too hard, the lever is `RationIntervalTicks`, not
   `HungryRewardPct` - halving pay is the signal, the interval is the cost.
 
-### 112. Re-measure Malakor's Ascension after power changes
+### 112. Re-measure Malakor's Ascension after power changes (after phase 3, roadmap 3.5)
 
 Malakor's ladder (`BossAscensionRegistry.MalakorAttackMultiplier`) is solved
 against measured headroom: about x19 attack for the owner's character on
@@ -200,7 +240,15 @@ whether it is real (pinned by scrolling and looking, as `client_web`'s
 rules say) or the checker's own, fix the real ones, and make the check a
 ratchet so the count cannot grow unnoticed.
 
-### 120. `exercise.mjs` flakes - BUG, high priority (issue #204)
+### 120. `exercise.mjs` flakes - BUG, high priority (issue #204, roadmap 2.1)
+
+**Partly done in #209** (2026-10-29): `exercise` re-seeds the fixture at start
+and the seed stamps it as just logged out, the wear-a-drop step falls back to
+region 1 after 20 s, two checks poll instead of sleeping, and
+`EXERCISE_ONLY=<sections>` exists. **Still open** (roadmap 2.1, steps 1 and
+3-5): measure 5 runs; the Delve step compares against its own debit, not the
+wallet; the wearable drop comes from a dev grant, not RNG; the "told what to
+do next" step restores what it spends.
 
 **Current state.** On 2026-10-29, four runs against working builds failed three
 different single steps, none caused by the change under test:
@@ -230,217 +278,6 @@ only produces false alarms faster.
 **Tests.** The five recorded runs; and each step, re-run after the fixture is
 deliberately left spent, still passes.
 
-### 121. `gather_speed_pct` units and scope - MEASURE FIRST, balance (issue #203)
-
-**DECIDED 2026-10-29, built in PR #211, not deployed:** fix the tooltip (whole
-percent), per-tool scope, and - the owner's follow-up - the extras multiply
-the core instead of adding to it.
-
-**Current state.**
-- Affix magnitudes are tenths of a percent, and every other affix and the
-  tooltip read them that way.
-- `GatheringToolEngine.TotalSpeedBonusPct` adds `ToolGatherSpeedPct` as WHOLE
-  percent. A Legendary roll shows +5.5% and pays +55%.
-- Speed is summed across all three tools, so an axe speeds up mining.
-- Yield and rare find were made per profession in #202. Speed was left out on
-  purpose and belongs here.
-
-**Expected result.** The tooltip and the tick agree, and a tool speeds up only
-its own profession, with the size of the change measured before it lands.
-
-**Depends on.** #202 merged (the per-tool fields it adds are the pattern to
-reuse).
-
-**Acceptance.**
-- A table of each profession's speed at reference builds (mastery, tool tier,
-  village, affix), today and under each option ("engine /10" vs "tooltip x10"),
-  from `ProgressionRateTests` / `GatheringShareTests`.
-- A read-only production count of tools carrying `gather_speed_pct`, and how
-  much speed they give today.
-- The owner picks an option. No change ships without that decision.
-
-**Tests.** A per-profession scope test, as #202 has for yield. A test that a
-rolled magnitude M pays exactly what the tooltip prints for M.
-
-### 122. Dead set-bonus fields - BUG or DESIGN, verify first
-
-**DONE 2026-10-29, merged as #207** (both removed; no behaviour change).
-
-**Current state** (grepped 2026-10-29):
-- `SetBonusEngine.SetBonusResult.FlatAttackPowerBonus` and
-  `CooldownReductionActive` are declared and assigned by nothing.
-- `StatsCalculator` still adds `FlatAttackPowerBonus` to both flat damage
-  figures. That always adds 0.
-- `CooldownReductionActive` is referenced only by comments in
-  `StatsCalculator` (its consumer was already removed there).
-- Neither is in `StateUpdatePacket`, the roster's `ActiveSetResponse` or the
-  client.
-
-**Expected result.** Each field ends as exactly one of:
-- implemented, if a set's design names that bonus;
-- removed;
-- kept with a comment saying why it is inert.
-
-**Depends on.** The set design (`SetBonusEngine`, and the task-63 write-up in
-the archive), to learn whether any set was meant to carry them.
-
-**Acceptance.**
-- Every reader and writer listed (code, packets, client, tests, docs).
-- A removal compiles with no packet or protocol change (`generate:protocol
-  --check` clean).
-- Nothing persisted refers to either field. Verify, do not assume.
-
-**Tests.** Removal: the existing set tests stay green. Implementation: a test
-that the set pays the bonus, and that a mixed set does not.
-
-### 123. Stale code - CLEANUP, no behaviour change
-
-**DONE 2026-10-29, merged as #206.**
-
-**Current state.**
-- `StatsCalculator`'s Vodnik block still says `CritMitigationPct` is "computed
-  here but not yet consumed anywhere". `SimulationEngine.MonsterCritMultiplier`
-  and `BossGearBenchmark` consume it.
-- `Domain/Combat/EquipmentLevelGate.cs` has no caller. It is mentioned only by
-  comments in `RegionUnlockGate`, `CraftingEngine` and `StateUpdatePacket`.
-
-**Expected result.** The comment tells the truth. A dead class is gone, or it
-is documented as kept on purpose.
-
-**Depends on.** Nothing.
-
-**Acceptance.** `EquipmentLevelGate` has no code reference left (grep tests
-too). The full server suite is green. The diff touches no logic.
-
-**Tests.** None new. This is a deletion and a comment.
-
-### 124. Fairy's dead "+20% ranged damage" - DESIGN
-
-**DECIDED 2026-10-29 (option b, +5 dodge), built in PR #212, not deployed.**
-
-**Current state.**
-- The Vila (Fairy) innate multiplies `FlatRangedDamage` by 1.2
-  (`RaceBonusRegistry.VilaRangedDamageFactor`).
-- Combat has one damage figure (`FlatMeleeDamage`). `FlatRangedDamage` is read
-  only by `GuildWarSnapshotEngine`'s aggregate.
-- `/api/v1/races` deliberately does not describe the bonus, and
-  `RaceBonusRegistryTests` pins that it never will while it is dead.
-
-**Expected result.** The Fairy's innate package is something the fight pays
-and the page can state.
-
-**Depends on.** The owner's choice. Find the original intent first: the GDD,
-git history of the race block, and the archive.
-
-**Options to prepare, each with its measured effect** on Fairy damage per
-second and survival against the other five races (use the reference builds in
-`RaceUnitMeasurementTests`):
-- **(a)** A real ranged damage type. That is a combat-model change, not a race
-  change, so price it as such.
-- **(b)** Replace it with a different, working effect.
-- **(c)** Remove it.
-
-Do **not** silently redirect it into general damage. That is option (b) with
-a number nobody chose.
-
-**Acceptance.** The owner picks. The registry, the page and a test all say the
-same thing.
-
-### 125. Design decisions with numbers - DESIGN
-
-**DECIDED 2026-10-29:** Tank removed (PR #212, not deployed); ring keeps
-block only for now; Legacy perks parked with Guild Wars (see "Parked by the
-owner").
-
-Prepare options, not changes. Each option comes with its measured effect.
-
-- **Tank lineage.** `ProgressionEngine.Lineages` defines Tank (+8% base health
-  per level), and no command or screen selects it. Registration writes
-  `SelectedLineageId = 1` (Warrior, +5% base damage per level). For
-  reference, +8% a level makes base health x9 at level 100, against Warrior's
-  base damage x6.
-  - Options: expose the choice (where and when: registration, rebirth),
-    rework it, or delete it.
-  - Measure: boss walls (`WallWindowScanTests`) and `ProgressionRateTests` for
-    a Tank.
-- **Ring affixes.** The ring rolls only `block_chance_pct`, so a high-rarity
-  ring stacks 4-5 block rolls.
-  - Options: widen the pool (crit chance, crit damage, lifesteal, flat HP),
-    with its effect on the best builds' DPS, block and sustain.
-  - Must keep: the `KNOWN_AFFIX_IDS` order (the wire index) and the stored
-    items.
-- **Legacy perks.** XP, Gold and "Combat speed" (which actually multiplies
-  damage) are purchasable on the server (`PurchaseLegacyUnlocks`), but no
-  client screen calls `purchaseLegacyUnlock`, so they cannot be bought.
-  - Options: a screen, which then needs an honest name for the damage perk;
-    or retire them.
-  - Measure: where legacy points come from and how many players hold them
-    (read-only query).
-
-**Acceptance.** For each item, a one-page option sheet with numbers. The owner
-decides, and only the chosen option becomes a separate build task.
-
-### 126. Automatic stat audit - TOOLING, prevents a repeat of 2026-10-29
-
-**DONE 2026-10-29, merged as #208.**
-
-**Why.** Nearly every defect found on 2026-10-29 was one shape: a value that
-is bought, rolled, stored or shown, and that the simulation never reads, or
-reads in the wrong unit. Examples: inheritance Gathering yield, the Fortitude
-armour, the tool yield and rare find, Draugr's double divide, the 0.15 attack
-speeds, the dodge dead zone, `gather_speed_pct` x10. Each was found by reading
-code. Reading does not scale, and it is not repeated after the next change.
-
-**Expected result.** A test that fails when a new stat is added without a
-consumer, or with a unit that disagrees with how it is shown.
-
-**Acceptance.**
-- **Registry -> consumer:** every inheritance stat, skill-tree node, race
-  effect, affix id, pet stat and trait has a test-visible effect. Changing it
-  from zero to its maximum changes a figure the tick uses: attack, health,
-  armour, hit or crit, yield, speed, gold or XP. A registry entry with no
-  effect fails, unless it is listed in an explicit allow-list with a reason.
-- **Units:** every percentage affix's tooltip value (magnitude / 10) equals
-  the effect the tick applies at that magnitude.
-- **Parity:** for a set of reference payloads, the live tick's figures, the
-  offline projection, `CharacterStatSheet` and `HuntingProjection` agree. The
-  task-78 parity tests are the pattern.
-- It runs in the normal suite, under a minute.
-
-**Depends on.** 120, so the CI it runs in is trustworthy. It will surface
-whatever 122-124 have not closed yet, through its allow-list.
-
-### 127. The Clumsy Hands flaw does nothing - BUG, BALANCE DECISION
-
-**DECIDED 2026-10-29 (option a, the flaw applies), built in PR #211, not deployed.**
-
-**Current state.** Found by the stat audit (#208, task 126).
-- The flaw trait Clumsy Hands promises "-6% gathering speed". Two guards
-  in `GatheringToolEngine` drop it: `TotalSpeedBonusPct` adds the extra-speed
-  term only `if (toolAffixSpeedPct > 0)`, and `ComputeRequiredTicks` applies
-  the total only `if (totalSpeedBonusPct > 0)`. Changing only the first one
-  still changes nothing (verified 2026-10-29); both have to change.
-- The other flaws (Thin Blood, Faint Heart) do apply.
-- #208 lists the trait under `KnownDefects`. That is NOT acceptance: the
-  audit fails the moment the flaw starts working, so the fix must delete
-  the row.
-
-**Expected result.** The flaw does what its card says, or the card changes.
-
-**Depends on.** The owner's choice. Making a flaw start to bite slows
-gathering for every character that carries it, so it is a balance change,
-not a cleanup.
-
-**Options.**
-- **(a)** Apply negative totals, with a floor so speed never goes below base
-  by more than the flaw itself. Measure what share of characters carry the
-  flaw (read-only query) and their speed change.
-- **(b)** Reword or retire the flaw.
-
-**Acceptance.** The option is chosen, `trait:clumsy_hands` leaves
-`KnownDefects`, and a test shows a Clumsy Hands character harvesting slower
-(or the card no longer promises it).
-
 ### 46 follow-up. Confirm the compression ratio live
 
 `/metrics`: `folkidle_ws_deflate_output_bytes_total` over
@@ -467,12 +304,6 @@ backup in `D:\FolkIdleBackups\signing`) and the web login offers the APK
 download. Left: store listings and developer accounts (owner), push needs
 `google-services.json` (Firebase) before `register()` may be called,
 the IAP vendor adapter. Archive section 13, phases C and D.
-
-### Flaky: `OfflineCombatParityTests` row "r5 bare fed"
-
-Fails only under full-suite load, passes alone 3 of 3. Find what it shares
-with other tests (static queues, the shared Random) before widening any
-tolerance.
 
 ## Parked by the owner
 

@@ -138,3 +138,236 @@ market cannot be worn by a reborn level-1 character (level requirement).
 - The R10 "frame" became the gold badge plus a glowing name.
 - Still open: Malakor re-measure for +20 skill points (task 112).
 
+
+### 121. `gather_speed_pct` units and scope - MEASURE FIRST, balance (issue #203)
+
+**DECIDED 2026-10-29, built in PR #211, not deployed:** fix the tooltip (whole
+percent), per-tool scope, and - the owner's follow-up - the extras multiply
+the core instead of adding to it.
+
+**Current state.**
+- Affix magnitudes are tenths of a percent, and every other affix and the
+  tooltip read them that way.
+- `GatheringToolEngine.TotalSpeedBonusPct` adds `ToolGatherSpeedPct` as WHOLE
+  percent. A Legendary roll shows +5.5% and pays +55%.
+- Speed is summed across all three tools, so an axe speeds up mining.
+- Yield and rare find were made per profession in #202. Speed was left out on
+  purpose and belongs here.
+
+**Expected result.** The tooltip and the tick agree, and a tool speeds up only
+its own profession, with the size of the change measured before it lands.
+
+**Depends on.** #202 merged (the per-tool fields it adds are the pattern to
+reuse).
+
+**Acceptance.**
+- A table of each profession's speed at reference builds (mastery, tool tier,
+  village, affix), today and under each option ("engine /10" vs "tooltip x10"),
+  from `ProgressionRateTests` / `GatheringShareTests`.
+- A read-only production count of tools carrying `gather_speed_pct`, and how
+  much speed they give today.
+- The owner picks an option. No change ships without that decision.
+
+**Tests.** A per-profession scope test, as #202 has for yield. A test that a
+rolled magnitude M pays exactly what the tooltip prints for M.
+
+**Closed 2026-10-30.** Built in PR #211, deployed with #197-#212 (through 1.0.1310): whole-percent tooltip, per-tool scope, extras multiply the core. Watch item moved to the roadmap, 3.4.
+
+### 122. Dead set-bonus fields - BUG or DESIGN, verify first
+
+**DONE 2026-10-29, merged as #207** (both removed; no behaviour change).
+
+**Current state** (grepped 2026-10-29):
+- `SetBonusEngine.SetBonusResult.FlatAttackPowerBonus` and
+  `CooldownReductionActive` are declared and assigned by nothing.
+- `StatsCalculator` still adds `FlatAttackPowerBonus` to both flat damage
+  figures. That always adds 0.
+- `CooldownReductionActive` is referenced only by comments in
+  `StatsCalculator` (its consumer was already removed there).
+- Neither is in `StateUpdatePacket`, the roster's `ActiveSetResponse` or the
+  client.
+
+**Expected result.** Each field ends as exactly one of:
+- implemented, if a set's design names that bonus;
+- removed;
+- kept with a comment saying why it is inert.
+
+**Depends on.** The set design (`SetBonusEngine`, and the task-63 write-up in
+the archive), to learn whether any set was meant to carry them.
+
+**Acceptance.**
+- Every reader and writer listed (code, packets, client, tests, docs).
+- A removal compiles with no packet or protocol change (`generate:protocol
+  --check` clean).
+- Nothing persisted refers to either field. Verify, do not assume.
+
+**Tests.** Removal: the existing set tests stay green. Implementation: a test
+that the set pays the bonus, and that a mixed set does not.
+
+**Closed 2026-10-30.** Merged as #207, deployed with #197-#212.
+
+### 123. Stale code - CLEANUP, no behaviour change
+
+**DONE 2026-10-29, merged as #206.**
+
+**Current state.**
+- `StatsCalculator`'s Vodnik block still says `CritMitigationPct` is "computed
+  here but not yet consumed anywhere". `SimulationEngine.MonsterCritMultiplier`
+  and `BossGearBenchmark` consume it.
+- `Domain/Combat/EquipmentLevelGate.cs` has no caller. It is mentioned only by
+  comments in `RegionUnlockGate`, `CraftingEngine` and `StateUpdatePacket`.
+
+**Expected result.** The comment tells the truth. A dead class is gone, or it
+is documented as kept on purpose.
+
+**Depends on.** Nothing.
+
+**Acceptance.** `EquipmentLevelGate` has no code reference left (grep tests
+too). The full server suite is green. The diff touches no logic.
+
+**Tests.** None new. This is a deletion and a comment.
+
+**Closed 2026-10-30.** Merged as #206, deployed with #197-#212.
+
+### 124. Fairy's dead "+20% ranged damage" - DESIGN
+
+**DECIDED 2026-10-29 (option b, +5 dodge), built in PR #212, not deployed.**
+
+**Current state.**
+- The Vila (Fairy) innate multiplies `FlatRangedDamage` by 1.2
+  (`RaceBonusRegistry.VilaRangedDamageFactor`).
+- Combat has one damage figure (`FlatMeleeDamage`). `FlatRangedDamage` is read
+  only by `GuildWarSnapshotEngine`'s aggregate.
+- `/api/v1/races` deliberately does not describe the bonus, and
+  `RaceBonusRegistryTests` pins that it never will while it is dead.
+
+**Expected result.** The Fairy's innate package is something the fight pays
+and the page can state.
+
+**Depends on.** The owner's choice. Find the original intent first: the GDD,
+git history of the race block, and the archive.
+
+**Options to prepare, each with its measured effect** on Fairy damage per
+second and survival against the other five races (use the reference builds in
+`RaceUnitMeasurementTests`):
+- **(a)** A real ranged damage type. That is a combat-model change, not a race
+  change, so price it as such.
+- **(b)** Replace it with a different, working effect.
+- **(c)** Remove it.
+
+Do **not** silently redirect it into general damage. That is option (b) with
+a number nobody chose.
+
+**Acceptance.** The owner picks. The registry, the page and a test all say the
+same thing.
+
+**Closed 2026-10-30.** Option (b), +5 dodge, built in PR #212, deployed with #197-#212.
+
+### 125. Design decisions with numbers - DESIGN
+
+**DECIDED 2026-10-29:** Tank removed (PR #212, not deployed); ring keeps
+block only for now; Legacy perks parked with Guild Wars (see "Parked by the
+owner").
+
+Prepare options, not changes. Each option comes with its measured effect.
+
+- **Tank lineage.** `ProgressionEngine.Lineages` defines Tank (+8% base health
+  per level), and no command or screen selects it. Registration writes
+  `SelectedLineageId = 1` (Warrior, +5% base damage per level). For
+  reference, +8% a level makes base health x9 at level 100, against Warrior's
+  base damage x6.
+  - Options: expose the choice (where and when: registration, rebirth),
+    rework it, or delete it.
+  - Measure: boss walls (`WallWindowScanTests`) and `ProgressionRateTests` for
+    a Tank.
+- **Ring affixes.** The ring rolls only `block_chance_pct`, so a high-rarity
+  ring stacks 4-5 block rolls.
+  - Options: widen the pool (crit chance, crit damage, lifesteal, flat HP),
+    with its effect on the best builds' DPS, block and sustain.
+  - Must keep: the `KNOWN_AFFIX_IDS` order (the wire index) and the stored
+    items.
+- **Legacy perks.** XP, Gold and "Combat speed" (which actually multiplies
+  damage) are purchasable on the server (`PurchaseLegacyUnlocks`), but no
+  client screen calls `purchaseLegacyUnlock`, so they cannot be bought.
+  - Options: a screen, which then needs an honest name for the damage perk;
+    or retire them.
+  - Measure: where legacy points come from and how many players hold them
+    (read-only query).
+
+**Acceptance.** For each item, a one-page option sheet with numbers. The owner
+decides, and only the chosen option becomes a separate build task.
+
+**Closed 2026-10-30.** Tank removed (PR #212, deployed). The ring pool moves to the affix rework (roadmap section 6, owner decision D4). Legacy perks are parked with Guild Wars (see "Parked by the owner" on the board).
+
+### 126. Automatic stat audit - TOOLING, prevents a repeat of 2026-10-29
+
+**DONE 2026-10-29, merged as #208.**
+
+**Why.** Nearly every defect found on 2026-10-29 was one shape: a value that
+is bought, rolled, stored or shown, and that the simulation never reads, or
+reads in the wrong unit. Examples: inheritance Gathering yield, the Fortitude
+armour, the tool yield and rare find, Draugr's double divide, the 0.15 attack
+speeds, the dodge dead zone, `gather_speed_pct` x10. Each was found by reading
+code. Reading does not scale, and it is not repeated after the next change.
+
+**Expected result.** A test that fails when a new stat is added without a
+consumer, or with a unit that disagrees with how it is shown.
+
+**Acceptance.**
+- **Registry -> consumer:** every inheritance stat, skill-tree node, race
+  effect, affix id, pet stat and trait has a test-visible effect. Changing it
+  from zero to its maximum changes a figure the tick uses: attack, health,
+  armour, hit or crit, yield, speed, gold or XP. A registry entry with no
+  effect fails, unless it is listed in an explicit allow-list with a reason.
+- **Units:** every percentage affix's tooltip value (magnitude / 10) equals
+  the effect the tick applies at that magnitude.
+- **Parity:** for a set of reference payloads, the live tick's figures, the
+  offline projection, `CharacterStatSheet` and `HuntingProjection` agree. The
+  task-78 parity tests are the pattern.
+- It runs in the normal suite, under a minute.
+
+**Depends on.** 120, so the CI it runs in is trustworthy. It will surface
+whatever 122-124 have not closed yet, through its allow-list.
+
+**Closed 2026-10-30.** Merged as #208. It found task 127.
+
+### 127. The Clumsy Hands flaw does nothing - BUG, BALANCE DECISION
+
+**DECIDED 2026-10-29 (option a, the flaw applies), built in PR #211, not deployed.**
+
+**Current state.** Found by the stat audit (#208, task 126).
+- The flaw trait Clumsy Hands promises "-6% gathering speed". Two guards
+  in `GatheringToolEngine` drop it: `TotalSpeedBonusPct` adds the extra-speed
+  term only `if (toolAffixSpeedPct > 0)`, and `ComputeRequiredTicks` applies
+  the total only `if (totalSpeedBonusPct > 0)`. Changing only the first one
+  still changes nothing (verified 2026-10-29); both have to change.
+- The other flaws (Thin Blood, Faint Heart) do apply.
+- #208 lists the trait under `KnownDefects`. That is NOT acceptance: the
+  audit fails the moment the flaw starts working, so the fix must delete
+  the row.
+
+**Expected result.** The flaw does what its card says, or the card changes.
+
+**Depends on.** The owner's choice. Making a flaw start to bite slows
+gathering for every character that carries it, so it is a balance change,
+not a cleanup.
+
+**Options.**
+- **(a)** Apply negative totals, with a floor so speed never goes below base
+  by more than the flaw itself. Measure what share of characters carry the
+  flaw (read-only query) and their speed change.
+- **(b)** Reword or retire the flaw.
+
+**Acceptance.** The option is chosen, `trait:clumsy_hands` leaves
+`KnownDefects`, and a test shows a Clumsy Hands character harvesting slower
+(or the card no longer promises it).
+
+**Closed 2026-10-30.** Option (a), built in PR #211, deployed with #197-#212.
+
+### Flaky: `OfflineCombatParityTests` row "r5 bare fed"
+
+Fails only under full-suite load, passes alone 3 of 3. Find what it shares
+with other tests (static queues, the shared Random) before widening any
+tolerance.
+
+**Closed 2026-10-30.** #209 fixed the row (a character that dies in its first six hours gets 48 lives). The remaining full-suite flakes are open task 129 on the board.
