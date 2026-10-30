@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.40.0',
+    date: '2026-10-30',
+    sections: [
+      {
+        title: 'The Deep',
+        items: [
+          'Each floor of the Deep now costs less than the last one did: the toll grows by 25% a floor instead of 35%.',
+          'The Deep pays its own diamonds: 2 for every floor from 10 to 19 you reach for the first time each week, up to 20 a week.',
+          "These diamonds are extra. They do not count against the Delve's weekly 60.",
+        ],
+      },
+    ],
+  },
+  {
     version: '1.39.1',
     date: '2026-10-30',
     sections: [
