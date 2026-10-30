@@ -142,6 +142,16 @@
   <div class="chest" bind:this={chestEl}>
     <img src={showOpen ? stills.open : stills.closed} alt={showOpen ? 'An open chest' : 'A closed chest'} draggable="false" />
   </div>
+  {#if showOpen && r === 4 && !reduceMotion()}
+    <!-- Modul: THE ONE VIDEO LEFT ON THE CHEST (2026-10-30). Light only on
+         pure black, drawn with `screen`, so black is see-through by itself and
+         there is no keyed edge to shimmer. Only the Legendary/Ancient burst
+         gets it; every other light on the stage is the canvas. -->
+    <video class="fx" autoplay muted playsinline aria-hidden="true" onended={(e) => ((e.currentTarget as HTMLVideoElement).style.opacity = '0')}>
+      <source src="/fx/legendary-burst.webm" type="video/webm" />
+      <source src="/fx/legendary-burst.mp4" type="video/mp4" />
+    </video>
+  {/if}
   {#if flash}
     <div class="flash" style={`--light: rgb(${RARITY_LIGHT[r].join(',')})`} aria-hidden="true"></div>
   {/if}
@@ -189,6 +199,17 @@
     height: 10%;
     background: radial-gradient(closest-side, rgba(0, 0, 0, 0.45), transparent);
     z-index: -1;
+  }
+  .fx {
+    position: absolute;
+    inset: -30% -40%;
+    width: 180%;
+    height: 160%;
+    object-fit: cover;
+    z-index: 3;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    transition: opacity 0.4s;
   }
   .flash {
     position: absolute;
