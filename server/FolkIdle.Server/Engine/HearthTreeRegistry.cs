@@ -167,7 +167,7 @@ namespace FolkIdle.Server.Engine
             // a slot (children age only on their own work), which is the moment
             // the Kin column is about.
             Add(Mentor, "Mentor", "mentor", ColumnKin, 3, 1, "Notable", 3, 2, HearthEffect.MentorXpPct, 0, "+{0}% XP while a child works in one of your slots", ranks: new[] { 50, 100, 150 });
-            Add(BloodlineMemory, "Bloodline Memory", "bloodline_memory", ColumnKin, 4, -1, "Keystone", 1, 5, HearthEffect.BloodlineMemory, 1, "A newborn inherits +10% of each parent's aptitude");
+            Add(BloodlineMemory, "Bloodline Memory", "bloodline_memory", ColumnKin, 4, -1, "Keystone", 1, 5, HearthEffect.BloodlineMemory, 1, "Each of a newborn's aptitudes has a 25% chance to start one point higher");
 
             return t;
         }
