@@ -295,7 +295,7 @@ namespace FolkIdle.Server.Tests
             long stake = DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), TopAccountHeld);
             Assert.Equal(984_000, stake);
 
-            foreach (var (floor, spec) in new[] { (12, 13_414_749.0), (16, 35_093_385.0), (20, 107_099_113.0) } /* was 31.4M / 66M / 150M at 0.5 percent and x1.25 (2026-10-07) */)
+            foreach (var (floor, spec) in new[] { (12, 12_561_375.0), (16, 26_412_386.0), (20, 60_228_335.0) } /* x1.25 since 2026-10-30 (was 13.4M / 35.1M / 107M at x1.35) */)
             {
                 double cost = DeepPushCost(stake, floor, refills: 3);
                 _output.WriteLine(
@@ -305,7 +305,9 @@ namespace FolkIdle.Server.Tests
             }
 
             Assert.InRange(DeepPushCost(stake, 12, 3) / MeasuredPeakIncomePerHour, 0.5, 4.0);
-            Assert.InRange(DeepPushCost(stake, 20, 3) / MeasuredPeakIncomePerHour, 8.0, 24.0);
+            // Modul: floor 20 was 8-24 h at x1.35; the owner lowered the curve to
+            // x1.25 on 2026-10-30 because depth paid back nothing, so it is ~6 h now.
+            Assert.InRange(DeepPushCost(stake, 20, 3) / MeasuredPeakIncomePerHour, 4.0, 24.0);
 
             // A small holder pays the region floor, and floor 12 is out of reach without income.
             long small = DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), 1_000_000);
