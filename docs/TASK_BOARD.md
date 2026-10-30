@@ -72,7 +72,7 @@ says otherwise.
 |---|---|---|---|
 | 1 | 128. CI runs the client unit tests | 4.1 | S |
 | 2 | Board tidy (this rewrite) | 4.2 | S, done |
-| 3 | 120. `exercise` flakes | 2.1 | M |
+| 3 | 120. `exercise` flakes | 2.1 | M, done |
 | 4 | 129. Flaky server tests | 2.2 | S-M |
 | 5 | 37, 111, 130, 131. Measurement batch | 3.1-3.4 | S each |
 | 6 | 132. Phase 4 - Hearth | 7 | L-XL |
@@ -239,44 +239,6 @@ was not caused by the design waves (47 on that branch). Decide per finding
 whether it is real (pinned by scrolling and looking, as `client_web`'s
 rules say) or the checker's own, fix the real ones, and make the check a
 ratchet so the count cannot grow unnoticed.
-
-### 120. `exercise.mjs` flakes - BUG, high priority (issue #204, roadmap 2.1)
-
-**Partly done in #209** (2026-10-29): `exercise` re-seeds the fixture at start
-and the seed stamps it as just logged out, the wear-a-drop step falls back to
-region 1 after 20 s, two checks poll instead of sleeping, and
-`EXERCISE_ONLY=<sections>` exists. **Still open** (roadmap 2.1, steps 1 and
-3-5): measure 5 runs; the Delve step compares against its own debit, not the
-wallet; the wearable drop comes from a dev grant, not RNG; the "told what to
-do next" step restores what it spends.
-
-**Current state.** On 2026-10-29, four runs against working builds failed three
-different single steps, none caused by the change under test:
-
-| Step | Cause |
-|---|---|
-| "the gold actually left" (Delve) | The fixture had been away about a day. Its offline `CombatAway` payout (707,733 gold, read from `gold_income_daily`) landed mid-step. |
-| "a mature account is told what to do next" | Spent fixture state. It passes after `--seed-dev`. |
-| "a drop can be worn from the loot list" | A fixed 90 s wait on drop RNG. The fixture's slot-1 character is Human, so the race changes did not cause it. |
-
-**Expected result.** A green run means the game works and a red run means it
-does not. Nobody reruns to find out which.
-
-**Depends on.** Nothing. Do it before CI (#201) is trusted as the gate, or CI
-only produces false alarms faster.
-
-**Acceptance.**
-- `exercise` seeds the fixture itself at start (`--seed-dev` is idempotent),
-  and the seed stamps the fixture's last-seen time to now, so no offline
-  payout can land mid-run.
-- The wearable-drop step uses a drop the fixture is granted, or polls against
-  a time budget instead of one fixed wait.
-- **5 consecutive full runs green** on an unchanged build, recorded with their
-  counts.
-- Optional, but it is the speed win: `EXERCISE_ONLY=<sections>`.
-
-**Tests.** The five recorded runs; and each step, re-run after the fixture is
-deliberately left spent, still passes.
 
 ### 46 follow-up. Confirm the compression ratio live
 
