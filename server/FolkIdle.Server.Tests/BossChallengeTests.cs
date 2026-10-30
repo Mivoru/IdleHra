@@ -56,10 +56,10 @@ namespace FolkIdle.Server.Tests
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
 
             // Fed, too old and slow: nothing. (Region 3: cap 45, limit 120 s.)
-            Assert.Empty(await BossChallengeEngine.JudgeKillAsync(db, playerId, 3, 90, true, 2000, DateTime.UtcNow));
+            Assert.Empty(await BossChallengeEngine.JudgeKillAsync(db, playerId, 3, 90, true, 3000, DateTime.UtcNow));
 
             // Starved and young, still slow: two chests, Epic for region 3.
-            var first = await BossChallengeEngine.JudgeKillAsync(db, playerId, 3, 40, false, 2000, DateTime.UtcNow);
+            var first = await BossChallengeEngine.JudgeKillAsync(db, playerId, 3, 40, false, 3000, DateTime.UtcNow);
             Assert.Equal(new[] { BossChallenge.Starved, BossChallenge.Young }, first.Select(g => g.Challenge));
             Assert.All(first, g => Assert.Equal(CosmeticRegistry.Epic, g.ChestRarity));
 
