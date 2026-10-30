@@ -204,7 +204,9 @@
   .chest {
     position: relative;
     z-index: 1;
-    width: 78%;
+    /* 68%: the OPEN still is taller by its lid, and at 78% the lid ran off
+       the top of a square stage (seen on the loot shelf, 2026-10-30). */
+    width: 68%;
     margin-bottom: 8%;
     transform-origin: 50% 90%;
   }
