@@ -230,6 +230,11 @@ as a box.
 | `fx_dungeon_gate.mp4` | A tall arch-shaped opening of cold blue-white light that grows from a thin vertical line in the centre to a full glowing doorway, with faint mist curling at its edges, then holds steady. Pure black background, nothing else in the frame, light only, completely static camera, no stone, no objects, no text. Duration about 3 seconds. |
 | `fx_boss_aura.mp4` | A slow pulsing aura of dark red and violet light rising from the bottom edge of the frame like heat haze, with a few sparks drifting upward, looping smoothly. Pure black background, nothing else in the frame, light only, completely static camera, no figure, no objects, no text. Duration about 4 seconds, the end matching the start. |
 
+| `fx_vault_dust.mp4` (optional) | Slow drifting dust motes glowing softly in a single shaft of pale warm light falling from the top centre, gentle and calm, looping smoothly. Pure black background, nothing else in the frame, light only, completely static camera, no objects, no text. Duration about 6 seconds, the end matching the start. |
+
+The first three are made and live (`client_web/public/fx`). The fourth would
+loop over the vault background while a chest opens.
+
 **If a try fails:** a grey or blue-tinted background, a camera push-in, or a
 visible object (a chest, a door frame) means the clip is not usable; ask again
 with "the background must stay perfectly black for the whole clip" added.
