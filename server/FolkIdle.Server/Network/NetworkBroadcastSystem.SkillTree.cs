@@ -27,6 +27,13 @@ namespace FolkIdle.Server.Network
     // a second damage model, so it asks: the gates through
     // WarTreeRegistry.PlanReason/BlockedReason, the stats through
     // CharacterStatSheet on a copy of the live payload.
+    //
+    // Modul: TWO HALVES ON THE SAME ROUTES (Hearth step 4.4, 2026-10-30). The
+    // definition takes ?half=hearth, the preview, commit and respec take
+    // "Half": "hearth" in the body; without it every answer is the War half's,
+    // so a bundle that has not reloaded sees what it always saw. Both halves
+    // share one rank array (ids 20-54 War, 56-87 Hearth), so a draft carries
+    // both and each half ignores the other's slots.
     public partial class NetworkBroadcastSystem
     {
         /// <summary>Routes /api/v1/skilltree*; true when it answered.</summary>
@@ -35,12 +42,61 @@ namespace FolkIdle.Server.Network
             if (!requestPath.StartsWith("/api/v1/skilltree", StringComparison.Ordinal)) return false;
             string method = context.Request.HttpMethod;
 
-            if (requestPath == "/api/v1/skilltree" && method == "GET") { await HandleSkillTreeDefinition(context); return true; }
+            if (requestPath == "/api/v1/skilltree" && method == "GET") { await HandleSkillTreeDefinition(context, IsHearthQuery(context)); return true; }
             if (requestPath == "/api/v1/skilltree/state" && method == "GET") { await HandleSkillTreeState(context); return true; }
             if (requestPath == "/api/v1/skilltree/preview" && method == "POST") { await HandleSkillTreePreview(context); return true; }
             if (requestPath == "/api/v1/skilltree/commit" && method == "POST") { await HandleSkillTreeCommit(context); return true; }
             if (requestPath == "/api/v1/skilltree/respec" && method == "POST") { await HandleSkillTreeRespec(context); return true; }
             return false;
+        }
+
+        private static bool IsHearthQuery(HttpListenerContext context)
+            => string.Equals(context.Request.QueryString["half"], "hearth", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>The Hearth half's shape and text, in the War half's layout.</summary>
+        internal static object DescribeHearthTree()
+        {
+            var nodes = HearthTreeRegistry.All().Select(n =>
+            {
+                int gate = HearthTreeRegistry.RowGates[n.Row];
+                string blurb = gate > 0
+                    ? $"Opens once {HearthTreeRegistry.ColumnNames[n.Column]} holds {gate} craft points."
+                    : "Open from the start.";
+                if (n.Fork >= 0) blurb += $" A fork with {HearthTreeRegistry.Get(n.Fork)!.Name}: take one, and the other closes until a respec.";
+                return new
+                {
+                    n.Id,
+                    n.Name,
+                    n.Icon,
+                    Blurb = blurb,
+                    n.Kind,
+                    n.Column,
+                    BridgeColumn = -1,
+                    n.Row,
+                    n.Lane,
+                    n.MaxLevel,
+                    n.Fork,
+                    ColumnPointsGate = gate,
+                    Costs = Enumerable.Repeat(n.CostPerRank, n.MaxLevel).ToArray(),
+                    Effects = Enumerable.Range(1, n.MaxLevel).Select(l => HearthTreeRegistry.EffectAt(n.Id, l)).ToArray(),
+                    Pending = HearthTreeRegistry.IsPending(n.Id),
+                };
+            }).ToArray();
+
+            var columns = Enumerable.Range(0, HearthTreeRegistry.ColumnCount)
+                .Select(id => new { Id = id, Name = HearthTreeRegistry.ColumnNames[id], Icon = HearthTreeRegistry.ColumnIcons[id] })
+                .ToArray();
+
+            return new
+            {
+                Half = "hearth",
+                Columns = columns,
+                Nodes = nodes,
+                Slots = WarTreeRegistry.Slots,
+                RowGates = HearthTreeRegistry.RowGates,
+                BridgeGate = 0,
+                HearthPoints.MasteryLevelsPerPoint,
+            };
         }
 
         /// <summary>The tree's shape and text. Public: it is the same for everyone.</summary>
@@ -90,9 +146,9 @@ namespace FolkIdle.Server.Network
             };
         }
 
-        private static async Task HandleSkillTreeDefinition(HttpListenerContext context)
+        private static async Task HandleSkillTreeDefinition(HttpListenerContext context, bool hearth)
         {
-            try { await WriteJsonAsync(context, DescribeSkillTree()); }
+            try { await WriteJsonAsync(context, hearth ? DescribeHearthTree() : DescribeSkillTree()); }
             catch (Exception ex)
             {
                 Console.WriteLine($"Skill tree definition error: {ex}");
@@ -123,6 +179,7 @@ namespace FolkIdle.Server.Network
                     .Select(c => c.Quantity)
                     .FirstOrDefaultAsync();
                 int spent = WarTreeRegistry.PointsSpent(ranks);
+                int hearthSpent = HearthTreeRegistry.PointsSpent(ranks);
 
                 await WriteJsonAsync(context, new
                 {
@@ -133,6 +190,10 @@ namespace FolkIdle.Server.Network
                     PointsSpent = spent,
                     RespecGoldPrice = WarTreeRegistry.RespecGoldPrice(spent, player.CurrentLevel),
                     Gold = gold,
+                    // The Hearth half: craft points are derived, never stored.
+                    CraftPointsAvailable = SkillTreeEngine.HearthPointsAvailable(player, ranks),
+                    CraftPointsSpent = hearthSpent,
+                    HearthRespecGoldPrice = WarTreeRegistry.RespecGoldPrice(hearthSpent, player.CurrentLevel),
                 });
             }
             catch (Exception ex)
@@ -143,8 +204,8 @@ namespace FolkIdle.Server.Network
             finally { context.Response.Close(); }
         }
 
-        /// <summary>Reads { "Levels": [Slots ints], "Slot": n }; null when the body is not that.</summary>
-        private static async Task<(byte[]? Levels, int Slot)> ReadSkillTreeDraftAsync(HttpListenerContext context)
+        /// <summary>Reads { "Levels": [Slots ints], "Slot": n, "Half": "hearth"? }; Levels is null when the body is not that.</summary>
+        private static async Task<(byte[]? Levels, int Slot, bool Hearth)> ReadSkillTreeDraftAsync(HttpListenerContext context)
         {
             try
             {
@@ -152,20 +213,26 @@ namespace FolkIdle.Server.Network
                 using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
                 int slot = 0;
                 if (parsed.RootElement.TryGetProperty("Slot", out var s) && s.TryGetInt32(out int sv)) slot = Math.Clamp(sv, 0, 2);
-                if (!parsed.RootElement.TryGetProperty("Levels", out var arr) || arr.ValueKind != JsonValueKind.Array) return (null, slot);
-                if (arr.GetArrayLength() != WarTreeRegistry.Slots) return (null, slot);
+                bool hearth = parsed.RootElement.TryGetProperty("Half", out var h) && h.ValueKind == JsonValueKind.String
+                    && string.Equals(h.GetString(), "hearth", StringComparison.OrdinalIgnoreCase);
+                if (!parsed.RootElement.TryGetProperty("Levels", out var arr) || arr.ValueKind != JsonValueKind.Array) return (null, slot, hearth);
+                if (arr.GetArrayLength() != WarTreeRegistry.Slots) return (null, slot, hearth);
 
                 var levels = new byte[WarTreeRegistry.Slots];
                 int i = 0;
                 foreach (var el in arr.EnumerateArray())
                 {
-                    int max = WarTreeRegistry.Get(i)?.MaxLevel ?? 0;
-                    if (!el.TryGetInt32(out int v) || v < 0 || v > max) return (null, slot);
+                    // Modul: EITHER HALF'S CAP. The state answer carries both
+                    // halves' ranks, so a War draft built from it holds Hearth
+                    // ranks too; capping every non-War slot at 0 answered 400 to
+                    // the first player who owned a Hearth node.
+                    int max = WarTreeRegistry.Get(i)?.MaxLevel ?? HearthTreeRegistry.Get(i)?.MaxLevel ?? 0;
+                    if (!el.TryGetInt32(out int v) || v < 0 || v > max) return (null, slot, hearth);
                     levels[i++] = (byte)v;
                 }
-                return (levels, slot);
+                return (levels, slot, hearth);
             }
-            catch (JsonException) { return (null, 0); }
+            catch (JsonException) { return (null, 0, false); }
         }
 
         /// <summary>
@@ -180,7 +247,7 @@ namespace FolkIdle.Server.Network
                 long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (playerId <= 0) { context.Response.StatusCode = 401; return; }
 
-                var (draft, slot) = await ReadSkillTreeDraftAsync(context);
+                var (draft, slot, hearth) = await ReadSkillTreeDraftAsync(context);
                 if (draft == null) { context.Response.StatusCode = 400; return; }
 
                 byte[] current;
@@ -190,21 +257,39 @@ namespace FolkIdle.Server.Network
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                     current = await SkillTreeEngine.LoadRanksAsync(db, playerId);
                     var player = await db.PlayerRecords.FindAsync(playerId);
-                    points = player?.AvailableSkillPoints ?? 0;
+                    points = player == null ? 0
+                        : hearth ? SkillTreeEngine.HearthPointsAvailable(player, current)
+                        : player.AvailableSkillPoints;
                 }
 
-                string? reason = WarTreeRegistry.PlanReason(current, draft, points, out int cost);
+                // The other half's slots stay as they are: a draft of one half
+                // never moves the other.
+                draft = (byte[])draft.Clone();
+                if (hearth) foreach (var w in WarTreeRegistry.All()) draft[w.Id] = current[w.Id];
+                else foreach (var h in HearthTreeRegistry.All()) draft[h.Id] = current[h.Id];
+
+                int cost;
+                string? reason = hearth
+                    ? HearthTreeRegistry.PlanReason(current, draft, points, out cost)
+                    : WarTreeRegistry.PlanReason(current, draft, points, out cost);
                 int left = points - (reason == null ? cost : 0);
                 var basis = reason == null ? draft : current;
 
-                var nodes = WarTreeRegistry.All().Select(n => new
-                {
-                    n.Id,
-                    Blocked = WarTreeRegistry.BlockedReason(n.Id, basis, left),
-                    NextCost = WarTreeRegistry.CostOf(n.Id, basis[n.Id]),
-                }).ToArray();
-                var columnPoints = Enumerable.Range(0, WarTreeRegistry.ColumnCount)
-                    .Select(c => WarTreeRegistry.PointsInColumn(basis, c))
+                var nodes = hearth
+                    ? HearthTreeRegistry.All().Select(n => new
+                    {
+                        n.Id,
+                        Blocked = HearthTreeRegistry.BlockedReason(n.Id, basis, left),
+                        NextCost = HearthTreeRegistry.CostOf(n.Id, basis[n.Id]),
+                    }).ToArray()
+                    : WarTreeRegistry.All().Select(n => new
+                    {
+                        n.Id,
+                        Blocked = WarTreeRegistry.BlockedReason(n.Id, basis, left),
+                        NextCost = WarTreeRegistry.CostOf(n.Id, basis[n.Id]),
+                    }).ToArray();
+                var columnPoints = Enumerable.Range(0, hearth ? HearthTreeRegistry.ColumnCount : WarTreeRegistry.ColumnCount)
+                    .Select(c => hearth ? HearthTreeRegistry.PointsInColumn(basis, c) : WarTreeRegistry.PointsInColumn(basis, c))
                     .ToArray();
 
                 StatSheetResponse? before = null, after = null;
@@ -220,10 +305,12 @@ namespace FolkIdle.Server.Network
                         SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slot);
                         payload.SkillTreeVersion = WarTreeRegistry.CurrentVersion;
                         foreach (var n in WarTreeRegistry.All()) payload.SkillRanks[n.Id] = current[n.Id];
+                        foreach (var n in HearthTreeRegistry.All()) payload.SkillRanks[n.Id] = current[n.Id];
                         before = CharacterStatSheet.Build(payload, slot);
                         if (reason == null)
                         {
                             foreach (var n in WarTreeRegistry.All()) payload.SkillRanks[n.Id] = draft[n.Id];
+                            foreach (var n in HearthTreeRegistry.All()) payload.SkillRanks[n.Id] = draft[n.Id];
                             after = CharacterStatSheet.Build(payload, slot);
                         }
                     }
@@ -256,11 +343,11 @@ namespace FolkIdle.Server.Network
                 long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (playerId <= 0) { context.Response.StatusCode = 401; return; }
 
-                var (draft, _) = await ReadSkillTreeDraftAsync(context);
+                var (draft, _, hearth) = await ReadSkillTreeDraftAsync(context);
                 if (draft == null) { context.Response.StatusCode = 400; return; }
 
                 var engine = new SkillTreeEngine(_serviceProvider, _playerSessionRegistry);
-                var result = await engine.CommitAsync(playerId, draft);
+                var result = hearth ? await engine.CommitHearthAsync(playerId, draft) : await engine.CommitAsync(playerId, draft);
                 await WriteJsonAsync(context, result);
             }
             catch (Exception ex)
@@ -283,17 +370,19 @@ namespace FolkIdle.Server.Network
                 long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (playerId <= 0) { context.Response.StatusCode = 401; return; }
 
-                bool payWithGold = false;
+                bool payWithGold = false, hearth = false;
                 try
                 {
                     string body = await ReadBodyAsync(context);
                     using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
                     if (parsed.RootElement.TryGetProperty("Gold", out var g) && g.ValueKind == JsonValueKind.True) payWithGold = true;
+                    hearth = parsed.RootElement.TryGetProperty("Half", out var h) && h.ValueKind == JsonValueKind.String
+                        && string.Equals(h.GetString(), "hearth", StringComparison.OrdinalIgnoreCase);
                 }
                 catch (JsonException) { context.Response.StatusCode = 400; return; }
 
                 var engine = new SkillTreeEngine(_serviceProvider, _playerSessionRegistry);
-                var result = await engine.RespecAsync(playerId, payWithGold);
+                var result = hearth ? await engine.RespecHearthAsync(playerId) : await engine.RespecAsync(playerId, payWithGold);
                 await WriteJsonAsync(context, result);
             }
             catch (Exception ex)

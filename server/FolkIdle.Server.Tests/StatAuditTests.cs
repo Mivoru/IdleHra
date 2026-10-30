@@ -149,6 +149,12 @@ namespace FolkIdle.Server.Tests
             ["pet:WorldBossDamage"] = "world boss strike, ServerStrikeDamage",
             ["pet:DropChance"] = "drop chance, CombatLootEngine",
             ["race:5:mastery"] = "Vodyanoy mastery - offline cap, OfflineSimulationEngine.EffectiveOfflineCapSeconds",
+            // The Hearth half's wired nodes the probe cannot see (it reads
+            // professions 0-2 and no crafting or reward-rate stream).
+            ["hearth:green_thumb"] = "herbalism speed, GatherSpeedTermsFor profession 3 (HearthTreeRegistryTests)",
+            ["hearth:thrifty"] = "the keep-materials chance, CraftingEngine.CraftIsFree",
+            ["hearth:homebody"] = "the reward rate, ScholarRate (OfflineLootParityTests)",
+            ["hearth:long_absence"] = "the reward rate, ScholarRate (OfflineLootParityTests)",
         };
 
         // KNOWN DEFECTS: entries that SHOULD move the probe and do not, each
@@ -211,6 +217,23 @@ namespace FolkIdle.Server.Tests
             {
                 var p = TestTree.With(Baseline(), (node.Id, (byte)node.MaxLevel));
                 AssertMovesOrIsListed($"war:{node.Icon}", before, Probe(p), failures);
+            }
+            Assert.True(failures.Count == 0, string.Join("\n", failures));
+        }
+
+        [Fact]
+        public void Every_buyable_hearth_node_moves_the_probe()
+        {
+            // The Hearth half (step 4.3). Pending nodes cannot be bought, so
+            // they are skipped here and refused by IsPending.
+            var failures = new List<string>();
+            var before = Probe(Baseline());
+            foreach (var node in HearthTreeRegistry.All())
+            {
+                if (HearthTreeRegistry.IsPending(node.Id)) continue;
+                var p = Baseline();
+                p.SkillRanks[node.Id] = (byte)node.MaxLevel;
+                AssertMovesOrIsListed($"hearth:{node.Icon}", before, Probe(p), failures);
             }
             Assert.True(failures.Count == 0, string.Join("\n", failures));
         }

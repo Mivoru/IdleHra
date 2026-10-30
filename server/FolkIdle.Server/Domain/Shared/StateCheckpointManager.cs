@@ -1563,6 +1563,8 @@ namespace FolkIdle.Server.Domain.Shared
             // and its ranks sit at their own ids beside today's (now empty) ones.
             payload.SkillTreeVersion = WarTreeRegistry.CurrentVersion;
             foreach (var warNode in WarTreeRegistry.All()) payload.SkillRanks[warNode.Id] = warRanks[warNode.Id];
+            // The Hearth half rides the same load (LoadRanksAsync reads both).
+            foreach (var hearthNode in HearthTreeRegistry.All()) payload.SkillRanks[hearthNode.Id] = warRanks[hearthNode.Id];
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));
 

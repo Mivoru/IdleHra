@@ -391,15 +391,19 @@ namespace FolkIdle.Server.Domain.Economy
             => recipe.ProfessionType == 2 && race == RaceIds.Kobold
                && rng.Next(100) < KoboldSmeltingDuplicationPct ? 1 : 0;
 
-        /// <summary>Craft, the Insight bough: whether this craft costs nothing.</summary>
-        internal static bool CraftIsFree(Random rng, int craftBoughLevel)
-            => craftBoughLevel > 0
-               && rng.NextDouble() * 100.0 < Engine.SkillTreeRegistry.GetBonusPercent(
-                   Engine.SkillTreeRegistry.BoughCraft, craftBoughLevel);
+        /// <summary>Thrifty, the Hearth node (once the Insight bough Craft): whether this craft costs nothing.</summary>
+        /// <remarks>
+        /// Modul: THE CRAFT BOUGH'S ROW WAS GONE (2026-10-30). The War switch
+        /// deleted every old row, so this read level 0 for everyone. It reads the
+        /// Hearth half's Thrifty row now: 2% a rank, 10% at its five ranks.
+        /// </remarks>
+        internal static bool CraftIsFree(Random rng, int thriftyLevel)
+            => thriftyLevel > 0
+               && rng.NextDouble() * 1000.0 < Engine.HearthTreeRegistry.KeepMaterialsTenthsPct(thriftyLevel);
 
         private static Task<int> ReadCraftBoughLevelAsync(FolkIdleDbContext context, long playerId)
             => context.PlayerSkillTreeNodes
-                .Where(n => n.PlayerId == playerId && n.BranchId == Engine.SkillTreeRegistry.BoughCraft)
+                .Where(n => n.PlayerId == playerId && n.BranchId == Engine.HearthTreeRegistry.Thrifty)
                 .Select(n => n.Level)
                 .FirstOrDefaultAsync();
 

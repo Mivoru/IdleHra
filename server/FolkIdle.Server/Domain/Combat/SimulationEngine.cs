@@ -3396,7 +3396,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Scholar is a rate here too (ScholarRate): every stream below
             // accrues at 1000 + its permille of the hourly rate.
             long ticks = (long)Math.Round(deltaTimeSeconds * 10.0);
-            int ratePermille = 1000 + ScholarRate.BonusPermille(payload.Skill_Scholar);
+            int ratePermille = 1000 + ScholarRate.BonusPermille(in payload);
 
             long logs = VillageManagementEngine.AccrueProduction(ref payload.LumberjackProductionAccumulator,
                 VillageManagementEngine.ProductionRatePerHour(payload.LumberjackLevel), ticks, ratePermille);
@@ -4145,6 +4145,7 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             // The War half's Quick Study, in the same additive layer.
             finalXpMultiplier += WarTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
+            finalXpMultiplier += HearthTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
             // The character's pet (PetRegistry), on the active slot's totals.
             finalXpMultiplier += payload.CachedAffixTotals.XpTenthsPct / 10;
@@ -5570,7 +5571,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // XP, gold, loot, codex, diamonds and the Golden Fleece count -
                 // which is what the offline projection draws for its window's
                 // kills. The fight itself is untouched.
-                int paidKills = (int)ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                int paidKills = (int)ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
 
 
                 // Modul: and the same removal on the live-kill path. Two copies
@@ -5962,7 +5963,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // chance - mastery XP and loot rolls both - which is what the
                 // offline projection draws for a whole window. A rate on the
                 // reward, not a faster tick.
-                int paidHarvests = (int)ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                int paidHarvests = (int)ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
 
                 int masteryXpGain = gatheringNode.BaseMasteryXpReward;
                 ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, (long)masteryXpGain * paidHarvests);
@@ -6089,9 +6090,11 @@ namespace FolkIdle.Server.Domain.Combat
                 1 => payload.PickaxeToolTier,
                 _ => payload.RodToolTier
             };
+            // Modul: THE HEARTH HALF, NOT THE HARVEST BOUGH (2026-10-30). The War
+            // switch emptied slot 14, so this term read 0 for everyone; the
+            // Hearth speed nodes replace it, capped at the old Harvest's +16%.
             int extraPct = ToolSpeedPctFor(in payload, professionType)
-                + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                + HearthTreeRegistry.Resolve(in payload).SpeedTenthsPctFor(professionType) / 10
                 + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask))
                 // The character's pet (PetRegistry).
                 + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10;
@@ -6219,6 +6222,13 @@ namespace FolkIdle.Server.Domain.Combat
             // player was shown.
             additionalYieldBonus += ToolYieldPctFor(in payload, gatheringNode.ProfessionType) / 10;
 
+            // Modul: the Hearth half's yield and "pays twice" nodes (2026-10-30),
+            // extra harvest rolls in the same whole points as everything above,
+            // added here so the live harvest and the offline projection both pay
+            // them. Tenths, so /10 like the tool affix.
+            var hearth = HearthTreeRegistry.Resolve(in payload);
+            additionalYieldBonus += hearth.YieldTenthsFor(gatheringNode.ProfessionType) / 10;
+
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every
             // table entry, common trash and rare drops alike, in
@@ -6237,7 +6247,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // which lifts low-weight (rare) entries far more than common
                 // ones - in the same tenths-of-a-percent units. Before
                 // 2026-10-29 the affix was summed, stored and read by nothing.
-                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f),
+                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct
+                    + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f
+                    + hearth.RareFindTenthsPctFor(gatheringNode.ProfessionType) / 10f),
             };
         }
 
@@ -6309,7 +6321,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: Scholar pays per completion (ScholarRate): this one
                 // is worth one more craft with the crown's chance - materials
                 // spent and all, as the offline window's extra attempts are.
-                long paidCrafts = ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                long paidCrafts = ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
                 for (long craft = 0; craft < paidCrafts; craft++)
                 {
                     CraftingTickQueue.Enqueue(new CraftTickCompletion
