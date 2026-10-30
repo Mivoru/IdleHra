@@ -19,6 +19,15 @@ do next.
 
 ---
 
+# 2026-10-30 (plans) - What comes next
+
+**`docs/design/ROADMAP_2026_10_30.md` holds the plan for everything open.**
+It covers the order, the bugs, balance and measurement, tooling, UI and
+cleanup, and detailed plans for phases 2b, 3, 4 and 5, with the owner
+decisions collected at the end. Start there.
+
+---
+
 # 2026-10-30 (later) - The War skill tree is live for everyone
 
 **Read `docs/design/SKILL_TREE_HANDOFF.md` sections 4-7 first.** The owner
