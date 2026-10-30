@@ -1535,6 +1535,55 @@ await go('Gathering');
     !/Backpack full|EVERYTHING IS STOPPED/i.test(text),
     'storage is the unlimited village chest',
   );
+
+  // Modul: HERBALISM CAME BACK (2026-10-30). It was retired once with its
+  // mastery track left on the wire, so a card could render, a button could
+  // send, and nothing would grow. This asserts the same three things the
+  // fishing check does - its own track moves, fishing's does not, and a herb
+  // lands in the haul - then puts the character back on the fishing node so
+  // the steps after this one find what they always found.
+  const herbSection = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Herbalism', exact: true }) })
+    .last();
+  const herbBtn = herbSection.getByRole('button', { name: 'Gather' }).first();
+  const herbDeployed = (await herbBtn.count()) > 0;
+  record('herbalism has a card with a node to work', herbDeployed, herbDeployed ? 'Gather offered' : 'no Herbalism Gather button');
+  if (herbDeployed) {
+    const herbBefore = await readMastery('Herbalism');
+    await herbBtn.click();
+    // Fishing's baseline is read AFTER the switch has landed: the character
+    // was on the fishing node until the click, and a catch that finished in
+    // that gap moved fishing XP on the first run of this check.
+    await page.waitForFunction(
+      () => /^Picking /.test(document.querySelector('[data-testid="gathering-status"]')?.textContent?.trim() ?? ''),
+      null,
+      { timeout: 10000 },
+    ).catch(() => {});
+    await page.waitForTimeout(1500);
+    const fishBeforeHerbs = await readMastery('Fishing');
+    await page.waitForTimeout(9000);
+    const herbAfter = await readMastery('Herbalism');
+    const fishAfterHerbs = await readMastery('Fishing');
+    record(
+      'picking herbs raises herbalism mastery',
+      herbAfter !== null && herbBefore !== null && (herbAfter.xp > herbBefore.xp || herbAfter.level > herbBefore.level),
+      `herbalism xp ${herbBefore?.xp} -> ${herbAfter?.xp}`,
+    );
+    record(
+      'picking herbs does not raise fishing mastery',
+      fishAfterHerbs !== null && fishBeforeHerbs !== null && fishAfterHerbs.xp === fishBeforeHerbs.xp && fishAfterHerbs.level === fishBeforeHerbs.level,
+      `fishing xp ${fishBeforeHerbs?.xp} -> ${fishAfterHerbs?.xp}`,
+    );
+    const herbStatus = await page.getByTestId('gathering-status').innerText().catch(() => '');
+    record('the status names the herb being picked', /^Picking \S.* - \S/.test(herbStatus.trim()), herbStatus.trim() || 'no status');
+    const herbHaul = await page.evaluate(() => {
+      const heading = [...document.querySelectorAll('h2')].find((h) => /Hauled this session/i.test(h.textContent ?? ''));
+      return heading?.closest('section')?.innerText ?? '';
+    });
+    record('picking herbs yields a herb', /Yarrow|Golden Chamomile/.test(herbHaul), herbHaul.split(String.fromCharCode(10)).filter(Boolean).slice(-2).join(' | ') || 'empty');
+    if (deployed) await fishingSection.getByRole('button', { name: 'Gather' }).first().click().catch(() => {});
+  }
 }
 
 // --- auto-eat accepts what you caught ----------------------------------------

@@ -36,6 +36,8 @@ namespace FolkIdle.Server.Tests
             Assert.True(VillageManagementEngine.IsRareMaterial("golden_birch_log"));
             Assert.True(VillageManagementEngine.IsRareMaterial("malachite_ore"));
             Assert.True(VillageManagementEngine.IsRareMaterial("shimmering_trout"));
+            Assert.True(VillageManagementEngine.IsRareMaterial("fern_flower"));
+            Assert.False(VillageManagementEngine.IsRareMaterial("yarrow"));
             Assert.False(VillageManagementEngine.IsRareMaterial("birch_log"));
             Assert.False(VillageManagementEngine.IsRareMaterial("copper_ore"));
             Assert.False(VillageManagementEngine.IsRareMaterial(""));

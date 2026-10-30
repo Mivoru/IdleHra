@@ -1438,5 +1438,85 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "silver_ore"
+  },
+  {
+    "Id": 442,
+    "RegionTier": 1,
+    "BaseValueGold": 5,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "yarrow"
+  },
+  {
+    "Id": 443,
+    "RegionTier": 1,
+    "BaseValueGold": 5,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_chamomile"
+  },
+  {
+    "Id": 444,
+    "RegionTier": 2,
+    "BaseValueGold": 20,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "marsh_mallow"
+  },
+  {
+    "Id": 445,
+    "RegionTier": 2,
+    "BaseValueGold": 20,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "wisp_moss"
+  },
+  {
+    "Id": 446,
+    "RegionTier": 3,
+    "BaseValueGold": 80,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "thyme"
+  },
+  {
+    "Id": 447,
+    "RegionTier": 3,
+    "BaseValueGold": 80,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "dragons_blood_sage"
+  },
+  {
+    "Id": 448,
+    "RegionTier": 4,
+    "BaseValueGold": 320,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "sea_kale"
+  },
+  {
+    "Id": 449,
+    "RegionTier": 4,
+    "BaseValueGold": 320,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frost_lichen"
+  },
+  {
+    "Id": 450,
+    "RegionTier": 5,
+    "BaseValueGold": 1280,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mugwort"
+  },
+  {
+    "Id": 451,
+    "RegionTier": 5,
+    "BaseValueGold": 1280,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "fern_flower"
   }
 ]

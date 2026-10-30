@@ -30,6 +30,7 @@ describe('kind of work', () => {
     expect(kindOfWork(1001)).toBe(category('Woodcutting'));
     expect(kindOfWork(2003)).toBe(category('Mining'));
     expect(kindOfWork(3002)).toBe(category('Fishing'));
+    expect(kindOfWork(4005)).toBe(category('Herbalism'));
     expect(kindOfWork(5007)).toBe(category('Crafting'));
     expect(kindOfWork(9999)).toBe(category('WorldBoss'));
   });

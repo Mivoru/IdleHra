@@ -92,7 +92,7 @@
     { id: 0, name: 'Woodcutting' },
     { id: 1, name: 'Mining' },
     { id: 2, name: 'Fishing' },
-    // Herbalism retired with the design list - see slots.ts.
+    { id: 3, name: 'Herbalism' },
   ];
 
   function masteryLevelOf(professionId: number): number {
@@ -100,6 +100,7 @@
     if (professionId === 0) return snap.WoodcuttingMasteryLevel;
     if (professionId === 1) return snap.MiningMasteryLevel;
     if (professionId === 2) return snap.FishingMasteryLevel;
+    if (professionId === 3) return snap.HerbalismMasteryLevel;
     return 0;
   }
 
@@ -108,15 +109,14 @@
     if (professionId === 0) return snap.WoodcuttingMasteryXp;
     if (professionId === 1) return snap.MiningMasteryXp;
     if (professionId === 2) return snap.FishingMasteryXp;
+    if (professionId === 3) return snap.HerbalismMasteryXp;
     return 0;
   }
 
-  // Modul: `?? MASTERY_TRACKS[3]` was a crash waiting for a content change.
-  // The array holds three entries since Herbalism retired, so index 3 is
-  // undefined and `track.name` on the next line throws a TypeError that takes
-  // the whole screen down. Nothing reaches it today - no authored node carries
-  // profession 3 - which is exactly why it would have survived until the day
-  // one did. Returns null instead, which every caller already handles.
+  // Modul: `?? MASTERY_TRACKS[3]` was a crash waiting for a content change,
+  // back when the array held three entries: `track.name` on an undefined
+  // track throws and takes the whole screen down. An unknown profession
+  // returns null instead, which every caller already handles.
   const masteryFor = $derived((professionId: number) => {
     if (!snap) return null;
     const track = MASTERY_TRACKS.find((t) => t.id === professionId);
@@ -215,7 +215,8 @@
     if (!snap) return 0;
     if (professionId === 0) return snap.AxeToolTier;
     if (professionId === 1) return snap.PickaxeToolTier;
-    return snap.RodToolTier;
+    if (professionId === 2) return snap.RodToolTier;
+    return 0; // herbs are picked by hand
   }
 
   // Modul: a node belongs to a PLACE, and you can only work places you have
@@ -234,8 +235,14 @@
   const woodMonolith = $derived(snap?.CachedWoodcuttingMonolithLevel ?? 0);
   const mineMonolith = $derived(snap?.CachedMiningMonolithLevel ?? 0);
 
+  // Modul: only wood and ore have a monolith (SimulationEngine.GatheringYieldFor
+  // reads none for 2 or 3). This used to answer the mining monolith for every
+  // profession that was not wood, so the fishing card advertised a yield
+  // bonus the server never paid.
   function monolithFor(professionId: number): number {
-    return professionId === 0 ? woodMonolith : mineMonolith;
+    if (professionId === 0) return woodMonolith;
+    if (professionId === 1) return mineMonolith;
+    return 0;
   }
 </script>
 
@@ -376,6 +383,7 @@
             <dt>Tools</dt>
             <dd class="bonus">
               axe {toolTierFor(0)} &middot; pickaxe {toolTierFor(1)} &middot; rod {toolTierFor(2)}
+              <span class="dim tiny">&middot; herbs by hand</span>
             </dd>
           </div>
           <div>
@@ -386,7 +394,7 @@
                    shown beside rates that already used the new one. The label
                    reads the same masterySpeedPct the rates do. -->
               +{masterySpeedPct(masteryLevelOf(0))}% wood, +{masterySpeedPct(masteryLevelOf(1))}% mining,
-              +{masterySpeedPct(masteryLevelOf(2))}% fish
+              +{masterySpeedPct(masteryLevelOf(2))}% fish, +{masterySpeedPct(masteryLevelOf(3))}% herbs
             </dd>
           </div>
           <div>

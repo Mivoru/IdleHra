@@ -442,3 +442,13 @@
 439	iron_ore
 440	obsidian_ore
 441	silver_ore
+442	yarrow
+443	golden_chamomile
+444	marsh_mallow
+445	wisp_moss
+446	thyme
+447	dragons_blood_sage
+448	sea_kale
+449	frost_lichen
+450	mugwort
+451	fern_flower

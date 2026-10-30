@@ -200,10 +200,10 @@ namespace FolkIdle.Server.Engine
         /// (2026-10-30). Herbalism speed is read by the gathering tick, but the
         /// game has no herbalism node at all (gathering_nodes.json: wood, mining
         /// and fishing only), so Green Thumb could be bought and pay nothing.
-        /// Pending until herbs are gathered; production had 0 buyers when this
-        /// landed. The fish-and-herb pairs keep paying through fishing.
+        /// Green Thumb sat here until the herbalism nodes came back (4001-4005,
+        /// same day); the set stays for the next node that outruns its activity.
         /// </summary>
-        private static readonly HashSet<int> PendingNodes = new() { GreenThumb };
+        private static readonly HashSet<int> PendingNodes = new();
 
         /// <summary>Craft points a set of ranks cost, Hearth nodes only.</summary>
         public static int PointsSpent(ReadOnlySpan<byte> ranks)

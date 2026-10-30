@@ -6157,11 +6157,16 @@ namespace FolkIdle.Server.Domain.Combat
                 1 => payload.MineLevel,
                 _ => 0
             };
+            // Modul: herbs are picked by hand (owner, 2026-10-30) - profession 3
+            // has no tool, so it reads 0 here. Before herbalism came back the
+            // fall-through handed it the ROD's tier, and a fisher's rod would
+            // have sped up a herbalist who never wore it.
             int toolTier = professionType switch
             {
                 0 => payload.AxeToolTier,
                 1 => payload.PickaxeToolTier,
-                _ => payload.RodToolTier
+                2 => payload.RodToolTier,
+                _ => 0
             };
             // Modul: THE HEARTH HALF, NOT THE HARVEST BOUGH (2026-10-30). The War
             // switch emptied slot 14, so this term read 0 for everyone; the

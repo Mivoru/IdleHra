@@ -511,6 +511,19 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 346, Weight = 10 },  // index 104: glacier_halibut - Frozen Peaks (Fishing, rare)
             new LootTableEntry { ItemId = 370, Weight = 90 },  // index 105: void_ray - Shadow Citadel (Fishing, common)
             new LootTableEntry { ItemId = 371, Weight = 10 },  // index 106: spectral_lanternfish - Shadow Citadel (Fishing, rare)
+            // --- Herbalism (2026-10-30, HERBS_POTIONS_ASCENSION.md 1.2) ---
+            // The same 90/10 pair as every other node. Herbs are not food:
+            // the larder's raw-fish set reads the FISHING band only.
+            new LootTableEntry { ItemId = 442, Weight = 90 },  // index 107: yarrow - Sunlit Plains (Herbalism, common)
+            new LootTableEntry { ItemId = 443, Weight = 10 },  // index 108: golden_chamomile - Sunlit Plains (Herbalism, rare)
+            new LootTableEntry { ItemId = 444, Weight = 90 },  // index 109: marsh_mallow - Whispering Woods (Herbalism, common)
+            new LootTableEntry { ItemId = 445, Weight = 10 },  // index 110: wisp_moss - Whispering Woods (Herbalism, rare)
+            new LootTableEntry { ItemId = 446, Weight = 90 },  // index 111: thyme - Scorched Wasteland (Herbalism, common)
+            new LootTableEntry { ItemId = 447, Weight = 10 },  // index 112: dragons_blood_sage - Scorched Wasteland (Herbalism, rare)
+            new LootTableEntry { ItemId = 448, Weight = 90 },  // index 113: sea_kale - Frozen Peaks (Herbalism, common)
+            new LootTableEntry { ItemId = 449, Weight = 10 },  // index 114: frost_lichen - Frozen Peaks (Herbalism, rare)
+            new LootTableEntry { ItemId = 450, Weight = 90 },  // index 115: mugwort - Shadow Citadel (Herbalism, common)
+            new LootTableEntry { ItemId = 451, Weight = 10 },  // index 116: fern_flower - Shadow Citadel (Herbalism, rare)
         };
 
         // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
@@ -565,6 +578,11 @@ namespace FolkIdle.Server.Engine
             { 3003, (101, 2) }, // Scorched Wasteland
             { 3004, (103, 2) }, // Frozen Peaks
             { 3005, (105, 2) }, // Shadow Citadel
+            { 4001, (107, 2) }, // Sunlit Plains
+            { 4002, (109, 2) }, // Whispering Woods
+            { 4003, (111, 2) }, // Scorched Wasteland
+            { 4004, (113, 2) }, // Frozen Peaks
+            { 4005, (115, 2) }, // Shadow Citadel
 
             // Modul: Full-Stack Expansion, Part 2 - monster loot tables
             // for the 25 new regional monsters (monster ids 91-115). The

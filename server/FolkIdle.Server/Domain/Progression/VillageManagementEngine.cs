@@ -137,13 +137,19 @@ namespace FolkIdle.Server.Domain.Progression
             if (string.IsNullOrEmpty(baseItemId)) return false;
             foreach (var t in TierMaterials)
                 if (t.RareLog == baseItemId || t.RareOre == baseItemId) return true;
-            return RareFish.Contains(baseItemId);
+            return RareFish.Contains(baseItemId) || RareHerbs.Contains(baseItemId);
         }
 
         /// <summary>The rare catch of each region (ContentRegistry's fishing tables, weight 10).</summary>
         public static readonly System.Collections.Generic.HashSet<string> RareFish = new(StringComparer.Ordinal)
         {
             "shimmering_trout", "ancient_eel", "hellfire_salmon", "glacier_halibut", "spectral_lanternfish",
+        };
+
+        /// <summary>The rare herb of each region (ContentRegistry's herbalism tables, weight 10) - R1's strong potions.</summary>
+        public static readonly System.Collections.Generic.HashSet<string> RareHerbs = new(StringComparer.Ordinal)
+        {
+            "golden_chamomile", "wisp_moss", "dragons_blood_sage", "frost_lichen", "fern_flower",
         };
 
         public static (string Log, string Ore, string RareLog, string RareOre) GetTierMaterials(int currentLevel)

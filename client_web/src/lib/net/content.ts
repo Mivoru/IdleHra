@@ -91,6 +91,24 @@ export const RAW_FISH_BASE_IDS: readonly string[] = [
   'spectral_lanternfish',
 ];
 
+/**
+ * The ten herbs, common then rare per region - ContentRegistry's herbalism
+ * rows 107-116, in the same order as RAW_FISH_BASE_IDS (gatheringAndCrafting
+ * .test.ts reads the server's rows). Herbs are NOT food: they brew potions.
+ */
+export const HERB_BASE_IDS: readonly string[] = [
+  'yarrow',
+  'golden_chamomile',
+  'marsh_mallow',
+  'wisp_moss',
+  'thyme',
+  'dragons_blood_sage',
+  'sea_kale',
+  'frost_lichen',
+  'mugwort',
+  'fern_flower',
+];
+
 export function isFood(baseItemId: string): boolean {
   return baseItemId.includes('_food') || RAW_FISH_BASE_IDS.includes(baseItemId);
 }

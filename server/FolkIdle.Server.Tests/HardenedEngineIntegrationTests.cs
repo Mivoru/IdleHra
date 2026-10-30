@@ -10384,9 +10384,10 @@ namespace FolkIdle.Server.Tests
             // fish or herb - so "tier" was an unrelated ladder of one-item
             // nodes and the professions did not line up with the world or with
             // each other.
-            // Three professions x five locations. Herbalism went with the
-            // design list, which has no herb in it.
-            Assert.Equal(15, checkedNodes);
+            // Four professions x five locations. Herbalism went with the
+            // design list once and came back on 2026-10-30 as one herb pair
+            // per region (HERBS_POTIONS_ASCENSION.md).
+            Assert.Equal(20, checkedNodes);
 
             // Every node drops exactly two materials: a common and a rare.
             foreach (var node in ContentRegistry.GatheringNodes.ToArray())
@@ -10398,7 +10399,7 @@ namespace FolkIdle.Server.Tests
             }
 
             // Four professions, five locations each, no gaps and no strays.
-            for (int profession = 0; profession < 3; profession++)
+            for (int profession = 0; profession < 4; profession++)
             {
                 for (int location = 1; location <= ContentRegistry.LocationCount; location++)
                 {

@@ -10,7 +10,7 @@
 // comments row by row so the two cannot drift.
 
 import { VILLAGE_TIER_MATERIALS } from './wikiData';
-import { RAW_FISH_BASE_IDS } from '../net/content';
+import { RAW_FISH_BASE_IDS, HERB_BASE_IDS } from '../net/content';
 import { nodeLocation } from './locations';
 
 /** The common material a node yields, or '' for an id that is not a node. */
@@ -22,6 +22,7 @@ export function nodeYieldBaseId(activityId: number): string {
   if (band === 1) return tier?.log ?? '';
   if (band === 2) return tier?.ore ?? '';
   if (band === 3) return RAW_FISH_BASE_IDS[(location - 1) * 2] ?? '';
+  if (band === 4) return HERB_BASE_IDS[(location - 1) * 2] ?? '';
   return '';
 }
 
@@ -34,6 +35,7 @@ export function nodeRareBaseId(activityId: number): string {
   if (band === 1) return tier?.rareLog ?? '';
   if (band === 2) return tier?.rareOre ?? '';
   if (band === 3) return RAW_FISH_BASE_IDS[(location - 1) * 2 + 1] ?? '';
+  if (band === 4) return HERB_BASE_IDS[(location - 1) * 2 + 1] ?? '';
   return '';
 }
 
@@ -42,6 +44,7 @@ export const PROFESSION_VERBS: Record<number, string> = {
   0: 'Chopping',
   1: 'Mining',
   2: 'Fishing',
+  3: 'Picking',
 };
 
 /**

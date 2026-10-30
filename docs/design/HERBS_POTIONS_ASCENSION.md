@@ -102,6 +102,27 @@ the new ring affixes) and measured before shipping, the way the affixes were.
 5. **Sources and sinks:** herbs as a material line in loot chests; potions in
    the quest line and achievements.
 
+**Step 1 built (2026-10-30, branch `claude/herbs-gathered`):**
+- Nodes 4001-4005 (profession 3) with the fishing nodes' thresholds and XP
+  (30/45/60/80/100 ticks, 15-140 XP); items 442-451 (common + rare per
+  region, values 5/20/80/320/1280 like the fish); loot rows 107-116 at 90/10.
+  Rare herbs join `IsRareMaterial` (R1). Herbs are not food - the larder's
+  raw-fish set reads the fishing band only (pinned in GatheringMasteryRoutingTests).
+- **Correction to the plan: herbs have no tool (owner, 2026-10-30).** The plan
+  assumed nothing about tools, and the code's tool switch fell through to the
+  ROD for profession 3, so a fisher's rod would have sped up a herbalist who
+  never wore it. Herbalism now reads tool tier 0 everywhere; the speed is the
+  mastery (40 x sqrt(level) %), plus Green Thumb and the generic extras.
+- Measured harvest time by hand (no tool, no extras), region 1 / region 5:
+  mastery 1: 2.1 s / 7.1 s; mastery 10: 1.3 s / 4.4 s; mastery 25: 1.0 s /
+  3.3 s; mastery 50: 0.7 s / 2.6 s. Region 5 at mastery 25 is ~1,090 harvests
+  an hour (~980 Mugwort, ~110 Fern Flower before yield bonuses). Step 2 sizes
+  the potion recipes against these numbers: a potion lasts 1-2 h, so one
+  hour of picking must buy several hours of a potion, not one.
+- Green Thumb is buyable again. A side fix on the Gathering screen: the
+  monolith line showed the MINING monolith on every non-wood card, though the
+  server pays a monolith only to wood and ore.
+
 ### 1.3 Decisions
 
 - **H1.** Build herbalism + potions as described? Recommendation: yes, as its
