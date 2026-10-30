@@ -11,6 +11,176 @@
       "credits": 0,
       "seconds": 3,
       "at": "2026-10-30T12:38:24.909Z"
+    },
+    {
+      "id": "loot_legendary_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - same wood, gold bands, rubies, sun disc lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_legendary_open.jpg",
+      "bytes": 670423,
+      "usage": {
+        "promptTokenCount": 393,
+        "candidatesTokenCount": 1502,
+        "totalTokenCount": 1895,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 135
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 11,
+      "at": "2026-10-30T14:35:46.370Z"
+    },
+    {
+      "id": "loot_common_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same strongbox - same oak planks, black iron bands, rivets, ring lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_common_open.jpg",
+      "bytes": 655696,
+      "usage": {
+        "promptTokenCount": 394,
+        "candidatesTokenCount": 1465,
+        "totalTokenCount": 1859,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 136
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T14:35:56.037Z"
+    },
+    {
+      "id": "loot_legendary_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - same wood, gold bands, rubies, sun disc lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_legendary_open.jpg",
+      "bytes": 671660,
+      "usage": {
+        "promptTokenCount": 432,
+        "candidatesTokenCount": 1462,
+        "totalTokenCount": 1894,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T14:36:24.411Z"
+    },
+    {
+      "id": "loot_common_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same strongbox - same oak planks, black iron bands, rivets, ring lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_common_open.jpg",
+      "bytes": 611557,
+      "usage": {
+        "promptTokenCount": 433,
+        "candidatesTokenCount": 1453,
+        "totalTokenCount": 1886,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 175
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T14:38:51.261Z"
+    },
+    {
+      "id": "loot_common_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same strongbox - same oak planks, black iron bands, rivets, ring lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_common_open.jpg",
+      "bytes": 504551,
+      "usage": {
+        "promptTokenCount": 433,
+        "candidatesTokenCount": 1502,
+        "totalTokenCount": 1935,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 175
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 11,
+      "at": "2026-10-30T14:42:12.706Z"
     }
   ]
 }

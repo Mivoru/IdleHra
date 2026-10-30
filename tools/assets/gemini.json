@@ -1,0 +1,26 @@
+{
+  "about": "Assets for tools/assets/gemini.mjs. References are repository paths; a transparent reference is first put on the key colour with keyout.py flatten (into staging/ref_*.png). Run one id at a time with --only. flattenScale records the scale its reference was flattened at (keyout.py flatten ... #00ff00 <scale>).",
+  "style": "Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+  "keyLine": "Background: one perfectly flat solid {key} colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+  "assets": [
+    {
+      "id": "loot_legendary_open",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_legendary_closed.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - same wood, gold bands, rubies, sun disc lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else."
+    },
+    {
+      "id": "loot_common_open",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_common_closed.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same strongbox - same oak planks, black iron bands, rivets, ring lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else.",
+      "flattenScale": 0.62
+    }
+  ]
+}
