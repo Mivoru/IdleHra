@@ -12810,6 +12810,17 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Modul: the caller's gold ledger for today, so exercise.mjs can
+                // check a sink against the debit it caused rather than the wallet.
+                // The wallet also moves with combat income and offline payouts,
+                // and "the gold actually left" failed working builds on exactly
+                // that (a 707,733 gold CombatAway payout landed mid-step).
+                if (requestPath == "/api/v1/dev/gold-ledger" && context.Request.HttpMethod == "GET")
+                {
+                    await WriteDevGoldLedgerAsync(context, playerId);
+                    return;
+                }
+
                 context.Response.StatusCode = 404;
             }
             catch (Exception ex)
@@ -12849,6 +12860,30 @@ namespace FolkIdle.Server.Network
                 DefeatedAtEpoch = snapshot?.DefeatedAtEpoch ?? 0,
                 IsRegistered = attempt?.IsRegistered ?? false,
                 MilestonesPaid = attempt?.MilestonesPaid ?? 0,
+            });
+        }
+
+        /// <summary>Today's (UTC) spend and income rows for the CALLER, keyed by the enum names.</summary>
+        private async Task WriteDevGoldLedgerAsync(HttpListenerContext context, long playerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            var day = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            var spend = await db.GoldSpendDaily.AsNoTracking()
+                .Where(r => r.PlayerId == playerId && r.Day == day)
+                .ToListAsync();
+            var income = await db.GoldIncomeDaily.AsNoTracking()
+                .Where(r => r.PlayerId == playerId && r.Day == day)
+                .ToListAsync();
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+            {
+                Day = day.ToString("yyyy-MM-dd"),
+                Spend = spend.ToDictionary(r => ((GoldSpendCategory)r.Category).ToString(), r => r.Amount),
+                Income = income.ToDictionary(r => ((GoldIncomeSource)r.Source).ToString(), r => r.Amount),
             });
         }
 

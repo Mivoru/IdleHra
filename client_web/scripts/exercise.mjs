@@ -2674,9 +2674,23 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
     const first = interrupts[0];
     const after = first.TellAtMs + first.InterruptMs + 200;
     const plan = [800, ...[0, 1, 2, 3].map((k) => after + k * 1500)];
+    // Modul: AND EACH SPEAR LANDS FAR FROM A SEAM (TASK_BOARD 120, 2026-10-30).
+    // Fixed times land wherever the wheel happens to be, so a blind run
+    // sometimes struck near seams by luck and scored M 1.83 against the check's
+    // 1.6 ceiling on a working build. Nudging each tap until its landing angle
+    // is at least 28 degrees from every seam centre makes "blind" mean blind.
+    const offSeam = (t) => {
+      const x = (((wheelAngleAt(schedule, t + schedule.FlightMs) - 36) % 72) + 72) % 72;
+      return Math.min(x, 72 - x) >= 28;
+    };
+    let previous = -1e9;
     for (let t of plan) {
+      t = Math.max(t, previous + 450);
+      const limit = t + 1200;
+      while (t < limit && (wheelFrozenAt(schedule, t) || wheelFrozenAt(schedule, t + 60) || !offSeam(t))) t += 10;
       while (wheelFrozenAt(schedule, t) || wheelFrozenAt(schedule, t + 60)) t += 100;
       wheel.push(t);
+      previous = t;
     }
   }
   for (const t of wheel) actions.push({ at: t, kind: 'tap' });
@@ -2780,11 +2794,17 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
       await new Promise((r) => setTimeout(r, Math.max(0, t0 + at - performance.now())));
       overlay.querySelector('.throw-zone')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
     }, firstTap);
-    await page.waitForTimeout(1200);
-    await page.reload({ waitUntil: 'networkidle' });
-    await page.waitForTimeout(1500);
-    await dismissOfflineSummary(3000);
-    await go('World Boss');
+    // Modul: LEAVE, DO NOT RELOAD (TASK_BOARD 120, 2026-10-30). A reload fires
+    // visibilitychange 'hidden', and the overlay answers that by SUBMITTING the
+    // run ("leaving the app submits what was thrown"). Whether that request
+    // left before the page died was a race, so the reopened run was sometimes
+    // a fresh one with five spears, on a working build. "Leave practice"
+    // unmounts the overlay just as completely - its memory of the throw goes -
+    // and sends nothing, so what comes back can only be what the server kept.
+    await page.waitForFunction(() => document.querySelectorAll('[data-schedule] .chip').length > 0, null, { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    await page.locator('[data-testid="wheel-leave"]').click();
+    await page.waitForTimeout(800);
     await page.getByRole('button', { name: /Practice the shield wheel/i }).first().click();
     await page.locator('[data-schedule]').waitFor({ timeout: 10000 });
     await page.waitForTimeout(600);
@@ -2902,9 +2922,16 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
 // (OnboardingSeenIds) rather than in the browser - so the second run of this
 // script in a row finds no cue at all and reports "only saw no cue". That is
 // the repo's own "a check that spends fixture state passes once and fails
-// forever" trap, and it cannot be made to round-trip from here: the acknowledge
-// is the only way to advance the chain. Re-seed before believing a failure.
+// forever" trap. The acknowledge is the only way to advance the chain, so the
+// step cannot avoid spending; it RESTORES instead (TASK_BOARD 120): the seen-set
+// is read before the walk and written back after it, on the server (the POST
+// replaces the whole set) and in the browser's cache, then the page reloads so
+// the store's in-memory copy cannot write the acknowledgements back.
 {
+  const seenBefore = await apiGet('/api/v1/player/onboarding-seen');
+  const cachedBefore = await page.evaluate(() =>
+    Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith('folkidle.onboardingSeen.')).map((k) => [k, localStorage.getItem(k)])),
+  );
   let seenKinds = new Set();
   let reachedObjective = null;
 
@@ -2960,6 +2987,24 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
       'the panel moved on rather than repeating itself',
     );
   }
+
+  // The store debounces its write by 800 ms; let it land before overwriting it.
+  if (seenBefore?.HasRecord) {
+    await page.waitForTimeout(1500);
+    await apiPost('/api/v1/player/onboarding-seen', { Seen: seenBefore.Seen ?? [] });
+    await page.evaluate((cached) => {
+      for (const k of Object.keys(localStorage)) if (k.startsWith('folkidle.onboardingSeen.')) localStorage.removeItem(k);
+      for (const [k, v] of Object.entries(cached)) if (v !== null) localStorage.setItem(k, v);
+    }, cachedBefore);
+    await page.reload({ waitUntil: 'networkidle' });
+    await dismissOfflineSummary(3000);
+    const seenAfter = await apiGet('/api/v1/player/onboarding-seen');
+    record(
+      'the fixture gets its onboarding seen-set back',
+      (seenAfter?.Seen ?? []).length === (seenBefore.Seen ?? []).length,
+      `${(seenBefore.Seen ?? []).length} -> ${(seenAfter?.Seen ?? []).length} ids`,
+    );
+  }
 }
 
 // --- the Delve: gold goes in, and the world has to change ---------------------
@@ -2984,15 +3029,24 @@ await go('The Delve');
 
   if (before && !before.Active && before.CurrentGold >= before.EntryFeeForNextRun) {
     const goldBefore = before.CurrentGold;
+    // Modul: THE WALLET IS NOT THE DELVE'S OWN NUMBER. Combat income and an
+    // offline payout move it too, and "the gold actually left" failed working
+    // builds when a 707,733 gold CombatAway payout landed mid-step. The
+    // Delve's own debit and consolation are its ledger rows, so the gold
+    // assertions below read the change in those (dev-only endpoint).
+    const delveNet = (l) => (l?.Spend?.Delve ?? 0) - (l?.Income?.Delve ?? 0);
+    const ledgerBefore = await apiGet('/api/v1/dev/gold-ledger');
 
     await page.getByRole('button', { name: /Pay and descend/i }).first().click();
     await page.waitForTimeout(1200);
 
     const started = await apiGet('/api/v1/delve');
+    const ledgerStarted = await apiGet('/api/v1/dev/gold-ledger');
+    const feeTaken = (ledgerStarted?.Spend?.Delve ?? 0) - (ledgerBefore?.Spend?.Delve ?? 0);
     record(
       'paying the gate opens a run and takes the gold',
-      Boolean(started?.Active) && started.CurrentGold === goldBefore - before.EntryFeeForNextRun,
-      started ? `${goldBefore.toLocaleString()} -> ${started.CurrentGold.toLocaleString()}g, floor ${started.CurrentFloor}` : 'no run',
+      Boolean(started?.Active) && feeTaken === before.EntryFeeForNextRun,
+      started ? `fee ${before.EntryFeeForNextRun.toLocaleString()}g, debited ${feeTaken.toLocaleString()}g, floor ${started.CurrentFloor}` : 'no run',
     );
 
     record(
@@ -3050,10 +3104,12 @@ await go('The Delve');
 
     // The entry fee is at least twice the best consolation, so a completed run
     // always costs gold on net however it went. That is what makes it a sink.
+    const ledgerSettled = await apiGet('/api/v1/dev/gold-ledger');
+    const netCost = delveNet(ledgerSettled) - delveNet(ledgerBefore);
     record(
       'the gold actually left',
-      Boolean(settled) && settled.CurrentGold < goldBefore,
-      settled ? `${goldBefore.toLocaleString()} -> ${settled.CurrentGold.toLocaleString()}g` : '',
+      Boolean(settled) && Boolean(ledgerSettled) && netCost > 0,
+      settled ? `net ${netCost.toLocaleString()}g to the Delve (wallet ${goldBefore.toLocaleString()} -> ${settled.CurrentGold.toLocaleString()}g)` : '',
     );
 
     record(
