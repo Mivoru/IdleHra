@@ -27,7 +27,8 @@ namespace FolkIdle.Server.Engine
         XpPct,
         // ---- Pending: drawn and described, refused until a reader exists ----
         CraftTimePct,
-        CommissionRewardPct,
+        /// <summary>Fewer commission materials, in tenths of a percent (Ledger, since 2026-10-30).</summary>
+        CommissionMaterialsPct,
         CraftRarityPct,
         SalvageGoldPct,
         GreatWorksPct,
@@ -142,7 +143,7 @@ namespace FolkIdle.Server.Engine
             // ---- Workshop: the bench -----------------------------------------------
             Add(QuickHands, "Quick Hands", "quick_hands", ColumnWorkshop, 0, 0, "Minor", 5, 1, HearthEffect.CraftTimePct, 20, "-{0}% craft time");
             Add(Thrifty, "Thrifty", "thrifty", ColumnWorkshop, 0, 1, "Minor", 5, 1, HearthEffect.KeepMaterialsPct, 20, "{0}% chance a craft keeps its materials");
-            Add(Ledger, "Ledger", "ledger", ColumnWorkshop, 1, -1, "Notable", 3, 2, HearthEffect.CommissionRewardPct, 0, "+{0}% commission reward", ranks: new[] { 50, 100, 150 });
+            Add(Ledger, "Ledger", "ledger", ColumnWorkshop, 1, -1, "Notable", 3, 2, HearthEffect.CommissionMaterialsPct, 0, "-{0}% commission materials", ranks: new[] { 50, 100, 150 });
             Add(BatchWork, "Batch Work", "batch_work", ColumnWorkshop, 2, 0, "Fork", 5, 1, HearthEffect.CraftTimePct, 12, "-{0}% craft time", fork: FineWork);
             Add(FineWork, "Fine Work", "fine_work", ColumnWorkshop, 2, 1, "Fork", 5, 1, HearthEffect.CraftRarityPct, 10, "{0}% chance a crafted item rolls one rarity higher", fork: BatchWork);
             Add(Salvager, "Salvager", "salvager", ColumnWorkshop, 3, 0, "Minor", 5, 1, HearthEffect.SalvageGoldPct, 30, "+{0}% auto-salvage gold");
@@ -185,6 +186,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
             HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct, HearthEffect.SalvageGoldPct,
             HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct, HearthEffect.GreatWorksPct, HearthEffect.BreedingCooldownPct,
+            HearthEffect.CommissionMaterialsPct,
             HearthEffect.MentorXpPct, HearthEffect.BloodlineMemory,
         };
 

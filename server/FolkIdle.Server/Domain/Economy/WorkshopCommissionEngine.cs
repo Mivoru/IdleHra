@@ -115,13 +115,14 @@ namespace FolkIdle.Server.Domain.Economy
             int workshopLevel = await ReadWorkshopLevelAsync(db, playerId, nowEpoch);
             var defeated = await RegionUnlockGate.LoadDefeatedBossesAsync(db, playerId);
             int unlocked = RegionUnlockGate.HighestUnlockedRegion(defeated);
+            int discount = await LedgerDiscountAsync(db, playerId);
 
             var quotes = new Dictionary<int, VillageManagementEngine.UpgradeCostLine[]>();
             var wanted = new HashSet<string>(StringComparer.Ordinal);
             for (int region = WorkshopCommissionRules.FirstRegion; region <= WorkshopCommissionRules.LastRegion; region++)
             {
                 int floor = WorkshopCommissionRules.FloorTierFor(workshopLevel, region);
-                var lines = WorkshopCommissionRules.Quote(region, floor > 0 ? floor : RarityTier.Common);
+                var lines = WorkshopCommissionRules.Quote(region, floor > 0 ? floor : RarityTier.Common, discount);
                 quotes[region] = lines;
                 foreach (var line in lines) wanted.Add(line.ItemId);
             }
@@ -165,6 +166,14 @@ namespace FolkIdle.Server.Domain.Economy
                 slot == null ? null : ToView(slot, nowEpoch),
                 collected);
         }
+
+        /// <summary>
+        /// Ledger's discount in permille, from the stored row - as Thrifty and
+        /// Patron read theirs, since a commission is a REST call, not the tick.
+        /// </summary>
+        private static async Task<int> LedgerDiscountAsync(FolkIdleDbContext db, long playerId)
+            => HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Ledger,
+                await HearthTreeRegistry.StoredLevelAsync(db, playerId, HearthTreeRegistry.Ledger));
 
         private static CommissionView ToView(PlayerCraftingSlot slot, long nowEpoch)
         {
@@ -250,7 +259,8 @@ namespace FolkIdle.Server.Domain.Economy
                 return CommissionResult.Busy;
             }
 
-            foreach (var line in WorkshopCommissionRules.Quote(region, floor))
+            int discount = await LedgerDiscountAsync(db, playerId);
+            foreach (var line in WorkshopCommissionRules.Quote(region, floor, discount))
             {
                 if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, line.ItemId, line.Quantity))
                 {
@@ -268,6 +278,7 @@ namespace FolkIdle.Server.Domain.Economy
                 ChosenAffixId = affixId!,
                 FloorTier = floor,
                 StartedEpoch = nowEpoch,
+                MaterialDiscountPermille = discount,
                 CompletionEpoch = nowEpoch + WorkshopCommissionRules.DurationSecondsFor(floor),
                 IsReady = false,
             });
@@ -362,7 +373,7 @@ namespace FolkIdle.Server.Domain.Economy
             slot.CompletionEpoch = nowEpoch;
             if (refund && WorkshopCommissionRules.TryGetCommissionable(slot.ActiveRecipeId, out _, out int region))
             {
-                foreach (var line in WorkshopCommissionRules.Quote(region, slot.FloorTier))
+                foreach (var line in WorkshopCommissionRules.Quote(region, slot.FloorTier, slot.MaterialDiscountPermille))
                 {
                     await CommodityLedger.AddAsync(db, playerId, line.ItemId, line.Quantity);
                 }

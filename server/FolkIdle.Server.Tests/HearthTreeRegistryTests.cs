@@ -97,7 +97,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
                 HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
                 HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood, HearthTreeRegistry.Patron, HearthTreeRegistry.Nursery,
-                HearthTreeRegistry.Mentor, HearthTreeRegistry.BloodlineMemory,
+                HearthTreeRegistry.Mentor, HearthTreeRegistry.BloodlineMemory, HearthTreeRegistry.Ledger,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));

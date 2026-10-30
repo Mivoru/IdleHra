@@ -32,5 +32,13 @@ namespace FolkIdle.Server.Models
 
         /// <summary>Unix seconds the commission was placed - for the progress bar, and the refund on cancel.</summary>
         public long StartedEpoch { get; set; }
+
+        /// <summary>
+        /// Modul: THE DISCOUNT THE ORDER WAS PAID AT (Ledger, in permille), fixed
+        /// when it was placed like FloorTier. A refund gives back what was PAID;
+        /// recomputing it from today's Ledger rank would let a respec between
+        /// placing and refunding hand back more than the order cost.
+        /// </summary>
+        public int MaterialDiscountPermille { get; set; }
     }
 }

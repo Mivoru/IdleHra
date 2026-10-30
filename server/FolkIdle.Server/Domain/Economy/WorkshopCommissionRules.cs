@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
@@ -179,6 +180,18 @@ namespace FolkIdle.Server.Domain.Economy
         /// .GetTierMaterials, one pair per region - the ore canon). They are
         /// catalogued items, spent through the unified backpack+stash path.
         /// </remarks>
+        public static VillageManagementEngine.UpgradeCostLine[] Quote(int region, int floorTier, int discountPermille)
+        {
+            // Ledger (Hearth): each line costs that much less, rounded UP and
+            // never below one, so a discount can shrink an order but not void it.
+            int cut = Math.Clamp(discountPermille, 0, 900);
+            var full = Quote(region, floorTier);
+            if (cut == 0) return full;
+            return full
+                .Select(l => new VillageManagementEngine.UpgradeCostLine(l.ItemId, Math.Max(1L, (l.Quantity * (1000L - cut) + 999L) / 1000L)))
+                .ToArray();
+        }
+
         public static VillageManagementEngine.UpgradeCostLine[] Quote(int region, int floorTier)
         {
             int clamped = Math.Clamp(region, FirstRegion, LastRegion);

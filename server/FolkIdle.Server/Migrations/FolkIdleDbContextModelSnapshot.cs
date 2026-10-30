@@ -1688,6 +1688,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<bool>("IsReady")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("MaterialDiscountPermille")
+                        .HasColumnType("integer");
+
                     b.Property<long>("StartedEpoch")
                         .HasColumnType("bigint");
 
