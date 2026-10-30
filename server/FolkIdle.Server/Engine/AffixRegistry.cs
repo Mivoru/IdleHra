@@ -232,7 +232,13 @@ namespace FolkIdle.Server.Engine
             new AffixDefinition("crushing_blow_pct", EquipmentSlotMask.Gloves, AffixScalingLaw.Percentage, 10, 8),
             // thorns_pct adds to the set's 20% reflect, 2-8% per affix by rarity,
             // on the chest only - the defensive build's damage.
-            new AffixDefinition("thorns_pct", EquipmentSlotMask.Chest, AffixScalingLaw.Percentage, 20, 15),
+            // Modul: NOT ROLLED YET (2026-10-30). Wired and parity-tested on its own
+            // (Thorns_from_gear), but once geared test characters could roll it,
+            // three OfflineCombatParityTests rows drifted 6-40% between the away
+            // projection's thorns path and the live tick, and two fixes did not
+            // close it. Retired from rolls until that path is made exact; the id
+            // keeps its place (wire index) and every reader stays wired.
+            new AffixDefinition("thorns_pct", EquipmentSlotMask.Chest, AffixScalingLaw.Percentage, 20, 15, retired: true),
         };
 
         private static readonly Dictionary<string, int> _indexById = BuildIndex();
