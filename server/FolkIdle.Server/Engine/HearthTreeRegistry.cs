@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace FolkIdle.Server.Engine
 {
@@ -172,6 +173,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.RareWoodMine, HearthEffect.RareFishHerb,
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
             HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct, HearthEffect.SalvageGoldPct,
+            HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct,
         };
 
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
@@ -289,6 +291,21 @@ namespace FolkIdle.Server.Engine
             }
             return e;
         }
+
+        /// <summary>
+        /// A Hearth node's stored level, read from the table inside the caller's
+        /// transaction. Breeding and crafting are database commands, not tick
+        /// work, so they read the row rather than the live payload.
+        /// </summary>
+        public static Task<int> StoredLevelAsync(FolkIdle.Server.Models.FolkIdleDbContext db, long playerId, int nodeId)
+            => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
+                System.Linq.Queryable.Select(
+                    System.Linq.Queryable.Where(db.PlayerSkillTreeNodes, n => n.PlayerId == playerId && n.BranchId == nodeId),
+                    n => n.Level));
+
+        /// <summary>A node's value at a stored level, clamped to its ranks.</summary>
+        public static int ValueAtLevel(int nodeId, int level)
+            => Get(nodeId) is { } n ? n.ValueAt(Math.Clamp(level, 0, n.MaxLevel)) : 0;
 
         /// <summary>The Thrifty level a set of stored rows holds - crafting reads the table, not the payload.</summary>
         public static int KeepMaterialsTenthsPct(int thriftyLevel)

@@ -95,6 +95,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
                 HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
+                HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -166,6 +167,23 @@ namespace FolkIdle.Server.Tests
             var bare = new TickStatePayload();
             var bareStats = SimulationEngine.LiveCombatStats(in bare);
             Assert.Equal(0, CombatLootDropRequest.Build(in bare, in bareStats, ContentRegistry.FirstCanonicalMonsterId, 1, 0, false).SalvageGoldTenthsPct);
+        }
+
+        [Fact]
+        public void MatchmakerDiscountsBreeding_AndStrongBloodRaisesTheUpChance()
+        {
+            int full = HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Matchmaker, 5);
+            Assert.Equal(250, full);
+            long price = BreedingEngine.CostFor(3);
+            Assert.Equal(price * 750 / 1000, BreedingEngine.CostFor(3, full));
+            Assert.Equal(price, BreedingEngine.CostFor(3, 0));
+
+            // A +100 point bonus makes the up mutation certain on an unrelated pair,
+            // and - as the Grounds do - certain DOWN on an inbred one.
+            var rng = new Random(1);
+            Assert.Equal(11, BreedingAptitudes.Mutate(10, isInbred: false, rng, groundsLevel: 0, upBonusPercent: 100));
+            Assert.Equal(10 - 1, BreedingAptitudes.Mutate(10, isInbred: true, rng, groundsLevel: 0, upBonusPercent: 100));
+            Assert.Equal(10, HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.StrongBlood, 5) / 10);
         }
 
         [Fact]

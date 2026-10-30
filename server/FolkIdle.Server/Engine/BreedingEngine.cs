@@ -25,6 +25,20 @@ namespace FolkIdle.Server.Engine
         private const double EpicMutationChance = 0.05;
 
         /// <summary>The gold a pairing costs, given the older parent's generation.</summary>
+        /// <summary>The price with the Hearth node Matchmaker's discount (tenths of a percent; at most 25%).</summary>
+        /// <remarks>
+        /// Modul: ONE PRICE FOR THE BREED AND ITS PREVIEW. Both the two breeding
+        /// commands and the two preview answers ask this, with the discount read
+        /// from the same row, so the screen never quotes a price the command does
+        /// not charge.
+        /// </remarks>
+        public static long CostFor(int maxGenerationIndex, int discountTenthsPct)
+        {
+            long cost = CostFor(maxGenerationIndex);
+            int cut = Math.Clamp(discountTenthsPct, 0, 900);
+            return cost * (1000 - cut) / 1000;
+        }
+
         public static long CostFor(int maxGenerationIndex)
             => BaseBreedingCostGold * (Math.Max(0, maxGenerationIndex) + 1);
 
@@ -156,7 +170,7 @@ namespace FolkIdle.Server.Engine
 
                 int maxGen = Math.Max(pLineage.GenerationIndex, mLineage.GenerationIndex);
 
-                long breedingCost = CostFor(maxGen);
+                long breedingCost = CostFor(maxGen, HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Matchmaker, await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.Matchmaker)));
                 var goldRecord = await dbContext.CommodityRecords
                     .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
                     .SingleOrDefaultAsync();
@@ -200,6 +214,8 @@ namespace FolkIdle.Server.Engine
                 // same transaction, never sent by the client.
                 int ceiling = await BloodlineCeilingAsync(dbContext, playerId);
 
+                int strongBlood = HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.StrongBlood,
+                    await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.StrongBlood)) / 10;
                 int[] childAptitudes = BreedingAptitudes.Breed(
                     pLineage.AptitudeVector(),
                     mLineage.AptitudeVector(),
@@ -208,7 +224,8 @@ namespace FolkIdle.Server.Engine
                     selectionMask,
                     breedingLevel,
                     Random.Shared,
-                    ceiling);
+                    ceiling,
+                    strongBlood);
 
                 // Modul: TRAITS, from the same pairing and the same dice - see
                 // BreedingTraits. A related pair risks a visible flaw here, which
@@ -388,7 +405,7 @@ namespace FolkIdle.Server.Engine
                 // outside, and the outside has no pedigree here - so the child's
                 // generation and the price both key off the hero alone.
                 int maxGen = heroLineage.GenerationIndex;
-                long breedingCost = CostFor(maxGen);
+                long breedingCost = CostFor(maxGen, HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Matchmaker, await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.Matchmaker)));
 
                 var goldRecord = await dbContext.CommodityRecords
                     .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
@@ -436,9 +453,11 @@ namespace FolkIdle.Server.Engine
                 // same transaction, never sent by the client.
                 int ceiling = await BloodlineCeilingAsync(dbContext, playerId);
 
+                int strongBlood = HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.StrongBlood,
+                    await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.StrongBlood)) / 10;
                 int[] childAptitudes = heroIsFather
-                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling)
-                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling);
+                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling, strongBlood)
+                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling, strongBlood);
 
                 long childTraits = heroIsFather
                     ? BreedingTraits.Inherit(heroLineage.TraitMask, newcomer.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared)

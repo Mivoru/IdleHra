@@ -7200,7 +7200,7 @@ namespace FolkIdle.Server.Network
                 response.IsInbredRisk = await Engine.BreedingRelatedness.AreRelatedAsync(db, pLineage, mLineage);
 
                 int maxGen = Math.Max(pLineage.GenerationIndex, mLineage.GenerationIndex);
-                response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen);
+                response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen, Engine.HearthTreeRegistry.ValueAtLevel(Engine.HearthTreeRegistry.Matchmaker, await Engine.HearthTreeRegistry.StoredLevelAsync(db, playerId, Engine.HearthTreeRegistry.Matchmaker)));
 
                 var goldRecord = await db.CommodityRecords
                     .AsNoTracking()
@@ -7291,7 +7291,7 @@ namespace FolkIdle.Server.Network
                 response.IsInbredRisk = false;
 
                 int maxGen = heroLineage.GenerationIndex;
-                response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen);
+                response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen, Engine.HearthTreeRegistry.ValueAtLevel(Engine.HearthTreeRegistry.Matchmaker, await Engine.HearthTreeRegistry.StoredLevelAsync(db, playerId, Engine.HearthTreeRegistry.Matchmaker)));
 
                 var goldRecord = await db.CommodityRecords
                     .AsNoTracking()

@@ -190,14 +190,17 @@ namespace FolkIdle.Server.Engine
         /// convenient, but no strategy can be built on it, and fresh village
         /// blood stays valuable permanently.
         /// </summary>
-        public static int Mutate(int value, bool isInbred, Random rng, int groundsLevel = 0)
+        public static int Mutate(int value, bool isInbred, Random rng, int groundsLevel = 0, int upBonusPercent = 0)
         {
             // Modul: the Breeding Grounds raises the UP chance only, and an
             // inbred pairing swaps the two - so building the Grounds makes a
             // related pairing worse, not better. Without that a player could
             // build their way out of ever needing the village, which is the one
             // strategy the inversion exists to prevent.
-            int upPercent = UpMutationPercentFor(groundsLevel);
+            // Modul: Strong Blood (Hearth) raises the UP chance the way the
+            // Grounds do, and so it is inverted by an inbred pairing too - the
+            // node must not become the way around the village.
+            int upPercent = UpMutationPercentFor(groundsLevel) + Math.Max(0, upBonusPercent);
 
             int up = isInbred ? MutationDownPercent : upPercent;
             int down = isInbred ? upPercent : MutationDownPercent;
@@ -249,7 +252,8 @@ namespace FolkIdle.Server.Engine
             int selectionMask,
             int groundsLevel,
             Random rng,
-            int ceiling = MaxValue)
+            int ceiling = MaxValue,
+            int upBonusPercent = 0)
         {
             if (father is null || father.Length < Count) throw new ArgumentException("father vector", nameof(father));
             if (mother is null || mother.Length < Count) throw new ArgumentException("mother vector", nameof(mother));
@@ -275,7 +279,7 @@ namespace FolkIdle.Server.Engine
                     ? Math.Max(father[i], mother[i])
                     : InheritOne(father[i], mother[i], rng);
 
-                child[i] = Mutate(inherited, isInbred, rng, groundsLevel);
+                child[i] = Mutate(inherited, isInbred, rng, groundsLevel, upBonusPercent);
                 if (isEpic) child[i] = child[i] + EpicBonus;
                 child[i] = Math.Min(child[i], ChildLimit(father[i], mother[i], ceiling));
             }
