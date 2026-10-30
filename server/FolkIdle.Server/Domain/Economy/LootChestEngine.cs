@@ -94,13 +94,20 @@ namespace FolkIdle.Server.Domain.Economy
             => region >= 5 ? LootChestTier.Gold : LootChestTier.Silver;
 
         /// <summary>
-        /// An Ascension step's chest: Bronze 50%, Silver 30%, Gold 15%, Ancient 5%
-        /// (owner, 2026-10-30: the lowest tier most often, the highest least).
+        /// An Ascension step's chest, by the step's band (A2, owner 2026-10-30;
+        /// the same table AscensionResetSql.PayChests pays the conversion at):
+        ///   1-3  Bronze 50 / Silver 30 / Gold 15 / Ancient 5
+        ///   4-6  Bronze 45 / Silver 35 / Gold 15 / Ancient 5  (+5% Silver-or-better)
+        ///   7-9  Bronze 40 / Silver 30 / Gold 25 / Ancient 5  (+10% Gold-or-better)
+        ///   10   Gold 75 / Ancient 25                        (Gold-or-better guaranteed)
         /// </summary>
-        public static LootChestTier RollAscensionChest(Random rng)
+        public static LootChestTier RollAscensionChest(Random rng, int step)
         {
             int r = rng.Next(100);
-            return r < 50 ? LootChestTier.Bronze : r < 80 ? LootChestTier.Silver : r < 95 ? LootChestTier.Gold : LootChestTier.Ancient;
+            if (step >= 10) return r < 75 ? LootChestTier.Gold : LootChestTier.Ancient;
+            int bronze = step >= 7 ? 40 : step >= 4 ? 45 : 50;
+            int silver = step >= 7 ? 70 : 80;
+            return r < bronze ? LootChestTier.Bronze : r < silver ? LootChestTier.Silver : r < 95 ? LootChestTier.Gold : LootChestTier.Ancient;
         }
 
         /// <summary>Unopened chests by tier, for the shelf.</summary>
