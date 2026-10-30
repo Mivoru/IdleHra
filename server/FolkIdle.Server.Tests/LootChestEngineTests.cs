@@ -20,7 +20,7 @@ namespace FolkIdle.Server.Tests
     public class LootChestEngineTests
     {
         private readonly PostgresTestFixture _fixture;
-        private static long _nextPlayerId = 957_000_000L;
+        private static long _nextPlayerId = 971_400_000L;
 
         public LootChestEngineTests(PostgresTestFixture fixture)
         {

@@ -150,6 +150,12 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 EquipmentInstance? piece = roll.Equipment ? AddPiece(db, playerId, chest.Region, roll.EquipmentRarityFloor, rng) : null;
+                if (piece != null)
+                {
+                    // The drop record counts every piece that enters the game (task 26).
+                    await DropRecord.RecordOneAsync(db, playerId, DropSource.LootChest, chest.Region,
+                        piece, piece.BaseItemId, piece.QualityTier, piece.QualityTier);
+                }
 
                 db.LootChests.Remove(chest);
                 pieces.Add((chest, roll, piece));
