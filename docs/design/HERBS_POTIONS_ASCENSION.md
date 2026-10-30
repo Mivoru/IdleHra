@@ -111,8 +111,14 @@ Birch Axe. Rare fish heal the same share as normal fish of their region.
   would not see the change, but players would: they catch 5-15x what they
   eat, so the rare catch alone covers most bites, and x1.5 would act as a
   near-global +50% sustain - and the larder is this game's difficulty
-  ceiling. Next: run the wall scan with the benchmark eating the rare fish at
-  x1.2 and x1.5 and pick the largest value the walls hold at.
+  ceiling.
+- **Measured the same day and DROPPED:** the wall scan with the benchmark's
+  bite healing x1.2 broke the walls of regions 1, 2, 3 and 5 and let region
+  5's wall gear win tier 6; x1.5 broke all five (region 2's window moved from
+  1.861-1.884 to 2.782-2.819). No heal bonus is small enough to matter and
+  safe at once. **The rare catch gets its edge elsewhere:** it becomes the
+  rare ingredient of the strong potions in the herbs phase (section 1), and
+  is worth more at the chest sale. Heal stays the same as the common fish.
 
 ---
 
