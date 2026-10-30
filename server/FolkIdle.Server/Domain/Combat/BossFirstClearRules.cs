@@ -94,7 +94,11 @@ namespace FolkIdle.Server.Domain.Combat
         // Regions 2 and 3 moved to their windows' centres (1.85 -> 1.87,
         // 3.08 -> 3.17); 1, 4 and 5 were still inside theirs and stay. Region
         // 2's window is under 1.5% wide - the narrowest wall in the game.
-        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.87f, 3.17f, 5.13f, 7.15f };
+        // Modul: 2026-10-30, roadmap 3.6 - crushing_blow_pct (gloves) and thorns_pct
+        // (chest) entered the benchmark's pools and moved two windows: region 2
+        // to 1.851-1.870 (1.87 sat on its edge) and region 3 to 3.122-3.178.
+        // Re-centred to 1.86 and 3.15; regions 1, 4 and 5 still hold with room.
+        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.86f, 3.15f, 5.13f, 7.15f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at
