@@ -17,6 +17,7 @@ namespace FolkIdle.Server.Domain.Economy
         Dev = 0,
         DeepFloor = 1,
         BossFirstClear = 2,
+        AscensionStep = 3,
     }
 
     /// <summary>
@@ -92,6 +93,16 @@ namespace FolkIdle.Server.Domain.Economy
         public static LootChestTier BossFirstClearChest(int region)
             => region >= 5 ? LootChestTier.Gold : LootChestTier.Silver;
 
+        /// <summary>
+        /// An Ascension step's chest: Bronze 50%, Silver 30%, Gold 15%, Ancient 5%
+        /// (owner, 2026-10-30: the lowest tier most often, the highest least).
+        /// </summary>
+        public static LootChestTier RollAscensionChest(Random rng)
+        {
+            int r = rng.Next(100);
+            return r < 50 ? LootChestTier.Bronze : r < 80 ? LootChestTier.Silver : r < 95 ? LootChestTier.Gold : LootChestTier.Ancient;
+        }
+
         /// <summary>Unopened chests by tier, for the shelf.</summary>
         public static async Task<Dictionary<LootChestTier, int>> CountsAsync(FolkIdleDbContext db, long playerId)
         {
@@ -134,7 +145,12 @@ namespace FolkIdle.Server.Domain.Economy
             foreach (var chest in chests)
             {
                 int room = Math.Max(0, MaxDiamondsPerWeek - week.DiamondsThisWeek);
-                var roll = LootChestRules.Roll((LootChestTier)chest.Tier, chest.Region, highest, perMinute, room, rng);
+                // Modul: A CHEST HOLDS ITS OWN TIER'S LOOT (owner, 2026-10-30). A first
+                // clear or an Ascension step pays the region it fell in - no
+                // materials from further ahead; a Deep chest was granted at the
+                // player's highest region already, so it pays that.
+                int top = (LootChestSource)chest.Source == LootChestSource.DeepFloor ? highest : chest.Region;
+                var roll = LootChestRules.Roll((LootChestTier)chest.Tier, chest.Region, top, perMinute, room, rng);
 
                 foreach (var (item, quantity) in roll.Materials)
                 {

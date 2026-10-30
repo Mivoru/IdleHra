@@ -342,6 +342,492 @@
       "model": "gemini-3.1-flash-image",
       "key": "pure green (#00FF00)",
       "prompt": "A twig broom sweeping in an arc, violet. Game ability icon: one bold shape with a strong coloured glow, readable at 48 pixels, centred with a margin. No circle, no backplate, no frame behind it - the game draws its own."
+    },
+    {
+      "id": "loot_common_closed_noshadow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_loot_common_closed_full.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest."
+    },
+    {
+      "id": "loot_rare_closed_noshadow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_loot_rare_closed_full.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest."
+    },
+    {
+      "id": "loot_epic_closed_noshadow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_loot_epic_closed_full.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest."
+    },
+    {
+      "id": "loot_legendary_closed_noshadow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_loot_legendary_closed_full.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest."
+    },
+    {
+      "id": "cosmetic_closed_noshadow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_cosmetic_closed_full.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest."
+    },
+    {
+      "id": "cosmetic_open_noshadow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_cosmetic_open_full.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest."
+    },
+    {
+      "id": "hearth_sharp_axe",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A freshly honed woodcutter axe with a gleaming edge, a wood chip flying."
+    },
+    {
+      "id": "hearth_hard_pick",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A sturdy iron pickaxe striking sparks off a rock."
+    },
+    {
+      "id": "hearth_seam_sense",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A glowing seam of ore running through split timber and stone."
+    },
+    {
+      "id": "hearth_steady_swing",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An axe and a pickaxe crossed, motion arcs behind them."
+    },
+    {
+      "id": "hearth_clearcut",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A neat stack of logs beside a pile of ore chunks."
+    },
+    {
+      "id": "hearth_prospector",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A miner's lamp shining on a glittering gemstone in rock."
+    },
+    {
+      "id": "hearth_double_haul",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A wooden cart overflowing with logs and ore, two of everything."
+    },
+    {
+      "id": "hearth_deep_vein",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A deep glowing vein of rare crystal ore opening in a cave wall, keystone, radiant."
+    },
+    {
+      "id": "hearth_patient_line",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fishing rod with a still float on calm water at dawn."
+    },
+    {
+      "id": "hearth_green_thumb",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A hand-sized bundle of fresh herbs with a green glow."
+    },
+    {
+      "id": "hearth_good_waters",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A clear stream full of fish and riverside herbs."
+    },
+    {
+      "id": "hearth_still_water",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A mirror-calm pond with a single ripple."
+    },
+    {
+      "id": "hearth_keen_angler",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A sharp fish hook glinting, a rare golden fish nearby."
+    },
+    {
+      "id": "hearth_netmaker",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A finely knotted fishing net with a shining scale caught in it."
+    },
+    {
+      "id": "hearth_full_net",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fishing net bursting with fish and herbs."
+    },
+    {
+      "id": "hearth_moonlit_catch",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fish leaping under a full moon, silver light, keystone, radiant."
+    },
+    {
+      "id": "hearth_quick_hands",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A craftsman's hands blurred with speed over a workbench."
+    },
+    {
+      "id": "hearth_thrifty",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A coin purse and spare materials saved on a workbench."
+    },
+    {
+      "id": "hearth_ledger",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An open ledger book with a quill and a few coins."
+    },
+    {
+      "id": "hearth_batch_work",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: Several identical tools laid out in a row on a bench."
+    },
+    {
+      "id": "hearth_fine_work",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A delicate gold filigree being worked with tiny tools."
+    },
+    {
+      "id": "hearth_salvager",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A broken sword being melted into gold coins in a small crucible."
+    },
+    {
+      "id": "hearth_patron",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A stone monument under construction with a banner."
+    },
+    {
+      "id": "hearth_masterwork",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A perfect glowing weapon on an anvil with three runes floating above it, keystone, radiant."
+    },
+    {
+      "id": "hearth_studious",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An open book with a candle and floating glowing letters."
+    },
+    {
+      "id": "hearth_homebody",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A cosy cottage hearth with a crackling fire."
+    },
+    {
+      "id": "hearth_long_absence",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An hourglass beside a travelling pack and a lantern."
+    },
+    {
+      "id": "hearth_matchmaker",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: Two intertwined wedding rings with a ribbon."
+    },
+    {
+      "id": "hearth_strong_blood",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A drop of red blood glowing with an upward arrow of light."
+    },
+    {
+      "id": "hearth_nursery",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A carved wooden cradle with a soft blanket."
+    },
+    {
+      "id": "hearth_mentor",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An old hand guiding a young hand holding a small hammer."
+    },
+    {
+      "id": "hearth_bloodline_memory",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A glowing family tree with roots and branches of light, keystone, radiant."
+    },
+    {
+      "id": "hearth_col_wood_stone",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A tree stump and a boulder side by side, column emblem."
+    },
+    {
+      "id": "hearth_col_water_herb",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fish and a herb sprig circling each other over water, column emblem."
+    },
+    {
+      "id": "hearth_col_workshop",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An anvil with a hammer, column emblem."
+    },
+    {
+      "id": "hearth_col_kin",
+      "model": "gemini-3.1-flash-image",
+      "references": [
+        "tools/assets/staging/ref_war_bloodthirst.jpg",
+        "tools/assets/staging/ref_war_col_fortune.jpg"
+      ],
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A hearth with a family of three silhouettes, column emblem."
+    },
+    {
+      "id": "herb_yarrow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Yarrow: a sprig of white flat-topped yarrow flowers with feathery leaves. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_golden_chamomile",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Golden Chamomile, rare: chamomile flowers with glowing golden petals. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_marsh_mallow",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure blue (#0000FF)",
+      "prompt": "Marsh Mallow: pale pink marsh mallow flowers on a stem with soft leaves. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_wisp_moss",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Will-o-wisp Moss, rare: a clump of moss with tiny floating pale-green lights. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_thyme",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Thyme: a bundle of small-leaved thyme sprigs tied with twine. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_dragons_blood_sage",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Dragon's Blood Sage, rare: deep red sage leaves with ember-like glowing veins. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_sea_kale",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Sea Kale: blue-green curly sea kale leaves with sea spray. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_frost_lichen",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Frost Lichen, rare: icy blue lichen with frost crystals. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_mugwort",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Mugwort: silvery-green mugwort leaves on a stalk. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "herb_fern_flower",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Fern Flower, rare: the mythical Kupala night fern flower, a radiant red-gold bloom glowing among fern fronds. Game item icon, one bold readable shape, centred with a margin, three-quarter view."
+    },
+    {
+      "id": "potion_hunt",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Elixir of the Hunt: a round flask of deep red potion with a wolf-tooth charm on the cord. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_fortune",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Draught of Fortune: a slim bottle of shimmering gold potion with a four-leaf clover pressed on the label-free glass. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_goldmoss",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Goldmoss Tonic: a squat jar of amber potion with gold flecks swirling. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_ironbark",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Ironbark Brew: a heavy dark-glass bottle of grey-brown potion bound with iron bands. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_swiftroot",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Swiftroot Tea: a narrow vial of bright teal potion with a small feather tied to it. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_gatherer",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "Gatherer's Draught: a corked bottle of fresh green potion with a tiny leaf inside. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_kupala",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Kupala Night: a star-shaped bottle of deep blue potion glowing with tiny red-gold sparks. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "potion_bossbane",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "Boss-bane Philtre: a sharp crystal flask of violet potion with a small skull stopper. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
     }
   ]
 }
