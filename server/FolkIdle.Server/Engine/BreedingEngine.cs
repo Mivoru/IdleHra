@@ -22,6 +22,10 @@ namespace FolkIdle.Server.Engine
         // from its own copy of the number is a preview that can lie.
         public const long BaseBreedingCostGold = 500L;
         private const long BreedingCooldownSeconds = 3600L;
+
+        /// <summary>The cooldown after a breed, cut by the Hearth node Nursery (tenths of a percent; at most 25%).</summary>
+        public static long CooldownSecondsFor(int nurseryTenthsPct)
+            => BreedingCooldownSeconds * (1000 - Math.Clamp(nurseryTenthsPct, 0, 900)) / 1000;
         private const double EpicMutationChance = 0.05;
 
         /// <summary>The gold a pairing costs, given the older parent's generation.</summary>
@@ -234,9 +238,9 @@ namespace FolkIdle.Server.Engine
                     pLineage.TraitMask, mLineage.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared);
 
                 pChar.IsBreedingActive = true;
-                pChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
+                pChar.BreedingCooldownEndEpoch = nowEpoch + CooldownSecondsFor(HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Nursery, await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.Nursery)));
                 mChar.IsBreedingActive = true;
-                mChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
+                mChar.BreedingCooldownEndEpoch = nowEpoch + CooldownSecondsFor(HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Nursery, await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.Nursery)));
 
                 var childId = Guid.NewGuid();
 
@@ -464,7 +468,7 @@ namespace FolkIdle.Server.Engine
                     : BreedingTraits.Inherit(newcomer.TraitMask, heroLineage.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared);
 
                 hero.IsBreedingActive = true;
-                hero.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
+                hero.BreedingCooldownEndEpoch = nowEpoch + CooldownSecondsFor(HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Nursery, await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.Nursery)));
                 newcomer.IsElder = true;
 
                 var childId = Guid.NewGuid();

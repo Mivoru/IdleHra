@@ -95,7 +95,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
                 HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
-                HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood, HearthTreeRegistry.Patron,
+                HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood, HearthTreeRegistry.Patron, HearthTreeRegistry.Nursery,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -196,6 +196,15 @@ namespace FolkIdle.Server.Tests
             Assert.True(FolkIdle.Server.Domain.Progression.GreatWorksPatron.ProgressFor(870, rate) >= 1000);
             Assert.True(FolkIdle.Server.Domain.Progression.GreatWorksPatron.ProgressFor(869, rate) < 1000);
             Assert.Equal(1000, FolkIdle.Server.Domain.Progression.GreatWorksPatron.MaterialsToFinish(1000, 1000));
+        }
+
+        [Fact]
+        public void NurseryCutsTheBreedingCooldownByAQuarter()
+        {
+            int full = HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Nursery, 5);
+            Assert.Equal(250, full);
+            Assert.Equal(3600, BreedingEngine.CooldownSecondsFor(0));
+            Assert.Equal(2700, BreedingEngine.CooldownSecondsFor(full));
         }
 
         [Fact]

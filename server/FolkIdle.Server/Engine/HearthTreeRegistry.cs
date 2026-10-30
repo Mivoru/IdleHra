@@ -34,6 +34,8 @@ namespace FolkIdle.Server.Engine
         BreedingCostPct,
         AptitudeMutationPct,
         ChildGrowthPct,
+        /// <summary>Breeding cooldown cut, in tenths of a percent (Nursery, since 2026-10-30).</summary>
+        BreedingCooldownPct,
         MentorXpPct,
         /// <summary>Keystones: the rank is the flag (step 4.5, or 4.6 for Masterwork).</summary>
         DeepVein,
@@ -153,7 +155,11 @@ namespace FolkIdle.Server.Engine
             Add(LongAbsence, "Long Absence", "long_absence", ColumnKin, 1, -1, "Notable", 3, 2, HearthEffect.OfflineRatePct, 0, "+{0}% reward rate, online and away", ranks: new[] { 40, 80, 125 });
             Add(Matchmaker, "Matchmaker", "matchmaker", ColumnKin, 2, 0, "Fork", 5, 1, HearthEffect.BreedingCostPct, 50, "-{0}% breeding cost", fork: StrongBlood);
             Add(StrongBlood, "Strong Blood", "strong_blood", ColumnKin, 2, 1, "Fork", 5, 1, HearthEffect.AptitudeMutationPct, 20, "+{0}% chance a child's aptitude rolls +1", fork: Matchmaker);
-            Add(Nursery, "Nursery", "nursery", ColumnKin, 3, 0, "Minor", 5, 1, HearthEffect.ChildGrowthPct, 40, "+{0}% child growth speed");
+            // Modul: NOT CHILD GROWTH (owner, 2026-10-30). Childhood lasts one
+            // hour (AgePhaseCurve.ChildEndTicks), so +20% growth saved about ten
+            // minutes - a node worth nothing. It cuts the breeding cooldown
+            // instead, which is the Kin column's real loop.
+            Add(Nursery, "Nursery", "nursery", ColumnKin, 3, 0, "Minor", 5, 1, HearthEffect.BreedingCooldownPct, 50, "-{0}% breeding cooldown");
             Add(Mentor, "Mentor", "mentor", ColumnKin, 3, 1, "Notable", 3, 2, HearthEffect.MentorXpPct, 0, "+{0}% XP for characters below your main's level", ranks: new[] { 50, 100, 150 });
             Add(BloodlineMemory, "Bloodline Memory", "bloodline_memory", ColumnKin, 4, -1, "Keystone", 1, 5, HearthEffect.BloodlineMemory, 1, "A newborn inherits +10% of each parent's aptitude");
 
@@ -173,7 +179,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.RareWoodMine, HearthEffect.RareFishHerb,
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
             HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct, HearthEffect.SalvageGoldPct,
-            HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct, HearthEffect.GreatWorksPct,
+            HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct, HearthEffect.GreatWorksPct, HearthEffect.BreedingCooldownPct,
         };
 
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
