@@ -222,8 +222,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // says which one is standing.
                 byte mask = copy.DefeatedRegionBossMask;
                 byte farmMask = BossFirstClearRules.MarkDefeated(mask, monsterId);
-                long firstClearHp = BossFirstClearRules.MaxHpFor(mask, monsterId, copy.Skill_FirstBlood) * 1000L;
-                long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, copy.Skill_FirstBlood) * 1000L;
+                long firstClearHp = BossFirstClearRules.MaxHpFor(mask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
+                long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
                 bool thorns = stats.SetThornsReflectionActive;
                 int effectiveMaxHp = SimulationEngine.BarAsInt(maxMilliHp);
 
@@ -710,7 +710,7 @@ namespace FolkIdle.Server.Domain.Combat
                     pCrit = combined;
                 }
 
-                // Ruin: one connecting hit in eight lands x2.5.
+                // Ruin: one connecting hit in RuinEvery lands at RuinMultiplier.
                 if (keys.Ruin)
                 {
                     double ruin = 1.0 + (WarEffects.RuinMultiplier - 1.0) / WarEffects.RuinEvery;
@@ -761,8 +761,6 @@ namespace FolkIdle.Server.Domain.Combat
                 var war = WarTreeRegistry.Resolve(in payload);
                 double crushing = war.CrushingChance;
                 if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
-                if (war.BossDamageTenthsPct > 0 && ContentRegistry.IsRegionalBoss(monster.Id))
-                    net += (int)((long)net * war.BossDamageTenthsPct / 1000L);
                 int knowYourPrey = SimulationEngine.KnowYourPreyTenthsPct(in payload, in monster);
                 if (knowYourPrey > 0) net += (int)((long)net * knowYourPrey / 1000L);
                 net = (int)(net * SimulationEngine.LiveCodexDamageMultiplier(in payload));

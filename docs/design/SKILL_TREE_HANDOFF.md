@@ -139,7 +139,54 @@ How to build each one:
 Bridges count their points toward both columns (`PointsInColumn` reads
 `BridgeColumn`). `WarTreeRegistry.PlanReason` already handles their gate.
 
-## 5. Slice 2.4: tuning (next after the bridges)
+## 5. Slice 2.4: tuning (done 2026-10-30)
+
+**Done** in `claude/skill-tree-2-4`. The measured table is in
+`SKILL_TREE_REWORK.md` 8.1: every band lands at 0.98-1.04 of today's best
+build. The owner was away and asked for these to be decided alone, by the
+best recommendation:
+
+- **Combat values cut to about a quarter.** The overshoot had the same
+  log-ratio in every band (0.23-0.25), so a uniform cut fixes the early
+  overshoot too. Row-0 costs stay at 1 point; the curve already matches.
+- **Keystones to about five points' worth.** Ruin x1.6 every 8th hit
+  (was x2.5), and its price is now 75% of attack speed (was 50%), as
+  planned. Perfect Sequence: every 12th swing, +20% crit damage (was 6th
+  and +50%).
+- **Bossbreaker became the War half's First Blood:** -6.4% of a
+  first-clear boss's extra health a rank, 32% at 5. That is exactly
+  today's First Blood maximum, which `BossGearBenchmark` assumes. It fixes
+  two problems at once: the War half had no First Blood, and Bossbreaker's
+  damage made boss farms 19% faster. `BossFirstClearRules.ReliefFor` takes
+  whichever tree the payload runs. It no longer adds world boss damage.
+  Considered and rejected: a new node (it changes the approved layout), and
+  re-solving the walls without the relief (it is risky and makes every
+  wall harder).
+- **Guard stays a survival column; rations are not touched.**
+  `FoodRegistry` says rations are a deliberate fish sink that sustain must
+  not reach, so a Guard node that saved rations would undo the fishing
+  economy. Living Fortress keeps "you never crit": -11% kills for +32%
+  swings survived is a real trade for wall pushers. Bloodthirst is
+  unchanged.
+- **Codex Scholar cut to 1 / 2 / 3%** of the codex bonus. The harness runs
+  at codex x1, so this node sits outside the measured ceiling. At the late
+  x5.76 it is now worth about 2.5%, where it was about 40%.
+- **Golden Touch cut to 2% a rank** (+10%). Today's tree has no flat gold
+  bonus, and gold already rose in the stats fixes.
+- **The bridges were cut with the rest.** The owner approved 6/12/20% crit
+  damage, 10/20/33% of defence and 3/6/10% damage at the starting scale.
+  They are now 1.5/3/4.5%, 2/4/6% and 0.5/1/2%.
+- **The parity tests run at x4** (`WarTreeRegistry.TestValueScale`, an
+  `AsyncLocal`). At the tuned sizes, several mechanics are worth less than
+  one live hour's noise. A mechanic wired on only one side would then hide
+  inside the 5% slack. The harness and the exact-value facts use the real
+  numbers.
+
+Not done (noted for later): the design's secondary targets in section 8
+item 2 (keystone builds within 15% of each other, Fortune keeping 70% of
+the Duelist's damage). These are not measured yet.
+
+The plan as written before the tuning follows.
 
 **Target** (`SKILL_TREE_REWORK.md` section 8). The best War build must land
 within ±5% of today's best build at every band, measured the same way:
@@ -251,6 +298,11 @@ wall goes through `WallWindowScanTests`.
   too. It is a static loot-queue collision, not a defect.
 
 ## 8. Open items outside the rework
+
+- `AutomationAutoFuseTests.TheWorker_FusesTheStacksARequestsDropsLandedIn`
+  fails in a full local run on this PC (twice on 2026-10-30, on the bridges
+  branch and on 2.4). It passes alone and in CI. The likely cause is load or
+  timing: it waits on a background worker. Nobody has looked further.
 
 - Wardrobe fails `check:touch` with one undersized control. It is old;
   nobody looked at it this session.

@@ -2676,7 +2676,7 @@ namespace FolkIdle.Server.Domain.Combat
             monsterId = (ushort)Math.Clamp(slot.CurrentMonsterId, 0, ushort.MaxValue);
             monsterHp = (int)(slot.CurrentMonsterHp / 1000L);
             monsterMaxHp = slot.CurrentMonsterId > 0
-                ? (int)BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, slot.CurrentMonsterId, payload.Skill_FirstBlood)
+                ? (int)BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, slot.CurrentMonsterId, BossFirstClearRules.ReliefFor(in payload))
                 : 0;
             progressTicks = (ushort)Math.Clamp(slot.GatheringProgressTicks, 0, ushort.MaxValue);
             requiredTicks = (ushort)Math.Clamp(slot.RequiredProgressTicks, 0, ushort.MaxValue);
@@ -3901,10 +3901,12 @@ namespace FolkIdle.Server.Domain.Combat
                 float cut = LiveCritChancePct(in payload, in combatStats) / 100f * (warSpeed.FrenzyTenths / 1000f);
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - Math.Clamp(cut, 0f, 0.9f))));
             }
-            // Ruin's price: every source of attack speed counts at half.
+            // Ruin's price: every source of attack speed counts at
+            // WarEffects.RuinSpeedSharePct. Measured at half, the price ate the
+            // gain (+5% kills for a keystone), so slice 2.4 moved it to 75%.
             if (warSpeed.Ruin && playerAttackSpeedMs < BaseAttackIntervalMs)
             {
-                playerAttackSpeedMs = BaseAttackIntervalMs - (BaseAttackIntervalMs - playerAttackSpeedMs) / 2;
+                playerAttackSpeedMs = BaseAttackIntervalMs - (BaseAttackIntervalMs - playerAttackSpeedMs) * WarEffects.RuinSpeedSharePct / 100;
             }
             return playerAttackSpeedMs;
         }
@@ -4008,7 +4010,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         /// <summary>
         /// Crit chance in percent, with the Precision branch, clamped - and the
-        /// War keystones: Perfect Sequence caps the chance at 50 (its 6th swing
+        /// War keystones: Perfect Sequence caps the chance at 50 (its PerfectEvery-th swing
         /// crits on its own), Living Fortress takes it to 0 (it became block).
         /// </summary>
         internal static float LiveCritChancePct(in TickStatePayload payload, in CombatStats combatStats)
@@ -4566,7 +4568,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>A spawn's health, raised by an armed Ascension step's health modifier.</summary>
         private static long SpawnHpFor(in TickStatePayload payload)
         {
-            long hp = BossFirstClearRules.MaxHpFor(FightBossMask(in payload), payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
+            long hp = BossFirstClearRules.MaxHpFor(FightBossMask(in payload), payload.CurrentMonsterId, BossFirstClearRules.ReliefFor(in payload)) * 1000L;
             if (TryGetSeasonalBoss(in payload, out var tier)) return BossAscensionRules.ScaleBossHp(hp, tier.Modifiers);
             return TryGetAscensionModifiers(in payload, out var m) ? BossAscensionRules.ScaleBossHp(hp, in m) : hp;
         }
@@ -4976,7 +4978,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 var warSwing = WarTreeRegistry.Resolve(in payload);
                 if (warSwing.PerfectSequence) payload.WarSwingCount++;
-                // The 6th swing is Perfect Sequence's; it crits if it lands.
+                // Every PerfectEvery-th swing is Perfect Sequence's; it crits if it lands.
                 bool perfect = warSwing.PerfectSequence && !warSwing.LivingFortress
                     && payload.WarSwingCount % WarEffects.PerfectEvery == 0;
 
@@ -5089,7 +5091,7 @@ namespace FolkIdle.Server.Domain.Combat
                         CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
                         combatStats.FlatArmorPenetration);
                     if (crushed) netDamage *= WarEffects.CrushingMultiplier;
-                    // Ruin: every 8th connecting hit, counted across fights.
+                    // Ruin: every RuinEvery-th connecting hit, counted across fights.
                     bool ruined = false;
                     if (warHit.Ruin)
                     {
@@ -5098,10 +5100,8 @@ namespace FolkIdle.Server.Domain.Combat
                         if (ruined) netDamage = (int)(netDamage * WarEffects.RuinMultiplier);
                     }
                     if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
-                    // Bossbreaker against a region boss; Executioner below 35% of
-                    // the bar, judged on the health before this hit lands.
-                    if (warHit.BossDamageTenthsPct > 0 && ContentRegistry.IsRegionalBoss(activeMonster.Id))
-                        netDamage += (int)((long)netDamage * warHit.BossDamageTenthsPct / 1000L);
+                    // Executioner below 35% of the bar, judged on the health
+                    // before this hit lands.
                     int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
                     if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
                     if (warHit.ExecuteTenthsPct > 0

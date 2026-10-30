@@ -28,8 +28,12 @@ namespace FolkIdle.Server.Tests
 
         private static int RegularOf(int region) => ContentRegistry.FirstCanonicalMonsterId + ((region - 1) * 5) + 2;
 
+        /// <summary>The x4 test scale (WarTreeRegistry.TestValueScale) every row here runs at.</summary>
+        private const int Scale = 4;
+
         private static TickStatePayload War(int region, int monsterId, params (int Id, byte Rank)[] ranks)
         {
+            WarTreeRegistry.TestValueScale.Value = Scale;
             var payload = OfflineCombatParityTests.Character(region, geared: true, monsterId, food: 20_000);
             payload.SkillTreeVersion = 1;
             foreach (var (id, rank) in ranks) payload.SkillRanks[id] = rank;
@@ -54,12 +58,35 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
             yield return new object[] { "ruin r3", 3, r3, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 } };
             yield return new object[] { "perfect sequence r3", 3, r3, new[] { WarTreeRegistry.PerfectSequence }, new byte[] { 1 } };
-            yield return new object[] { "bossbreaker on r2 boss", 4, RaceUnlockRegistry.GetRegionBossMonsterId(2), new[] { WarTreeRegistry.Bossbreaker }, new byte[] { 5 } };
             // The bridges (owner, 2026-10-30). Character() beats every boss
             // behind the monster, so region 3 is the highest unlocked one.
             yield return new object[] { "piercing crit r3", 3, r3, new[] { WarTreeRegistry.PiercingCrit }, new byte[] { 3 } };
             yield return new object[] { "counterstroke r3", 3, r3, new[] { WarTreeRegistry.Counterstroke }, new byte[] { 3 } };
             yield return new object[] { "know your prey r3", 3, r3, new[] { WarTreeRegistry.KnowYourPrey }, new byte[] { 3 } };
+        }
+
+        /// <summary>
+        /// Bossbreaker is the War half's First Blood: at 5 ranks a first-clear
+        /// boss has exactly the health today's First Blood 8 leaves it, the
+        /// relief BossGearBenchmark calibrates every wall against.
+        /// </summary>
+        [Fact]
+        public void Bossbreaker_softens_a_wall_exactly_as_first_blood_does()
+        {
+            int boss = RaceUnlockRegistry.GetRegionBossMonsterId(2);
+            var war = War(4, boss, (WarTreeRegistry.Bossbreaker, 5));
+            var today = OfflineCombatParityTests.Character(4, geared: true, boss, food: 20_000);
+            today.Skill_FirstBlood = (byte)SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood);
+            var bare = War(4, boss);
+            WarTreeRegistry.TestValueScale.Value = 1; // exact values: the real numbers
+
+            Assert.True(BossFirstClearRules.IsFirstClearPending(war.DefeatedRegionBossMask, boss));
+            long warHp = BossFirstClearRules.MaxHpFor(war.DefeatedRegionBossMask, boss, BossFirstClearRules.ReliefFor(in war));
+            long todayHp = BossFirstClearRules.MaxHpFor(today.DefeatedRegionBossMask, boss, BossFirstClearRules.ReliefFor(in today));
+            long bareHp = BossFirstClearRules.MaxHpFor(bare.DefeatedRegionBossMask, boss, BossFirstClearRules.ReliefFor(in bare));
+            Assert.Equal(todayHp, warHp);
+            Assert.True(warHp < bareHp);
+            Assert.Equal(todayHp, BossFirstClearRules.MaxHpFor(today.DefeatedRegionBossMask, boss, today.Skill_FirstBlood));
         }
 
         /// <summary>
@@ -85,7 +112,7 @@ namespace FolkIdle.Server.Tests
             behind.DefeatedRegionBossMask = BossFirstClearRules.MarkDefeated(behind.DefeatedRegionBossMask, RaceUnlockRegistry.GetRegionBossMonsterId(3));
             var monster = ContentRegistry.Monsters[r3 - 1];
             Assert.Equal(r3, monster.Id);
-            Assert.Equal(100, FolkIdle.Server.Domain.Combat.SimulationEngine.KnowYourPreyTenthsPct(in with, in monster));
+            Assert.Equal(WarTreeRegistry.Get(WarTreeRegistry.KnowYourPrey)!.ValueAt(3) * Scale, FolkIdle.Server.Domain.Combat.SimulationEngine.KnowYourPreyTenthsPct(in with, in monster));
             Assert.Equal(0, FolkIdle.Server.Domain.Combat.SimulationEngine.KnowYourPreyTenthsPct(in behind, in monster));
         }
 
@@ -99,8 +126,10 @@ namespace FolkIdle.Server.Tests
             payload.SkillRanks[WarTreeRegistry.ShieldWall] = 5;
             stats = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in payload);
             float after = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in payload, in stats);
-            // Shield Wall 5 is +10 block; a third of it is +3.3 crit chance.
-            Assert.Equal(before + 3.3f, after, 2);
+            // Shield Wall's added block, times Counterstroke's share of it.
+            float block = WarTreeRegistry.Get(WarTreeRegistry.ShieldWall)!.ValueAt(5) * Scale / 10f;
+            float share = WarTreeRegistry.Get(WarTreeRegistry.Counterstroke)!.ValueAt(3) * Scale / 1000f;
+            Assert.Equal(before + block * share, after, 2);
         }
 
         [Theory]
@@ -169,6 +198,7 @@ namespace FolkIdle.Server.Tests
         {
             var payload = War(3, RegularOf(3));
             Assert.False(FolkIdle.Server.Domain.Combat.SimulationEngine.HasGoldenFleece(in payload));
+            WarTreeRegistry.TestValueScale.Value = 1; // exact values: the real numbers
             payload.SkillRanks[WarTreeRegistry.GoldenFleece] = 1;
             payload.SkillRanks[WarTreeRegistry.Thunderer] = 3;
             Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.HasGoldenFleece(in payload));
@@ -206,7 +236,9 @@ namespace FolkIdle.Server.Tests
             var liveWithout = OfflineCombatParityTests.RunLive(without);
             _output.WriteLine($"codex scholar r3 kills {offline.Kills:F0}/{live.Kills:F0} (without {liveWithout.Kills:F0})");
 
-            Assert.Equal(2.5f, FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCodexDamageMultiplier(in with), 3);
+            // Codex x2.0 is a +1.0 bonus, made larger by Codex Scholar's share.
+            float expected = 1f + 1f * (1f + WarTreeRegistry.Get(WarTreeRegistry.CodexScholar)!.ValueAt(3) * Scale / 1000f);
+            Assert.Equal(expected, FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCodexDamageMultiplier(in with), 3);
             Assert.True(live.Kills > liveWithout.Kills * 1.01);
             Assert.True(Math.Abs(offline.Kills - live.Kills) <= Math.Max(live.Kills * 0.05, 1.0), $"kills: offline {offline.Kills:F1}, live {live.Kills:F1}");
         }
@@ -216,6 +248,7 @@ namespace FolkIdle.Server.Tests
         public void Fortune_loot_nodes_reach_the_drop_request()
         {
             var payload = War(3, RegularOf(3), (WarTreeRegistry.Scavenger, 5), (WarTreeRegistry.Rarity, 5));
+            WarTreeRegistry.TestValueScale.Value = 1; // exact values: the real numbers
             var stats = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in payload);
             var odds = LootLuckBreakdown.From(in payload, in stats);
             Assert.Equal(7.5f, odds.FortuneRoot, 3);

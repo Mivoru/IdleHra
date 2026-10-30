@@ -453,6 +453,47 @@ The owner wants balance backed by measurement. Nothing in sections 4 and
    a share of the monster's HP (a share of HP would bypass every wall).
    Lifesteal keeps its 1%-of-max-HP-per-hit cap.
 
+### 8.1 Slice 2.4 results (2026-10-30)
+
+Made alone by agreement with the owner, who was away; each decision and
+its reason is in `SKILL_TREE_HANDOFF.md` section 5.
+
+The harness now scores kills an hour (`FarmKill`, with the projection's
+health tracking past 60 swings) as well as damage per second, and a greedy
+move may be a path: fill a column to the next gate, then take one rank of
+the gated node. The reference character has the bosses behind its region
+beaten.
+
+Before the tuning, the War half's best build was five times today's tree in
+every band. The log-ratio was 0.23-0.25 everywhere, so the scale was uniform
+and most of the fix was too: every combat value went to about a quarter.
+The keystones then dominated (Ruin +13%, Perfect Sequence +15% on their
+own) and were cut to about the value of five points elsewhere. The late
+nodes were trimmed last, so a level-100 build still gains from its last
+points without breaking the ceiling.
+
+Best build, kills an hour against no tree (target: War within ±5% of today):
+
+| Region (budget) | Today | War before | War after | Ratio |
+|---|---|---|---|---|
+| 1 (19) | +8.3% | +40.6% | +7.4% | 0.99 |
+| 2 (39) | +15.8% | +85.4% | +13.6% | 0.98 |
+| 3 (59) | +24.0% | +135.6% | +24.7% | 1.01 |
+| 4 (79) | +27.9% | +163.7% | +29.6% | 1.01 |
+| 5 (99) | +29.8% | +194.3% | +33.0% | 1.02 |
+| 5 (129) | +29.8% | +194.3% | +34.9% | 1.04 |
+
+Each node alone at its maximum, region 5 (`War_node_values`): the minor and
+notable combat nodes are worth +0.5% to +3.1% kills, the two damage
+keystones +2.6% (Ruin) and +5.2% (Perfect Sequence), and Living Fortress
+-11.2% kills for +32% swings survived. Guard's stat nodes buy +8% to +13%
+swings survived each.
+
+**The walls do not move.** Bossbreaker is now the War half's First Blood
+(the same 32% off the first-clear penalty, which is what
+`BossGearBenchmark` assumes), and the tree's combat slack is today's within
+the ratios above. `WallWindowScanTests` and `BossWallTests` pass unchanged.
+
 ## 9. Decisions for the owner
 
 | # | Question | Recommendation |
