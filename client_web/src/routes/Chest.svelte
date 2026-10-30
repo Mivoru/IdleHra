@@ -55,6 +55,7 @@
   import ContextMenu, { type MenuItem } from '../lib/ui/ContextMenu.svelte';
   import Hint from '../lib/ui/Hint.svelte';
   import { onDestroy } from 'svelte';
+  import LootChestShelf from '../lib/ui/LootChestShelf.svelte';
   import { SvelteMap } from 'svelte/reactivity';
 
   // Modul: TWO NUMBERS FOR ONE CONTRACT, because the row has two shapes.
@@ -827,6 +828,8 @@
 {/snippet}
 
 <div class="wrap" class:split={$isWide}>
+  <!-- Loot chests: only shown while the player holds one (or is opening it). -->
+  <LootChestShelf />
   <section class="panel">
     <header class="head">
       <h2>Village chest</h2>

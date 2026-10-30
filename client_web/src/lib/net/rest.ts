@@ -56,6 +56,8 @@ export const queryKeys = {
   automationRules: ['player', 'automationRules'] as const,
   /** Task 83: the Workshop's commissions - catalogue, prices and the running order. */
   workshop: ['crafting', 'workshop'] as const,
+  /** Loot chests: the shelf of unopened chests and their published odds. */
+  lootChests: ['player', 'lootChests'] as const,
   deeds: ['meta', 'deeds'] as const,
   /** Task 57: the collection log. */
   collection: ['player', 'collection'] as const,
@@ -2881,4 +2883,45 @@ export async function collectCommission(): Promise<WorkshopView> {
   const view = await authedPost<WorkshopView>('/api/v1/workshop/collect', {});
   if (!view) throw new AuthError('POST /api/v1/workshop/collect answered nothing', 500);
   return view;
+}
+
+// ---------------------------------------------------------------------------
+// Loot chests (CHESTS_DUNGEONS_DIAMONDS.md section 1). Shapes mirror
+// NetworkBroadcastSystem.LootChests.cs; REST JSON, not a packet struct.
+
+export interface LootChestShelfRow {
+  Tier: number;
+  Name: string;
+  Count: number;
+  Odds: string[];
+}
+
+export interface LootChestShelf {
+  Chests: LootChestShelfRow[];
+  MaxDiamondsPerWeek: number;
+}
+
+export interface OpenedLootChest {
+  Tier: number;
+  Region: number;
+  Materials: { ItemId: string; Quantity: number }[];
+  Gold: number;
+  Diamonds: number;
+  Piece: { InstanceId: number; BaseItemId: string; QualityTier: number; RarityName: string } | null;
+}
+
+export interface LootChestOpenResult {
+  Result: 'Ok' | 'NothingToOpen';
+  Opened: OpenedLootChest[];
+  Chests: LootChestShelfRow[];
+}
+
+export function fetchLootChests(): Promise<LootChestShelf> {
+  return authedGet<LootChestShelf>('/api/v1/chests');
+}
+
+export async function openLootChests(tier: number, count: number): Promise<LootChestOpenResult> {
+  const res = await authedPost<LootChestOpenResult>('/api/v1/chests/open', { Tier: tier, Count: count });
+  if (!res) throw new AuthError('POST /api/v1/chests/open answered nothing', 500);
+  return res;
 }

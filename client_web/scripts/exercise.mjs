@@ -2253,6 +2253,37 @@ await page.waitForTimeout(600);
 }
 if (want('chest')) {
 await go('Chest');
+// --- loot chests (CHESTS_DUNGEONS_DIAMONDS.md section 1, 2026-10-30) ---------
+// Modul: ROUND-TRIPS BY CONSTRUCTION. The dev route grants the chest this
+// step opens, so the fixture ends with the shelf it started with; what came
+// out (a little gold and material) is the point being proven, not a cost.
+// The proof is the WORLD moving: the shelf count drops back, the reveal
+// lists what came out, and the gold ledger's LootChest income grows.
+{
+  const lootIncome = async () =>
+    ((await apiGet('/api/v1/player/gold-ledger').catch(() => null))?.Income ?? [])
+      .filter((c) => c.Category === 'LootChest').reduce((a, c) => a + (c.SinceRecorded ?? 0), 0);
+  const before = await apiGet('/api/v1/chests').catch(() => null);
+  const silverBefore = before?.Chests?.find((c) => c.Tier === 2)?.Count ?? 0;
+  const incomeBefore = await lootIncome();
+  const granted = await apiPost('/api/v1/dev/chests/grant', { Tier: 2, Region: 1 }).catch(() => null);
+  await page.reload();
+  await page.getByTestId('loot-chest-open-2').waitFor({ timeout: 15000 }).catch(() => {});
+  await page.getByTestId('loot-chest-open-2').click().catch(() => {});
+  const reveal = page.getByTestId('loot-chest-reveal');
+  await reveal.waitFor({ timeout: 15000 }).catch(() => {});
+  const revealText = (await reveal.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  await page.getByTestId('loot-chest-collect').click().catch(() => {});
+  const after = await apiGet('/api/v1/chests').catch(() => null);
+  const silverAfter = after?.Chests?.find((c) => c.Tier === 2)?.Count ?? -1;
+  const incomeAfter = await lootIncome();
+  record('a loot chest opens on the Chest screen and pays into the wallet',
+    granted?.Id > 0 && /gold/.test(revealText) && silverAfter === silverBefore && incomeAfter > incomeBefore,
+    `granted ${granted?.Id ?? 'none'}, shelf ${silverBefore} -> ${silverAfter}, LootChest income ${incomeBefore} -> ${incomeAfter}, reveal "${revealText}"`);
+  record('every loot chest tier publishes its odds',
+    (after?.Chests ?? []).length === 4 && after.Chests.every((c) => c.Odds?.length >= 3),
+    `${(after?.Chests ?? []).map((c) => `${c.Name}: ${c.Odds?.length}`).join(', ')}`);
+}
 {
   // Task 81: the lock moved into the row's "More" menu, and its state is a
   // "Locked" badge on the row. The row is addressed by its equipment id so a
