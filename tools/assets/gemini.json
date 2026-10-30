@@ -21,6 +21,44 @@
       ],
       "prompt": "Edit this image. Keep exactly the same strongbox - same oak planks, black iron bands, rivets, ring lock plate, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else.",
       "flattenScale": 0.62
+    },
+    {
+      "id": "loot_rare_open",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_rare_closed.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same strongbox - same dark oak, polished silver bands, six-petal rosette lock plate, faint pale-blue glow in the seams, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else.",
+      "flattenScale": 0.62
+    },
+    {
+      "id": "loot_epic_open",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_epic_closed.png"
+      ],
+      "prompt": "Edit this image. Keep exactly the same strongbox - same stained ash wood, gilded bands, amethyst lock, engraved six-spoked wheel, faint violet glow in the seams, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else.",
+      "flattenScale": 0.62
+    },
+    {
+      "id": "ticket_scholar",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A rolled parchment scroll tied with a cord and sealed with a large blue wax seal stamped with an open eye. Simple bold silhouette, readable at small size. Isolated object, nothing behind it. Centred, the whole object in frame with a wide margin, three-quarter view."
+    },
+    {
+      "id": "ticket_dragon",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A thick worn bronze token coin. On its face, carved in the flat style of Slavic folk wood-carving: Zmey Gorynych, a squat serpent-dragon standing on four legs, three small heads on long necks, simple patterned body, ornamental border of zigzags. Not a heraldic emblem, not a rearing pose, no wings spread. Chipped edges. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view."
+    },
+    {
+      "id": "ticket_smith",
+      "model": "gemini-3.1-flash-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "An old iron key on a short leather tag. On the tag, a clear simple branded icon of a blacksmith hammer lying above an anvil, large and easy to read. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view."
     }
   ]
 }

@@ -181,6 +181,254 @@
       "estimatedUsd": 0.067,
       "seconds": 11,
       "at": "2026-10-30T14:42:12.706Z"
+    },
+    {
+      "id": "loot_rare_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same strongbox - same dark oak, polished silver bands, six-petal rosette lock plate, faint pale-blue glow in the seams, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_rare_open.jpg",
+      "bytes": 470220,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1533,
+        "totalTokenCount": 1976,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T14:48:09.031Z"
+    },
+    {
+      "id": "loot_epic_open",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same strongbox - same stained ash wood, gilded bands, amethyst lock, engraved six-spoked wheel, faint violet glow in the seams, proportions, camera angle, lighting and size in frame - but with its lid thrown open on its back hinge to about 110 degrees, the inside empty and dark. Zoom the camera out so the WHOLE chest including the fully open lid fits inside the frame, with a wide empty margin on every side; the chest body a little smaller than in the reference. Do not change anything else. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_epic_open.jpg",
+      "bytes": 489822,
+      "usage": {
+        "promptTokenCount": 444,
+        "candidatesTokenCount": 1512,
+        "totalTokenCount": 1956,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 186
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T14:48:18.196Z"
+    },
+    {
+      "id": "ticket_scholar",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A rolled parchment scroll tied with a cord and sealed with a large blue wax seal stamped with an open eye. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ticket_scholar.jpg",
+      "bytes": 473853,
+      "usage": {
+        "promptTokenCount": 119,
+        "candidatesTokenCount": 1372,
+        "totalTokenCount": 1491,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 119
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T14:48:40.578Z"
+    },
+    {
+      "id": "ticket_dragon",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A thick worn gold token coin with a three-headed dragon in relief on its face, chipped edges. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ticket_dragon.jpg",
+      "bytes": 746626,
+      "usage": {
+        "promptTokenCount": 118,
+        "candidatesTokenCount": 1516,
+        "totalTokenCount": 1634,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 118
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T14:48:48.878Z"
+    },
+    {
+      "id": "ticket_smith",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "An old iron key on a short leather tag, the tag burned with a hammer and anvil mark. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ticket_smith.jpg",
+      "bytes": 496788,
+      "usage": {
+        "promptTokenCount": 117,
+        "candidatesTokenCount": 1521,
+        "totalTokenCount": 1638,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 117
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T14:48:57.933Z"
+    },
+    {
+      "id": "ticket_scholar",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A rolled parchment scroll tied with a cord and sealed with a large blue wax seal stamped with an open eye. Simple bold silhouette, readable at small size. Isolated object, nothing behind it. Centred, the whole object in frame with a wide margin, three-quarter view. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ticket_scholar.jpg",
+      "bytes": 505667,
+      "usage": {
+        "promptTokenCount": 126,
+        "candidatesTokenCount": 1421,
+        "totalTokenCount": 1547,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 126
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T14:49:28.850Z"
+    },
+    {
+      "id": "ticket_dragon",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A thick worn bronze token coin. On its face, carved in the flat style of Slavic folk wood-carving: Zmey Gorynych, a squat serpent-dragon standing on four legs, three small heads on long necks, simple patterned body, ornamental border of zigzags. Not a heraldic emblem, not a rearing pose, no wings spread. Chipped edges. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ticket_dragon.jpg",
+      "bytes": 774929,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1562,
+        "totalTokenCount": 1736,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T14:49:37.632Z"
+    },
+    {
+      "id": "ticket_smith",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "An old iron key on a short leather tag. On the tag, a clear simple branded icon of a blacksmith hammer lying above an anvil, large and easy to read. Simple bold silhouette, readable at small size. Centred, the whole object in frame with a wide margin, three-quarter view. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/ticket_smith.jpg",
+      "bytes": 506210,
+      "usage": {
+        "promptTokenCount": 131,
+        "candidatesTokenCount": 1440,
+        "totalTokenCount": 1571,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 131
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T14:49:45.940Z"
     }
   ]
 }

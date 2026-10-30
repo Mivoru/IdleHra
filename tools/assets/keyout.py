@@ -5,8 +5,8 @@
       Gemini as a reference (a transparent reference reads as black). A scale
       below 1 shrinks the object into the LOWER middle of the canvas: Gemini
       keeps the reference's framing, so an opened lid needs the room above.
-  python tools/assets/keyout.py key IN.png OUT.png [#00ff00]
-      Remove the key colour: alpha from the distance to it, then despill so
+  python tools/assets/keyout.py key IN.png OUT.png [#rrggbb]
+      Remove the key colour (default: sampled from the corners): alpha from the distance to it, then despill so
       gold edges do not keep a green fringe.
   python tools/assets/keyout.py preview OUT.jpg IN.png [IN.png ...]
       Each image on a dark and a light floor, side by side, for review.
@@ -38,6 +38,20 @@ def flatten(src, dst, key, scale=1.0):
     floor.convert('RGB').save(dst)
 
 
+def sampled_key(src):
+    """The key as the model actually painted it: the corners' mean colour.
+
+    Modul: "pure green" comes back anywhere from #00ff00 to #04bd04, and a
+    darker green sits outside a distance threshold built around #00ff00 -
+    two tickets kept their whole background that way. The corners are
+    background by the prompt's own margin rule, so they ARE the key.
+    """
+    im = Image.open(src).convert('RGB')
+    w, h = im.size
+    px = [im.getpixel(p) for p in ((4, 4), (w - 5, 4), (4, h - 5), (w - 5, h - 5))]
+    return tuple(sum(p[i] for p in px) // 4 for i in range(3))
+
+
 def keyout(src, dst, key, inner=60, outer=150):
     im = Image.open(src).convert('RGB')
     kr, kg, kb = key
@@ -53,6 +67,11 @@ def keyout(src, dst, key, inner=60, outer=150):
             if a and g > max(r, b):  # despill: green may not exceed the other two
                 g = max(r, b)
             po[x, y] = (r, g, b, a)
+    # Modul: A MODEL SOMETIMES IGNORES THE KEY and paints its own floor; then
+    # nothing keys out and the "transparent" asset is a grey square. Say so.
+    corners = [po[0, 0][3], po[w - 1, 0][3], po[0, h - 1][3], po[w - 1, h - 1][3]]
+    if max(corners) > 0:
+        print(f'WARNING {src}: the background is not the key colour (corner alpha {corners}); regenerate', file=sys.stderr)
     out = out.crop(out.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox() or (0, 0, w, h))
     out.save(dst)
 
@@ -84,4 +103,4 @@ if __name__ == '__main__':
         if mode == 'flatten':
             flatten(sys.argv[2], sys.argv[3], key, float(sys.argv[5]) if len(sys.argv) > 5 else 1.0)
         else:
-            keyout(sys.argv[2], sys.argv[3], key)
+            keyout(sys.argv[2], sys.argv[3], key if len(sys.argv) > 4 else sampled_key(sys.argv[2]))
