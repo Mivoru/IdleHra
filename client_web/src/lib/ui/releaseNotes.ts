@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.43.0',
+    date: '2026-10-30',
+    headline: 'Loot chests.',
+    sections: [
+      {
+        title: 'Loot chests',
+        items: [
+          'Bronze, Silver, Gold and Ancient chests hold materials, gold, sometimes equipment and, in the better ones, diamonds.',
+          'Earn them by reaching a new deepest floor of the Deep each week from floor 10, and by beating a region boss for the first time.',
+          'Open them from the Chest screen, one at a time or five at once. Every chest shows its odds.',
+          'Gold from a chest grows with your own income, so a chest stays worth opening at any level.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.42.0',
     date: '2026-10-30',
     sections: [

@@ -60,6 +60,8 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerRefreshToken> PlayerRefreshTokens { get; set; }
         public DbSet<EquipmentAffixMatrix> EquipmentAffixMatrices { get; set; }
         public DbSet<PlayerCraftingSlot> PlayerCraftingSlots { get; set; }
+        public DbSet<LootChest> LootChests { get; set; }
+        public DbSet<LootChestWeek> LootChestWeeks { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
         public DbSet<PlayerChroniclePass> PlayerChroniclePasses { get; set; }
@@ -497,6 +499,12 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerCraftingSlot>()
                 .HasKey(p => new { p.PlayerId, p.SlotIndex });
+
+            modelBuilder.Entity<LootChest>()
+                .HasIndex(c => c.PlayerId);
+
+            modelBuilder.Entity<LootChestWeek>()
+                .HasKey(w => w.PlayerId);
 
             modelBuilder.Entity<PlayerLifetimeAchievement>()
                 .HasKey(p => new { p.PlayerId, p.AchievementId });

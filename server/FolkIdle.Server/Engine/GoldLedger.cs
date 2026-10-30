@@ -51,6 +51,8 @@ namespace FolkIdle.Server.Engine
         Other = 12,
         /// <summary>A quest-line step's reward (QuestLineEngine).</summary>
         QuestLine = 13,
+        /// <summary>Gold out of an opened loot chest (LootChestEngine), including gold paid for refused diamonds.</summary>
+        LootChest = 14,
     }
 
     /// <summary>

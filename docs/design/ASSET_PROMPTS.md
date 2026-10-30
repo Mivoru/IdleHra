@@ -207,6 +207,33 @@ Each 2-3 s, 1:1 or 16:9, no camera motion, no objects.
 
 ---
 
+## 7a. Videos by hand in the Gemini app (2026-10-30)
+
+The chest effects (flash, rays, sparks) are now drawn in code by `ChestStage`,
+so only **three** videos are still worth making. Make them **by hand** in the
+Gemini app (the owner's Pro plan includes Veo); driving the consumer app with
+automation is against its terms, and the API would charge per second.
+
+**Settings for all three:** 16:9, the shortest length offered (the game cuts
+2-3 s out of it), no sound needed. Generate two or three tries each and keep
+the cleanest. Save as the given file name into `tools/assets/incoming/`.
+
+**What makes a clip usable:** pure black background with nothing in it, light
+only, the camera does not move, no objects, no text, no watermark in the
+frame. The game draws these with additive blending (`screen`), so black turns
+see-through by itself; anything grey or textured in the background shows up
+as a box.
+
+| File | Prompt |
+|---|---|
+| `fx_legendary_burst.mp4` | A single burst of warm golden light exploding outward from one point in the lower centre of the frame, with soft straight rays and slow glowing embers drifting up and fading out. Pure black background, nothing else in the frame, light only, completely static camera, no objects, no text. Duration about 3 seconds. |
+| `fx_dungeon_gate.mp4` | A tall arch-shaped opening of cold blue-white light that grows from a thin vertical line in the centre to a full glowing doorway, with faint mist curling at its edges, then holds steady. Pure black background, nothing else in the frame, light only, completely static camera, no stone, no objects, no text. Duration about 3 seconds. |
+| `fx_boss_aura.mp4` | A slow pulsing aura of dark red and violet light rising from the bottom edge of the frame like heat haze, with a few sparks drifting upward, looping smoothly. Pure black background, nothing else in the frame, light only, completely static camera, no figure, no objects, no text. Duration about 4 seconds, the end matching the start. |
+
+**If a try fails:** a grey or blue-tinted background, a camera push-in, or a
+visible object (a chest, a door frame) means the clip is not usable; ask again
+with "the background must stay perfectly black for the whole clip" added.
+
 ## 8. Counts
 
 | Group | Images | Videos |

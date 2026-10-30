@@ -114,6 +114,33 @@ the Delve uses.
 - **Auto-salvage does not touch chest equipment.** A player who opens a chest
   sees what was in it.
 
+### 1.4a Build plan (2026-10-30, after L1-L3 were decided)
+
+1. **Rules** - `LootChestRules` (built): tiers, contents as time, published
+   odds, the refused-diamond-pays-gold rule. First-cut numbers, re-measured
+   after a week of real openings.
+2. **Storage** - a `LootChests` table (Id, PlayerId, Tier, Region, Source,
+   GrantedAtUtc), one row per chest, so opening consumes a row id in the
+   same transaction that writes its contents (idempotent by construction).
+   A `ChestDiamondsThisWeek` counter with the Delve's week stamp: chests get
+   their own weekly diamond ceiling (proposal: 15) rather than sharing the
+   Delve's 60 or the Deep's 20.
+3. **Opening** - `LootChestEngine.OpenAsync(ids)` on the REST stripe lock,
+   like the Delve: gold through `CommodityLedger` + `GoldLedger` (a new
+   `GoldIncomeSource.LootChest`), materials through `CommodityLedger`,
+   equipment through the existing equipment insert with auto-salvage OFF
+   (section 1.4), diamonds under the ceiling. Gold per minute = the
+   player's measured income (`gold_income_daily`, last 7 days / minutes
+   played), with a region floor so a new account's chest is not empty.
+4. **Sources** - the Deep's new weekly-deepest floors from 10 (Bronze at
+   10-12, Silver 13-16, Gold 17+) and regional boss first clears (Silver,
+   Gold for region 5). Both already have a grant point.
+5. **Client** - a chest shelf (stacked counts) and the opening on
+   `ChestStage` (draft PR #239), open one or x5; the reveal card lists
+   what came out.
+6. **Verify** - `exercise.mjs` grants a chest through a dev route, opens it,
+   checks the wallet and stash moved, and restores what it spent.
+
 ### 1.5 Decisions for the owner
 
 - **L1. Which sources ship first?** Recommendation: the Deep and regional boss
@@ -584,6 +611,11 @@ new one-line counter):
   row at the Delve), shown as "???" until earned.
 
 ### 5.5 The announcement
+
+**Correction (2026-10-30):** most of this already exists. `AchievementToast.svelte`
+shows a card with a seal, the tier and the reward, plays `achievement_unlock.wav`,
+and opens the Book of Deeds (Progress, Goals tab) on a tap. What is still missing
+is the bigger Legendary card and the offline queue. The original text:
 
 A real moment when an achievement is earned:
 - A **banner** slides in at the top with the achievement's icon, name, tier

@@ -193,6 +193,9 @@ namespace FolkIdle.Server.Domain.Economy
 
         /// <summary>Set by a bank (walking out, or the floors-1-8 bank a descent makes) and by a Deep floor that is a new weekly record. All are what the player was actually paid.</summary>
         public int DiamondsGranted { get; set; }
+
+        /// <summary>The loot chest tier this descent paid (0 = none): a new weekly-deepest Deep floor from 10.</summary>
+        public int LootChestGranted { get; set; }
         public long GoldReturned { get; set; }
 
         /// <summary>Set only by a Deep purchase (a toll or a lantern): exactly what was debited.</summary>
@@ -704,6 +707,15 @@ namespace FolkIdle.Server.Domain.Economy
                     if (newWeeklyDeepest)
                     {
                         outcome.DiamondsGranted = PayDeepRecordDiamond(player, run.CurrentFloor);
+
+                        // Loot chests (owner L1, 2026-10-30): a new weekly-deepest
+                        // floor from 10 also pays a chest, in this transaction, so
+                        // the chest and the record that earned it commit together.
+                        if (LootChestEngine.DeepFloorChest(run.CurrentFloor) is { } chest)
+                        {
+                            LootChestEngine.Stage(db, playerId, chest, await HighestRegionReachedAsync(db, playerId), LootChestSource.DeepFloor, Now());
+                            outcome.LootChestGranted = (int)chest;
+                        }
                     }
 
                     // Modul: THE TITLE IS GRANTED IN THE SAME TRANSACTION AS THE

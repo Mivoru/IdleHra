@@ -25,6 +25,8 @@ namespace FolkIdle.Server.Engine
         // Before it existed these were BossGuarantee, so "online or away?"
         // could not be asked of boss drops at all.
         OfflineBossGuarantee = 10,
+        // A piece out of an opened loot chest (LootChestEngine).
+        LootChest = 11,
     }
 
     /// <summary>
