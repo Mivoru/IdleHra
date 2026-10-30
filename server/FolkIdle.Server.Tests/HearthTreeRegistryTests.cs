@@ -95,7 +95,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
                 HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
-                HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood,
+                HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood, HearthTreeRegistry.Patron,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -184,6 +184,18 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(11, BreedingAptitudes.Mutate(10, isInbred: false, rng, groundsLevel: 0, upBonusPercent: 100));
             Assert.Equal(10 - 1, BreedingAptitudes.Mutate(10, isInbred: true, rng, groundsLevel: 0, upBonusPercent: 100));
             Assert.Equal(10, HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.StrongBlood, 5) / 10);
+        }
+
+        [Fact]
+        public void PatronStretchesEveryMaterial_AndNeverTakesMoreThanTheStageNeeds()
+        {
+            long rate = 1000 + HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Patron, 3);
+            Assert.Equal(1150, rate);
+            Assert.Equal(1150, FolkIdle.Server.Domain.Progression.GreatWorksPatron.ProgressFor(1000, rate));
+            Assert.Equal(870, FolkIdle.Server.Domain.Progression.GreatWorksPatron.MaterialsToFinish(1000, rate));
+            Assert.True(FolkIdle.Server.Domain.Progression.GreatWorksPatron.ProgressFor(870, rate) >= 1000);
+            Assert.True(FolkIdle.Server.Domain.Progression.GreatWorksPatron.ProgressFor(869, rate) < 1000);
+            Assert.Equal(1000, FolkIdle.Server.Domain.Progression.GreatWorksPatron.MaterialsToFinish(1000, 1000));
         }
 
         [Fact]

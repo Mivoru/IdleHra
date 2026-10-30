@@ -160,6 +160,7 @@ namespace FolkIdle.Server.Tests
             ["hearth:salvager"] = "auto-salvage gold, CombatLootDropRequest.SalvageGoldTenthsPct -> ProcessMonsterLootDropAsync",
             ["hearth:matchmaker"] = "breeding price, BreedingEngine.CostFor(gen, discount) - the breed and its preview",
             ["hearth:strong_blood"] = "the up-mutation chance, BreedingAptitudes.Mutate",
+            ["hearth:patron"] = "Great Works progress per material, GreatWorksEngine contribute (GreatWorksPatron)",
             ["hearth:deep_vein"] = "every 20th harvest of wood or ore, RunGatheringTick / CalculateGatheringProjection (HearthTreeRegistryTests)",
             ["hearth:moonlit_catch"] = "every 20th catch of fish or herbs, RunGatheringTick / CalculateGatheringProjection (HearthTreeRegistryTests)",
         };

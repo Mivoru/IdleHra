@@ -173,7 +173,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.RareWoodMine, HearthEffect.RareFishHerb,
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
             HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct, HearthEffect.SalvageGoldPct,
-            HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct,
+            HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct, HearthEffect.GreatWorksPct,
         };
 
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
