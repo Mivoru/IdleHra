@@ -9627,7 +9627,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill, 0 })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -12266,7 +12266,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill, 0 })!;
             }
 
             int publishedCount = 0;

@@ -1412,6 +1412,17 @@ namespace FolkIdle.Server.Domain.Combat
                                     if (redisVal.HasValue)
                                     {
                                         byte[] stateDump = redisVal!;
+                                        // Modul: A DUMP FROM ANOTHER BUILD IS NOT THIS PAYLOAD. The
+                                        // dump is the raw struct, so any layout change (a new field,
+                                        // the rank buffer growing to 128) makes an old node's dump the
+                                        // wrong size, and MemoryMarshal.Read would throw on a short one
+                                        // or misread a long one. Disconnect instead: the client signs
+                                        // in again and the session loads from the database.
+                                        if (stateDump.Length != System.Runtime.CompilerServices.Unsafe.SizeOf<TickStatePayload>())
+                                        {
+                                            _networkSystem.ForceDisconnect(pId);
+                                            return;
+                                        }
                                         TickStatePayload payload;
                                         // Restrict the ref struct span to a synchronous scope
                                         unsafe
@@ -3385,7 +3396,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Scholar is a rate here too (ScholarRate): every stream below
             // accrues at 1000 + its permille of the hourly rate.
             long ticks = (long)Math.Round(deltaTimeSeconds * 10.0);
-            int ratePermille = 1000 + ScholarRate.BonusPermille(payload.Skill_Scholar);
+            int ratePermille = 1000 + ScholarRate.BonusPermille(in payload);
 
             long logs = VillageManagementEngine.AccrueProduction(ref payload.LumberjackProductionAccumulator,
                 VillageManagementEngine.ProductionRatePerHour(payload.LumberjackLevel), ticks, ratePermille);
@@ -4121,6 +4132,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// The XP multiplier a live kill pays at, in percent, before the
         /// global-event and mentorship-penalty terms ProcessMonsterDeath adds.
         /// </summary>
+        /// <summary>Whether any slot holds a character still in childhood (Mentor's condition).</summary>
+        internal static bool AChildWorksInASlot(in TickStatePayload payload)
+            => (payload.Slot1_CharacterId != Guid.Empty && payload.Slot1_AgePhase == AgePhaseCurve.Child)
+               || (payload.Slot2_CharacterId != Guid.Empty && payload.Slot2_AgePhase == AgePhaseCurve.Child)
+               || (payload.Slot3_CharacterId != Guid.Empty && payload.Slot3_AgePhase == AgePhaseCurve.Child);
+
         internal static int LiveKillXpMultiplierPct(in TickStatePayload payload, int localXpMultiplier)
         {
             int finalXpMultiplier = localXpMultiplier;
@@ -4134,6 +4151,10 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             // The War half's Quick Study, in the same additive layer.
             finalXpMultiplier += WarTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
+            var hearthXp = HearthTreeRegistry.Resolve(in payload);
+            finalXpMultiplier += hearthXp.XpTenthsPct / 10;
+            if (hearthXp.MentorXpTenthsPct > 0 && AChildWorksInASlot(in payload))
+                finalXpMultiplier += hearthXp.MentorXpTenthsPct / 10;
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
             // The character's pet (PetRegistry), on the active slot's totals.
             finalXpMultiplier += payload.CachedAffixTotals.XpTenthsPct / 10;
@@ -5559,7 +5580,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // XP, gold, loot, codex, diamonds and the Golden Fleece count -
                 // which is what the offline projection draws for its window's
                 // kills. The fight itself is untouched.
-                int paidKills = (int)ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                int paidKills = (int)ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
 
 
                 // Modul: and the same removal on the live-kill path. Two copies
@@ -5951,7 +5972,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // chance - mastery XP and loot rolls both - which is what the
                 // offline projection draws for a whole window. A rate on the
                 // reward, not a faster tick.
-                int paidHarvests = (int)ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                int paidHarvests = (int)ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
 
                 int masteryXpGain = gatheringNode.BaseMasteryXpReward;
                 ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, (long)masteryXpGain * paidHarvests);
@@ -5963,6 +5984,31 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Loot roll
                 var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
+
+                // Modul: DEEP VEIN AND MOONLIT CATCH (Hearth keystones, step 4.5).
+                // Every KeystoneEvery-th completed harvest adds one roll of the
+                // node's rarest entry. Counted on LifetimeHarvests, which the
+                // offline projection advances by the same harvests, so a window
+                // away pays exactly the 20ths it covers (RareKeystoneRolls).
+                // Moonlit Catch was "rare find doubles while offline" in the
+                // design and was changed by the owner (2026-10-30): that broke
+                // the rule that an hour away pays what an hour watched pays.
+                if (payload.LifetimeHarvests % HearthTreeRegistry.KeystoneEvery == 0
+                    && HearthTreeRegistry.Resolve(in payload).RareRollFor(gatheringNode.ProfessionType))
+                {
+                    int rarest = RarestEntryIndex(lootTable);
+                    if (rarest >= 0)
+                    {
+                        CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
+                        {
+                            PlayerId = payload.PlayerId,
+                            ActivityId = payload.ActiveActivityId,
+                            ItemId = lootTable[rarest].ItemId,
+                            Quantity = RollGatherQuantity(Random.Shared, in lootTable[rarest]),
+                        });
+                    }
+                }
+
                 if (lootTable.Length > 0)
                 {
                     GatheringYield yield = GatheringYieldFor(ref payload, in gatheringNode, localDropMultiplier);
@@ -6078,9 +6124,11 @@ namespace FolkIdle.Server.Domain.Combat
                 1 => payload.PickaxeToolTier,
                 _ => payload.RodToolTier
             };
+            // Modul: THE HEARTH HALF, NOT THE HARVEST BOUGH (2026-10-30). The War
+            // switch emptied slot 14, so this term read 0 for everyone; the
+            // Hearth speed nodes replace it, capped at the old Harvest's +16%.
             int extraPct = ToolSpeedPctFor(in payload, professionType)
-                + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                + HearthTreeRegistry.Resolve(in payload).SpeedTenthsPctFor(professionType) / 10
                 + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask))
                 // The character's pet (PetRegistry).
                 + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10;
@@ -6208,6 +6256,13 @@ namespace FolkIdle.Server.Domain.Combat
             // player was shown.
             additionalYieldBonus += ToolYieldPctFor(in payload, gatheringNode.ProfessionType) / 10;
 
+            // Modul: the Hearth half's yield and "pays twice" nodes (2026-10-30),
+            // extra harvest rolls in the same whole points as everything above,
+            // added here so the live harvest and the offline projection both pay
+            // them. Tenths, so /10 like the tool affix.
+            var hearth = HearthTreeRegistry.Resolve(in payload);
+            additionalYieldBonus += hearth.YieldTenthsFor(gatheringNode.ProfessionType) / 10;
+
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every
             // table entry, common trash and rare drops alike, in
@@ -6226,7 +6281,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // which lifts low-weight (rare) entries far more than common
                 // ones - in the same tenths-of-a-percent units. Before
                 // 2026-10-29 the affix was summed, stored and read by nothing.
-                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f),
+                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct
+                    + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f
+                    + hearth.RareFindTenthsPctFor(gatheringNode.ProfessionType) / 10f),
             };
         }
 
@@ -6257,6 +6314,19 @@ namespace FolkIdle.Server.Domain.Combat
             _ => 0,
         };
 
+        /// <summary>The entry with the lowest weight - the "rare table" a Hearth keystone rolls - or -1 for an empty table.</summary>
+        internal static int RarestEntryIndex(ReadOnlySpan<LootTableEntry> table)
+        {
+            int best = -1;
+            for (int i = 0; i < table.Length; i++)
+                if (table[i].Weight > 0 && (best < 0 || table[i].Weight < table[best].Weight)) best = i;
+            return best;
+        }
+
+        /// <summary>How many keystone rare rolls a run of harvests from <paramref name="lifetimeBefore"/> to <paramref name="lifetimeAfter"/> covers.</summary>
+        internal static long RareKeystoneRolls(long lifetimeBefore, long lifetimeAfter)
+            => lifetimeAfter / HearthTreeRegistry.KeystoneEvery - lifetimeBefore / HearthTreeRegistry.KeystoneEvery;
+
         /// <summary>The quantity one winning gathering roll grants: its authored range, or one.</summary>
         internal static int RollGatherQuantity(Random rng, in LootTableEntry entry)
             => entry.MaxQuantity > entry.MinQuantity
@@ -6285,7 +6355,7 @@ namespace FolkIdle.Server.Domain.Combat
             // it repeats until the player stops it or runs out of
             // materials (CraftingEngine refuses the craft, the tick keeps
             // counting, and the halt shows up as nothing being produced).
-            int craftTicks = CraftTicksFor(in craftingRecipe);
+            int craftTicks = CraftTicksFor(in payload, in craftingRecipe);
 
             payload.RequiredProgressTicks = craftTicks;
             payload.GatheringProgressTicks++;
@@ -6298,7 +6368,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: Scholar pays per completion (ScholarRate): this one
                 // is worth one more craft with the crown's chance - materials
                 // spent and all, as the offline window's extra attempts are.
-                long paidCrafts = ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                long paidCrafts = ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
                 for (long craft = 0; craft < paidCrafts; craft++)
                 {
                     CraftingTickQueue.Enqueue(new CraftTickCompletion
@@ -6319,6 +6389,19 @@ namespace FolkIdle.Server.Domain.Combat
         {
             int craftTicks = craftingRecipe.CraftingTimeMs / 100;
             return craftTicks < MinCraftTicks ? MinCraftTicks : craftTicks;
+        }
+
+        /// <summary>
+        /// The recipe's ticks for this character: the Hearth half's craft-time
+        /// cut (Quick Hands, Batch Work; at most 16%) on top of the recipe's own.
+        /// The live job and the offline window both ask this one.
+        /// </summary>
+        internal static int CraftTicksFor(in TickStatePayload payload, in ContentRegistry.RecipeDefinition craftingRecipe)
+        {
+            int baseTicks = CraftTicksFor(in craftingRecipe);
+            int cut = Math.Clamp(HearthTreeRegistry.Resolve(in payload).CraftTimeTenthsPct, 0, 900);
+            int ticks = (int)((long)baseTicks * (1000 - cut) / 1000);
+            return ticks < MinCraftTicks ? MinCraftTicks : ticks;
         }
     }
 }

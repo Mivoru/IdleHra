@@ -14,10 +14,20 @@ namespace FolkIdle.Server.Engine
     }
 
     /// <summary>The skill tree's ranks by node id; see TickStatePayload.SkillRanks.</summary>
+    /// <remarks>
+    /// Modul: 128, NOT 64 (2026-10-30, roadmap 7.2, Hearth step 4.1). Ids 0-19
+    /// are the old tree's slots, emptied by the War switch but still read by the
+    /// Craft, Harvest and Scholar hooks; 20-54 are War. That left 9 free ids and
+    /// the Hearth half needs about 30. Growing the buffer keeps the legacy ids
+    /// meaningless forever instead of reusing them behind a one-time migration
+    /// rule. The ranks are not on the wire (they left the snapshot in #217); the
+    /// one blit of the whole payload is the node-migration dump, which checks
+    /// its length (SimulationEngine, "NodeMigration.Inbound").
+    /// </remarks>
     [System.Runtime.CompilerServices.InlineArray(SkillRankBuffer.Length)]
     public struct SkillRankBuffer
     {
-        public const int Length = 64;
+        public const int Length = 128;
         private byte _first;
     }
 

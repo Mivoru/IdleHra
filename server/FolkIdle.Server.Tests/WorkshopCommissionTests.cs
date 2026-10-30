@@ -212,6 +212,70 @@ namespace FolkIdle.Server.Tests
         // A range no other test in the shared collection database uses (983_000_000 collided).
         private static long _nextPlayerId = 8_083_000_000L + Random.Shared.Next(0, 1_000_000) * 100L;
 
+        [Fact]
+        public void LedgerCutsEveryLine_RoundingUp_AndNeverToZero()
+        {
+            var full = WorkshopCommissionRules.Quote(3, RarityTier.Epic);
+            Assert.Equal(full, WorkshopCommissionRules.Quote(3, RarityTier.Epic, 0));
+
+            var cut = WorkshopCommissionRules.Quote(3, RarityTier.Epic, 150);
+            for (int i = 0; i < full.Length; i++)
+            {
+                Assert.Equal(full[i].ItemId, cut[i].ItemId);
+                Assert.Equal((full[i].Quantity * 850L + 999L) / 1000L, cut[i].Quantity);
+            }
+
+            // Ledger's ranks are 5/10/15%; the clamp only guards a bad table.
+            Assert.Equal(new[] { 0, 50, 100, 150 }, Enumerable.Range(0, 4).Select(l => HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Ledger, l)));
+            Assert.False(HearthTreeRegistry.IsPending(HearthTreeRegistry.Ledger));
+            Assert.All(WorkshopCommissionRules.Quote(1, RarityTier.Common, 5000), l => Assert.True(l.Quantity >= 1));
+        }
+
+        /// <summary>
+        /// Ledger pays a commission's discount at placing, stores it on the
+        /// order, and a refund gives back what was PAID - even after the node
+        /// is respecced away, which is the case a recomputed refund gets wrong.
+        /// </summary>
+        [Fact]
+        public async Task LedgerChargesLess_AndARefundAfterARespecGivesBackOnlyWhatWasPaid()
+        {
+            const long start = 1_800_000_000L;
+            long playerId = await SeedAsync(workshopLevel: 5, bossesDefeated: 2, materialEach: 1_000_000L);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = playerId, BranchId = HearthTreeRegistry.Ledger, Level = 3 });
+                await db.SaveChangesAsync();
+            }
+
+            int piece = PieceOf(3, EquipmentSlotKind.Weapon);
+            var paid = WorkshopCommissionRules.Quote(3, RarityTier.Epic, 150);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var view = await WorkshopCommissionEngine.ViewAsync(db, playerId, start);
+                Assert.Equal(paid.Select(l => l.Quantity), view!.Regions.Single(r => r.Region == 3).Cost.Select(c => c.Quantity));
+                Assert.Equal(CommissionResult.Ok, await WorkshopCommissionEngine.StartAsync(db, playerId, piece, "crit_dmg_pct", start));
+            }
+            foreach (var line in paid)
+            {
+                Assert.Equal(1_000_000L - line.Quantity, await HeldAsync(playerId, line.ItemId));
+            }
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var slot = await db.PlayerCraftingSlots.AsNoTracking().SingleAsync(s => s.PlayerId == playerId);
+                Assert.Equal(150, slot.MaterialDiscountPermille);
+
+                // The respec: Ledger is gone before the refund.
+                db.PlayerSkillTreeNodes.RemoveRange(db.PlayerSkillTreeNodes.Where(n => n.PlayerId == playerId));
+                await db.SaveChangesAsync();
+                Assert.Equal(CommissionResult.Ok, await WorkshopCommissionEngine.DevFinishAsync(db, playerId, start + 1, refund: true));
+            }
+            foreach (var line in paid)
+            {
+                Assert.Equal(1_000_000L, await HeldAsync(playerId, line.ItemId));
+            }
+        }
+
         private async Task<long> SeedAsync(int workshopLevel, int bossesDefeated, long materialEach)
         {
             long playerId = Interlocked.Increment(ref _nextPlayerId);

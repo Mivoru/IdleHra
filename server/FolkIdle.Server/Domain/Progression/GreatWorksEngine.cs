@@ -120,9 +120,17 @@ namespace FolkIdle.Server.Domain.Progression
             string item = GreatWorksRegistry.MaterialFor(region, materialKind);
 
             var balance = await InventoryAndStashSystem.LockAndReadBalanceAsync(db, playerId, item);
+
+            // Modul: PATRON (Hearth) - each material counts for more progress,
+            // up to +15%. The materials taken are what the stage still needs at
+            // that rate, rounded up, so a finishing contribution never takes
+            // more than it uses. Read from the stored row, as Thrifty is.
+            long perThousand = 1000L + HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.Patron,
+                await HearthTreeRegistry.StoredLevelAsync(db, playerId, HearthTreeRegistry.Patron));
+            long needed = GreatWorksPatron.MaterialsToFinish(remaining, perThousand);
             long amount = requested == 0
-                ? Math.Min(remaining, balance.Total)
-                : Math.Min(requested, remaining);
+                ? Math.Min(needed, balance.Total)
+                : Math.Min(requested, needed);
 
             if (amount <= 0 || balance.Total < amount
                 || !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, item, amount))
@@ -131,7 +139,7 @@ namespace FolkIdle.Server.Domain.Progression
                 return (CommandResultCode.InsufficientMaterials, 0);
             }
 
-            long progress = row.Progress + amount;
+            long progress = Math.Min(cost, row.Progress + GreatWorksPatron.ProgressFor(amount, perThousand));
             int stage = row.Stage;
             bool built = progress >= cost;
             if (built)
@@ -299,5 +307,19 @@ namespace FolkIdle.Server.Domain.Progression
             await db.SaveChangesAsync();
             await tx.CommitAsync();
         }
+    }
+}
+
+namespace FolkIdle.Server.Domain.Progression
+{
+    /// <summary>The Hearth node Patron's arithmetic for a Great Works contribution.</summary>
+    internal static class GreatWorksPatron
+    {
+        /// <summary>Progress a contribution of <paramref name="materials"/> buys at <paramref name="perThousand"/> (1000 = no bonus).</summary>
+        public static long ProgressFor(long materials, long perThousand) => materials * perThousand / 1000L;
+
+        /// <summary>The fewest materials that finish <paramref name="remaining"/> progress at that rate.</summary>
+        public static long MaterialsToFinish(long remaining, long perThousand)
+            => remaining <= 0 ? 0 : (remaining * 1000L + perThousand - 1) / perThousand;
     }
 }

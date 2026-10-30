@@ -133,6 +133,7 @@ namespace FolkIdle.Server.Tests
                 asPlayerId, request.MonsterId, request.LootLuckPct, request.MaterialQuantityPct,
                 request.BonusRarityTiers, request.Kills <= 0 ? 1 : request.Kills, request.SkipMaterialRoll,
                 request.AutoSalvageBelowTier, request.RarityElevationPct, request.RecordedSource,
+                request.SalvageGoldTenthsPct,
             })!;
             await task;
         }
@@ -385,20 +386,25 @@ namespace FolkIdle.Server.Tests
             const long seconds = 4 * 3600L;
             Assert.True(ContentRegistry.TryGetGatheringNode(ActivityIdBands.WoodcuttingBand + 1, out GatheringNodeDefinition node));
 
-            TickStatePayload Build(long playerId) => new TickStatePayload
+            TickStatePayload Build(long playerId)
             {
-                PlayerId = playerId,
-                ActiveActivityId = node.ActivityId,
-                WoodcuttingMasteryLevel = 3,
-                CachedCodexYieldMultiplier = 1.7f,
-                // +30 roll-percent the old offline copy did not know about.
-                CachedWoodcuttingMonolithLevel = 30,
-                STR = 50, DEX = 50, CON = 50, LCK = 400,
-                InventorySpaceRemaining = int.MaxValue,
-                // Scholar: +25% of every harvest's pay, online and away.
-                Skill_Scholar = scholar,
-            };
-            double b = ScholarRate.BonusPermille(scholar) / 1000.0;
+                var p = new TickStatePayload
+                {
+                    PlayerId = playerId,
+                    ActiveActivityId = node.ActivityId,
+                    WoodcuttingMasteryLevel = 3,
+                    CachedCodexYieldMultiplier = 1.7f,
+                    // +30 roll-percent the old offline copy did not know about.
+                    CachedWoodcuttingMonolithLevel = 30,
+                    STR = 50, DEX = 50, CON = 50, LCK = 400,
+                    InventorySpaceRemaining = int.MaxValue,
+                };
+                // The reward rate: +25% of every harvest's pay, online and away.
+                if (scholar > 0) GrantFullRewardRate(ref p);
+                return p;
+            }
+            var probe = Build(0);
+            double b = ScholarRate.BonusPermille(in probe) / 1000.0;
             Assert.Equal(scholar > 0 ? 0.25 : 0.0, b);
 
             // LIVE: the tick itself, for four hours of ticks.
@@ -491,14 +497,14 @@ namespace FolkIdle.Server.Tests
         {
             int monsterId = ContentRegistry.FirstCanonicalMonsterId;
             var monster = ContentRegistry.Monsters[monsterId - 1];
-            double b = ScholarRate.BonusPermille(1) / 1000.0;
+            double b = ScholarRate.MaxPermille / 1000.0;
             Assert.Equal(0.25, b);
 
             // LIVE: 2,000 fights. Each is paid as 1 + Bernoulli(b) kills, and
             // every stream reads that one number - the codex event's Kills,
             // the loot requests' kills, the gold.
             var live = StrongFighter(-9_300_301L, monsterId);
-            live.Skill_Scholar = 1;
+            GrantFullRewardRate(ref live);
             var warQueue = new ConcurrentQueue<GuildWarPointEvent>();
             var contexts = new ConcurrentDictionary<long, LiveSessionContext>();
             var events = new List<KillEvent>();
@@ -525,7 +531,7 @@ namespace FolkIdle.Server.Tests
             {
                 long id = await CreatePlayerAsync();
                 var p = StrongFighter(id, monsterId);
-                p.Skill_Scholar = crown;
+                if (crown > 0) GrantFullRewardRate(ref p);
                 p.LastLogoutTimestamp = now - 3600;
                 await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
                 {
@@ -657,8 +663,8 @@ namespace FolkIdle.Server.Tests
                 LumberjackLevel = lumberjackLevel,
                 MineLevel = mineLevel,
                 WarehouseLevel = (byte)warehouseLevel,
-                Skill_Scholar = scholar,
             };
+            if (scholar > 0) GrantFullRewardRate(ref live);
             live.SetGold(0);
             long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var batches = new List<VillageProductionGrant>();
@@ -682,7 +688,7 @@ namespace FolkIdle.Server.Tests
             {
                 lostOffline = await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
                     db, offlinePlayer, lumberjackLevel, mineLevel, warehouseLevel, townHallLevel, seconds,
-                    ScholarRate.BonusPermille(scholar));
+                    ScholarRate.BonusPermille(in live));
             }
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -699,7 +705,7 @@ namespace FolkIdle.Server.Tests
 
             // The rule, stated: (level + 1) x 100 an hour at 1000 + Scholar
             // permille, a tenth rare, each material capped at the Warehouse.
-            int permille = 1000 + ScholarRate.BonusPermille(scholar);
+            int permille = 1000 + ScholarRate.BonusPermille(in live);
             long cap = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
             var logs = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
             var ores = VillageManagementEngine.GetTierMaterials(mineLevel);
@@ -727,6 +733,16 @@ namespace FolkIdle.Server.Tests
             long perHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel) * permille / 1000L;
             Assert.Equal(perHour, live.CurrentGold);
             Assert.Equal(perHour, offlineGold);
+        }
+
+        /// <summary>
+        /// The full reward rate (+25%): Homebody and Long Absence at their maximum.
+        /// Once the Insight crown Scholar's one rank; since 2026-10-30 the Hearth half.
+        /// </summary>
+        private static void GrantFullRewardRate(ref TickStatePayload p)
+        {
+            p.SkillRanks[HearthTreeRegistry.Homebody] = (byte)HearthTreeRegistry.Get(HearthTreeRegistry.Homebody)!.MaxLevel;
+            p.SkillRanks[HearthTreeRegistry.LongAbsence] = (byte)HearthTreeRegistry.Get(HearthTreeRegistry.LongAbsence)!.MaxLevel;
         }
     }
 }

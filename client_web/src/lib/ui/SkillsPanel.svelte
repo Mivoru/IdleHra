@@ -17,6 +17,12 @@
   // dominant defect class of this codebase.
   //
   // The old panel's painted Yggdrasil stays, as the backdrop.
+  //
+  // Modul: TWO HALVES, ONE SCREEN (Hearth step 4.4, 2026-10-30). A War |
+  // Hearth switch picks which half the same layout draws. War is paid with
+  // skill points, Hearth with craft points the server derives from gathering
+  // mastery; the server answers for both (?half=hearth, "Half": "hearth"), so
+  // the switch changes what is asked, never a rule here.
   import { onDestroy, tick } from 'svelte';
   import { playerState, pushLocalNotice } from '../stores/game';
   import { backgroundUrl, skillIcon } from './sprites';
@@ -30,6 +36,7 @@
     fetchSkillTreeState,
     respecSkillTreeRest,
     type SkillTreeDefinition,
+    type SkillTreeHalf,
     type SkillTreeState,
     type SkillTreeNodeDef,
     type SkillTreePreview,
@@ -37,16 +44,20 @@
   } from '../net/rest';
 
   const snap = $derived($playerState);
-  const points = $derived(snap?.AvailableSkillPoints ?? 0);
+
+  let half = $state<SkillTreeHalf>('war');
 
   // Modul: THE RANKS COME FROM GET /api/v1/skilltree/state, not the snapshot
   // (rework slice 2.1b took twenty bytes off every frame). They are asked
   // again whenever the points or the respec bytes on the snapshot move - a
   // purchase, a commit and a respec all move at least one - and a commit's own
   // answer carries the new levels at once.
-  // 64 slots, the server's rank buffer; War node ids index it (20-54).
-  const SLOTS = 64;
-  let levels = $state<number[]>(new Array(SLOTS).fill(0));
+  // Modul: THE SERVER'S LENGTH, NOT A NUMBER HERE. The rank buffer grew from
+  // 64 to 128 slots for the Hearth half (War 20-54, Hearth 56-87), and a draft
+  // of the wrong length is refused outright - a hard-coded 64 would have broken
+  // the War half's preview and commit the day the server grew.
+  const DEFAULT_SLOTS = 128;
+  let levels = $state<number[]>(new Array(DEFAULT_SLOTS).fill(0));
   let treeState = $state<SkillTreeState | null>(null);
   let stateSeq = 0;
   async function loadState() {
@@ -61,22 +72,46 @@
       // The tree keeps its last known ranks; the next change asks again.
     }
   }
-  const stamp = $derived(`${points}|${snap?.FreeRespecUsed ?? 0}|${snap?.PaidRespecGrants ?? 0}`);
+  const stamp = $derived(`${snap?.AvailableSkillPoints ?? 0}|${snap?.FreeRespecUsed ?? 0}|${snap?.PaidRespecGrants ?? 0}|${half}`);
   $effect(() => {
     void stamp;
     void loadState();
   });
 
+  /** Points to spend in the half on screen: skill points, or the server's derived craft points. */
+  const points = $derived(half === 'hearth' ? (treeState?.CraftPointsAvailable ?? 0) : (snap?.AvailableSkillPoints ?? 0));
+
   let def = $state<SkillTreeDefinition | null>(null);
   let loadError = $state<string | null>(null);
-  fetchSkillTreeDefinition()
-    .then((d) => (def = d))
-    .catch(() => (loadError = 'The skill tree could not be loaded. Try again in a moment.'));
+  $effect(() => {
+    const want = half;
+    def = null;
+    loadError = null;
+    fetchSkillTreeDefinition(want)
+      .then((d) => {
+        if (want === half) def = d;
+      })
+      .catch(() => {
+        if (want === half) loadError = 'The skill tree could not be loaded. Try again in a moment.';
+      });
+  });
+
+  const slots = $derived(def?.Slots ?? levels.length);
+
+  function switchHalf(to: SkillTreeHalf) {
+    if (to === half) return;
+    // A draft belongs to one half; it is not carried across the switch.
+    extra = new Array(slots).fill(0);
+    selected = null;
+    tip = null;
+    preview = null;
+    half = to;
+  }
 
   // Modul: THE DRAFT IS STORED AS ADDITIONS, not as a whole tree. Levels keep
   // arriving on the snapshot while the panel is open (a respec, or the commit
   // itself), and a draft kept as absolute levels would silently revert them.
-  let extra = $state<number[]>(new Array(SLOTS).fill(0));
+  let extra = $state<number[]>(new Array(DEFAULT_SLOTS).fill(0));
   const draft = $derived(levels.map((l, i) => l + (extra[i] ?? 0)));
   const draftCount = $derived(extra.reduce((a, b) => a + b, 0));
 
@@ -98,7 +133,7 @@
       const seq = ++previewSeq;
       previewing = true;
       try {
-        const res = await previewSkillTree(target);
+        const res = await previewSkillTree(target, 0, half);
         if (seq === previewSeq) preview = res;
       } catch {
         if (seq === previewSeq) preview = null;
@@ -151,7 +186,13 @@
   /** Points in each column on the preview's basis - the server's count. */
   const columnPoints = $derived(preview?.ColumnPoints ?? []);
 
-  const LIMB_HUE = ['#e8c15a', '#e2674a', '#57c7e3', '#7fb069'];
+  // War: Fortune, Might, Precision, Guard. Hearth: wood and stone, water and
+  // herb, the workshop, kin - earthier, so the switch reads at a glance.
+  const LIMB_HUE_BY_HALF: Record<SkillTreeHalf, string[]> = {
+    war: ['#e8c15a', '#e2674a', '#57c7e3', '#7fb069'],
+    hearth: ['#b08a5a', '#5aa9a0', '#d79a4e', '#c47fa6'],
+  };
+  const LIMB_HUE = $derived(LIMB_HUE_BY_HALF[half]);
   const RUNE = ['ᚠ', 'ᛏ', 'ᛉ', 'ᚦ'];
   const KIND_LABEL: Record<string, string> = {
     Minor: 'Minor',
@@ -272,7 +313,7 @@
   }
 
   function discard() {
-    extra = new Array(SLOTS).fill(0);
+    extra = new Array(slots).fill(0);
   }
 
   let committing = $state(false);
@@ -281,13 +322,16 @@
     if (draftCount === 0 || committing) return;
     committing = true;
     try {
-      const res = await commitSkillTree(draft);
+      const res = await commitSkillTree(draft, half);
       if (res.Reason) {
         pushLocalNotice(res.Reason, 'error');
       } else {
         play('runeConfirm');
-        levels = res.Levels;
-        pushLocalNotice(`Learned - ${res.Spent} point${res.Spent === 1 ? '' : 's'} spent.`, 'info');
+        // A commit answers with its own half's levels only, so the screen asks
+        // for both halves again rather than dropping the other one's ranks.
+        void loadState();
+        const unit = half === 'hearth' ? 'craft point' : 'point';
+        pushLocalNotice(`Learned - ${res.Spent} ${unit}${res.Spent === 1 ? '' : 's'} spent.`, 'info');
         discard();
       }
     } catch {
@@ -305,10 +349,13 @@
   const freeUsed = $derived(Number(snap?.FreeRespecUsed ?? 0) > 0);
   const grants = $derived(Number(snap?.PaidRespecGrants ?? 0));
   const respecBlocked = $derived(respecBlockedReason(freeUsed, grants));
-  const spentTotal = $derived(levels.reduce((a, b) => a + b, 0));
-  const goldPrice = $derived(treeState?.RespecGoldPrice ?? 0);
+  /** Ranks held in the half on screen. */
+  const spentTotal = $derived((def?.Nodes ?? []).reduce((a, n) => a + (levels[n.Id] ?? 0), 0));
+  // A Hearth respec is always paid in gold: the free respec and the grants are
+  // the War half's (SkillTreeEngine.RespecHearthAsync).
+  const goldPrice = $derived(half === 'hearth' ? (treeState?.HearthRespecGoldPrice ?? 0) : (treeState?.RespecGoldPrice ?? 0));
   const goldHeld = $derived(Number(snap?.Gold ?? treeState?.Gold ?? 0));
-  const withGold = $derived(respecBlocked !== null);
+  const withGold = $derived(half === 'hearth' || respecBlocked !== null);
   const goldShort = $derived(withGold && goldHeld < goldPrice ? `A respec costs ${goldPrice.toLocaleString()} gold; you have ${goldHeld.toLocaleString()}.` : null);
   let confirmingRespec = $state(false);
   let respecing = $state(false);
@@ -317,11 +364,12 @@
     if (respecing) return;
     respecing = true;
     try {
-      const res = await respecSkillTreeRest(withGold);
+      const res = await respecSkillTreeRest(withGold, half);
       if (res.Reason) pushLocalNotice(res.Reason, 'error');
       else {
+        const unit = half === 'hearth' ? 'craft point' : 'point';
         pushLocalNotice(
-          `Respec done - ${res.Refunded} point${res.Refunded === 1 ? '' : 's'} back${res.GoldSpent > 0 ? ` for ${res.GoldSpent.toLocaleString()} gold` : ''}.`,
+          `Respec done - ${res.Refunded} ${unit}${res.Refunded === 1 ? '' : 's'} back${res.GoldSpent > 0 ? ` for ${res.GoldSpent.toLocaleString()} gold` : ''}.`,
           'info',
         );
         void loadState();
@@ -381,15 +429,27 @@
   <header class="head">
     <div>
       <h2>Skill tree</h2>
-      <p class="dim small">
-        Tap a rune to see what it does, hold it for a quick look. Four columns of five rows: a row
-        opens once its column holds enough points, a <strong>fork</strong> lets you take only one
-        side, and a <strong>bridge</strong> joins two columns. Nothing is spent until you confirm.
-      </p>
+      <div class="halves" role="tablist" aria-label="Skill tree half">
+        <button role="tab" class="half-tab" class:on={half === 'war'} aria-selected={half === 'war'} onclick={() => switchHalf('war')} data-testid="skills-half-war">War</button>
+        <button role="tab" class="half-tab" class:on={half === 'hearth'} aria-selected={half === 'hearth'} onclick={() => switchHalf('hearth')} data-testid="skills-half-hearth">Hearth</button>
+      </div>
+      {#if half === 'war'}
+        <p class="dim small">
+          Tap a rune to see what it does, hold it for a quick look. Four columns of five rows: a row
+          opens once its column holds enough points, a <strong>fork</strong> lets you take only one
+          side, and a <strong>bridge</strong> joins two columns. Nothing is spent until you confirm.
+        </p>
+      {:else}
+        <p class="dim small">
+          The Hearth: gathering, the workshop and your kin. It is paid with <strong>craft points</strong>,
+          one for every {def?.MasteryLevelsPerPoint ?? 10} levels of gathering mastery, never with skill
+          points, and it survives a rebirth. Runes marked "coming soon" are drawn but cannot be learned yet.
+        </p>
+      {/if}
     </div>
     <span class="points" data-testid="skills-points">
       {preview && draftCount > 0 && preview.Reason === null ? preview.PointsLeft : points}
-      <span class="dim tiny">to spend</span>
+      <span class="dim tiny">{half === 'hearth' ? 'craft points' : 'to spend'}</span>
     </span>
   </header>
 
@@ -483,7 +543,7 @@
         <dl>
           <dt>Now</dt><dd>{effectNow(n)}</dd>
           {#if effectNext(n)}
-            <dt>Next</dt><dd>{effectNext(n)} <span class="dim tiny">· {nodeState.get(n.Id)?.nextCost ?? n.Costs[draft[n.Id] ?? 0]} pt</span></dd>
+            <dt>Next</dt><dd>{effectNext(n)} <span class="dim tiny">· {nodeState.get(n.Id)?.nextCost ?? n.Costs[draft[n.Id] ?? 0]} {half === 'hearth' ? 'craft pt' : 'pt'}</span></dd>
           {/if}
         </dl>
         {#if st === 'closed'}
@@ -532,8 +592,13 @@
     <div class="respec-row">
       {#if spentTotal === 0 && points === 0}
         <p class="dim small" data-testid="skills-earn">
-          You earn a skill point every level, and two more for each chapter you seal in the Book of
-          Deeds.
+          {#if half === 'hearth'}
+            You earn a craft point for every {def?.MasteryLevelsPerPoint ?? 10} levels of woodcutting,
+            mining, fishing and herbalism mastery, added together.
+          {:else}
+            You earn a skill point every level, and two more for each chapter you seal in the Book of
+            Deeds.
+          {/if}
         </p>
       {:else if confirmingRespec}
         <span class="confirm">
@@ -551,7 +616,7 @@
           onclick={() => (confirmingRespec = true)}
           data-testid="skill-respec"
         >
-          Respec{' '}{#if !freeUsed}(free){:else if grants > 0}({grants} left){:else}({goldPrice.toLocaleString()} gold){/if}
+          Respec{' '}{#if half === 'hearth'}({goldPrice.toLocaleString()} gold){:else if !freeUsed}(free){:else if grants > 0}({grants} left){:else}({goldPrice.toLocaleString()} gold){/if}
         </button>
         <DisabledReason text={goldShort} />
       {/if}
@@ -614,6 +679,18 @@
 
   .head { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
   .head h2 { margin: 0 0 0.2rem; color: #f6efe0; }
+  .halves { display: inline-flex; gap: 0.25rem; margin: 0.15rem 0 0.4rem; padding: 0.2rem; border-radius: 999px; background: rgba(0, 0, 0, 0.35); }
+  .half-tab {
+    min-height: 44px;
+    min-width: 88px;
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #d9cfbd;
+    font-weight: 600;
+  }
+  .half-tab.on { background: rgba(232, 193, 90, 0.18); border-color: rgba(232, 193, 90, 0.55); color: #f6efe0; }
   .points {
     margin-left: auto;
     font-size: 1.4rem;

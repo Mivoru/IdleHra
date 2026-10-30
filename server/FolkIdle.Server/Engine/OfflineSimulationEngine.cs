@@ -187,7 +187,7 @@ namespace FolkIdle.Server.Engine
                 payload.Slot3_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot3_AgeTicks);
             }
 
-            payload.OfflineMaterialsLostToFullWarehouse = await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds, ScholarRate.BonusPermille(payload.Skill_Scholar));
+            payload.OfflineMaterialsLostToFullWarehouse = await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds, ScholarRate.BonusPermille(in payload));
 
             // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
             // "Welcome Back" flow). Captured before the projection branches
@@ -253,7 +253,7 @@ namespace FolkIdle.Server.Engine
                         // Scholar: each completion pays one more with its
                         // chance, as the live job's tick does.
                         long attempts = ScholarRate.RewardUnits(Random.Shared,
-                            earningSeconds * 10L / SimulationEngine.CraftTicksFor(in craftingRecipe), payload.Skill_Scholar);
+                            earningSeconds * 10L / SimulationEngine.CraftTicksFor(in payload, in craftingRecipe), ScholarRate.BonusPermille(in payload));
                         var crafted = await CraftingEngine.ExecuteOfflineCraftsAsync(db, payload.PlayerId, craftingRecipe, attempts, Random.Shared);
                         // Mirrors CraftingTickCoordinator.DrainCraftingCompletions:
                         // the wire counter tracks what the engine just added to
@@ -550,7 +550,7 @@ namespace FolkIdle.Server.Engine
             // with the crown's chance (ScholarRate), mastery XP and rolls alike,
             // exactly as RunGatheringTick pays it.
             long rewardActions = 0;
-            int scholarPermille = ScholarRate.BonusPermille(payload.Skill_Scholar);
+            int scholarPermille = ScholarRate.BonusPermille(in payload);
             while (remainingTicks > 0 && allowedActions < MaxOfflineGatherActions)
             {
                 int requiredTicks = Domain.Combat.SimulationEngine.RequiredGatherTicks(ref payload, in node);
@@ -568,7 +568,7 @@ namespace FolkIdle.Server.Engine
                     step = Math.Min(affordable, Math.Max(1L, actionsToNext));
                 }
 
-                long rewardStep = ScholarRate.RewardUnits(rng, step, payload.Skill_Scholar);
+                long rewardStep = ScholarRate.RewardUnits(rng, step, ScholarRate.BonusPermille(in payload));
                 ApplyGatheringMasteryXp(ref payload, node.ProfessionType, rewardStep * node.BaseMasteryXpReward);
                 allowedActions += step;
                 rewardActions += rewardStep;
@@ -601,6 +601,23 @@ namespace FolkIdle.Server.Engine
             int rollCount = (int)Math.Min(rolls, MaxOfflineLootRolls);
 
             Dictionary<string, long> deltas = DrawGatheringMaterials(lootTable, rollCount, yield.LuckWeightBonus, rng);
+
+            // Deep Vein / Moonlit Catch: the 20ths of LifetimeHarvests this window
+            // crossed, each a roll of the rarest entry - the live tick's rule.
+            if (HearthTreeRegistry.Resolve(in payload).RareRollFor(node.ProfessionType))
+            {
+                long keystoneRolls = Domain.Combat.SimulationEngine.RareKeystoneRolls(payload.LifetimeHarvests - allowedActions, payload.LifetimeHarvests);
+                int rarest = Domain.Combat.SimulationEngine.RarestEntryIndex(lootTable);
+                string rareId = rarest >= 0 ? ContentRegistry.GetItemBaseId(lootTable[rarest].ItemId) : string.Empty;
+                if (keystoneRolls > 0 && !string.IsNullOrEmpty(rareId))
+                {
+                    long quantity = 0;
+                    for (long k = 0; k < Math.Min(keystoneRolls, MaxOfflineLootRolls); k++)
+                        quantity += Domain.Combat.SimulationEngine.RollGatherQuantity(rng, in lootTable[rarest]);
+                    deltas.TryGetValue(rareId, out long existing);
+                    deltas[rareId] = existing + quantity;
+                }
+            }
             return new LootProjection(true, deltas, rollCount, allowedActions, rewardActions);
         }
 
@@ -962,7 +979,7 @@ namespace FolkIdle.Server.Engine
                 // Modul: SCHOLAR PAYS PER KILL, as the live kill does
                 // (ScholarRate): XP, gold and every drop count paid kills; the
                 // fight itself (time, food, a death) ran on the real ones.
-                long paidKills = ScholarRate.RewardUnits(Random.Shared, kills, payload.Skill_Scholar);
+                long paidKills = ScholarRate.RewardUnits(Random.Shared, kills, ScholarRate.BonusPermille(in payload));
                 totalPaidKills += paidKills;
 
                 // Rations: the kills made hungry pay HungryRewardPct, as the

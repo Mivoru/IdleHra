@@ -464,6 +464,9 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public float RarityElevationPct;
 
+        /// <summary>Extra auto-salvage gold, in tenths of a percent (the Hearth node Salvager).</summary>
+        public int SalvageGoldTenthsPct;
+
         // Modul: named for the SKIP, not the roll, for the same reason - a
         // `RollMaterials` bool would default to false and silently stop the
         // live tick paying materials at all.
@@ -561,6 +564,10 @@ namespace FolkIdle.Server.Engine
                 // LootLuckBreakdown.RarityBough for why the bough is here and
                 // not in the luck sum above.
                 RarityElevationPct = odds.ElevationTotal,
+
+                // Salvager rides the request, so the live kill and the offline
+                // window (both built here) pay it alike.
+                SalvageGoldTenthsPct = HearthTreeRegistry.Resolve(in payload).SalvageGoldTenthsPct,
             };
         }
     }
@@ -847,7 +854,8 @@ namespace FolkIdle.Server.Engine
                                 request.SkipMaterialRoll,
                                 request.AutoSalvageBelowTier,
                                 request.RarityElevationPct,
-                                request.RecordedSource);
+                                request.RecordedSource,
+                                request.SalvageGoldTenthsPct);
 
                             if (request.AutoFuseToTier >= 2)
                             {
@@ -1179,7 +1187,7 @@ namespace FolkIdle.Server.Engine
         private async Task ProcessMonsterLootDropAsync(
             long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
             int bonusRarityTiers, int kills, bool skipMaterialRoll, int autoSalvageBelowTier,
-            float rarityElevationPct, DropSource source = DropSource.LiveKill)
+            float rarityElevationPct, DropSource source = DropSource.LiveKill, int salvageGoldTenthsPct = 0)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -1314,6 +1322,12 @@ namespace FolkIdle.Server.Engine
                     int chestRarity = Domain.Progression.CosmeticRegistry.RollMonsterChest(Random.Shared.NextDouble());
                     if (chestRarity > 0) rolledChests.Add(chestRarity);
                 }
+
+                // Salvager (Hearth): the request's auto-salvage gold, raised once
+                // for the whole request, before either the commit or the retry
+                // outbox reads it.
+                if (salvageGoldTenthsPct > 0 && salvage.Gold > 0L)
+                    salvage.Gold = salvage.Gold * (1000L + salvageGoldTenthsPct) / 1000L;
 
                 // Every material this request rolled, in one locked read and
                 // one write, however many kills it carried.

@@ -104,7 +104,7 @@ namespace FolkIdle.Server.Engine
             return "You have used this run's free respec - a rebirth brings it back.";
         }
 
-        /// <summary>The War half's ranks (rework slice 2.5), one byte per rank-buffer slot; old-tree rows are ignored.</summary>
+        /// <summary>The War and Hearth halves' ranks, one byte per rank-buffer slot; old-tree rows are ignored.</summary>
         public static async Task<byte[]> LoadRanksAsync(FolkIdleDbContext db, long playerId)
         {
             var ranks = new byte[WarTreeRegistry.Slots];
@@ -113,8 +113,12 @@ namespace FolkIdle.Server.Engine
                 .Where(r => r.PlayerId == playerId)
                 .ToListAsync();
             foreach (var row in rows)
+            {
                 if (WarTreeRegistry.Get(row.BranchId) is { } n)
                     ranks[row.BranchId] = (byte)Math.Clamp(row.Level, 0, n.MaxLevel);
+                else if (HearthTreeRegistry.Get(row.BranchId) is { } h)
+                    ranks[row.BranchId] = (byte)Math.Clamp(row.Level, 0, h.MaxLevel);
+            }
             return ranks;
         }
 
@@ -226,9 +230,17 @@ namespace FolkIdle.Server.Engine
                         return;
                     }
 
-                    var rows = await db.PlayerSkillTreeNodes
+                    // Modul: THE WAR RESPEC LEAVES THE HEARTH ROWS ALONE (2026-10-30).
+                    // This deleted every row the player had, which was right while
+                    // the War half was the only tree; Hearth is paid with craft
+                    // points, not skill points, so refunding it here would hand
+                    // skill points for craft points and wipe a build nobody asked
+                    // to reset.
+                    var rows = (await db.PlayerSkillTreeNodes
                         .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
-                        .ToListAsync();
+                        .ToListAsync())
+                        .Where(r => HearthTreeRegistry.Get(r.BranchId) == null)
+                        .ToList();
 
                     var ranks = new byte[WarTreeRegistry.Slots];
                     foreach (var row in rows)
@@ -340,6 +352,13 @@ namespace FolkIdle.Server.Engine
                     foreach (var row in rows)
                         if (WarTreeRegistry.Get(row.BranchId) is { } n) current[row.BranchId] = (byte)Math.Clamp(row.Level, 0, n.MaxLevel);
 
+                    // Modul: A WAR COMMIT NEVER TOUCHES A HEARTH SLOT (2026-10-30).
+                    // The target is built from LoadRanksAsync, which now carries the
+                    // Hearth ranks too, so they are taken out of the comparison here
+                    // rather than refused as "no such skill".
+                    target = (byte[])target.Clone();
+                    foreach (var h in HearthTreeRegistry.All()) target[h.Id] = 0;
+
                     string? reason = WarTreeRegistry.PlanReason(current, target, player.AvailableSkillPoints, out int cost);
                     if (reason == null)
                     {
@@ -381,6 +400,200 @@ namespace FolkIdle.Server.Engine
                     }
 
                     result = new SkillTreeCommitResult { Levels = Array.ConvertAll(target, b => (int)b), AvailableSkillPoints = player.AvailableSkillPoints, Spent = cost };
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+
+            return result;
+        }
+
+        /// <summary>Craft points left: earned from the row's gathering mastery, minus the Hearth ranks held.</summary>
+        public static int HearthPointsAvailable(PlayerRecord player, ReadOnlySpan<byte> ranks)
+            => HearthPoints.Earned(player.WoodcuttingMasteryLevel, player.MiningMasteryLevel,
+                    player.FishingMasteryLevel, player.HerbalismMasteryLevel)
+               - HearthTreeRegistry.PointsSpent(ranks);
+
+        /// <summary>
+        /// Buys a whole drafted Hearth half at once: every rank in it, or none.
+        /// </summary>
+        /// <remarks>
+        /// Modul: PAID WITH CRAFT POINTS, WHICH ARE NOT STORED (step 4.4). The
+        /// balance is HearthPoints.Earned of the row's mastery minus the Hearth
+        /// ranks under lock, so there is no counter to debit and none to drift.
+        /// The mastery is the checkpointed row's, a little behind the live
+        /// payload at most, which can only under-count. War slots in the target
+        /// are ignored, as Hearth slots are in the War half's CommitAsync.
+        /// </remarks>
+        public async Task<SkillTreeCommitResult> CommitHearthAsync(long playerId, byte[] target)
+        {
+            var result = new SkillTreeCommitResult { Reason = "Skill tree not loaded." };
+            if (target.Length != WarTreeRegistry.Slots) return result;
+            target = (byte[])target.Clone();
+            foreach (var w in WarTreeRegistry.All()) target[w.Id] = 0;
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            var strategy = db.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                db.ChangeTracker.Clear();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    var player = await db.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
+                    if (player == null)
+                    {
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeCommitResult { Reason = "No such player." };
+                        return;
+                    }
+
+                    var rows = await db.PlayerSkillTreeNodes
+                        .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
+                        .ToListAsync();
+
+                    var current = new byte[WarTreeRegistry.Slots];
+                    foreach (var row in rows)
+                        if (HearthTreeRegistry.Get(row.BranchId) is { } h) current[row.BranchId] = (byte)Math.Clamp(row.Level, 0, h.MaxLevel);
+
+                    int available = HearthPointsAvailable(player, current);
+                    string? reason = HearthTreeRegistry.PlanReason(current, target, available, out int cost);
+                    if (reason == null)
+                    {
+                        for (int id = 0; id < target.Length; id++)
+                            if (target[id] != 0 && HearthTreeRegistry.Get(id) == null) { reason = "No such skill."; break; }
+                    }
+                    if (reason != null)
+                    {
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeCommitResult { Reason = reason, Levels = Array.ConvertAll(current, b => (int)b), AvailableSkillPoints = available };
+                        return;
+                    }
+
+                    for (int id = 0; id < target.Length; id++)
+                    {
+                        if (target[id] == current[id]) continue;
+                        var row = rows.FirstOrDefault(r => r.BranchId == id);
+                        if (row == null) db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = playerId, BranchId = id, Level = target[id] });
+                        else row.Level = target[id];
+                    }
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // The War points ride every sync notification, unchanged:
+                    // a Hearth purchase spends no skill point.
+                    for (int id = 0; id < target.Length; id++)
+                    {
+                        if (target[id] == current[id]) continue;
+                        _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
+                        {
+                            PlayerId = playerId,
+                            BranchId = id,
+                            NewLevel = target[id],
+                            RemainingSkillPoints = player.AvailableSkillPoints,
+                            FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
+                            PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
+                        });
+                    }
+
+                    result = new SkillTreeCommitResult { Levels = Array.ConvertAll(target, b => (int)b), AvailableSkillPoints = available - cost, Spent = cost };
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+
+            return result;
+        }
+
+        /// <summary>
+        /// Clears the Hearth half for gold: WarTreeRegistry.RespecGoldPrice of the
+        /// craft points it held. Refunded is the craft points freed.
+        /// </summary>
+        /// <remarks>
+        /// Modul: GOLD ONLY, AND NEVER THE WAR HALF'S FREE RESPEC (step 4.4).
+        /// The free respec and the paid grants are one counter for the War half;
+        /// letting a Hearth reset spend it would make a player choose which tree
+        /// to fix. The price is the War half's formula on the Hearth points, so a
+        /// reset costs the same per point in both halves.
+        /// </remarks>
+        public async Task<SkillTreeRespecResult> RespecHearthAsync(long playerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            var result = new SkillTreeRespecResult { Reason = "No such player." };
+
+            var strategy = db.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                db.ChangeTracker.Clear();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    var player = await db.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
+                    if (player == null)
+                    {
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeRespecResult { Reason = "No such player." };
+                        return;
+                    }
+
+                    var rows = (await db.PlayerSkillTreeNodes
+                        .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
+                        .ToListAsync())
+                        .Where(r => HearthTreeRegistry.Get(r.BranchId) != null)
+                        .ToList();
+                    var ranks = new byte[WarTreeRegistry.Slots];
+                    foreach (var row in rows) ranks[row.BranchId] = (byte)Math.Clamp(row.Level, 0, HearthTreeRegistry.Get(row.BranchId)!.MaxLevel);
+                    int spent = HearthTreeRegistry.PointsSpent(ranks);
+
+                    var gold = await db.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
+                    long price = WarTreeRegistry.RespecGoldPrice(spent, player.CurrentLevel);
+                    string? refusal = spent <= 0 ? "Nothing to refund."
+                        : (gold?.Quantity ?? 0L) < price ? $"A Hearth respec costs {price:N0} gold."
+                        : null;
+                    if (refusal != null)
+                    {
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeRespecResult { Reason = refusal };
+                        return;
+                    }
+
+                    db.PlayerSkillTreeNodes.RemoveRange(rows);
+                    gold!.Quantity -= price;
+                    await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Respec, price);
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    result = new SkillTreeRespecResult { Refunded = spent, GoldSpent = price };
+
+                    bool first = true;
+                    foreach (var row in rows)
+                    {
+                        _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
+                        {
+                            PlayerId = playerId,
+                            BranchId = row.BranchId,
+                            NewLevel = 0,
+                            RemainingSkillPoints = player.AvailableSkillPoints,
+                            FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
+                            PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
+                            GoldSpent = first ? price : 0L,
+                        });
+                        first = false;
+                    }
                 }
                 catch
                 {

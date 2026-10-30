@@ -3,8 +3,9 @@ using System;
 namespace FolkIdle.Server.Engine
 {
     /// <summary>
-    /// Scholar, the Insight crown: +25% to the RATE a character earns at,
-    /// online and away alike.
+    /// The reward rate: up to +25% to the RATE a character earns at, online and
+    /// away alike. Once the Insight crown Scholar; since 2026-10-30 the Hearth
+    /// half's Homebody and Long Absence (HearthTreeRegistry).
     /// </summary>
     /// <remarks>
     /// Modul: ONE RULE ON BOTH PATHS, owner decision 2026-09-30. Scholar used
@@ -24,29 +25,42 @@ namespace FolkIdle.Server.Engine
     ///   village production and Town Hall gold accrue at (1000 + b permille)
     ///   of their hourly rate (BonusPermille), exactly, on both paths.
     ///
-    /// BOUNDED: a crown has one level (SkillTreeRegistry.CrownMaxLevel), so the
-    /// multiplier is at most 1.25x. PowerCeilingTests lists it in the yield
-    /// ledger.
+    /// BOUNDED: Homebody and Long Absence at their maximum sum to 250 permille,
+    /// the old crown's +25% exactly, so the multiplier is at most 1.25x.
+    /// PowerCeilingTests lists it in the yield ledger.
+    ///
+    /// Modul: THE CROWN'S SLOT WAS EMPTY FOR A WEEK (2026-10-30). The War switch
+    /// refunded every old node, so payload.Skill_Scholar (slot 19) read 0 for
+    /// everyone and every caller here paid nothing extra. Callers now pass the
+    /// permille BonusPermille reads off the Hearth ranks.
     /// </remarks>
     public static class ScholarRate
     {
-        /// <summary>The bonus in permille (250 = +25%), 0 without the crown.</summary>
-        public static int BonusPermille(byte skillScholar)
-            => skillScholar > 0
-                ? SkillTreeRegistry.GetBonusTenthsOfPercent(SkillTreeRegistry.CrownScholar, skillScholar)
-                : 0;
+        /// <summary>The bonus in permille (250 = +25%) the payload's Hearth ranks give.</summary>
+        public static int BonusPermille(in TickStatePayload payload)
+            => HearthTreeRegistry.Resolve(in payload).RewardRatePermille;
 
-        /// <summary>The largest multiplier the crown can reach - for the power ledger.</summary>
-        public static double MaxMultiplier
-            => 1.0 + SkillTreeRegistry.GetBonusTenthsOfPercent(SkillTreeRegistry.CrownScholar, SkillTreeRegistry.CrownMaxLevel) / 1000.0;
+        /// <summary>The largest bonus the Hearth nodes can reach, in permille.</summary>
+        public static int MaxPermille
+        {
+            get
+            {
+                int total = 0;
+                foreach (var n in HearthTreeRegistry.All())
+                    if (n.Effect == HearthEffect.OfflineRatePct) total += n.ValueAt(n.MaxLevel);
+                return total;
+            }
+        }
+
+        /// <summary>The largest multiplier the reward rate can reach - for the power ledger.</summary>
+        public static double MaxMultiplier => 1.0 + MaxPermille / 1000.0;
 
         /// <summary>
         /// How many completions' worth of reward <paramref name="units"/>
         /// completions pay: each one pays one more with probability b.
         /// </summary>
-        public static long RewardUnits(Random rng, long units, byte skillScholar)
+        public static long RewardUnits(Random rng, long units, int permille)
         {
-            int permille = BonusPermille(skillScholar);
             if (permille <= 0 || units <= 0) return units;
             if (units == 1) return rng.NextDouble() * 1000.0 < permille ? 2 : 1;
 
