@@ -123,6 +123,53 @@ the new ring affixes) and measured before shipping, the way the affixes were.
   monolith line showed the MINING monolith on every non-wood card, though the
   server pays a monolith only to wood and ore.
 
+**Steps 2-3 plan (2026-10-31, owner set the price):**
+- **Price (owner):** about ten minutes of picking buys an hour of effect. A
+  normal potion costs 150 common herbs of its region; a strong one 100 common
+  + 15 rare (about twenty minutes). Both last 1 h (gathering ones 2 h).
+- **Which region brews what** - an early potion from early herbs, so each
+  region's pair has a use and a new player can brew the first one:
+  r1 Yarrow: Elixir of the Hunt; r2 Marsh Mallow: Ironbark Brew and
+  Gatherer's Draught; r3 Thyme: Swiftroot Tea and Goldmoss Tonic; r4 Sea Kale:
+  Draught of Fortune; r5 Mugwort: Kupala Night and Boss-bane Philtre.
+- **Three slots, one potion each:** *rewards* (Hunt, Fortune, Goldmoss) in
+  the existing offensive slot, *combat* (Ironbark, Swiftroot, Boss-bane) in the
+  defensive slot, and a new *gathering* slot (Gatherer's, Kupala) - one new
+  payload/wire pair, through the add-command skill.
+- **Two traps found while reading (fix in step 3):**
+  1. `StatsCalculator` gives EVERY offensive-slot potion flat damage and
+     armour penetration by tier, and every defensive one HP, armour and
+     dodge. Those formulas belonged to the deleted legacy potions; a new
+     potion must pay only its own effect, so the generic block goes and a
+     per-kind table replaces it.
+  2. The offline projection gets the potion wrong both ways. The load turns
+     the stored absolute expiry into "remaining from NOW" before the
+     projection runs, and the projection reads whatever is left in the slot -
+     so a potion still running at sign-in counts for the WHOLE absence, and
+     one that ran out while away counts for none of it. H2 needs the payload
+     to carry each slot's absolute expiry, and the projection to split the
+     absence into at most four stretches at the expiry times (three slots),
+     each projected with exactly the potions that were running then. A
+     parity row per potion pins it.
+  3. `ConsumeConsumableAsset` sets the buff and takes NOTHING from the
+     inventory: the consumable branch in SimulationEngine returns before the
+     async half that would remove a row (and that half reads
+     EquipmentInstances, where a stack never lives). With real potions that
+     is an unlimited free buff. Potions do not use it.
+- **The shape: a potion shelf, built like the larder.** Each of the three
+  slots gets a shelf on the payload - item id, count, auto-drink on/off -
+  stocked from the chest by a command (as the larder is), so drinking is a
+  synchronous decrement on the tick and the checkpoint persists it, with no
+  async race. Auto-drink refills a slot from its shelf the tick its potion
+  runs out - online, and offline analytically: with N on the shelf and D per
+  potion, the slot is covered for min(absence, remaining + N x D), which
+  the stretches above use. One new command per action (stock, drink, toggle)
+  through the add-command skill; new payload/PlayerRecord fields with an
+  additive migration.
+- **Magnitudes** are measured, not picked: each against what already pays the
+  same stat (War nodes, pets, affixes), and the wall scan run with every
+  combat potion active before it ships.
+
 ### 1.3 Decisions
 
 - **H1.** Build herbalism + potions as described? Recommendation: yes, as its

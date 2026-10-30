@@ -712,7 +712,35 @@ namespace FolkIdle.Server.Engine
             new RecipeDefinition { ResultItemId = 435, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 46575, Mat2Id = 369, Mat2Count = 23287, CraftingTimeMs = 25000 }, // voidbark_pickaxe_tool
             new RecipeDefinition { ResultItemId = 436, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 364, Mat1Count = 23287, Mat2Id = 368, Mat2Count = 11644, CraftingTimeMs = 25000 }, // ebon_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 437, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 46575, Mat2Id = 369, Mat2Count = 23287, CraftingTimeMs = 25000 }, // voidbark_fishing_rod_tool
-        
+
+            // Modul: ALCHEMY IS POTIONS, brewed from herbs (2026-10-31,
+            // HERBS_POTIONS_ASCENSION.md 1.2a). APPENDED, never inserted: a
+            // crafting activity id is CraftingBand + this table's index, so a
+            // row added in the middle would reassign every job in progress.
+            //
+            // Price (owner): about ten minutes of picking buys an hour of
+            // effect - 150 of the region's common herb, or 100 common + 15 of
+            // its rare herb for the strong one (R1: rare herbs brew the strong
+            // potion). Measured: region 5 by hand at mastery 25 is ~980 common
+            // and ~110 rare herbs an hour. Levels follow the tool ladder's
+            // region bands (1/20/40/60/80).
+            new RecipeDefinition { ResultItemId = 452, ProfessionType = 5, RequiredLevel = 1, Mat1Id = 442, Mat1Count = 150, CraftingTimeMs = 5000 },                                  // hunt_elixir (Yarrow)
+            new RecipeDefinition { ResultItemId = 453, ProfessionType = 5, RequiredLevel = 1, Mat1Id = 442, Mat1Count = 100, Mat2Id = 443, Mat2Count = 15, CraftingTimeMs = 5000 },    // strong_hunt_elixir (+ Golden Chamomile)
+            new RecipeDefinition { ResultItemId = 454, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 150, CraftingTimeMs = 10000 },                                // ironbark_brew (Marsh Mallow)
+            new RecipeDefinition { ResultItemId = 455, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 100, Mat2Id = 445, Mat2Count = 15, CraftingTimeMs = 10000 },  // strong_ironbark_brew (+ Wisp Moss)
+            new RecipeDefinition { ResultItemId = 456, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 150, CraftingTimeMs = 10000 },                                // gatherers_draught (Marsh Mallow)
+            new RecipeDefinition { ResultItemId = 457, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 100, Mat2Id = 445, Mat2Count = 15, CraftingTimeMs = 10000 },  // strong_gatherers_draught (+ Wisp Moss)
+            new RecipeDefinition { ResultItemId = 458, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 150, CraftingTimeMs = 15000 },                                // swiftroot_tea (Thyme)
+            new RecipeDefinition { ResultItemId = 459, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 100, Mat2Id = 447, Mat2Count = 15, CraftingTimeMs = 15000 },  // strong_swiftroot_tea (+ Dragon's Blood Sage)
+            new RecipeDefinition { ResultItemId = 460, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 150, CraftingTimeMs = 15000 },                                // goldmoss_tonic (Thyme)
+            new RecipeDefinition { ResultItemId = 461, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 100, Mat2Id = 447, Mat2Count = 15, CraftingTimeMs = 15000 },  // strong_goldmoss_tonic (+ Dragon's Blood Sage)
+            new RecipeDefinition { ResultItemId = 462, ProfessionType = 5, RequiredLevel = 60, Mat1Id = 448, Mat1Count = 150, CraftingTimeMs = 20000 },                                // fortune_draught (Sea Kale)
+            new RecipeDefinition { ResultItemId = 463, ProfessionType = 5, RequiredLevel = 60, Mat1Id = 448, Mat1Count = 100, Mat2Id = 449, Mat2Count = 15, CraftingTimeMs = 20000 },  // strong_fortune_draught (+ Frost Lichen)
+            new RecipeDefinition { ResultItemId = 464, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 150, CraftingTimeMs = 25000 },                                // kupala_night (Mugwort)
+            new RecipeDefinition { ResultItemId = 465, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 100, Mat2Id = 451, Mat2Count = 15, CraftingTimeMs = 25000 },  // strong_kupala_night (+ Fern Flower)
+            new RecipeDefinition { ResultItemId = 466, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 150, CraftingTimeMs = 25000 },                                // bossbane_philtre (Mugwort)
+            new RecipeDefinition { ResultItemId = 467, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 100, Mat2Id = 451, Mat2Count = 15, CraftingTimeMs = 25000 },  // strong_bossbane_philtre (+ Fern Flower)
+
         };
         public static ReadOnlySpan<RecipeDefinition> Recipes => _recipes;
 

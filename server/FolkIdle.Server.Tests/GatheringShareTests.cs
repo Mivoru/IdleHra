@@ -219,8 +219,11 @@ namespace FolkIdle.Server.Tests
         // reopen the second crafting system that was removed with
         // CraftingReceptuary, and it would do it quietly - the item would just
         // appear in the tree one day.
+        // Modul: and POTIONS since 2026-10-31 - Alchemy (profession 5) brews
+        // them from herbs. A potion is a stack, never a wearable piece, so the
+        // rule this test guards still holds.
         [Fact]
-        public void Test_Crafting_ProducesToolsAndNothingWearable()
+        public void Test_Crafting_ProducesToolsAndPotionsAndNothingWearable()
         {
             foreach (var recipe in ContentRegistry.Recipes)
             {
@@ -228,8 +231,9 @@ namespace FolkIdle.Server.Tests
                 Assert.False(string.IsNullOrEmpty(baseId),
                     $"Recipe {recipe.ResultItemId} produces an item that is not in the catalogue.");
 
-                Assert.True(ContentRegistry.GetToolKind(baseId) >= 0,
-                    $"Recipe output '{baseId}' is not a tool. Equipment is a drop, not a craft.");
+                bool potion = recipe.ProfessionType == 5 && baseId.EndsWith("_potion_consumable", System.StringComparison.Ordinal);
+                Assert.True(potion || ContentRegistry.GetToolKind(baseId) >= 0,
+                    $"Recipe output '{baseId}' is neither a tool nor a potion. Equipment is a drop, not a craft.");
             }
         }
 

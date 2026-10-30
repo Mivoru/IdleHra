@@ -1086,7 +1086,7 @@
                 baseItemId={stack.ItemId}
                 name={label}
                 quantity={stack.Quantity}
-                extra={isFood(stack.ItemId) || consumableKind(stack.ItemId) !== null ? 'Food' : 'Material'}
+                extra={isFood(stack.ItemId) ? 'Food' : consumableKind(stack.ItemId) !== null ? 'Potion' : 'Material'}
               >
                 {#snippet actions()}
                   {#if pendingSales.has(saleKey)}

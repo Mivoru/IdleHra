@@ -1518,5 +1518,133 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "fern_flower"
+  },
+  {
+    "Id": 452,
+    "RegionTier": 1,
+    "BaseValueGold": 750,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "hunt_elixir_offensive_potion_consumable"
+  },
+  {
+    "Id": 453,
+    "RegionTier": 1,
+    "BaseValueGold": 750,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_hunt_elixir_offensive_potion_consumable"
+  },
+  {
+    "Id": 454,
+    "RegionTier": 2,
+    "BaseValueGold": 3000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ironbark_brew_defensive_potion_consumable"
+  },
+  {
+    "Id": 455,
+    "RegionTier": 2,
+    "BaseValueGold": 3000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_ironbark_brew_defensive_potion_consumable"
+  },
+  {
+    "Id": 456,
+    "RegionTier": 2,
+    "BaseValueGold": 3000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "gatherers_draught_gathering_potion_consumable"
+  },
+  {
+    "Id": 457,
+    "RegionTier": 2,
+    "BaseValueGold": 3000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_gatherers_draught_gathering_potion_consumable"
+  },
+  {
+    "Id": 458,
+    "RegionTier": 3,
+    "BaseValueGold": 12000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "swiftroot_tea_defensive_potion_consumable"
+  },
+  {
+    "Id": 459,
+    "RegionTier": 3,
+    "BaseValueGold": 12000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_swiftroot_tea_defensive_potion_consumable"
+  },
+  {
+    "Id": 460,
+    "RegionTier": 3,
+    "BaseValueGold": 12000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "goldmoss_tonic_offensive_potion_consumable"
+  },
+  {
+    "Id": 461,
+    "RegionTier": 3,
+    "BaseValueGold": 12000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_goldmoss_tonic_offensive_potion_consumable"
+  },
+  {
+    "Id": 462,
+    "RegionTier": 4,
+    "BaseValueGold": 48000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "fortune_draught_offensive_potion_consumable"
+  },
+  {
+    "Id": 463,
+    "RegionTier": 4,
+    "BaseValueGold": 48000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_fortune_draught_offensive_potion_consumable"
+  },
+  {
+    "Id": 464,
+    "RegionTier": 5,
+    "BaseValueGold": 192000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "kupala_night_gathering_potion_consumable"
+  },
+  {
+    "Id": 465,
+    "RegionTier": 5,
+    "BaseValueGold": 192000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_kupala_night_gathering_potion_consumable"
+  },
+  {
+    "Id": 466,
+    "RegionTier": 5,
+    "BaseValueGold": 192000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bossbane_philtre_defensive_potion_consumable"
+  },
+  {
+    "Id": 467,
+    "RegionTier": 5,
+    "BaseValueGold": 192000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "strong_bossbane_philtre_defensive_potion_consumable"
   }
 ]
