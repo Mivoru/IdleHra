@@ -1706,6 +1706,1974 @@
       "estimatedUsd": 0.067,
       "seconds": 9,
       "at": "2026-10-30T15:11:11.859Z"
+    },
+    {
+      "id": "loot_common_closed_noshadow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_common_closed_noshadow.jpg",
+      "bytes": 553548,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1398,
+        "totalTokenCount": 1785,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:24:36.536Z"
+    },
+    {
+      "id": "loot_rare_closed_noshadow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_rare_closed_noshadow.jpg",
+      "bytes": 522265,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1365,
+        "totalTokenCount": 1752,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T19:24:46.138Z"
+    },
+    {
+      "id": "loot_epic_closed_noshadow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_epic_closed_noshadow.jpg",
+      "bytes": 581534,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1413,
+        "totalTokenCount": 1800,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:24:55.049Z"
+    },
+    {
+      "id": "loot_legendary_closed_noshadow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/loot_legendary_closed_noshadow.jpg",
+      "bytes": 620411,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1441,
+        "totalTokenCount": 1828,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T19:25:04.960Z"
+    },
+    {
+      "id": "cosmetic_closed_noshadow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/cosmetic_closed_noshadow.jpg",
+      "bytes": 530139,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1406,
+        "totalTokenCount": 1793,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T19:25:15.363Z"
+    },
+    {
+      "id": "cosmetic_open_noshadow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same chest - every detail, colour, angle, lighting and size unchanged. Remove every shadow and dark smudge on the ground under and beside the chest (especially at the lower right), and any coloured glow spilling onto the ground. Nothing at all under the chest. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/cosmetic_open_noshadow.jpg",
+      "bytes": 573187,
+      "usage": {
+        "promptTokenCount": 387,
+        "candidatesTokenCount": 1438,
+        "totalTokenCount": 1825,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 129
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T19:25:25.368Z"
+    },
+    {
+      "id": "hearth_sharp_axe",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A freshly honed woodcutter axe with a gleaming edge, a wood chip flying. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_sharp_axe.jpg",
+      "bytes": 402731,
+      "usage": {
+        "promptTokenCount": 611,
+        "candidatesTokenCount": 1444,
+        "totalTokenCount": 2055,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 95
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:46:17.657Z"
+    },
+    {
+      "id": "hearth_hard_pick",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A sturdy iron pickaxe striking sparks off a rock. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_hard_pick.jpg",
+      "bytes": 458450,
+      "usage": {
+        "promptTokenCount": 606,
+        "candidatesTokenCount": 1443,
+        "totalTokenCount": 2049,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 90
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:46:25.311Z"
+    },
+    {
+      "id": "hearth_seam_sense",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A glowing seam of ore running through split timber and stone. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_seam_sense.jpg",
+      "bytes": 539486,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1447,
+        "totalTokenCount": 2054,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:46:34.692Z"
+    },
+    {
+      "id": "hearth_steady_swing",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An axe and a pickaxe crossed, motion arcs behind them. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_steady_swing.jpg",
+      "bytes": 483111,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1409,
+        "totalTokenCount": 2017,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:46:43.792Z"
+    },
+    {
+      "id": "hearth_clearcut",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A neat stack of logs beside a pile of ore chunks. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_clearcut.jpg",
+      "bytes": 473159,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1418,
+        "totalTokenCount": 2025,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:46:52.194Z"
+    },
+    {
+      "id": "hearth_prospector",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A miner's lamp shining on a glittering gemstone in rock. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_prospector.jpg",
+      "bytes": 446350,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1458,
+        "totalTokenCount": 2066,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:46:59.877Z"
+    },
+    {
+      "id": "hearth_double_haul",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A wooden cart overflowing with logs and ore, two of everything. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_double_haul.jpg",
+      "bytes": 488995,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1473,
+        "totalTokenCount": 2081,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:47:07.893Z"
+    },
+    {
+      "id": "hearth_deep_vein",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A deep glowing vein of rare crystal ore opening in a cave wall, keystone, radiant. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_deep_vein.jpg",
+      "bytes": 553555,
+      "usage": {
+        "promptTokenCount": 614,
+        "candidatesTokenCount": 1474,
+        "totalTokenCount": 2088,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 98
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 139,
+      "at": "2026-10-30T19:49:27.154Z"
+    },
+    {
+      "id": "hearth_patient_line",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fishing rod with a still float on calm water at dawn. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_patient_line.jpg",
+      "bytes": 461014,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1533,
+        "totalTokenCount": 2141,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:49:35.854Z"
+    },
+    {
+      "id": "hearth_green_thumb",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A hand-sized bundle of fresh herbs with a green glow. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_green_thumb.jpg",
+      "bytes": 493321,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1390,
+        "totalTokenCount": 1998,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T19:49:43.212Z"
+    },
+    {
+      "id": "hearth_good_waters",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A clear stream full of fish and riverside herbs. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_good_waters.jpg",
+      "bytes": 559454,
+      "usage": {
+        "promptTokenCount": 605,
+        "candidatesTokenCount": 1439,
+        "totalTokenCount": 2044,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 89
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T19:49:53.400Z"
+    },
+    {
+      "id": "hearth_still_water",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A mirror-calm pond with a single ripple. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_still_water.jpg",
+      "bytes": 529754,
+      "usage": {
+        "promptTokenCount": 606,
+        "candidatesTokenCount": 1427,
+        "totalTokenCount": 2033,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 90
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:50:02.787Z"
+    },
+    {
+      "id": "hearth_keen_angler",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A sharp fish hook glinting, a rare golden fish nearby. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_keen_angler.jpg",
+      "bytes": 421810,
+      "usage": {
+        "promptTokenCount": 609,
+        "candidatesTokenCount": 1479,
+        "totalTokenCount": 2088,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 93
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:50:10.804Z"
+    },
+    {
+      "id": "hearth_netmaker",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A finely knotted fishing net with a shining scale caught in it. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_netmaker.jpg",
+      "bytes": 636543,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1390,
+        "totalTokenCount": 1998,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:50:18.414Z"
+    },
+    {
+      "id": "hearth_full_net",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fishing net bursting with fish and herbs. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_full_net.jpg",
+      "bytes": 647647,
+      "usage": {
+        "promptTokenCount": 604,
+        "candidatesTokenCount": 1496,
+        "totalTokenCount": 2100,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 88
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:50:27.395Z"
+    },
+    {
+      "id": "hearth_moonlit_catch",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fish leaping under a full moon, silver light, keystone, radiant. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_moonlit_catch.jpg",
+      "bytes": 512971,
+      "usage": {
+        "promptTokenCount": 611,
+        "candidatesTokenCount": 1401,
+        "totalTokenCount": 2012,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 95
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:50:35.751Z"
+    },
+    {
+      "id": "hearth_quick_hands",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A craftsman's hands blurred with speed over a workbench. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_quick_hands.jpg",
+      "bytes": 443316,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1489,
+        "totalTokenCount": 2096,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 141,
+      "at": "2026-10-30T19:52:57.088Z"
+    },
+    {
+      "id": "hearth_thrifty",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A coin purse and spare materials saved on a workbench. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_thrifty.jpg",
+      "bytes": 458277,
+      "usage": {
+        "promptTokenCount": 606,
+        "candidatesTokenCount": 1455,
+        "totalTokenCount": 2061,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 90
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:53:05.059Z"
+    },
+    {
+      "id": "hearth_ledger",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An open ledger book with a quill and a few coins. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_ledger.jpg",
+      "bytes": 579465,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1462,
+        "totalTokenCount": 2069,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:53:13.593Z"
+    },
+    {
+      "id": "hearth_batch_work",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: Several identical tools laid out in a row on a bench. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_batch_work.jpg",
+      "bytes": 625240,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1464,
+        "totalTokenCount": 2071,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:53:21.760Z"
+    },
+    {
+      "id": "hearth_fine_work",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A delicate gold filigree being worked with tiny tools. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_fine_work.jpg",
+      "bytes": 691690,
+      "usage": {
+        "promptTokenCount": 606,
+        "candidatesTokenCount": 1480,
+        "totalTokenCount": 2086,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 90
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:53:30.688Z"
+    },
+    {
+      "id": "hearth_salvager",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A broken sword being melted into gold coins in a small crucible. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_salvager.jpg",
+      "bytes": 518086,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1477,
+        "totalTokenCount": 2085,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:53:39.365Z"
+    },
+    {
+      "id": "hearth_patron",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A stone monument under construction with a banner. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_patron.jpg",
+      "bytes": 522124,
+      "usage": {
+        "promptTokenCount": 604,
+        "candidatesTokenCount": 1477,
+        "totalTokenCount": 2081,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 88
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 141,
+      "at": "2026-10-30T19:55:59.977Z"
+    },
+    {
+      "id": "hearth_masterwork",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A perfect glowing weapon on an anvil with three runes floating above it, keystone, radiant. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_masterwork.jpg",
+      "bytes": 478693,
+      "usage": {
+        "promptTokenCount": 614,
+        "candidatesTokenCount": 1485,
+        "totalTokenCount": 2099,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 98
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 22,
+      "at": "2026-10-30T19:56:21.982Z"
+    },
+    {
+      "id": "hearth_studious",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An open book with a candle and floating glowing letters. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_studious.jpg",
+      "bytes": 540488,
+      "usage": {
+        "promptTokenCount": 606,
+        "candidatesTokenCount": 1463,
+        "totalTokenCount": 2069,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 90
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:56:31.107Z"
+    },
+    {
+      "id": "hearth_homebody",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A cosy cottage hearth with a crackling fire. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_homebody.jpg",
+      "bytes": 575186,
+      "usage": {
+        "promptTokenCount": 605,
+        "candidatesTokenCount": 1385,
+        "totalTokenCount": 1990,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 89
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:56:39.157Z"
+    },
+    {
+      "id": "hearth_long_absence",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An hourglass beside a travelling pack and a lantern. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_long_absence.jpg",
+      "bytes": 485516,
+      "usage": {
+        "promptTokenCount": 605,
+        "candidatesTokenCount": 1407,
+        "totalTokenCount": 2012,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 89
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:56:47.773Z"
+    },
+    {
+      "id": "hearth_matchmaker",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: Two intertwined wedding rings with a ribbon. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_matchmaker.jpg",
+      "bytes": 492525,
+      "usage": {
+        "promptTokenCount": 603,
+        "candidatesTokenCount": 1416,
+        "totalTokenCount": 2019,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 87
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:56:55.503Z"
+    },
+    {
+      "id": "hearth_strong_blood",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A drop of red blood glowing with an upward arrow of light. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_strong_blood.jpg",
+      "bytes": 351382,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1393,
+        "totalTokenCount": 2001,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T19:57:03.460Z"
+    },
+    {
+      "id": "hearth_nursery",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A carved wooden cradle with a soft blanket. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_nursery.jpg",
+      "bytes": 518006,
+      "usage": {
+        "promptTokenCount": 604,
+        "candidatesTokenCount": 1456,
+        "totalTokenCount": 2060,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 88
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:57:12.648Z"
+    },
+    {
+      "id": "hearth_mentor",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An old hand guiding a young hand holding a small hammer. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_mentor.jpg",
+      "bytes": 470965,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1512,
+        "totalTokenCount": 2119,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 143,
+      "at": "2026-10-30T19:59:35.517Z"
+    },
+    {
+      "id": "hearth_bloodline_memory",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A glowing family tree with roots and branches of light, keystone, radiant. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_bloodline_memory.jpg",
+      "bytes": 626511,
+      "usage": {
+        "promptTokenCount": 611,
+        "candidatesTokenCount": 1483,
+        "totalTokenCount": 2094,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 95
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:59:44.070Z"
+    },
+    {
+      "id": "hearth_col_wood_stone",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A tree stump and a boulder side by side, column emblem. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_col_wood_stone.jpg",
+      "bytes": 527198,
+      "usage": {
+        "promptTokenCount": 608,
+        "candidatesTokenCount": 1515,
+        "totalTokenCount": 2123,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 92
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T19:59:52.808Z"
+    },
+    {
+      "id": "hearth_col_water_herb",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A fish and a herb sprig circling each other over water, column emblem. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_col_water_herb.jpg",
+      "bytes": 465153,
+      "usage": {
+        "promptTokenCount": 611,
+        "candidatesTokenCount": 1459,
+        "totalTokenCount": 2070,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 95
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:00:00.814Z"
+    },
+    {
+      "id": "hearth_col_workshop",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: An anvil with a hammer, column emblem. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_col_workshop.jpg",
+      "bytes": 434695,
+      "usage": {
+        "promptTokenCount": 604,
+        "candidatesTokenCount": 1450,
+        "totalTokenCount": 2054,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 88
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T20:00:09.687Z"
+    },
+    {
+      "id": "hearth_col_kin",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Use the two reference images for style only: a single painted object, centred, on the same dark navy blue background with a soft vignette, warm rim light, square game skill icon, no text, no frame. The object: A hearth with a family of three silhouettes, column emblem. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/hearth_col_kin.jpg",
+      "bytes": 465894,
+      "usage": {
+        "promptTokenCount": 607,
+        "candidatesTokenCount": 1454,
+        "totalTokenCount": 2061,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 91
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 516
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:00:17.754Z"
+    },
+    {
+      "id": "herb_yarrow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Yarrow: a sprig of white flat-topped yarrow flowers with feathery leaves. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_yarrow.jpg",
+      "bytes": 646063,
+      "usage": {
+        "promptTokenCount": 108,
+        "candidatesTokenCount": 1486,
+        "totalTokenCount": 1594,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 108
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T20:00:26.326Z"
+    },
+    {
+      "id": "herb_golden_chamomile",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Golden Chamomile, rare: chamomile flowers with glowing golden petals. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_golden_chamomile.jpg",
+      "bytes": 621262,
+      "usage": {
+        "promptTokenCount": 101,
+        "candidatesTokenCount": 1444,
+        "totalTokenCount": 1545,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 101
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T20:00:35.033Z"
+    },
+    {
+      "id": "herb_marsh_mallow",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Marsh Mallow: pale pink marsh mallow flowers on a stem with soft leaves. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure blue (#0000FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_marsh_mallow.jpg",
+      "bytes": 522860,
+      "usage": {
+        "promptTokenCount": 106,
+        "candidatesTokenCount": 1491,
+        "totalTokenCount": 1597,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 106
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:00:42.883Z"
+    },
+    {
+      "id": "herb_wisp_moss",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Will-o-wisp Moss, rare: a clump of moss with tiny floating pale-green lights. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_wisp_moss.jpg",
+      "bytes": 581671,
+      "usage": {
+        "promptTokenCount": 110,
+        "candidatesTokenCount": 1511,
+        "totalTokenCount": 1621,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 110
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:00:50.852Z"
+    },
+    {
+      "id": "herb_thyme",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Thyme: a bundle of small-leaved thyme sprigs tied with twine. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_thyme.jpg",
+      "bytes": 549040,
+      "usage": {
+        "promptTokenCount": 104,
+        "candidatesTokenCount": 1390,
+        "totalTokenCount": 1494,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 104
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T20:00:57.556Z"
+    },
+    {
+      "id": "herb_dragons_blood_sage",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Dragon's Blood Sage, rare: deep red sage leaves with ember-like glowing veins. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_dragons_blood_sage.jpg",
+      "bytes": 516266,
+      "usage": {
+        "promptTokenCount": 107,
+        "candidatesTokenCount": 1396,
+        "totalTokenCount": 1503,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 107
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T20:01:04.743Z"
+    },
+    {
+      "id": "herb_sea_kale",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Sea Kale: blue-green curly sea kale leaves with sea spray. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_sea_kale.jpg",
+      "bytes": 651561,
+      "usage": {
+        "promptTokenCount": 102,
+        "candidatesTokenCount": 1513,
+        "totalTokenCount": 1615,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 102
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:01:12.948Z"
+    },
+    {
+      "id": "herb_frost_lichen",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Frost Lichen, rare: icy blue lichen with frost crystals. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_frost_lichen.jpg",
+      "bytes": 689063,
+      "usage": {
+        "promptTokenCount": 101,
+        "candidatesTokenCount": 1355,
+        "totalTokenCount": 1456,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 101
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:01:20.935Z"
+    },
+    {
+      "id": "herb_mugwort",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Mugwort: silvery-green mugwort leaves on a stalk. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_mugwort.jpg",
+      "bytes": 567831,
+      "usage": {
+        "promptTokenCount": 102,
+        "candidatesTokenCount": 1377,
+        "totalTokenCount": 1479,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 102
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 139,
+      "at": "2026-10-30T20:03:40.432Z"
+    },
+    {
+      "id": "herb_fern_flower",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Fern Flower, rare: the mythical Kupala night fern flower, a radiant red-gold bloom glowing among fern fronds. Game item icon, one bold readable shape, centred with a margin, three-quarter view. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/herb_fern_flower.jpg",
+      "bytes": 682215,
+      "usage": {
+        "promptTokenCount": 113,
+        "candidatesTokenCount": 1516,
+        "totalTokenCount": 1629,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 113
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:03:48.589Z"
+    },
+    {
+      "id": "potion_hunt",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Elixir of the Hunt: a round flask of deep red potion with a wolf-tooth charm on the cord. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_hunt.jpg",
+      "bytes": 510484,
+      "usage": {
+        "promptTokenCount": 118,
+        "candidatesTokenCount": 1500,
+        "totalTokenCount": 1618,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 118
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:03:56.259Z"
+    },
+    {
+      "id": "potion_fortune",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Draught of Fortune: a slim bottle of shimmering gold potion with a four-leaf clover pressed on the label-free glass. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_fortune.jpg",
+      "bytes": 508033,
+      "usage": {
+        "promptTokenCount": 122,
+        "candidatesTokenCount": 1378,
+        "totalTokenCount": 1500,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 122
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T20:04:04.891Z"
+    },
+    {
+      "id": "potion_goldmoss",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Goldmoss Tonic: a squat jar of amber potion with gold flecks swirling. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_goldmoss.jpg",
+      "bytes": 616132,
+      "usage": {
+        "promptTokenCount": 111,
+        "candidatesTokenCount": 1496,
+        "totalTokenCount": 1607,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 111
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-10-30T20:04:13.497Z"
+    },
+    {
+      "id": "potion_ironbark",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Ironbark Brew: a heavy dark-glass bottle of grey-brown potion bound with iron bands. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_ironbark.jpg",
+      "bytes": 530300,
+      "usage": {
+        "promptTokenCount": 115,
+        "candidatesTokenCount": 1516,
+        "totalTokenCount": 1631,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 115
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 141,
+      "at": "2026-10-30T20:06:34.285Z"
+    },
+    {
+      "id": "potion_swiftroot",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Swiftroot Tea: a narrow vial of bright teal potion with a small feather tied to it. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_swiftroot.jpg",
+      "bytes": 491893,
+      "usage": {
+        "promptTokenCount": 113,
+        "candidatesTokenCount": 1491,
+        "totalTokenCount": 1604,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 113
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 7,
+      "at": "2026-10-30T20:06:41.054Z"
+    },
+    {
+      "id": "potion_gatherer",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Gatherer's Draught: a corked bottle of fresh green potion with a tiny leaf inside. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_gatherer.jpg",
+      "bytes": 514236,
+      "usage": {
+        "promptTokenCount": 115,
+        "candidatesTokenCount": 1482,
+        "totalTokenCount": 1597,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 115
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:06:48.576Z"
+    },
+    {
+      "id": "potion_kupala",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Kupala Night: a star-shaped bottle of deep blue potion glowing with tiny red-gold sparks. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_kupala.jpg",
+      "bytes": 558144,
+      "usage": {
+        "promptTokenCount": 117,
+        "candidatesTokenCount": 1499,
+        "totalTokenCount": 1616,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 117
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-10-30T20:06:56.564Z"
+    },
+    {
+      "id": "potion_bossbane",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Boss-bane Philtre: a sharp crystal flask of violet potion with a small skull stopper. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/potion_bossbane.jpg",
+      "bytes": 526795,
+      "usage": {
+        "promptTokenCount": 115,
+        "candidatesTokenCount": 1451,
+        "totalTokenCount": 1566,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 115
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-10-30T20:07:06.391Z"
     }
   ]
 }
