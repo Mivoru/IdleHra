@@ -191,6 +191,14 @@ namespace FolkIdle.Server.Domain.Combat
             public double FirstClearMonsterSwing { get; init; }
             public SwingsToKill? FirstClearKill { get; init; }
             public long FarmMilliHp { get; init; }
+            /// <summary>
+            /// The health a THORNS fight starts its count from: execute-adjusted
+            /// and with First Strike's opening already off, exactly as the swing
+            /// count path prices it (roadmap 3.6: a small gear thorns share used
+            /// to drop both, and parity broke by up to 13% on geared rows).
+            /// </summary>
+            public long ThornsFirstClearMilliHp { get; init; }
+            public long ThornsFarmMilliHp { get; init; }
             public double FarmMonsterSwing { get; init; }
             public SwingsToKill? FarmKill { get; init; }
 
@@ -270,6 +278,8 @@ namespace FolkIdle.Server.Domain.Combat
                         && ConsumableEngine.DeathWardItemId > 0
                         && copy.ActiveDefensivePotionId == ConsumableEngine.DeathWardItemId,
                     FirstClearMilliHp = firstClearHp,
+                    ThornsFirstClearMilliHp = Math.Max(1L, warFight.ExecuteAdjustedHp(firstClearHp) - opening),
+                    ThornsFarmMilliHp = Math.Max(1L, warFight.ExecuteAdjustedHp(farmHp) - opening),
                     FirstClearMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, mask, maxMilliHp),
                     FirstClearKill = firstClearKill,
                     FarmMilliHp = farmHp,
@@ -363,13 +373,13 @@ namespace FolkIdle.Server.Domain.Combat
             long fightIndex;
             if (s.FirstClearPending)
             {
-                s.MonsterHp = setup.FirstClearMilliHp;
+                s.MonsterHp = setup.ThornsFirstClearMilliHp;
                 kill = setup.FirstClearKill;
                 fightIndex = s.FirstClearFights++;
             }
             else
             {
-                s.MonsterHp = setup.FarmMilliHp;
+                s.MonsterHp = setup.ThornsFarmMilliHp;
                 kill = setup.FarmKill;
                 fightIndex = s.FarmFights++;
             }

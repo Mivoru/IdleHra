@@ -97,7 +97,7 @@ export function unlocksFor(monsterId: number): VictoryUnlocks {
  * element. Do not edit one side alone.
  */
 export const FIRST_CLEAR_HP_MULTIPLIERS: readonly number[] = [3, 4, 4.8, 6, 7];
-export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [2.47, 1.86, 3.15, 5.13, 7.15];
+export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [2.47, 1.87, 3.17, 5.13, 7.15];
 
 /**
  * The gear each boss is calibrated to need, as QualityTier, in the boss's OWN

@@ -152,7 +152,7 @@ export function formatAffixValue(affixId: string, magnitude: number): string {
  * a stat that can never roll. Stored items keep them, so they still get a
  * label. serverMirrors.test.ts compares this set with the C# `retired: true`.
  */
-export const RETIRED_AFFIX_IDS: ReadonlySet<string> = new Set(['range_dmg_pct', 'magic_dmg_pct']);
+export const RETIRED_AFFIX_IDS: ReadonlySet<string> = new Set(['range_dmg_pct', 'magic_dmg_pct', 'thorns_pct']);
 
 /**
  * Ids whose mechanical label would describe something the server does not do.

@@ -81,10 +81,10 @@ namespace FolkIdle.Server.Domain.Combat
         // times and kills about 3% slower: 201 s / 220 s against 195 / 215.
         // Regions 3 and 4 stretched to 205 / 225 to keep Swift winnable; the
         // wall's required gear still misses them (calibration test).
-        // Modul: 2026-10-30 (later), roadmap 3.6 - the new glove and chest affixes
-        // took a roll from attack speed and armour penetration in the
-        // benchmark's pieces, and the best gear now takes 206 / 227 / 295 s in
-        // regions 3-5. Limits set 2% above that: 210 / 232 / 301.
+        // Modul: 2026-10-30 (later), roadmap 3.6 - crushing_blow_pct took a gloves
+        // roll from attack speed and armour penetration in the benchmark's
+        // pieces; the best gear now takes 206 / 227 / 295 s in regions 3-5.
+        // Limits set 2% above that.
         private static readonly int[] TimeLimitSecondsByRegion = { 104, 143, 210, 232, 301 };
 
         /// <summary>How many quality tiers above the wall's requirement "the region's best gear" is.</summary>
