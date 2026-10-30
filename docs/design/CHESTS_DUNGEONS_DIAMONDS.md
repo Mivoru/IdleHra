@@ -612,6 +612,11 @@ new one-line counter):
 
 ### 5.5 The announcement
 
+**Correction (2026-10-30):** most of this already exists. `AchievementToast.svelte`
+shows a card with a seal, the tier and the reward, plays `achievement_unlock.wav`,
+and opens the Book of Deeds (Progress, Goals tab) on a tap. What is still missing
+is the bigger Legendary card and the offline queue. The original text:
+
 A real moment when an achievement is earned:
 - A **banner** slides in at the top with the achievement's icon, name, tier
   and reward, plus a short **sound** (a new clip in the audio registry).
