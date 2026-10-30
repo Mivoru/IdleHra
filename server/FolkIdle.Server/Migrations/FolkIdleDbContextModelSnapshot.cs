@@ -1255,6 +1255,55 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("LiveOpsEventRotations");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.LootChest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("GrantedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("Region")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("Source")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("Tier")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.ToTable("LootChests");
+                });
+
+            modelBuilder.Entity("FolkIdle.Server.Models.LootChestWeek", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PlayerId"));
+
+                    b.Property<int>("DiamondsThisWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WeekKey")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PlayerId");
+
+                    b.ToTable("LootChestWeeks");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.LootTierDailyCount", b =>
                 {
                     b.Property<long>("PlayerId")
