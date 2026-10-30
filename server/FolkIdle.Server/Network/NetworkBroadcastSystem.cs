@@ -2398,6 +2398,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Loot chests - see NetworkBroadcastSystem.LootChests.cs.
+            if (await TryHandleLootChestsAsync(context, requestPath))
+            {
+                return;
+            }
+
             // The skill tree screen's definition, draft preview and commit -
             // see NetworkBroadcastSystem.SkillTree.cs.
             if (await TryHandleSkillTreeAsync(context, requestPath))
@@ -12562,6 +12568,13 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/dev/workshop/finish" && context.Request.HttpMethod == "POST")
                 {
                     await HandleDevWorkshopFinish(context, playerId);
+                    return;
+                }
+
+                // Loot chests: grant one, so exercise.mjs can open it on the fixture.
+                if (requestPath == "/api/v1/dev/chests/grant" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevLootChestGrant(context, playerId);
                     return;
                 }
 
