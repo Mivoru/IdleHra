@@ -4068,8 +4068,8 @@ await go('Character');
   const tree = await apiGet('/api/v1/skilltree').catch(() => null);
   const keystone = tree?.Nodes?.find((n) => n.Kind === 'Keystone');
   const state = await apiGet('/api/v1/skilltree/state').catch(() => null);
-  record('the skill tree is the War half: four columns, 35 nodes, a 64-slot rank array',
-    tree?.Columns?.length === 4 && tree?.Nodes?.length === 35 && tree?.Slots === 64 && state?.Levels?.length === 64,
+  record('the skill tree is the War half: four columns, 35 nodes, a 128-slot rank array',
+    tree?.Columns?.length === 4 && tree?.Nodes?.length === 35 && tree?.Slots === 128 && state?.Levels?.length === 128,
     `${tree?.Columns?.length} columns, ${tree?.Nodes?.length} nodes, ${tree?.Slots} slots, state ${state?.Levels?.length}`);
   if (keystone && state?.Levels) {
     // The fixture's own ranks, with the keystone added and its column's
@@ -4085,6 +4085,54 @@ await go('Character');
   } else {
     record('an illegal draft is refused whole, with a reason', false, 'the definition did not answer');
   }
+  await go('Character');
+}
+
+// --- the Hearth half of the skill tree (phase 4, 2026-10-30) ------------------
+// Modul: SPENDS NOTHING, like the War step above: it switches the same screen to
+// the Hearth half, drafts one level and proves the SERVER priced it in craft
+// points, then discards. Craft points are derived from gathering mastery (one
+// per 10 summed levels) and never stored, so the step also proves the state
+// answers them - a Hearth that drew but had no points would look finished.
+{
+  const def = await apiGet('/api/v1/skilltree?half=hearth').catch(() => null);
+  const ids = (def?.Nodes ?? []).map((n) => n.Id);
+  record('the Hearth half is its own definition: nodes 56-87, craft points per mastery',
+    def?.Half === 'hearth' && ids.length > 0 && ids.every((id) => id >= 56 && id <= 87) && def?.MasteryLevelsPerPoint > 0,
+    `half ${def?.Half}, ${ids.length} nodes (${Math.min(...ids)}-${Math.max(...ids)}), ${def?.MasteryLevelsPerPoint} levels per point`);
+
+  await go('Skill Tree');
+  await page.getByTestId('skills-half-hearth').click().catch(() => {});
+  await page.getByTestId(`skill-node-${ids[0] ?? 56}`).waitFor({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  const pointsText = await page.getByTestId('skills-points').innerText().catch(() => '');
+  let drafted = -1;
+  for (const id of ids) {
+    if (drafted >= 0) break;
+    const node = page.getByTestId(`skill-node-${id}`);
+    const cls = (await node.getAttribute('class').catch(() => '')) ?? '';
+    if (!/\b(open|owned)\b/.test(cls)) continue;
+    await node.click();
+    const add = page.getByTestId('skill-add');
+    let ready = false;
+    for (let t = 0; t < 20 && !ready; t++) {
+      ready = await add.isEnabled({ timeout: 500 }).catch(() => false);
+      if (!ready) await page.waitForTimeout(300);
+    }
+    if (!ready) continue;
+    await add.click();
+    drafted = id;
+  }
+  const bar = page.getByTestId('skill-draftbar');
+  await bar.waitFor({ timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const barText = await bar.innerText().catch(() => '');
+  record('a drafted Hearth level is priced by the server in craft points',
+    drafted >= 0 && /costs \d+/.test(barText),
+    drafted < 0 ? `no open Hearth node (points "${pointsText.replace(/\s+/g, ' ')}")` : barText.replace(/\s+/g, ' '));
+  await bar.getByRole('button', { name: 'Discard' }).click().catch(() => {});
+  // Back to War, so the next run's War step finds the screen as it expects.
+  await page.getByTestId('skills-half-war').click().catch(() => {});
   await go('Character');
 }
 
