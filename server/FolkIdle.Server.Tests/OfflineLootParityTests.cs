@@ -133,6 +133,7 @@ namespace FolkIdle.Server.Tests
                 asPlayerId, request.MonsterId, request.LootLuckPct, request.MaterialQuantityPct,
                 request.BonusRarityTiers, request.Kills <= 0 ? 1 : request.Kills, request.SkipMaterialRoll,
                 request.AutoSalvageBelowTier, request.RarityElevationPct, request.RecordedSource,
+                request.SalvageGoldTenthsPct,
             })!;
             await task;
         }
