@@ -21,6 +21,17 @@ can refer to it.
 
 ---
 
+## Decisions taken (owner, 2026-10-30)
+
+| Topic | Decision |
+|---|---|
+| Loot chests (L1-L3) | Earned only, never sold for diamonds. First sources: the Deep's new weekly floors from 10, and regional boss first clears. Chests stack and open in batches. |
+| Dungeons (D1-D5) | A simulated run (Option A): server-simulated waves and a boss, played back from the combat event feed. 2 free tickets a day per kind, cap 4, more from chests. Equipment dungeon first, after Hearth and the affix rework. Not offline. |
+| Achievements (A1-A4) | One registry; the quest line becomes its first chapter; reward bands 5/15/40/100 diamonds with chests as an alternative from Silver; about 150 diamonds per achievement at most, today's 1,000/1,500 tiers split into more goals; banner with sound, a big card for Legendary, an Achievements screen. After loot chests. |
+| Diamonds and inheritance (M1-M3, I1-I2) | One balanced change: taps (Delve 60 -> 80), inheritance Option B (10 levels of +4%, milestones at 5 and 10), and the achievements tap, measured with one model. New sinks: dungeon tickets, loadout slots, breeding helpers. Diamonds never buy gold or materials. |
+
+The sections below keep the options and the reasoning behind each choice.
+
 ## 0. Already decided (2026-10-30)
 
 **The Deep, built in the `claude/deep-reward` PR:**
