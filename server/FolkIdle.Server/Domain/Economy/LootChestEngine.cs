@@ -69,6 +69,29 @@ namespace FolkIdle.Server.Domain.Economy
             return row.Id;
         }
 
+        /// <summary>
+        /// Adds a chest to a transaction the caller already holds and saves -
+        /// for a grant that must commit together with the record that earned it
+        /// (a first clear, a Deep record), never as a best-effort side write.
+        /// </summary>
+        public static void Stage(FolkIdleDbContext db, long playerId, LootChestTier tier, int region, LootChestSource source, DateTime utcNow)
+            => db.LootChests.Add(new LootChest
+            {
+                PlayerId = playerId,
+                Tier = (byte)Math.Clamp((int)tier, 1, 4),
+                Region = (byte)Math.Clamp(region, 1, 5),
+                Source = (byte)source,
+                GrantedAtUtc = utcNow,
+            });
+
+        /// <summary>The chest a new weekly-deepest Deep floor pays: none below 10, Bronze 10-12, Silver 13-16, Gold from 17.</summary>
+        public static LootChestTier? DeepFloorChest(int floor)
+            => floor < 10 ? null : floor <= 12 ? LootChestTier.Bronze : floor <= 16 ? LootChestTier.Silver : LootChestTier.Gold;
+
+        /// <summary>The chest a regional boss's first clear pays: Silver, Gold for the last region.</summary>
+        public static LootChestTier BossFirstClearChest(int region)
+            => region >= 5 ? LootChestTier.Gold : LootChestTier.Silver;
+
         /// <summary>Unopened chests by tier, for the shelf.</summary>
         public static async Task<Dictionary<LootChestTier, int>> CountsAsync(FolkIdleDbContext db, long playerId)
         {

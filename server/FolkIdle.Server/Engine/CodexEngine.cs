@@ -316,6 +316,13 @@ namespace FolkIdle.Server.Engine
 
                         Console.WriteLine(
                             $"First-clear trophy: player {key.PlayerId} earned a Demonic {trophyBaseId} for beating monster {key.MonsterId}.");
+
+                        // Loot chests (owner L1, 2026-10-30): the first clear also
+                        // pays a chest, staged in this same transaction for the
+                        // trophy's reason - once ever, never a lost grant.
+                        Domain.Economy.LootChestEngine.Stage(dbContext, key.PlayerId,
+                            Domain.Economy.LootChestEngine.BossFirstClearChest(trophyRegion), trophyRegion,
+                            Domain.Economy.LootChestSource.BossFirstClear, DateTime.UtcNow);
                     }
 
                     if (codexEntries.TryGetValue(key, out var entry))

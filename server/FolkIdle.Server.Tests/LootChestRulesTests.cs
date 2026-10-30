@@ -91,5 +91,19 @@ namespace FolkIdle.Server.Tests
             Assert.Contains(LootChestRules.OddsLines(LootChestTier.Silver), l => l.StartsWith("Equipment: 35%"));
             Assert.DoesNotContain(LootChestRules.OddsLines(LootChestTier.Bronze), l => l.StartsWith("Diamonds"));
         }
-    }
+    
+        [Fact]
+        public void TheSourcesPayTheChestsTheBuildPlanNames()
+        {
+            Assert.Null(LootChestEngine.DeepFloorChest(9));
+            Assert.Equal(LootChestTier.Bronze, LootChestEngine.DeepFloorChest(10));
+            Assert.Equal(LootChestTier.Bronze, LootChestEngine.DeepFloorChest(12));
+            Assert.Equal(LootChestTier.Silver, LootChestEngine.DeepFloorChest(13));
+            Assert.Equal(LootChestTier.Silver, LootChestEngine.DeepFloorChest(16));
+            Assert.Equal(LootChestTier.Gold, LootChestEngine.DeepFloorChest(17));
+            Assert.Equal(LootChestTier.Gold, LootChestEngine.DeepFloorChest(40));
+            Assert.Equal(LootChestTier.Silver, LootChestEngine.BossFirstClearChest(1));
+            Assert.Equal(LootChestTier.Gold, LootChestEngine.BossFirstClearChest(5));
+        }
+}
 }
