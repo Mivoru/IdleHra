@@ -16,6 +16,7 @@ namespace FolkIdle.Server.Tests
     /// mechanic wired into the projection but not the tick (or the reverse)
     /// fails one of the two.
     /// </summary>
+    [Collection("Static loot queues")]
     public class WarMechanicParityTests
     {
         private readonly ITestOutputHelper _output;

@@ -3,22 +3,29 @@ using Xunit;
 namespace FolkIdle.Server.Tests
 {
     /// <summary>
-    /// Test classes that DRAIN the process-wide loot queues and are not in the
-    /// Postgres collection.
+    /// Test classes outside the Postgres collection that FILL or DRAIN the
+    /// process-wide loot queues.
     /// </summary>
     /// <remarks>
-    /// Modul: A DRAIN TAKES EVERYONE'S ITEMS, NOT JUST ITS OWN (roadmap 2.2,
-    /// 2026-10-30). <c>CombatLootEngine.DropRequestQueue</c> and
-    /// <c>GatheringGrantQueue</c> are static, and xUnit runs collections in
-    /// parallel. These classes empty the queues to keep their own runs clean,
-    /// so a run that overlapped the Postgres collection could take a request
-    /// another test had just enqueued:
+    /// Modul: THE QUEUES ARE STATIC AND THE COLLECTIONS RUN IN PARALLEL
+    /// (roadmap 2.2, 2026-10-30). <c>CombatLootEngine.DropRequestQueue</c> and
+    /// <c>GatheringGrantQueue</c> are shared by every test in the process.
     /// <c>AutomationAutoFuseTests.TheWorker_FusesTheStacksARequestsDropsLandedIn</c>
-    /// then "fused nothing within 60 seconds", on every full local run and
-    /// never alone. A collection with parallelisation disabled runs after the
-    /// parallel ones finish, one class at a time, so no drain can overlap a
-    /// test that is waiting on the queue. Put a new draining class here, or in
-    /// the Postgres collection; never leave it free-standing.
+    /// failed every full local run and never alone ("fused nothing within 60
+    /// seconds"), with its own request gone from the queue and no piece
+    /// granted. The first suspects were the classes that drain the queues; moving
+    /// them here did not fix it. The worker's own report did: "tick saw 12723
+    /// kills, enqueued 12723, worker drained 158 requests ... 239 still queued".
+    /// Live-tick tests running in parallel (RunCombatTick enqueues one request
+    /// per kill) buried the test's single request under thousands, and the worker
+    /// did not reach it in time.
+    ///
+    /// A collection with parallelisation disabled runs after the parallel ones
+    /// finish, one class at a time, so nothing here can fill or empty the queues
+    /// while a Postgres-collection test waits on the worker. A new class that runs
+    /// RunCombatTick, RunGatheringTick, ProcessSubTick, the offline combat
+    /// projection, or touches the queues directly belongs here or in the
+    /// Postgres collection; never leave it free-standing.
     /// </remarks>
     [CollectionDefinition("Static loot queues", DisableParallelization = true)]
     public class StaticLootQueuesCollection

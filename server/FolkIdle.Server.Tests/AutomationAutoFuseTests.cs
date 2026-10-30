@@ -135,7 +135,21 @@ namespace FolkIdle.Server.Tests
                 var deadline = DateTime.UtcNow.AddSeconds(60);
                 while (true)
                 {
-                    Assert.True(DateTime.UtcNow < deadline, "the worker fused nothing within 60 seconds");
+                    if (DateTime.UtcNow >= deadline)
+                    {
+                        // Which half failed: the drops never landed (the request
+                        // went elsewhere or is still queued), or they landed and
+                        // no fusion ran.
+                        await using var why = await _fixture.DbContextFactory.CreateDbContextAsync();
+                        var tiers = await why.EquipmentInstances.AsNoTracking()
+                            .Where(e => e.PlayerId == player)
+                            .GroupBy(e => e.QualityTier)
+                            .Select(g => new { g.Key, Count = g.Count() })
+                            .ToListAsync();
+                        Assert.Fail("the worker fused nothing within 60 seconds; "
+                            + $"pieces by tier: [{string.Join(", ", tiers.Select(t => $"{t.Key}:{t.Count}"))}], "
+                            + $"{CombatLootEngine.DropRequestQueue.Count} drop requests still queued");
+                    }
                     await Task.Delay(500);
                     await using var poll = await _fixture.DbContextFactory.CreateDbContextAsync();
                     if ((await poll.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == player)).ForgeFusionsCompleted > 0) break;
