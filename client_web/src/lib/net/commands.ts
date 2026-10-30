@@ -646,6 +646,14 @@ export interface AutoRerollOptions {
  * `affixIndex` rides on LimitPrice - the same field that carries a market
  * price elsewhere. It is a 0-based index into the item's own affix list.
  */
+/** RerollOperation.Refine on the server: keep the type and rarity, move the value within 20%. */
+export const REFINE_OPERATION = 3;
+
+/** Refine's price: a quarter of the reroll's, rounded up - AffixRerollEngine.RefineCost. */
+export function refineCost(rerollCost: number): number {
+  return Math.max(1, Math.floor((rerollCost + 3) / 4));
+}
+
 export function rerollAffix(
   equipmentInstanceId: number,
   affixIndex: number,
@@ -658,7 +666,8 @@ export function rerollAffix(
   if (!Number.isInteger(affixIndex) || affixIndex < 0) {
     return refuse('Pick an affix to reroll.');
   }
-  if (![0, 1, 2].includes(operationKind)) {
+  // 3 = Refine (roadmap 3.4): manual only, the server refuses an auto run.
+  if (![0, 1, 2, 3].includes(operationKind)) {
     return refuse('Pick a reroll operation.');
   }
 
@@ -668,6 +677,10 @@ export function rerollAffix(
   // sending it deliberately keeps the client's intent legible.
   const stopMinRarity = Math.min(5, Math.max(1, Math.trunc(options.stopMinRarity ?? 1)));
   const stopAffixIndex = Math.max(0, Math.trunc(options.stopAffixIndex ?? 0));
+
+  if (operationKind === REFINE_OPERATION && Math.trunc(options.maxAttempts ?? 0) > 0) {
+    return refuse('Refine is one roll at a time.');
+  }
 
   connection.send({
     Command: CommandType.RerollItemAffix,

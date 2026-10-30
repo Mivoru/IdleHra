@@ -21,6 +21,8 @@ namespace FolkIdle.Server.Engine
         GuildRaid = 11,
         /// <summary>A skill tree respec paid in gold (rework slice 2.5, decision D3).</summary>
         Respec = 12,
+        /// <summary>Refine: one affix's value rerolled within 20%, type and rarity kept (roadmap 3.4).</summary>
+        Refine = 13,
     }
 
     /// <summary>Where a credit of gold came from (task 79, phase 2). Stored as a short - append only.</summary>

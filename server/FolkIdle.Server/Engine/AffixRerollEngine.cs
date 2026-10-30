@@ -38,7 +38,19 @@ namespace FolkIdle.Server.Engine
     public enum RerollOperation
     {
         /// New stat, new rarity, new magnitude, all at once. Gold.
-        Full = 0
+        Full = 0,
+
+        // 1 and 2 were Value/StatType/UpgradeRarity's old kinds; an old client
+        // that sends them still gets Full (the cast lands on no named value,
+        // and only Refine is tested for).
+
+        /// <summary>
+        /// Refine (roadmap 3.4, 2026-10-30): the affix keeps its type and its
+        /// rarity, and only its value moves, within 20% either way and inside
+        /// that rarity's legal range - for a quarter of a reroll's price. The
+        /// chase for the last few points of a roll you already like.
+        /// </summary>
+        Refine = 3,
     }
 
     public class AffixRerollEngine
@@ -67,6 +79,26 @@ namespace FolkIdle.Server.Engine
 
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry? _playerRegistry;
+
+        /// <summary>Refine's price: a quarter of the reroll's (owner decision, roadmap section 9 #3), rounded up.</summary>
+        public static long RefineCost(long rerollCost) => Math.Max(1L, (rerollCost + 3L) / 4L);
+
+        /// <summary>The share either way a Refine can move a value.</summary>
+        public const double RefineSpread = 0.20;
+
+        /// <summary>
+        /// A refined value: the current one moved by up to 20% either way,
+        /// kept inside the legal range of the affix's rarity at this region -
+        /// so a Refine never makes a Rare roll a Legendary's number.
+        /// </summary>
+        public static int RefineMagnitude(in AffixDefinition definition, int regionTier, AffixRarity rarity, int current, Random rng)
+        {
+            (int min, int max) = AffixRegistry.CalculateMagnitudeRange(definition, regionTier, rarity);
+            int baseValue = Math.Clamp(current, min, max);
+            int low = Math.Max(min, (int)Math.Floor(baseValue * (1.0 - RefineSpread)));
+            int high = Math.Min(max, (int)Math.Ceiling(baseValue * (1.0 + RefineSpread)));
+            return low >= high ? low : rng.Next(low, high + 1);
+        }
 
         public AffixRerollEngine(IServiceProvider serviceProvider, PlayerSessionRegistry? playerRegistry = null)
         {
@@ -122,6 +154,15 @@ namespace FolkIdle.Server.Engine
             AutoRerollStopCondition stopCondition,
             int maxAttempts)
         {
+            // Refine is manual only: it keeps the type and the rarity, so no
+            // stop condition (a rarity, a stat) could ever be reached by it.
+            if (operation == RerollOperation.Refine)
+            {
+                return ReportRun(playerId, AutoRerollRunResult.Refused(
+                    AutoRerollStopReason.RejectedUnreachableCondition,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure));
+            }
+
             if (stopCondition.IsTriviallySatisfied)
             {
                 // Would accept the very first roll, so the player would pay for
@@ -373,6 +414,8 @@ namespace FolkIdle.Server.Engine
                     regionTier,
                     consecutiveAttempts,
                     rerollStatType: false);
+                bool refine = operation == RerollOperation.Refine;
+                if (refine) cost = RefineCost(cost);
 
                 var currencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'gold' FOR UPDATE";
                 var currencyRecord = await db.CommodityRecords.FromSqlRaw(currencyQuery).SingleOrDefaultAsync();
@@ -386,7 +429,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 currencyRecord.Quantity -= cost;
-                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Reroll, cost);
+                await GoldLedger.RecordSpendAsync(db, playerId, refine ? GoldSpendCategory.Refine : GoldSpendCategory.Reroll, cost);
 
                 // Modul: the Book of Deeds, chapter II. Counted where the gold
                 // is spent, inside the same transaction, so the number matches
@@ -399,7 +442,17 @@ namespace FolkIdle.Server.Engine
                 // operations went. `operation` is accepted and ignored so an
                 // older client sending StatType or UpgradeRarity gets the same
                 // reroll rather than an error.
-                if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, affixIdToReroll, out AffixDefinition resultDefinition))
+                AffixDefinition resultDefinition;
+                AffixRarity resultRarity = default;
+                int resultMagnitude = 0;
+                if (refine)
+                {
+                    resultDefinition = currentDefinition;
+                    resultRarity = AffixRegistry.ParseRarity(affixKeyToReroll);
+                    int current = affixPayload[affixKeyToReroll]?.GetValue<int>() ?? 0;
+                    resultMagnitude = RefineMagnitude(currentDefinition, regionTier, resultRarity, current, Random.Shared);
+                }
+                else if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, affixIdToReroll, out resultDefinition))
                 {
                     // No OTHER affix is legal for this slot, so the pool is a
                     // single entry and the type cannot move. Roll that one
@@ -412,9 +465,11 @@ namespace FolkIdle.Server.Engine
                 // a fresh drop agree about what a rarity is worth. It can come
                 // out LOWER than it went in - that is the gamble, and it is why
                 // one price is honest.
-                AffixRarity resultRarity = AffixRegistry.RollAffixRarity();
-
-                int resultMagnitude = AffixRegistry.RollMagnitude(resultDefinition, regionTier, resultRarity);
+                if (!refine)
+                {
+                    resultRarity = AffixRegistry.RollAffixRarity();
+                    resultMagnitude = AffixRegistry.RollMagnitude(resultDefinition, regionTier, resultRarity);
+                }
 
                 // Preserve the stack shape: if the item already carries this
                 // affix, the result becomes a further stacked instance rather

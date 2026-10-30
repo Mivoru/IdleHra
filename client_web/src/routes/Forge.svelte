@@ -5,7 +5,7 @@
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
-  import { executeForgeFusion, fuseStack, rerollAffix, REROLL_OPERATIONS, MAX_FORGE_LEVEL } from '../lib/net/commands';
+  import { executeForgeFusion, fuseStack, rerollAffix, refineCost, REFINE_OPERATION, REROLL_OPERATIONS, MAX_FORGE_LEVEL } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
@@ -494,6 +494,7 @@
     const regionTier = def?.RegionTier ?? 1;
     return getRerollCost(regionTier);
   });
+  const refineFee = $derived(refineCost(rerollFee));
   const rerollAffixRows = $derived(rerollItem ? toDisplayAffixes(rerollItem.Affixes) : []);
   const selectedOperation = $derived(REROLL_OPERATIONS[rerollOperation] ?? REROLL_OPERATIONS[0]);
 
@@ -529,6 +530,16 @@
         : 'A reroll replaces it outright - it can come out worse.',
     };
   });
+
+  // Refine (roadmap 3.4): the affix keeps its stat and rarity; only the
+  // number moves, up to 20% either way, for a quarter of the price. Nothing
+  // is destroyed, so it needs no guard.
+  function doRefine() {
+    const outcome = rerollAffix(rerollItemId, rerollAffixIndex, REFINE_OPERATION);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
+    rerollFlash++;
+    refresh();
+  }
 
   function doReroll() {
     const outcome = rerollAffix(rerollItemId, rerollAffixIndex, rerollOperation, {
@@ -954,6 +965,18 @@
         >
           {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
           &middot; {formatGold(rerollFee)}{autoReroll ? ' each' : ''}
+        </button>
+      {/if}
+
+      {#if !autoReroll}
+        <button
+          class="refine"
+          data-testid="forge-refine"
+          onclick={doRefine}
+          disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < refineFee}
+          title="Keeps the stat and its rarity; rerolls only the value, up to 20% up or down."
+        >
+          Refine value ±20% &middot; {formatGold(refineFee)}
         </button>
       {/if}
 

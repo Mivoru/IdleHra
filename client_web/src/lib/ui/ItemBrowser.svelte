@@ -196,6 +196,7 @@
         <button
           class="row"
           class:selected={item.Id === selectedId}
+          data-item-id={item.Id}
           onclick={() => onselect?.(item)}
         >
           <ItemIcon
