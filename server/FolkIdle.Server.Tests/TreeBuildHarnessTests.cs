@@ -153,13 +153,15 @@ namespace FolkIdle.Server.Tests
         /// gated node", filled with the ranks that paid best one at a time, and
         /// judged by its whole gain over its whole cost.
         /// </remarks>
-        internal static (byte[] Ranks, Score Estimate) BestWarBuild(int region, int budget, Func<Score, double> objective)
+        internal static (byte[] Ranks, Score Estimate) BestWarBuild(int region, int budget, Func<Score, double> objective,
+            Func<WarNodeDef, bool>? allowed = null, byte[]? start = null)
         {
             var payload = Reference(region);
             int monster = Target(region);
-            var ranks = new byte[SkillRankBuffer.Length];
+            var ranks = start != null ? (byte[])start.Clone() : new byte[SkillRankBuffer.Length];
             var best = MeasureWar(payload, ranks, monster);
-            int left = budget;
+            int left = budget - WarTreeRegistry.PointsSpent(ranks);
+            allowed ??= _ => true;
 
             while (left > 0)
             {
@@ -180,6 +182,7 @@ namespace FolkIdle.Server.Tests
 
                 foreach (var node in WarTreeRegistry.All())
                 {
+                    if (!allowed(node)) continue;
                     var target = (byte[])ranks.Clone();
                     if (target[node.Id] >= node.MaxLevel) continue;
                     target[node.Id]++;
@@ -196,7 +199,7 @@ namespace FolkIdle.Server.Tests
 
                 foreach (var node in gated)
                 {
-                    var path = PathTo(ranks, node, single, left, out int cost);
+                    var path = PathTo(ranks, node, single, left, allowed, out int cost);
                     if (path != null) Consider(path, cost);
                 }
 
@@ -213,7 +216,7 @@ namespace FolkIdle.Server.Tests
         /// filled from the ranks that paid best alone, cheapest first on a tie.
         /// Null when the budget cannot reach it or a fork forbids it.
         /// </summary>
-        private static byte[]? PathTo(byte[] ranks, WarNodeDef node, Dictionary<int, double> single, int left, out int cost)
+        private static byte[]? PathTo(byte[] ranks, WarNodeDef node, Dictionary<int, double> single, int left, Func<WarNodeDef, bool> allowed, out int cost)
         {
             cost = 0;
             var t = (byte[])ranks.Clone();
@@ -233,7 +236,7 @@ namespace FolkIdle.Server.Tests
                 double fillerValue = double.NegativeInfinity;
                 foreach (var n in WarTreeRegistry.All())
                 {
-                    if (n.Column != column || n.Kind == "Bridge" || n.Id == node.Id || t[n.Id] >= n.MaxLevel) continue;
+                    if (n.Column != column || n.Kind == "Bridge" || n.Id == node.Id || t[n.Id] >= n.MaxLevel || !allowed(n)) continue;
                     var step = (byte[])t.Clone();
                     step[n.Id]++;
                     if (WarTreeRegistry.PlanReason(ranks, step, left, out _) != null) continue;
@@ -316,6 +319,99 @@ namespace FolkIdle.Server.Tests
                 if (g[1] == 0 && g[3] == 0 && g[5] == 0 && Math.Abs(survived) < 1e-9) continue;
                 table.AppendLine(FormattableString.Invariant(
                     $"{node.Name} | {cost} | {g[1]:+0.0%} | {g[3]:+0.0%} | {g[5]:+0.0%} | {g[5] / cost:+0.00%} | {survived:+0.0%}"));
+            }
+            _out.WriteLine(table.ToString());
+        }
+
+        /// <summary>
+        /// A whole column with its keystone: every node at its maximum, each fork
+        /// on whichever side scores better by the objective.
+        /// </summary>
+        internal static byte[] FullColumn(int region, int column, Func<Score, double> objective)
+        {
+            var ranks = new byte[SkillRankBuffer.Length];
+            foreach (var n in WarTreeRegistry.All())
+                if (n.Column == column && n.Kind != "Bridge" && n.Fork < 0) ranks[n.Id] = (byte)n.MaxLevel;
+            foreach (var n in WarTreeRegistry.All())
+            {
+                if (n.Column != column || n.Fork < 0 || n.Id > n.Fork) continue;
+                var a = (byte[])ranks.Clone(); a[n.Id] = (byte)n.MaxLevel;
+                var other = WarTreeRegistry.Get(n.Fork)!;
+                var b = (byte[])ranks.Clone(); b[other.Id] = (byte)other.MaxLevel;
+                ranks = objective(MeasureWar(Reference(region), a, Target(region))) >= objective(MeasureWar(Reference(region), b, Target(region))) ? a : b;
+            }
+            return ranks;
+        }
+
+        /// <summary>The archetypes the design names (SKILL_TREE_REWORK.md 4.4), as the nodes each may buy.</summary>
+        internal static readonly (string Name, Func<WarNodeDef, bool> Allowed)[] Archetypes =
+        {
+            ("Duelist", n => n.Kind == "Bridge" ? n.Id == WarTreeRegistry.PiercingCrit : n.Column is WarTreeRegistry.ColumnMight or WarTreeRegistry.ColumnPrecision),
+            ("Warden", n => n.Kind != "Bridge" && n.Column is WarTreeRegistry.ColumnGuard or WarTreeRegistry.ColumnMight),
+            ("Fencer", n => n.Kind == "Bridge" ? n.Id == WarTreeRegistry.Counterstroke : n.Column is WarTreeRegistry.ColumnPrecision or WarTreeRegistry.ColumnGuard),
+            ("Bounty Hunter", n => n.Kind == "Bridge" ? n.Id == WarTreeRegistry.KnowYourPrey : n.Column is WarTreeRegistry.ColumnFortune or WarTreeRegistry.ColumnMight),
+        };
+
+        /// <summary>
+        /// The design's secondary targets (SKILL_TREE_REWORK.md section 8, item 2),
+        /// measured: each column's keystone build on its own metric, the four
+        /// archetypes, and Fortune's damage against the Duelist's.
+        /// </summary>
+        [Fact]
+        public void War_archetypes_and_secondary_targets()
+        {
+            if (!Enabled) return;
+            var table = new StringBuilder();
+            table.AppendLine("A. Each column with its keystone, every node at max (kills and DPS for Might and Precision; swings survived for Guard).");
+            table.AppendLine("region | column | cost | DPS+ | kills+ | survived+");
+            foreach (int region in new[] { 3, 5 })
+            {
+                var bare = MeasureWar(Reference(region), new byte[SkillRankBuffer.Length], Target(region));
+                for (int c = 0; c < WarTreeRegistry.ColumnCount; c++)
+                {
+                    Func<Score, double> metric = c == WarTreeRegistry.ColumnGuard ? sc => sc.SwingsSurvived : sc => sc.KillsPerHour;
+                    var ranks = FullColumn(region, c, metric);
+                    var sc = MeasureWar(Reference(region), ranks, Target(region));
+                    table.AppendLine(FormattableString.Invariant(
+                        $"{region} | {WarTreeRegistry.ColumnNames[c]} | {WarTreeRegistry.PointsSpent(ranks)} | {sc.Dps / bare.Dps - 1:+0.0%;-0.0%} | {sc.KillsPerHour / bare.KillsPerHour - 1:+0.0%;-0.0%} | {sc.SwingsSurvived / bare.SwingsSurvived - 1:+0.0%;-0.0%}"));
+                }
+            }
+
+            table.AppendLine();
+            table.AppendLine("B. The archetypes at each band's budget, greedy on kills (survival for the Warden).");
+            table.AppendLine("region | budget | archetype | spent | DPS+ | kills+ | survived+");
+            var duelistDps = new Dictionary<int, double>();
+            foreach (int region in new[] { 1, 2, 3, 4, 5 })
+            {
+                int budget = BossGearBenchmark.ReferenceLevelForRegion(region) - 1;
+                var bare = MeasureWar(Reference(region), new byte[SkillRankBuffer.Length], Target(region));
+                foreach (var (name, allowed) in Archetypes)
+                {
+                    Func<Score, double> metric = name == "Warden" ? sc => sc.KillsPerHour * sc.SwingsSurvived : sc => sc.KillsPerHour;
+                    var (ranks, sc) = BestWarBuild(region, budget, metric, allowed);
+                    if (name == "Duelist") duelistDps[region] = sc.Dps;
+                    table.AppendLine(FormattableString.Invariant(
+                        $"{region} | {budget} | {name} | {WarTreeRegistry.PointsSpent(ranks)} | {sc.Dps / bare.Dps - 1:+0.0%;-0.0%} | {sc.KillsPerHour / bare.KillsPerHour - 1:+0.0%;-0.0%} | {sc.SwingsSurvived / bare.SwingsSurvived - 1:+0.0%;-0.0%}"));
+                }
+            }
+
+            table.AppendLine();
+            table.AppendLine("C. Fortune's damage against the Duelist's (target: at least 70%). Fortune = the whole Fortune column first, the rest greedy on kills anywhere.");
+            table.AppendLine("region | budget | Fortune spent | Fortune DPS / Duelist DPS");
+            foreach (int region in new[] { 1, 2, 3, 4, 5 })
+            {
+                int budget = BossGearBenchmark.ReferenceLevelForRegion(region) - 1;
+                var start = FullColumn(region, WarTreeRegistry.ColumnFortune, sc => sc.KillsPerHour);
+                // A band too poor for the whole column fills what it can, row by row.
+                while (WarTreeRegistry.PointsSpent(start) > budget)
+                {
+                    WarNodeDef? top = null;
+                    foreach (var n in WarTreeRegistry.All()) if (start[n.Id] > 0 && (top == null || n.Row > top.Row)) top = n;
+                    start[top!.Id]--;
+                }
+                var (ranks, sc) = BestWarBuild(region, budget, s => s.KillsPerHour, start: start);
+                table.AppendLine(FormattableString.Invariant(
+                    $"{region} | {budget} | {WarTreeRegistry.PointsSpent(start)} | {sc.Dps / duelistDps[region]:0.00}"));
             }
             _out.WriteLine(table.ToString());
         }

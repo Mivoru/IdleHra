@@ -364,15 +364,13 @@ The plan as written before the build follows.
 
 ## 7a. Open after the switch (for the owner)
 
-- **Ruin can cost kills.** On the geared region-5 parity character (fast
-  gear), Ruin measured 94 kills an hour against 97 without. Attack speed
-  counting at 75% outweighs x1.6 on every 8th hit. On the harness's Rare
-  reference it is +2.6%. Whether a keystone may be a loss for fast builds
-  is a design call. The options are a smaller price (85%), a bigger hit
-  (x1.8), or "every 6th".
-- **The secondary targets in design section 8 item 2 are not measured.**
-  They are keystone builds within 15% of each other, and Fortune keeping 70%
-  of the Duelist's damage.
+- **Resolved (owner, 2026-10-30): Ruin is x1.7, and attack speed counts
+  85%.** It is never a loss: +1.8% for a fast build up to +5.7% for a slow
+  one, against Perfect Sequence's ~+5%. Late nodes were trimmed so the
+  ceiling holds at 0.98-1.05x. See `SKILL_TREE_REWORK.md` 8.2.
+- **Resolved: the secondary targets are measured and met.** The Might and
+  Precision keystone builds are within 15% of each other. Fortune keeps
+  0.88-0.96 of the Duelist's damage (`War_archetypes_and_secondary_targets`).
 - **The Hearth half (phase 4)** takes over Craft, Harvest and Scholar. Their
   hooks (`Skill_Craft`, `Skill_Harvest`, `Skill_Scholar`, `ScholarRate`)
   read 0 until then.

@@ -56,17 +56,18 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "double strike r3", 3, r3, new[] { WarTreeRegistry.DoubleStrike }, new byte[] { 3 } };
             // Riposte answers the block's share of each connecting swing.
             yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
-            // Ruin is a TRADE: x1.6 every 8th hit against attack speed counting
-            // 75%. On this geared region-5 character, whose gear is fast, it
-            // costs kills (measured 94 against 97), so the row proves the tick
-            // reads it either way rather than that it pays. At region 3 its
-            // gain (+1.7%) sat inside one hour's noise and the row flickered.
+            // Ruin is a TRADE: x1.7 every 8th hit against attack speed counting
+            // 85%, worth little on this fast region-5 character (+1.8% by the
+            // projection, inside one live hour's noise), so the row proves the
+            // tick reads it either way rather than that it pays.
             yield return new object[] { "ruin r5", 5, r5, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 }, true };
             yield return new object[] { "perfect sequence r3", 3, r3, new[] { WarTreeRegistry.PerfectSequence }, new byte[] { 1 } };
             // The bridges (owner, 2026-10-30). Character() beats every boss
             // behind the monster, so region 3 is the highest unlocked one.
             yield return new object[] { "piercing crit r3", 3, r3, new[] { WarTreeRegistry.PiercingCrit }, new byte[] { 3 } };
-            yield return new object[] { "counterstroke r3", 3, r3, new[] { WarTreeRegistry.Counterstroke }, new byte[] { 3 } };
+            // Counterstroke converts defence, so it rides Shield Wall's block, as
+            // Riposte's row does; block alone moves no kills.
+            yield return new object[] { "counterstroke + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Counterstroke }, new byte[] { 5, 3 } };
             yield return new object[] { "know your prey r3", 3, r3, new[] { WarTreeRegistry.KnowYourPrey }, new byte[] { 3 } };
         }
 

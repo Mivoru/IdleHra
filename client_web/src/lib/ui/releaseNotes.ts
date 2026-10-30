@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.39.1',
+    date: '2026-10-30',
+    sections: [
+      {
+        title: 'Skill Tree',
+        items: [
+          'Ruin hits harder (every 8th hit lands for x1.7) and costs less speed (attack speed counts 85%). Fast builds no longer lose kills by taking it.',
+          'Riposte, Counterstroke, Piercing Crit and Know Your Prey are a little smaller, which keeps the whole tree as strong as before.',
+          'On a phone, the runes in each row sit in the middle of their branch.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.39.0',
     date: '2026-10-30',
     headline: 'A new skill tree. Every point you spent has been given back.',
