@@ -261,9 +261,9 @@ export const AFFIX_POOL: readonly { id: string; label: string; slots: string }[]
   { id: 'gather_speed_pct', label: 'Gathering speed', slots: 'Tools only' },
   { id: 'gather_yield_pct', label: 'Gathering yield', slots: 'Tools only' },
   { id: 'gather_rare_find_pct', label: 'Rare find', slots: 'Tools only' },
-  { id: 'melee_dmg_pct', label: 'Damage (same bonus as the other two)', slots: 'Weapon' },
-  { id: 'range_dmg_pct', label: 'Damage (same bonus as the other two)', slots: 'Weapon' },
-  { id: 'magic_dmg_pct', label: 'Damage (same bonus as the other two)', slots: 'Weapon' },
+  { id: 'melee_dmg_pct', label: 'Damage', slots: 'Weapon' },
+  { id: 'range_dmg_pct', label: 'Damage (old items only; new weapons roll Damage once)', slots: 'Weapon' },
+  { id: 'magic_dmg_pct', label: 'Damage (old items only; new weapons roll Damage once)', slots: 'Weapon' },
   { id: 'attack_speed_pct', label: 'Attack speed', slots: 'Weapon, Gloves, Boots' },
   { id: 'crit_chance_pct', label: 'Crit chance', slots: 'Weapon, Helmet' },
   { id: 'crit_dmg_pct', label: 'Crit damage', slots: 'Weapon' },
@@ -271,6 +271,9 @@ export const AFFIX_POOL: readonly { id: string; label: string; slots: string }[]
   { id: 'armor_pen_flat', label: 'Armour penetration', slots: 'Weapon, Gloves' },
   { id: 'dodge_chance_pct', label: 'Dodge chance', slots: 'Boots, Helmet, Leggings' },
   { id: 'block_chance_pct', label: 'Block chance', slots: 'Ring' },
+  { id: 'boss_dmg_pct', label: 'World boss damage (not region bosses)', slots: 'Ring' },
+  { id: 'loot_luck_pct', label: 'Loot luck', slots: 'Ring, Amulet' },
+  { id: 'gold_find_pct', label: 'Gold from kills', slots: 'Ring, Amulet' },
 ];
 
 // ---------------------------------------------------------------------------

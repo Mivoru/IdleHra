@@ -371,5 +371,62 @@ namespace FolkIdle.Server.Tests
                 Assert.True(kvp.Value > 0);
             }
         }
-    }
+    
+        /// <summary>
+        /// Roadmap 3.1: range_dmg_pct and magic_dmg_pct are retired - they add to
+        /// the same damage figure as melee_dmg_pct, so the weapon pool held one
+        /// stat three times. No new roll may produce them, an auto-reroll toward
+        /// them is refused as unreachable, and a stored one still resolves.
+        /// </summary>
+        [Fact]
+        public void RetiredDamageIds_NeverRoll_ButStillResolve()
+        {
+            const string weapon = "eq_steel_claymore_melee_weapon_slot_base";
+            System.Span<int> legal = stackalloc int[16];
+            int count = AffixRegistry.GetLegalAffixIndices(AffixRegistry.ResolveSlot(weapon), legal);
+            Assert.Equal(6, count);
+
+            for (int i = 0; i < 2000; i++)
+            {
+                var rolled = new System.Collections.Generic.Dictionary<string, int>();
+                AffixRegistry.RollAffixes(weapon, regionTier: 1 + i % 5, itemRarityTier: RarityTier.Transcendent,
+                    affixCount: AffixRegistry.MaxAffixCount, destination: rolled);
+                foreach (var key in rolled.Keys)
+                {
+                    string id = AffixRegistry.StripStackSuffix(key);
+                    Assert.NotEqual("range_dmg_pct", id);
+                    Assert.NotEqual("magic_dmg_pct", id);
+                }
+            }
+
+            Assert.True(AffixRegistry.TryGetDefinition("range_dmg_pct", out var range) && range.Retired);
+            Assert.True(AffixRegistry.TryGetDefinition("magic_dmg_pct", out var magic) && magic.Retired);
+            Assert.False(AffixRegistry.TryGetDefinition("melee_dmg_pct", out var melee) && melee.Retired);
+        }
+
+        /// <summary>
+        /// Roadmap 3.2: the three utility affixes land where their stat is
+        /// already read - world boss damage, loot luck, gold per kill - and the
+        /// boss gear benchmark leaves them out, so they move no wall.
+        /// </summary>
+        [Fact]
+        public void UtilityAffixes_ReachTheirTotals_AndStayOutOfTheWallBenchmark()
+        {
+            var totals = new EquippedAffixTotals();
+            FolkIdle.Server.Domain.Combat.EquipmentSlotEngine.AddAffixTotals(
+                "{\"boss_dmg_pct@3\":70,\"loot_luck_pct@2\":25,\"gold_find_pct#2@1\":20}", ref totals);
+            Assert.Equal(70, totals.WorldBossDamageTenthsPct);
+            Assert.Equal(25, totals.LootLuckTenthsPct);
+            Assert.Equal(20, totals.GoldTenthsPct);
+
+            foreach (string id in new[] { "boss_dmg_pct", "loot_luck_pct", "gold_find_pct" })
+            {
+                Assert.True(AffixRegistry.TryGetDefinition(id, out var d) && d.Utility && !d.Retired, id);
+            }
+            // Appended, never inserted: the order is auto-reroll's wire index.
+            var defs = AffixRegistry.Definitions;
+            Assert.Equal("block_chance_pct", defs[defs.Length - 4].Id);
+            Assert.Equal("gold_find_pct", defs[defs.Length - 1].Id);
+        }
+}
 }

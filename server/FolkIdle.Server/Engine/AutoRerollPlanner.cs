@@ -103,7 +103,7 @@ namespace FolkIdle.Server.Engine
             //
             // One operation rolls the type too, so the only question left is the
             // honest one: is that affix legal on this slot at all.
-            if (!AffixRegistry.TryGetDefinition(condition.RequiredAffixId!, out var required))
+            if (!AffixRegistry.TryGetDefinition(condition.RequiredAffixId!, out var required) || required.Retired)
             {
                 return false;
             }

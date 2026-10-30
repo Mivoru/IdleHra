@@ -29,6 +29,7 @@
     toDisplayAffixes,
     AFFIX_RARITY_NAMES,
     KNOWN_AFFIX_IDS,
+    RETIRED_AFFIX_IDS,
     affixLabel,
     describeStopCondition,
   } from '../lib/ui/affixes';
@@ -908,7 +909,9 @@
                      the list used to render raw ids like "crit_chance_pct",
                      which is the id this file has to send, not a thing to show
                      a player. -->
-                <option value={index + 1}>{affixLabel(id)}</option>
+                {#if !RETIRED_AFFIX_IDS.has(id)}
+                  <option value={index + 1}>{affixLabel(id)}</option>
+                {/if}
               {/each}
             </select>
           </label>

@@ -123,6 +123,9 @@ namespace FolkIdle.Server.Tests
         // exists; when one is found not to, it is a defect, not a list edit.
         private static readonly Dictionary<string, string> NotInProbe = new()
         {
+            ["affix:boss_dmg_pct"] = "world boss damage, WorldBossTickCoordinator (the probe fights a region monster)",
+            ["affix:loot_luck_pct"] = "loot luck, StatsCalculator -> the drop roll, not CombatStats damage",
+            ["affix:gold_find_pct"] = "gold per kill, CombatGoldReward",
             ["inheritance:LootLuck"] = "CombatLootEngine's drop roll (Inheritance term), not CombatStats.LootLuckPct",
             // The War half's nodes the probe cannot see; each is proven where it
             // lands by WarMechanicParityTests.

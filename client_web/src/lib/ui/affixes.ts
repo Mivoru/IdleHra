@@ -77,6 +77,9 @@ export const KNOWN_AFFIX_IDS: readonly string[] = [
   'armor_pen_flat',
   'dodge_chance_pct',
   'block_chance_pct',
+  'boss_dmg_pct',
+  'loot_luck_pct',
+  'gold_find_pct',
 ];
 
 export interface ParsedAffixKey {
@@ -142,6 +145,14 @@ export function formatAffixValue(affixId: string, magnitude: number): string {
 }
 
 /**
+ * Ids no new item rolls (AffixDefinition.Retired on the server), so the
+ * Forge's "stop on stat" must not offer them: the server refuses a run toward
+ * a stat that can never roll. Stored items keep them, so they still get a
+ * label. serverMirrors.test.ts compares this set with the C# `retired: true`.
+ */
+export const RETIRED_AFFIX_IDS: ReadonlySet<string> = new Set(['range_dmg_pct', 'magic_dmg_pct']);
+
+/**
  * Ids whose mechanical label would describe something the server does not do.
  *
  * Modul: melee_dmg_pct, range_dmg_pct and magic_dmg_pct all land in ONE
@@ -155,6 +166,9 @@ const AFFIX_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   melee_dmg_pct: 'Damage',
   range_dmg_pct: 'Damage',
   magic_dmg_pct: 'Damage',
+  // World boss only (roadmap section 9 #2): "Boss Dmg" would promise region bosses too.
+  boss_dmg_pct: 'World Boss Dmg',
+  gold_find_pct: 'Gold Find',
 };
 
 export function affixLabel(affixId: string): string {

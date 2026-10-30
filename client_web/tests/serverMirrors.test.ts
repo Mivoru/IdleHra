@@ -6,7 +6,7 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { MAX_MARKET_PRICE, MAX_FORGE_LEVEL } from '../src/lib/net/commands';
-import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
+import { KNOWN_AFFIX_IDS, RETIRED_AFFIX_IDS } from '../src/lib/ui/affixes';
 import { SKILL_PROC, SKILL_CALLOUTS } from '../src/lib/ui/skillProcs';
 import { LANGUAGES } from '../src/lib/ui/i18n';
 import {
@@ -212,6 +212,11 @@ describe('the numbers the client mirrors still match the server', () => {
     expect(KNOWN_AFFIX_IDS.length).toBe(serverOrder.length);
     // Element by element, not as a set: the INDEX is what goes on the wire.
     expect([...KNOWN_AFFIX_IDS]).toEqual(serverOrder);
+
+    // The retired ids: out of new rolls on the server, out of the Forge's
+    // stop-on-stat picker here. Two copies of one list, so compared.
+    const retired = [...registry.matchAll(/new AffixDefinition\("([a-z_]+)"[^;]*?retired: true/g)].map((m) => m[1]);
+    expect([...RETIRED_AFFIX_IDS].sort()).toEqual(retired.sort());
   });
 
   // Modul: THE MILESTONE TABLE IS A MIRROR, and a long one.

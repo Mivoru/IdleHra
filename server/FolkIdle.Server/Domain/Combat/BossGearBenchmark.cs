@@ -459,8 +459,14 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         private static string BuildAffixPayload(EquipmentSlotKind slot, int regionTier, int affixCount, AffixRarity rarity)
         {
+            Span<int> all = stackalloc int[16];
+            int allCount = AffixRegistry.GetLegalAffixIndices(slot, all);
+            // Fighting affixes only: a Utility affix (world boss, loot, gold)
+            // changes no fight, and the walls are tuned against fighting gear.
             Span<int> legal = stackalloc int[16];
-            int legalCount = AffixRegistry.GetLegalAffixIndices(slot, legal);
+            int legalCount = 0;
+            for (int i = 0; i < allCount; i++)
+                if (!AffixRegistry.Definitions[all[i]].Utility) legal[legalCount++] = all[i];
             if (legalCount == 0) return "{}";
 
             var payload = new JsonObject();
