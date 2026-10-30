@@ -93,6 +93,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.PatientLine, HearthTreeRegistry.GreenThumb, HearthTreeRegistry.GoodWaters, HearthTreeRegistry.StillWater,
                 HearthTreeRegistry.KeenAngler, HearthTreeRegistry.Netmaker, HearthTreeRegistry.FullNet,
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
+                HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -115,6 +116,30 @@ namespace FolkIdle.Server.Tests
             var yBuilt = SimulationEngine.GatheringYieldFor(ref built, in node, 100);
             Assert.Equal(6 + 9, yBuilt.MultiplierPct - yBare.MultiplierPct);
             Assert.True(yBuilt.LuckWeightBonus > yBare.LuckWeightBonus);
+        }
+
+        [Fact]
+        public void TheKeystonesCountEveryTwentiethHarvest_AndRollTheRarestEntry()
+        {
+            Assert.Equal(1, SimulationEngine.RareKeystoneRolls(19, 20));
+            Assert.Equal(0, SimulationEngine.RareKeystoneRolls(20, 39));
+            Assert.Equal(5, SimulationEngine.RareKeystoneRolls(0, 100));
+            Assert.Equal(5, SimulationEngine.RareKeystoneRolls(7, 107));
+
+            Assert.True(ContentRegistry.TryGetGatheringNode(ActivityIdBands.WoodcuttingBand + 1, out GatheringNodeDefinition node));
+            var table = ContentRegistry.GetLootTable(node.ActivityId);
+            int rarest = SimulationEngine.RarestEntryIndex(table);
+            Assert.True(rarest >= 0);
+            for (int i = 0; i < table.Length; i++)
+                if (table[i].Weight > 0) Assert.True(table[rarest].Weight <= table[i].Weight);
+
+            var vein = Maxed(HearthTreeRegistry.DeepVein);
+            Assert.True(HearthTreeRegistry.Resolve(in vein).RareRollFor(0));
+            Assert.True(HearthTreeRegistry.Resolve(in vein).RareRollFor(1));
+            Assert.False(HearthTreeRegistry.Resolve(in vein).RareRollFor(2));
+            var moon = Maxed(HearthTreeRegistry.MoonlitCatch);
+            Assert.True(HearthTreeRegistry.Resolve(in moon).RareRollFor(2));
+            Assert.False(HearthTreeRegistry.Resolve(in moon).RareRollFor(0));
         }
 
         [Fact]

@@ -171,7 +171,11 @@ namespace FolkIdle.Server.Engine
             HearthEffect.YieldWoodMine, HearthEffect.YieldFishHerb,
             HearthEffect.RareWoodMine, HearthEffect.RareFishHerb,
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
+            HearthEffect.DeepVein, HearthEffect.MoonlitCatch,
         };
+
+        /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
+        public const int KeystoneEvery = 20;
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
 
@@ -277,6 +281,8 @@ namespace FolkIdle.Server.Engine
                     case HearthEffect.KeepMaterialsPct: e.KeepMaterialsTenthsPct += v; break;
                     case HearthEffect.OfflineRatePct: e.RewardRatePermille += v; break;
                     case HearthEffect.XpPct: e.XpTenthsPct += v; break;
+                    case HearthEffect.DeepVein: e.DeepVein = true; break;
+                    case HearthEffect.MoonlitCatch: e.MoonlitCatch = true; break;
                 }
             }
             return e;
@@ -328,6 +334,12 @@ namespace FolkIdle.Server.Engine
         /// <summary>Tenths of a percent of the reward rate, which is permille: 250 = +25%.</summary>
         public int RewardRatePermille;
         public int XpTenthsPct;
+        /// <summary>Keystones: every KeystoneEvery-th harvest of wood or ore (Deep Vein) or fish or herbs (Moonlit Catch) adds a roll of the node's rarest entry.</summary>
+        public bool DeepVein;
+        public bool MoonlitCatch;
+
+        /// <summary>Whether a keystone adds the rare roll for this profession.</summary>
+        public readonly bool RareRollFor(int professionType) => professionType <= 1 ? DeepVein : MoonlitCatch;
 
         /// <summary>Gathering speed for a profession (0 wood, 1 mine, 2 fish, 3 herb), in tenths of a percent.</summary>
         public readonly int SpeedTenthsPctFor(int professionType) => professionType switch

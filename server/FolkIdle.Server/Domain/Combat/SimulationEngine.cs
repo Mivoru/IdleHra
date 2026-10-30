@@ -5975,6 +5975,31 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Loot roll
                 var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
+
+                // Modul: DEEP VEIN AND MOONLIT CATCH (Hearth keystones, step 4.5).
+                // Every KeystoneEvery-th completed harvest adds one roll of the
+                // node's rarest entry. Counted on LifetimeHarvests, which the
+                // offline projection advances by the same harvests, so a window
+                // away pays exactly the 20ths it covers (RareKeystoneRolls).
+                // Moonlit Catch was "rare find doubles while offline" in the
+                // design and was changed by the owner (2026-10-30): that broke
+                // the rule that an hour away pays what an hour watched pays.
+                if (payload.LifetimeHarvests % HearthTreeRegistry.KeystoneEvery == 0
+                    && HearthTreeRegistry.Resolve(in payload).RareRollFor(gatheringNode.ProfessionType))
+                {
+                    int rarest = RarestEntryIndex(lootTable);
+                    if (rarest >= 0)
+                    {
+                        CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
+                        {
+                            PlayerId = payload.PlayerId,
+                            ActivityId = payload.ActiveActivityId,
+                            ItemId = lootTable[rarest].ItemId,
+                            Quantity = RollGatherQuantity(Random.Shared, in lootTable[rarest]),
+                        });
+                    }
+                }
+
                 if (lootTable.Length > 0)
                 {
                     GatheringYield yield = GatheringYieldFor(ref payload, in gatheringNode, localDropMultiplier);
@@ -6279,6 +6304,19 @@ namespace FolkIdle.Server.Domain.Combat
             2 => payload.ToolRodRareFindPct,
             _ => 0,
         };
+
+        /// <summary>The entry with the lowest weight - the "rare table" a Hearth keystone rolls - or -1 for an empty table.</summary>
+        internal static int RarestEntryIndex(ReadOnlySpan<LootTableEntry> table)
+        {
+            int best = -1;
+            for (int i = 0; i < table.Length; i++)
+                if (table[i].Weight > 0 && (best < 0 || table[i].Weight < table[best].Weight)) best = i;
+            return best;
+        }
+
+        /// <summary>How many keystone rare rolls a run of harvests from <paramref name="lifetimeBefore"/> to <paramref name="lifetimeAfter"/> covers.</summary>
+        internal static long RareKeystoneRolls(long lifetimeBefore, long lifetimeAfter)
+            => lifetimeAfter / HearthTreeRegistry.KeystoneEvery - lifetimeBefore / HearthTreeRegistry.KeystoneEvery;
 
         /// <summary>The quantity one winning gathering roll grants: its authored range, or one.</summary>
         internal static int RollGatherQuantity(Random rng, in LootTableEntry entry)

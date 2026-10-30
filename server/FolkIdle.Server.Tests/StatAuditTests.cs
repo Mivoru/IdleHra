@@ -155,6 +155,8 @@ namespace FolkIdle.Server.Tests
             ["hearth:thrifty"] = "the keep-materials chance, CraftingEngine.CraftIsFree",
             ["hearth:homebody"] = "the reward rate, ScholarRate (OfflineLootParityTests)",
             ["hearth:long_absence"] = "the reward rate, ScholarRate (OfflineLootParityTests)",
+            ["hearth:deep_vein"] = "every 20th harvest of wood or ore, RunGatheringTick / CalculateGatheringProjection (HearthTreeRegistryTests)",
+            ["hearth:moonlit_catch"] = "every 20th catch of fish or herbs, RunGatheringTick / CalculateGatheringProjection (HearthTreeRegistryTests)",
         };
 
         // KNOWN DEFECTS: entries that SHOULD move the probe and do not, each

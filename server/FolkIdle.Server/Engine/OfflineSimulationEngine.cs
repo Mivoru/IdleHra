@@ -601,6 +601,23 @@ namespace FolkIdle.Server.Engine
             int rollCount = (int)Math.Min(rolls, MaxOfflineLootRolls);
 
             Dictionary<string, long> deltas = DrawGatheringMaterials(lootTable, rollCount, yield.LuckWeightBonus, rng);
+
+            // Deep Vein / Moonlit Catch: the 20ths of LifetimeHarvests this window
+            // crossed, each a roll of the rarest entry - the live tick's rule.
+            if (HearthTreeRegistry.Resolve(in payload).RareRollFor(node.ProfessionType))
+            {
+                long keystoneRolls = Domain.Combat.SimulationEngine.RareKeystoneRolls(payload.LifetimeHarvests - allowedActions, payload.LifetimeHarvests);
+                int rarest = Domain.Combat.SimulationEngine.RarestEntryIndex(lootTable);
+                string rareId = rarest >= 0 ? ContentRegistry.GetItemBaseId(lootTable[rarest].ItemId) : string.Empty;
+                if (keystoneRolls > 0 && !string.IsNullOrEmpty(rareId))
+                {
+                    long quantity = 0;
+                    for (long k = 0; k < Math.Min(keystoneRolls, MaxOfflineLootRolls); k++)
+                        quantity += Domain.Combat.SimulationEngine.RollGatherQuantity(rng, in lootTable[rarest]);
+                    deltas.TryGetValue(rareId, out long existing);
+                    deltas[rareId] = existing + quantity;
+                }
+            }
             return new LootProjection(true, deltas, rollCount, allowedActions, rewardActions);
         }
 
