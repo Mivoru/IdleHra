@@ -107,6 +107,12 @@
   const chestName = $derived(rarityNames[chestRarity] ?? 'Common');
   const resultClass = $derived(opened ? rarityClass(opened.Rarity) : '');
 
+  // A cosmetic's rarity (1-4) picks a loot band clip rather than pitching one
+  // clip up - the pitched version was the shrill one (owner, 2026-10-31).
+  function cosmeticClip(rarity: number): 'lootRare' | 'lootLegendary' | 'lootRelic' {
+    return rarity >= 4 ? 'lootRelic' : rarity >= 3 ? 'lootLegendary' : 'lootRare';
+  }
+
   function later(fn: () => void, ms: number): void {
     timers.push(setTimeout(fn, ms));
   }
@@ -155,7 +161,7 @@
   function showNext(): void {
     if (cursor >= results.length - 1) return;
     cursor++;
-    play('lootRare', 1 + ((results[cursor]?.Rarity ?? 1) - 1) * 0.08);
+    play(cosmeticClip(results[cursor]?.Rarity ?? 1));
   }
 
   function onShakeEnded(): void {
@@ -176,7 +182,7 @@
   function reveal(): void {
     if (chest.phase !== 'opening' || !opened) return;
     chest = { ...chest, phase: 'revealed' };
-    play('lootRare', 1 + (opened.Rarity - 1) * 0.08);
+    play(cosmeticClip(opened.Rarity));
   }
 
   function again(next = 1): void {

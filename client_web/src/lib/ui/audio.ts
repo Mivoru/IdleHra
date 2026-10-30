@@ -40,9 +40,28 @@ export const CLIPS = {
   playerDiedFemale: 'combat_player_died_female.wav',
   bossFirstClear: 'combat_boss_first_clear.wav',
   // Modul: NO PLAIN LOOT SOUND (owner, 2026-09-28): "I want the loot drop
-  // sound deleted and not played at all, only the rare loot." The clip and its
-  // file are gone; lootRare, pitched per tier, is the only loot sound.
-  lootRare: 'loot_rare_dropped.wav',
+  // sound deleted and not played at all, only the rare loot."
+  //
+  // Modul: THREE CLIPS, NOT ONE CLIP PITCHED UP (owner, 2026-10-31: the rare
+  // drop sound was "nic moc", and after a long absence the sounds stacked and
+  // were painfully high). One 0.25 s clip raised a semitone per tier played at
+  // 1.8x speed for a Relic, so the best drops were the shrillest; and an
+  // offline catch-up started one copy per drop at once. Now a band clip per
+  // rarity range at its own pitch (ElevenLabs, 2026-10-31, prompts in
+  // tools/assets/manifest.json), chosen and coalesced by lootSound.ts.
+  lootRare: 'loot_rare.wav',
+  lootLegendary: 'loot_legendary.wav',
+  lootRelic: 'loot_relic.wav',
+  // Loot chest openings by the chest's rarity, and the moments that had no
+  // sound of their own (pets borrowed item_equipped; births, finished
+  // buildings and Forge results were silent).
+  chestOpenRare: 'chest_open_rare.wav',
+  chestOpenEpic: 'chest_open_epic.wav',
+  chestOpenLegendary: 'chest_open_legendary.wav',
+  petFound: 'pet_found.wav',
+  forgeReroll: 'forge_reroll.wav',
+  childBorn: 'child_born.wav',
+  buildingDone: 'building_done.wav',
   craftingCompleted: 'crafting_completed.wav',
   levelUp: 'level_up.wav',
   raceUnlocked: 'race_unlocked.wav',
@@ -263,40 +282,75 @@ export function playWithFallback(name: ClipName, fallback: ClipName): void {
 
   void loadClip(CLIPS[name]).then((buffer) => {
     if (buffer) {
-      playBuffer(buffer);
+      if (!context || !masterGain || get(muted) || !get(pageActive)) return;
+      startSource(name, buffer, 1);
       return;
     }
     play(fallback);
   });
 }
 
-function playBuffer(buffer: AudioBuffer): void {
-  if (!context || !masterGain || get(muted) || !get(pageActive)) return;
-  const source = context.createBufferSource();
-  source.buffer = buffer;
-  source.connect(masterGain);
-  source.start();
+// Modul: NOTHING STACKS (owner, 2026-10-31: "when I sign in after a long time
+// the sounds pile up and it tears at the ears"). A reconnect delivers the
+// whole absence at once - the offline catch-up's drops, level-ups, a letter -
+// and every one started its own copy in the same instant. Two limits, both
+// here where every clip passes:
+//  - per clip, a minimum gap between starts and a cap on copies sounding at
+//    once (a fast weapon still gets its rhythm: 60 ms, three voices);
+//  - STINGERS (the big one-off cues) share ONE slot: while one is sounding,
+//    another is dropped, never queued. The loot clips arrive already reduced
+//    to the best of the burst (lootSound.ts), so the one that wins is the one
+//    worth hearing.
+const STINGERS: ReadonlySet<ClipName> = new Set<ClipName>([
+  'lootRare', 'lootLegendary', 'lootRelic', 'levelUp', 'achievementUnlock', 'raceUnlocked',
+  'bossFirstClear', 'notification', 'petFound', 'childBorn', 'buildingDone',
+]);
+export const MIN_GAP_MS = 60;
+export const MAX_VOICES_PER_CLIP = 3;
+export const STINGER_GAP_MS = 900;
+
+const lastStartAt = new Map<ClipName, number>();
+const voices = new Map<ClipName, number>();
+let stingerUntil = 0;
+
+/** Whether `name` may start now - pure, so the limits are testable without Web Audio. */
+export function admitClip(
+  name: ClipName,
+  nowMs: number,
+  state: { lastStartAt: Map<ClipName, number>; voices: Map<ClipName, number>; stingerUntil: number },
+): boolean {
+  if (STINGERS.has(name)) return nowMs >= state.stingerUntil;
+  const last = state.lastStartAt.get(name);
+  if (last !== undefined && nowMs - last < MIN_GAP_MS) return false;
+  return (state.voices.get(name) ?? 0) < MAX_VOICES_PER_CLIP;
 }
 
-/**
- * `rate` is playbackRate - it moves pitch and length together, which is what
- * lets one rare-loot clip rise a step per rarity tier (lootFeel.ts) without a
- * second recording.
- */
+function startSource(name: ClipName, buffer: AudioBuffer, rate: number): void {
+  if (!context || !masterGain) return;
+  const nowMs = performance.now();
+  if (!admitClip(name, nowMs, { lastStartAt, voices, stingerUntil })) return;
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = rate;
+  source.connect(masterGain);
+  lastStartAt.set(name, nowMs);
+  voices.set(name, (voices.get(name) ?? 0) + 1);
+  if (STINGERS.has(name)) stingerUntil = nowMs + Math.max(STINGER_GAP_MS, (buffer.duration * 1000) / rate);
+  source.onended = () => voices.set(name, Math.max(0, (voices.get(name) ?? 1) - 1));
+  source.start();
+  // No pooling: an AudioBufferSourceNode is single-use by design and the
+  // browser collects it after it ends. This is exactly what SfxPoolEngine
+  // existed to hand-roll around Unity's allocation behaviour.
+}
+
+/** `rate` is playbackRate - it moves pitch and length together. */
 export function play(name: ClipName, rate = 1): void {
   if (blockedByScreen(name)) return;
   if (get(muted) || !get(pageActive) || !context || !masterGain) return;
 
   void loadClip(CLIPS[name]).then((buffer) => {
     if (!buffer || !context || !masterGain || get(muted) || !get(pageActive)) return;
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.playbackRate.value = rate;
-    source.connect(masterGain);
-    source.start();
-    // No pooling: an AudioBufferSourceNode is single-use by design and the
-    // browser collects it after it ends. This is exactly what SfxPoolEngine
-    // existed to hand-roll around Unity's allocation behaviour.
+    startSource(name, buffer, rate);
   });
 }
 

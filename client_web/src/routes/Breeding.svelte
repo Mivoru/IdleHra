@@ -1,5 +1,6 @@
 <script lang="ts">
   import Money from '../lib/ui/Money.svelte';
+  import { play } from '../lib/ui/audio';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { fly } from 'svelte/transition';
   import { motionMs, MOTION } from '../lib/ui/motion';
@@ -261,6 +262,15 @@
   const bornChild = $derived(
     hallBefore === null ? undefined : (hall.data?.Members ?? []).find((m) => !hallBefore!.has(m.CharacterId)),
   );
+
+  // A birth had no sound at all - the emotional centre of the long game
+  // (AUDIO_REQUIREMENTS.md 3). Once per child, when the banner appears.
+  let lastBornId = '';
+  $effect(() => {
+    if (!bornChild || bornChild.CharacterId === lastBornId) return;
+    lastBornId = bornChild.CharacterId;
+    play('childBorn');
+  });
 
   function breed() {
     hallBefore = new Set((hall.data?.Members ?? []).map((m) => m.CharacterId));

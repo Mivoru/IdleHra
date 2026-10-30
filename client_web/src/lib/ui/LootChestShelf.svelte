@@ -15,6 +15,7 @@
   import { formatGold, formatNumber } from './format';
   import ChestStage from './ChestStage.svelte';
   import Modal from './Modal.svelte';
+  import { play } from './audio';
   import { invalidateOwnedItems } from '../net/queryClient';
 
   const client = useQueryClient();
@@ -49,6 +50,9 @@
       } else {
         results = res.Opened;
         opened = true;
+        // The lid's sound by the chest's tier (1 Common ... 4 Legendary). Loot
+        // chests opened in silence until 2026-10-31.
+        play(tier >= 4 ? 'chestOpenLegendary' : tier === 3 ? 'chestOpenEpic' : 'chestOpenRare');
       }
       client.setQueryData(queryKeys.lootChests, (old: typeof shelf.data) => (old ? { ...old, Chests: res.Chests } : old));
       invalidateOwnedItems(client);

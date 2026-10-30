@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LootFeelGate, lootPitch, shouldReplaceReveal, FLASH_INTERVAL_MS } from '../src/lib/ui/lootFeel';
+import { LootFeelGate, LootSoundGate, lootClipFor, shouldReplaceReveal, FLASH_INTERVAL_MS, LOOT_SOUND_COOLDOWN_MS } from '../src/lib/ui/lootFeel';
 
 describe('task 50: what a drop earns', () => {
   it('ignores materials and anything below Rare', () => {
@@ -22,10 +22,39 @@ describe('task 50: what a drop earns', () => {
     expect(gate.accept(6, 1, 20000).reveal).toBe(false);
   });
 
-  it('pitches up a semitone per tier above Rare', () => {
-    expect(lootPitch(4)).toBe(1);
-    expect(lootPitch(16)).toBeCloseTo(Math.pow(2, 10 / 12), 10);
-    expect(lootPitch(7)).toBeCloseTo(Math.pow(2, 3 / 12), 10);
+  it('picks a clip by band, never by pitch', () => {
+    expect(lootClipFor(3)).toBeNull();
+    expect(lootClipFor(4)).toBe('lootRare');
+    expect(lootClipFor(6)).toBe('lootRare');
+    expect(lootClipFor(7)).toBe('lootLegendary');
+    expect(lootClipFor(8)).toBe('lootLegendary');
+    expect(lootClipFor(9)).toBe('lootRelic');
+    expect(lootClipFor(16)).toBe('lootRelic');
+  });
+
+  it('a burst of drops is one sound, at its best band', () => {
+    // An offline catch-up: thirty drops in one window.
+    const gate = new LootSoundGate();
+    let windows = 0;
+    for (const tier of [4, 5, 4, 8, 4, 6, 10, 4, ...Array(22).fill(5)]) if (gate.offer(tier)) windows++;
+    expect(windows).toBe(1);
+    expect(gate.flush(1000)).toBe('lootRelic');
+    expect(gate.flush(1001)).toBeNull(); // nothing pending
+  });
+
+  it('inside the cooldown only a better band sounds again', () => {
+    const gate = new LootSoundGate();
+    gate.offer(7);
+    expect(gate.flush(0)).toBe('lootLegendary');
+    gate.offer(8);
+    expect(gate.flush(100)).toBeNull();
+    gate.offer(4);
+    expect(gate.flush(200)).toBeNull();
+    gate.offer(11);
+    expect(gate.flush(300)).toBe('lootRelic');
+    gate.offer(4);
+    expect(gate.flush(300 + LOOT_SOUND_COOLDOWN_MS)).toBe('lootRare');
+    expect(gate.offer(2)).toBe(false); // below Rare is silent
   });
 
   it('a better drop replaces a showing card, a worse one does not', () => {

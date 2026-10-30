@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
+  import { play } from '../lib/ui/audio';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { queryKeys, fetchVillageQuote, type VillageQuoteLine } from '../lib/net/rest';
@@ -153,6 +154,17 @@
       return { building, order, level, ceiling: ceilingOf(building.id), blocked, lines, missing, state };
     });
     return list.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || a.order - b.order);
+  });
+
+  // A finished building used to land in silence (AUDIO_REQUIREMENTS.md 3).
+  // Any level going up while this screen is open is a finished upgrade; the
+  // first reading is only the baseline, so opening the screen is quiet.
+  let levelTotal: number | null = null;
+  $effect(() => {
+    if (!snap) return;
+    const total = BUILDINGS.reduce((sum, b) => sum + levelOf(snap!, b.stateField), 0);
+    if (levelTotal !== null && total > levelTotal) play('buildingDone');
+    levelTotal = total;
   });
 
   function upgrade(buildingId: number) {
