@@ -91,7 +91,7 @@ namespace FolkIdle.Server.Tests
             {
                 HearthTreeRegistry.SharpAxe, HearthTreeRegistry.HardPick, HearthTreeRegistry.SeamSense, HearthTreeRegistry.SteadySwing,
                 HearthTreeRegistry.Clearcut, HearthTreeRegistry.Prospector, HearthTreeRegistry.DoubleHaul,
-                HearthTreeRegistry.PatientLine, HearthTreeRegistry.GreenThumb, HearthTreeRegistry.GoodWaters, HearthTreeRegistry.StillWater,
+                HearthTreeRegistry.PatientLine, HearthTreeRegistry.GoodWaters, HearthTreeRegistry.StillWater,
                 HearthTreeRegistry.KeenAngler, HearthTreeRegistry.Netmaker, HearthTreeRegistry.FullNet,
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,

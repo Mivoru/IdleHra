@@ -193,7 +193,17 @@ namespace FolkIdle.Server.Engine
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
         public const int KeystoneEvery = 20;
 
-        public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
+        public static bool IsPending(int id) => Get(id) is { } n && (!Wired.Contains(n.Effect) || PendingNodes.Contains(id));
+
+        /// <summary>
+        /// Modul: NODES WHOSE EFFECT IS WIRED BUT WHOSE ACTIVITY DOES NOT EXIST
+        /// (2026-10-30). Herbalism speed is read by the gathering tick, but the
+        /// game has no herbalism node at all (gathering_nodes.json: wood, mining
+        /// and fishing only), so Green Thumb could be bought and pay nothing.
+        /// Pending until herbs are gathered; production had 0 buyers when this
+        /// landed. The fish-and-herb pairs keep paying through fishing.
+        /// </summary>
+        private static readonly HashSet<int> PendingNodes = new() { GreenThumb };
 
         /// <summary>Craft points a set of ranks cost, Hearth nodes only.</summary>
         public static int PointsSpent(ReadOnlySpan<byte> ranks)
