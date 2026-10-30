@@ -1,11 +1,11 @@
-# Loot chests, dungeons, diamonds and inheritance - a proposal
+# Loot chests, dungeons, diamonds, inheritance and achievements - a proposal
 
 Written 2026-10-30, after the owner's answers about the Deep. This is a
 proposal, not a plan someone can build from yet. Each section ends with the
 decisions the owner has to take, and each decision comes with a
 recommendation. Nothing here is committed until the owner says so.
 
-It covers four things the owner raised in one conversation:
+It covers five things the owner raised in one conversation:
 
 1. **Loot chests**: chests that pay gold, diamonds, materials and equipment,
    not only cosmetics.
@@ -13,6 +13,8 @@ It covers four things the owner raised in one conversation:
    that can also drop from chests.
 3. **Diamonds**: higher earning taps, and more things worth spending them on.
 4. **Inheritance**: a rework, because today it is too expensive to matter.
+5. **Achievements**: one progression with the quest line and the tutorial,
+   fair rewards, more and better achievements, and a proper announcement.
 
 What was decided and built the same day is recorded in section 0, so the rest
 can refer to it.
@@ -327,14 +329,142 @@ skill tree, bought with diamonds, surviving rebirth.
 
 ---
 
-## 5. Suggested order
+## 5. Achievements, the quest line and the tutorial as one progression
+
+### 5.1 What exists today
+
+Three systems answer "what should I do, and what do I get for it", and they
+were built at different times:
+
+| System | Where | What it pays |
+|---|---|---|
+| **Onboarding cues** ("Got it" cards, objectives) | `stores/tutorial.ts`, seen-set on the player row | nothing |
+| **Quest line** (the tutorial chain) | `QuestLineRegistry`, `QuestLineEngine` | gold and materials, scaled to the region |
+| **Lifetime achievements** | `AchievementMilestones` | diamonds, and Logistics also gathering speed |
+| Titles | `TitleRegistry` | a cosmetic title (Deep floors, Ascension, events) |
+
+**The lifetime achievements are four, with 13 tiers in all:**
+
+| Achievement | Tiers | Diamonds per tier |
+|---|---|---|
+| Monster Slayer | 1 (10,000 kills) | 100 |
+| Treasury (gold spent) | 4 | 10, 50, 250, **1,000** |
+| Forging (fusions, then fused rarity) | 4 | 15, 75, 200, **1,500** |
+| Logistics (harvests) | 4 | 10, 50, 200, 800 |
+
+That is the owner's complaint in numbers: one milestone pays 1,500 diamonds
+(25 weeks of the Delve), while reaching a new region, beating a boss, a first
+rebirth, a bred child or a maxed village pay no achievement at all. Achievements
+cover four counters out of the dozens of things the game has, and nothing tells
+the player they exist until a counter crosses a tier.
+
+### 5.2 The proposal: one progression with three faces
+
+**One registry of achievements**, server-owned, each with:
+- a **category** (Combat, Bosses, Gathering, Crafting, Village, Family,
+  Delve and Deep, Social, Collection, Events);
+- a **counter** the server already keeps, or a one-off event (a first clear,
+  a first rebirth);
+- **tiers** where a counter has a natural ladder;
+- a **reward** from one table (section 5.3);
+- an optional **title** or cosmetic for the hardest ones.
+
+**The quest line becomes the first chapter of it.** Each quest step is an
+achievement in a "Getting started" category, done in order. It keeps its
+current gold-and-material reward, and the tutorial's objective cards point at
+the next unearned achievement instead of a separate list. One source of truth
+for "what next", as this codebase's rules ask.
+
+**Onboarding cues stay as explanations**, not goals. A cue explains a screen
+the first time; an achievement is the goal that sends the player there.
+
+### 5.3 One reward table
+
+Rewards should follow how hard a goal is, measured in hours of play, not the
+size of the number in the counter. Proposed bands:
+
+| Band | Typical goal | Reward |
+|---|---|---|
+| Starter | first craft, first gather, first Delve run | gold and materials (the quest line's table) |
+| Bronze | about 1-3 hours | 5 diamonds or a Bronze loot chest |
+| Silver | about a day | 15 diamonds or a Silver chest |
+| Gold | about a week | 40 diamonds or a Gold chest |
+| Legendary | about a month or more | 100 diamonds, a title, and a cosmetic |
+
+**No single achievement pays more than about 100-150 diamonds.** The 1,000
+and 1,500 tiers today would be split into more goals across the ladder, so
+the total is similar but the player is paid along the way. Players who
+already crossed a tier keep what they were paid.
+
+**A lifetime total** for all achievements, measured once the list exists, so
+the achievements tap is known against the weekly taps in section 3.
+
+### 5.4 More, and more interesting
+
+A first list to grow from (each needs a counter the server already has, or a
+new one-line counter):
+- **Bosses**: each regional boss's first clear; each Ascension step;
+  Chernobog's milestones; beating a boss with no food eaten.
+- **Regions**: reaching each region; clearing every monster of a region.
+- **Family**: first marriage, first child, a child with an aptitude at 30,
+  40, 50; five generations in one bloodline.
+- **Rebirth**: first rebirth, rebirth 5, 10, 20.
+- **Village**: each building at level 5 and 10; all buildings maxed.
+- **Delve and Deep**: a full eight-floor clear; Deep floors 10, 15, 20, 30.
+- **Collection**: monster pets found; cosmetics owned; every item of a set.
+- **Gathering and crafting**: each profession's mastery milestones; a
+  Legendary tool.
+- **Hidden achievements** for odd things (a kill at 1 HP, 100 fails in a
+  row at the Delve), shown as "???" until earned.
+
+### 5.5 The announcement
+
+A real moment when an achievement is earned:
+- A **banner** slides in at the top with the achievement's icon, name, tier
+  and reward, plus a short **sound** (a new clip in the audio registry).
+- **Legendary** tiers get a bigger card in the middle of the screen with a
+  light burst, like the rare-drop card, and a longer sound.
+- Several at once **queue**, never stack on top of each other.
+- The server sends the event (a new packet, or a field on an existing
+  notification), so it fires once, also for something earned offline (shown
+  after the offline summary).
+- Settings can mute the sound like every other clip.
+
+### 5.6 The screen
+
+One **Achievements** screen (or a tab of Progress):
+- categories down the side, a progress bar per category;
+- each achievement with its tiers, its progress (`12,430 / 100,000`) and its
+  reward visible **before** it is earned, so it is a goal and not a surprise;
+- "closest to done" at the top, which is also what the tutorial's objective
+  card points at.
+
+### 5.7 Decisions for the owner
+
+- **A1. Merge the quest line into achievements as their first chapter?**
+  Recommendation: yes. It removes one of the three overlapping systems.
+- **A2. The reward bands and the 150-diamond ceiling per achievement?**
+  Recommendation: yes, and the old 1,000 and 1,500 tiers split across new
+  goals. Nobody loses what they were already paid.
+- **A3. Diamonds or chests as the default reward?** Recommendation: a mix -
+  diamonds for Bronze to Gold, chests from Silver up as an alternative, so
+  achievements feed the loot-chest system once it exists.
+- **A4. Order:** after loot chests (so chests can be rewards) and together
+  with the diamond rework (section 3), because achievements are a diamond tap
+  and have to be measured with the others.
+
+---
+
+## 6. Suggested order
 
 1. The Deep reward (done, section 0). Watch the Deep's spend for two weeks.
 2. Loot chests, first sources: the Deep and boss first clears (section 1). M.
-3. Diamond taps and the inheritance rework as one balanced change (sections
-   3-4). M-L.
+3. Diamond taps, the inheritance rework and the achievements rework as one
+   balanced change (sections 3-5). They are all diamond taps or sinks, so
+   they are measured with one model. L, in two or three PRs: the registry and
+   the screen, the rewards and inheritance, the announcement.
 4. Dungeons, the equipment dungeon first (section 2). XL, after Hearth and the
    affix rework in `ROADMAP_2026_10_30.md`.
 
-Items 2 and 3 are small enough to fit between the roadmap's phases. Item 4 is
-a phase of its own.
+Item 2 is small enough to fit between the roadmap's phases. Items 3 and 4 are
+phases of their own.
