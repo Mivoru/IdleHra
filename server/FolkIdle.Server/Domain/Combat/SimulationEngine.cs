@@ -3994,6 +3994,19 @@ namespace FolkIdle.Server.Domain.Combat
         }
 
         /// <summary>
+        /// Know Your Prey's bonus against this monster, in tenths of a percent:
+        /// the node's value against a monster of the highest unlocked region,
+        /// 0 anywhere else. The live hit, HuntingProjection and CombatGoldReward
+        /// all ask here.
+        /// </summary>
+        internal static int KnowYourPreyTenthsPct(in TickStatePayload payload, in MonsterDefinition monster)
+        {
+            int bonus = WarTreeRegistry.Resolve(in payload).KnowYourPreyTenthsPct;
+            if (bonus <= 0) return 0;
+            return monster.RegionTier == RegionUnlockGate.HighestUnlockedRegion(payload.DefeatedRegionBossMask) ? bonus : 0;
+        }
+
+        /// <summary>
         /// Crit chance in percent, with the Precision branch, clamped - and the
         /// War keystones: Perfect Sequence caps the chance at 50 (its 6th swing
         /// crits on its own), Living Fortress takes it to 0 (it became block).
@@ -4003,6 +4016,16 @@ namespace FolkIdle.Server.Domain.Combat
             var war = WarTreeRegistry.Resolve(in payload);
             if (war.LivingFortress) return 0f;
             float chance = CritChanceBeforeKeystones(in payload, in combatStats);
+            // Modul: Counterstroke, a share of dodge plus block as crit chance.
+            // Added HERE, past Living Fortress, and not in
+            // CritChanceBeforeKeystones: Living Fortress turns that figure into
+            // block, so reading block inside it would feed block into itself.
+            // combatStats is LiveCombatStats, so Evasion and Shield Wall count.
+            if (war.CounterstrokeTenths > 0)
+            {
+                float defence = Math.Max(0f, combatStats.DodgeChancePct) + Math.Max(0f, combatStats.BlockStrengthPct);
+                chance = Math.Min(MaxCritChancePct, chance + defence * war.CounterstrokeTenths / 1000f);
+            }
             return war.PerfectSequence ? Math.Min(chance, WarEffects.PerfectOtherCritCapPct) : chance;
         }
 
@@ -5079,6 +5102,8 @@ namespace FolkIdle.Server.Domain.Combat
                     // the bar, judged on the health before this hit lands.
                     if (warHit.BossDamageTenthsPct > 0 && ContentRegistry.IsRegionalBoss(activeMonster.Id))
                         netDamage += (int)((long)netDamage * warHit.BossDamageTenthsPct / 1000L);
+                    int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
+                    if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
                     if (warHit.ExecuteTenthsPct > 0
                         && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
                         netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);

@@ -244,11 +244,16 @@ is reached sooner too. The harness has to measure how much sooner.
 > - Know Your Prey: +3 / 6 / 10% damage and gold against monsters of your
 >   highest unlocked region.
 
-| Between | Bridge | Effect |
+| Between | Bridge | Effect (built, 2026-10-30) |
 |---|---|---|
-| Fortune - Might | Know Your Prey | +3 / 6 / 10% damage against monsters whose codex level is 10 or more |
-| Might - Precision | Piercing Crit | a crit ignores another 15 / 30 / 50% of monster armour |
-| Precision - Guard | Counterstroke | after you dodge or block, your next swing has +20 / 35 / 50 crit chance |
+| Fortune - Might | Know Your Prey | +3 / 6 / 10% damage and gold against monsters of your highest unlocked region |
+| Might - Precision | Piercing Crit | +6 / 12 / 20% crit damage |
+| Precision - Guard | Counterstroke | crit chance +10 / 20 / 33% of your dodge + block points |
+
+Measured at rank 3 (region 3, geared, 177 kills an hour without them):
+Know Your Prey 195 kills (+10%) and +22% gold, Piercing Crit 184 (+4%),
+Counterstroke 184 (+4%) on the base character's own dodge and block. Offline
+agrees within one kill for all three.
 
 ### 4.4 Archetypes this allows
 
@@ -538,7 +543,8 @@ Rejected:
 | 5 | Affix families, signature affixes (optional) | - |
 
 **Status, 2026-10-30:** phase 1 and slices 2.0-2.3e are live (1.0.1344).
-The War half is off for players. Next come the bridges, then 2.4 and 2.5.
+The War half is off for players. The bridges are built (2026-10-30);
+next come 2.4 and 2.5.
 See `SKILL_TREE_HANDOFF.md`.
 
 Phase 1 shipped as #216 (client 1.38.0). Phase 2 is cut into slices that

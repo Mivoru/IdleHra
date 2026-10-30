@@ -52,7 +52,11 @@ Get-Process dotnet -ErrorAction SilentlyContinue | Stop-Process -Force
 before opening the gateway, so process-exists is not readiness. Read its own
 window; the script already waited two minutes.
 
-**Docker is down.** Recovery is `docker desktop stop` then `docker desktop start`.
+**Docker is down or broken** (an `overlay2 ... input/output error`, or a
+start that fails on `/dev/sdd ... device or resource busy`). Recovery is
+`docker desktop stop; wsl --shutdown`, then `docker desktop start
+--timeout 240`. The root `CLAUDE.md` has the details. Never repair it
+destructively, because the dev database lives there.
 
 **A screen renders but is empty.** Suspect the dev fixture before the screen.
 It has silently lacked a building, a `character_lineage_registry` row and

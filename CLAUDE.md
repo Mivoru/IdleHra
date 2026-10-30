@@ -84,7 +84,24 @@ run is the previous build with none of your changes in it. `run-dev.ps1` kills
 **`dotnet test` needs a working Docker daemon.** Without it the whole suite
 fails at once with `PostgresTestFixture` NullReferenceExceptions, which looks
 nothing like a code error. Check Docker before debugging a mass failure.
-Recovery is `docker desktop stop` then `start`.
+It breaks often on this machine, and `docker ps` can still answer while it
+is broken, so read the first exception rather than the count. The two
+faces it shows, and the recovery that fixed both (2026-10-30):
+
+- `stat /var/lib/docker/overlay2/...: input/output error` from
+  `InspectImageAsync`: hundreds of tests fail in seconds.
+- `docker desktop start` then fails with `preparing block device /dev/sdd:
+  ... device or resource busy`: the WSL data disk is still held.
+
+```powershell
+docker desktop stop; wsl --shutdown; Start-Sleep -Seconds 5
+docker desktop start --timeout 240; docker ps
+```
+
+`wsl --shutdown` is the step a plain stop/start lacks. Never repair it
+destructively (no `docker system prune`, no resetting or unregistering the
+`docker-desktop` distro, no deleting the data disk): the dev database lives
+there. If this recovery fails, restart the PC.
 
 **Never hand-write a wire type.** `client_web/src/lib/net/protocol.generated.ts`
 is generated from the server's own `--dump-protocol`. Change a packet struct →

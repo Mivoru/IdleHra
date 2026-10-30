@@ -763,6 +763,8 @@ namespace FolkIdle.Server.Domain.Combat
                 if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
                 if (war.BossDamageTenthsPct > 0 && ContentRegistry.IsRegionalBoss(monster.Id))
                     net += (int)((long)net * war.BossDamageTenthsPct / 1000L);
+                int knowYourPrey = SimulationEngine.KnowYourPreyTenthsPct(in payload, in monster);
+                if (knowYourPrey > 0) net += (int)((long)net * knowYourPrey / 1000L);
                 net = (int)(net * SimulationEngine.LiveCodexDamageMultiplier(in payload));
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {

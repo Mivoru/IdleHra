@@ -101,7 +101,17 @@ directions of the "wired on one side only" defect.
 The measured worth of every mechanic is in `SKILL_TREE_REWORK.md` section
 8.
 
-## 4. Approved, not built: the three bridges
+## 4. The three bridges (built 2026-10-30)
+
+**Built** in `claude/skill-tree-bridges`: Piercing Crit is a `CritDamagePct`
+node, Counterstroke is `CounterstrokeOfDefence` (added in
+`LiveCritChancePct` after the Living Fortress check, so block never feeds
+itself), and Know Your Prey is `KnowYourPreyPct` through
+`SimulationEngine.KnowYourPreyTenthsPct` (live hit, `Landed`,
+`CombatGoldReward.PerKill`). The highest unlocked region comes from the new
+`RegionUnlockGate.HighestUnlockedRegion(byte mask)`. Parity rows and the
+measurements are in `WarMechanicParityTests` and `SKILL_TREE_REWORK.md`
+4.3. The rest of this section is the plan as approved.
 
 The original bridges cannot be built. Each fails on a rule that this
 session measured or hit. The owner approved these replacements on

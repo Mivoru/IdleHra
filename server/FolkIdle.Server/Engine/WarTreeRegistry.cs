@@ -53,6 +53,10 @@ namespace FolkIdle.Server.Engine
         TrophyGoldPct,
         /// <summary>Raises the codex damage bonus by a share of itself, in tenths of a percent.</summary>
         CodexBonusPct,
+        /// <summary>Crit chance from defence: tenths of a percent of the dodge plus block points.</summary>
+        CounterstrokeOfDefence,
+        /// <summary>Damage and gold, in tenths of a percent, against monsters of the highest unlocked region.</summary>
+        KnowYourPreyPct,
     }
 
     /// <summary>
@@ -180,9 +184,23 @@ namespace FolkIdle.Server.Engine
             Add(LivingFortress, "Living Fortress", "living_fortress", ColumnGuard, 4, -1, "Keystone", 1, 5, WarEffect.LivingFortress, 1, "Crit chance becomes block and the block cap rises to 85%; you never crit");
 
             // ---- Bridges: 10 points in both columns they join ------------------
-            Add(KnowYourPrey, "Know Your Prey", "know_your_prey", ColumnFortune, 2, 2, "Bridge", 3, 2, WarEffect.Mechanic, 0, "More damage against monsters you know well", bridge: ColumnMight);
-            Add(PiercingCrit, "Piercing Crit", "piercing_crit", ColumnMight, 2, 2, "Bridge", 3, 2, WarEffect.Mechanic, 0, "A crit ignores more monster armour", bridge: ColumnPrecision);
-            Add(Counterstroke, "Counterstroke", "counterstroke", ColumnPrecision, 2, 2, "Bridge", 3, 2, WarEffect.Mechanic, 0, "After you dodge or block, the next swing is likelier to crit", bridge: ColumnGuard);
+            // Modul: THE BRIDGES WERE REDESIGNED BEFORE THEY WERE BUILT (owner,
+            // 2026-10-30). Each original failed a rule measured in slice 2.3:
+            // "a crit ignores armour" is worth nothing because armour lets
+            // 94-99% of a geared hit through; "after a dodge, the next swing
+            // crits" needs state between swings, and the player and the monster
+            // share one swing accumulator; "monsters with codex level 10+"
+            // needs per-monster codex levels the payload does not carry. Each
+            // replacement resolves inside one swing and has a closed-form
+            // expectation, so the projection prices it exactly.
+            //
+            // Know Your Prey reads the highest UNLOCKED region, derived from the
+            // boss mask: the frontier the player is pushing, not a region they
+            // have outgrown.
+            Add(KnowYourPrey, "Know Your Prey", "know_your_prey", ColumnFortune, 2, 2, "Bridge", 3, 2, WarEffect.KnowYourPreyPct, 0, "+{0}% damage and gold against monsters of your highest unlocked region", bridge: ColumnMight, ranks: new[] { 30, 60, 100 });
+            Add(PiercingCrit, "Piercing Crit", "piercing_crit", ColumnMight, 2, 2, "Bridge", 3, 2, WarEffect.CritDamagePct, 0, "+{0}% crit damage", bridge: ColumnPrecision, ranks: new[] { 60, 120, 200 });
+            // A conversion, as Frenzy is: defence buys crit chance directly.
+            Add(Counterstroke, "Counterstroke", "counterstroke", ColumnPrecision, 2, 2, "Bridge", 3, 2, WarEffect.CounterstrokeOfDefence, 0, "Crit chance +{0}% of your dodge and block", bridge: ColumnGuard, ranks: new[] { 100, 200, 330 });
 
             return t;
         }
@@ -202,6 +220,7 @@ namespace FolkIdle.Server.Engine
             WarEffect.ThundererPct, WarEffect.Ruin, WarEffect.PerfectSequence, WarEffect.LivingFortress, WarEffect.GoldenFleece,
             WarEffect.LootLuckPct, WarEffect.GoldPct, WarEffect.MaterialStackPct, WarEffect.RarityElevationPct, WarEffect.XpPct,
             WarEffect.TrophyGoldPct, WarEffect.CodexBonusPct,
+            WarEffect.CounterstrokeOfDefence, WarEffect.KnowYourPreyPct,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
@@ -325,6 +344,8 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.TrophyGoldPct: e.TrophyGoldTenthsPct += v; break;
                     case WarEffect.CodexBonusPct: e.CodexBonusTenthsPct += v; break;
                     case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
+                    case WarEffect.CounterstrokeOfDefence: e.CounterstrokeTenths += v; break;
+                    case WarEffect.KnowYourPreyPct: e.KnowYourPreyTenthsPct += v; break;
                 }
             }
             return e;
@@ -394,6 +415,8 @@ namespace FolkIdle.Server.Engine
         public int XpTenthsPct;
         public int TrophyGoldTenthsPct;
         public int CodexBonusTenthsPct;
+        public int CounterstrokeTenths;
+        public int KnowYourPreyTenthsPct;
 
         public const int RuinEvery = 8;
         public const float RuinMultiplier = 2.5f;
