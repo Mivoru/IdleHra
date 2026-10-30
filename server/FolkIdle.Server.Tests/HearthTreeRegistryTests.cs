@@ -94,6 +94,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.KeenAngler, HearthTreeRegistry.Netmaker, HearthTreeRegistry.FullNet,
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
+                HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -140,6 +141,19 @@ namespace FolkIdle.Server.Tests
             var moon = Maxed(HearthTreeRegistry.MoonlitCatch);
             Assert.True(HearthTreeRegistry.Resolve(in moon).RareRollFor(2));
             Assert.False(HearthTreeRegistry.Resolve(in moon).RareRollFor(0));
+        }
+
+        [Fact]
+        public void QuickHandsAndBatchWorkCutCraftTimeBySixteenPercent_OnTheOneFormulaBothPathsAsk()
+        {
+            var recipe = ContentRegistry.Recipes.ToArray().OrderByDescending(r => r.CraftingTimeMs).First();
+            var bare = new TickStatePayload();
+            var built = Maxed(HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork);
+            Assert.Equal(160, HearthTreeRegistry.Resolve(in built).CraftTimeTenthsPct);
+            int before = SimulationEngine.CraftTicksFor(in bare, in recipe);
+            int after = SimulationEngine.CraftTicksFor(in built, in recipe);
+            Assert.Equal(SimulationEngine.CraftTicksFor(in recipe), before);
+            Assert.Equal((int)((long)before * 840 / 1000), after);
         }
 
         [Fact]

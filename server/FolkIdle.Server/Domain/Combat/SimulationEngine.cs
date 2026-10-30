@@ -6346,7 +6346,7 @@ namespace FolkIdle.Server.Domain.Combat
             // it repeats until the player stops it or runs out of
             // materials (CraftingEngine refuses the craft, the tick keeps
             // counting, and the halt shows up as nothing being produced).
-            int craftTicks = CraftTicksFor(in craftingRecipe);
+            int craftTicks = CraftTicksFor(in payload, in craftingRecipe);
 
             payload.RequiredProgressTicks = craftTicks;
             payload.GatheringProgressTicks++;
@@ -6380,6 +6380,19 @@ namespace FolkIdle.Server.Domain.Combat
         {
             int craftTicks = craftingRecipe.CraftingTimeMs / 100;
             return craftTicks < MinCraftTicks ? MinCraftTicks : craftTicks;
+        }
+
+        /// <summary>
+        /// The recipe's ticks for this character: the Hearth half's craft-time
+        /// cut (Quick Hands, Batch Work; at most 16%) on top of the recipe's own.
+        /// The live job and the offline window both ask this one.
+        /// </summary>
+        internal static int CraftTicksFor(in TickStatePayload payload, in ContentRegistry.RecipeDefinition craftingRecipe)
+        {
+            int baseTicks = CraftTicksFor(in craftingRecipe);
+            int cut = Math.Clamp(HearthTreeRegistry.Resolve(in payload).CraftTimeTenthsPct, 0, 900);
+            int ticks = (int)((long)baseTicks * (1000 - cut) / 1000);
+            return ticks < MinCraftTicks ? MinCraftTicks : ticks;
         }
     }
 }

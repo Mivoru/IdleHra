@@ -171,7 +171,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.YieldWoodMine, HearthEffect.YieldFishHerb,
             HearthEffect.RareWoodMine, HearthEffect.RareFishHerb,
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
-            HearthEffect.DeepVein, HearthEffect.MoonlitCatch,
+            HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct,
         };
 
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
@@ -281,6 +281,7 @@ namespace FolkIdle.Server.Engine
                     case HearthEffect.KeepMaterialsPct: e.KeepMaterialsTenthsPct += v; break;
                     case HearthEffect.OfflineRatePct: e.RewardRatePermille += v; break;
                     case HearthEffect.XpPct: e.XpTenthsPct += v; break;
+                    case HearthEffect.CraftTimePct: e.CraftTimeTenthsPct += v; break;
                     case HearthEffect.DeepVein: e.DeepVein = true; break;
                     case HearthEffect.MoonlitCatch: e.MoonlitCatch = true; break;
                 }
@@ -334,6 +335,8 @@ namespace FolkIdle.Server.Engine
         /// <summary>Tenths of a percent of the reward rate, which is permille: 250 = +25%.</summary>
         public int RewardRatePermille;
         public int XpTenthsPct;
+        /// <summary>Craft time cut, in tenths of a percent (Quick Hands, Batch Work).</summary>
+        public int CraftTimeTenthsPct;
         /// <summary>Keystones: every KeystoneEvery-th harvest of wood or ore (Deep Vein) or fish or herbs (Moonlit Catch) adds a roll of the node's rarest entry.</summary>
         public bool DeepVein;
         public bool MoonlitCatch;

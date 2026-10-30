@@ -253,7 +253,7 @@ namespace FolkIdle.Server.Engine
                         // Scholar: each completion pays one more with its
                         // chance, as the live job's tick does.
                         long attempts = ScholarRate.RewardUnits(Random.Shared,
-                            earningSeconds * 10L / SimulationEngine.CraftTicksFor(in craftingRecipe), ScholarRate.BonusPermille(in payload));
+                            earningSeconds * 10L / SimulationEngine.CraftTicksFor(in payload, in craftingRecipe), ScholarRate.BonusPermille(in payload));
                         var crafted = await CraftingEngine.ExecuteOfflineCraftsAsync(db, payload.PlayerId, craftingRecipe, attempts, Random.Shared);
                         // Mirrors CraftingTickCoordinator.DrainCraftingCompletions:
                         // the wire counter tracks what the engine just added to
