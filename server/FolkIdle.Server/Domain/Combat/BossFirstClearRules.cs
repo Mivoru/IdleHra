@@ -210,13 +210,27 @@ namespace FolkIdle.Server.Domain.Combat
         /// mechanic the wall exists for.
         /// </summary>
         public static long MaxHpFor(byte defeatedMask, int monsterId, int firstBloodLevel)
+            => MaxHpFor(defeatedMask, monsterId, Engine.SkillTreeRegistry.GetBonusPercent(
+                Engine.SkillTreeRegistry.BoughFirstBlood, firstBloodLevel) / 100f);
+
+        /// <summary>
+        /// The share of the first-clear penalty a payload's tree takes off:
+        /// today's First Blood, or the War half's Bossbreaker, whichever tree
+        /// the payload runs. Both cap at 32%, the relief BossGearBenchmark
+        /// calibrates the walls against.
+        /// </summary>
+        public static float ReliefFor(in Engine.TickStatePayload payload)
+            => Math.Max(
+                Engine.SkillTreeRegistry.GetBonusPercent(Engine.SkillTreeRegistry.BoughFirstBlood, payload.Skill_FirstBlood) / 100f,
+                Engine.WarTreeRegistry.Resolve(in payload).FirstClearReliefTenthsPct / 1000f);
+
+        /// <summary>The same, with the relief already worked out (ReliefFor).</summary>
+        public static long MaxHpFor(byte defeatedMask, int monsterId, float relief)
         {
             long baseHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId);
             if (!IsFirstClearPending(defeatedMask, monsterId)) return baseHp;
 
             float penalty = HpMultiplierFor(RegionOfBoss(monsterId)) - 1f;
-            float relief = Engine.SkillTreeRegistry.GetBonusPercent(
-                Engine.SkillTreeRegistry.BoughFirstBlood, firstBloodLevel) / 100f;
             float softened = 1f + penalty * Math.Max(0f, 1f - relief);
 
             return (long)Math.Max(baseHp, baseHp * softened);

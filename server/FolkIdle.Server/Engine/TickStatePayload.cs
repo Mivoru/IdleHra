@@ -479,8 +479,8 @@ namespace FolkIdle.Server.Engine
         // 1 until slice 2.5 switches every player at once.
         public byte SkillTreeVersion;
 
-        // Modul: the War keystones' rhythm. Ruin fires on every 8th CONNECTING
-        // hit and Perfect Sequence on every 6th SWING; counting here, across
+        // Modul: the War keystones' rhythm. Ruin fires on every RuinEvery-th CONNECTING
+        // hit and Perfect Sequence on every PerfectEvery-th SWING; counting here, across
         // fights, makes the live rate exactly 1-in-N - which is what the
         // projection prices.
         public int WarSwingCount;
