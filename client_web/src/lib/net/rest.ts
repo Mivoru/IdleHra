@@ -2427,9 +2427,10 @@ export function fetchCharacterStats(slot = 0): Promise<StatSheet> {
 // ---------------------------------------------------------------------------
 
 /**
- * The tree as the SERVER defines it (SkillTreeRegistry via
- * NetworkBroadcastSystem.SkillTree.cs): shape, costs and the text of every
- * level. The screen draws this and holds no rule of its own.
+ * The tree as the SERVER defines it (WarTreeRegistry via
+ * NetworkBroadcastSystem.SkillTree.cs, since rework slice 2.5): shape, costs
+ * and the text of every level. The screen draws this and holds no rule of its
+ * own.
  */
 export interface SkillTreeNodeDef {
   Id: number;
@@ -2437,14 +2438,14 @@ export interface SkillTreeNodeDef {
   /** Slug into SKILL_ICONS; the rune glyph stands in while no art exists. */
   Icon: string;
   Blurb: string;
-  Kind: 'Root' | 'Bough' | 'Crown';
+  Kind: 'Minor' | 'Notable' | 'Fork' | 'Bridge' | 'Keystone';
   Column: number;
   /** The second column a bridge joins, or -1. */
   BridgeColumn: number;
   Row: number;
   /** Points the column must hold before this node opens; 0 for none. */
   ColumnPointsGate: number;
-  /** 0/1 for the two sides of a fork, -1 for the centre. */
+  /** 0/1 for a pair in one row, 2 for a bridge, -1 for a node alone in its row. */
   Lane: number;
   MaxLevel: number;
   /** The other side of the fork, or -1. */
@@ -2459,6 +2460,12 @@ export interface SkillTreeNodeDef {
 export interface SkillTreeDefinition {
   Columns: { Id: number; Name: string; Icon: string | null }[];
   Nodes: SkillTreeNodeDef[];
+  /** Length of every rank array: Levels, drafts and commits. Node ids index it. */
+  Slots: number;
+  /** Points a column must hold before each row opens. */
+  RowGates: number[];
+  /** Points a bridge needs in BOTH columns it joins. */
+  BridgeGate: number;
 }
 
 export interface SkillTreePreview {
@@ -2468,6 +2475,8 @@ export interface SkillTreePreview {
   PointsLeft: number;
   /** On top of the draft (or of the current tree, if the draft is illegal). */
   Nodes: { Id: number; Blocked: string | null; NextCost: number }[];
+  /** Points in each column on that same basis; a bridge counts for both its columns. */
+  ColumnPoints: number[];
   Before: StatSheet | null;
   After: StatSheet | null;
 }
@@ -2496,6 +2505,10 @@ export interface SkillTreeState {
   AvailableSkillPoints: number;
   FreeRespecUsed: boolean;
   PaidRespecGrants: number;
+  PointsSpent: number;
+  /** What a respec costs in gold when neither the free one nor a grant is left. */
+  RespecGoldPrice: number;
+  Gold: number;
 }
 
 export function fetchSkillTreeState(): Promise<SkillTreeState> {
@@ -2512,6 +2525,22 @@ export async function previewSkillTree(levels: number[], slot = 0): Promise<Skil
 export async function commitSkillTree(levels: number[]): Promise<SkillTreeCommitResult> {
   const res = await authedPost<SkillTreeCommitResult>('/api/v1/skilltree/commit', { Levels: levels });
   if (!res) throw new AuthError('POST /api/v1/skilltree/commit answered nothing', 500);
+  return res;
+}
+
+export interface SkillTreeRespecResult {
+  Reason: string | null;
+  Refunded: number;
+  GoldSpent: number;
+}
+
+/**
+ * Refunds the whole tree: with the free respec or a paid grant, or for gold
+ * when `gold` is true. A refusal still answers 200 with its Reason.
+ */
+export async function respecSkillTreeRest(gold: boolean): Promise<SkillTreeRespecResult> {
+  const res = await authedPost<SkillTreeRespecResult>('/api/v1/skilltree/respec', { Gold: gold });
+  if (!res) throw new AuthError('POST /api/v1/skilltree/respec answered nothing', 500);
   return res;
 }
 

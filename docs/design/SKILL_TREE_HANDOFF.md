@@ -238,7 +238,71 @@ The owner's rule for balance is that numbers come from a measurement.
 Show the harness table before and after a change. A change that moves a
 wall goes through `WallWindowScanTests`.
 
-## 6. Slice 2.5: the switch
+## 6. Slice 2.5: the switch (built 2026-10-30)
+
+**Built** in `claude/skill-tree-2-5` as client 1.39.0. The owner was away
+and asked for these decisions to be made alone:
+
+- **Two PRs, not one.** This PR switches the tree: the endpoints, the
+  screen, the Wiki, the refund and the gold respec. A follow-up deletes
+  today's tree (`SkillTreeRegistry`'s nodes, the `Skill_*` readers, the
+  `today` halves of the shared helpers, `SKILL_TREE_NODES`). After the
+  refund, no player holds a row at ids 0-19, so every old reader reads 0,
+  and the deletion cannot change behaviour. Splitting it keeps the risky
+  switch small.
+- **The refund runs on the load path, not in a migration:**
+  `SkillTreeEngine.ReconcileWarSwitchAsync`, called at the top of
+  `LoadPlayerState`. The old cost curve is C#. The step is idempotent, and
+  a player who comes back in a month is refunded too. **It must run before
+  the `PlayerRecords` row is read**, because the checkpoint flush writes
+  `AvailableSkillPoints` back from the payload, and a stale payload would
+  write the refund away. It also refunds root levels above the old cap of
+  10, which `ReconcileRootCapAsync` was meant to do but was never wired.
+- **No version column.** Everyone switches at once, so hydration sets
+  `SkillTreeVersion = WarTreeRegistry.CurrentVersion`, and cold recovery
+  goes through the same `LoadPlayerState`.
+- **Craft, Harvest and Scholar leave with today's tree** and come back in
+  the Hearth half (phase 4), as section 5 of the design says. Only 4
+  accounts had tree points. The release notes say so.
+- **Gold respec (D3):** points spent x level x 15
+  (`WarTreeRegistry.RespecGoldPrice`). Measured with a geared character at
+  each band's top, that costs 0.3-1.1 hours of farming in that band (18.5k
+  / 28k / 50k / 108k / 261k gold an hour). The order is the free respec,
+  then a paid grant, then gold. A new `POST /api/v1/skilltree/respec`
+  takes `{ Gold }`. The debit follows the village's pattern: the gold row
+  is debited in the transaction, `GoldLedger` records it as `Respec`, and
+  `SkillTreeSyncNotification.GoldSpent` takes it off the live payload.
+- **The screen:** one card per column, its five rows with their gate,
+  forks marked "or", and the three bridges in a strip below. On a wide
+  screen the columns stand side by side and grow upward. Column points
+  come from the preview (`ColumnPoints`), so the screen still holds no
+  rule.
+- **The Wiki** reads the server's definition, and no longer reads the
+  client mirror.
+- **The old opcodes** stay for stale bundles. `PurchaseSkillTreeLevel`
+  buys War ranks only (an old id is refused), and `RespecSkillTree` uses
+  the free respec or a grant only.
+- Fixed on the way: four client guard tests had been red on `main` since
+  #216, and CI does not run them. The causes were a function named
+  `confirm`, a pulsing `box-shadow`, `role="dialog"` on the detail sheet,
+  and one drifted `SKILL_TREE_NODES` blurb.
+
+**Verified locally (2026-10-30):**
+- `exercise`: 388/388, including a new account and the tree's own steps.
+- The fixture bought Edge 4 and Crushing Blow 3 through the REST commit.
+  In a real fight on Forest Dryad, a **"CRUSH!" callout appeared after
+  17 s**. It is the first War callout anyone has seen. The free respec
+  then gave all 10 points back.
+- `check:touch` / `check:overlap` / `check:clipping` are clean on the tree.
+  Wardrobe's old undersized control is the only finding left.
+- Server suite and the new `SkillTreeSwitchPostgresTests` (refund once,
+  free respec, an old id refused, the gold respec and its refusal) pass.
+- The 874 client unit tests pass.
+
+The dev fixture's free respec is now used, so a later run of the same
+check pays gold for it (6,000 at 10 points).
+
+The plan as written before the build follows.
 
 1. **Wire the War half onto the screen.** The definition endpoint serves
    `WarTreeRegistry` (columns Fortune/Might/Precision/Guard, rows 0-4,

@@ -47,6 +47,9 @@ namespace FolkIdle.Server.Domain.Progression
             // keeps finding; the write happened, nothing carried it.
             payload.FreeRespecUsed = treeNotif.FreeRespecUsed;
             payload.PaidRespecGrants = treeNotif.PaidRespecGrants;
+            // A gold respec debited the row already (SkillTreeEngine.RespecAsync),
+            // so the live balance follows it - the village's pattern.
+            if (treeNotif.GoldSpent > 0) payload.CurrentGold = Math.Max(0L, payload.CurrentGold - treeNotif.GoldSpent);
             payload.IsDirty = true;
         }
 

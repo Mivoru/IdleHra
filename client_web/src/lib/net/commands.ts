@@ -1114,7 +1114,7 @@ export const SKILL_TREE_NODES: readonly {
   { id: 5, ring: 'bough', root: 0, name: 'Plenty', blurb: 'Materials drop in bigger stacks. Crafting eats stacks.', perLevel: 1.5, unit: 'pct' },
   { id: 6, ring: 'bough', root: 0, name: 'Rarity', blurb: 'A drop has a chance to come out one rarity higher than it rolled.', perLevel: 1.0, unit: 'pct' },
   { id: 7, ring: 'bough', root: 1, name: 'First Blood', blurb: 'A boss you have never beaten is less monstrous the first time.', perLevel: 4.0, unit: 'pct' },
-  { id: 8, ring: 'bough', root: 1, name: 'Trophy Hunter', blurb: 'Bosses pay more gold, and always leave a material behind.', perLevel: 2.5, unit: 'pct' },
+  { id: 8, ring: 'bough', root: 1, name: 'Trophy Hunter', blurb: 'Bosses pay more gold.', perLevel: 2.5, unit: 'pct' },
   { id: 9, ring: 'bough', root: 2, name: 'Guile', blurb: 'Critical hits bite deeper still.', perLevel: 3.0, unit: 'pct' },
   { id: 10, ring: 'bough', root: 2, name: 'Relentless', blurb: 'You swing faster. Everything else scales off how often you hit.', perLevel: 1.0, unit: 'pct' },
   { id: 11, ring: 'bough', root: 3, name: 'Bloodthirst', blurb: 'A share of the damage you deal comes back as health - food you never had to cook.', perLevel: 0.5, unit: 'pct' },
