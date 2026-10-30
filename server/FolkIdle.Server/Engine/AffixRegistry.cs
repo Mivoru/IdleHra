@@ -225,6 +225,11 @@ namespace FolkIdle.Server.Engine
             new AffixDefinition("boss_dmg_pct", EquipmentSlotMask.Ring, AffixScalingLaw.Percentage, 30, 20, utility: true),
             new AffixDefinition("loot_luck_pct", EquipmentSlotMask.Ring | EquipmentSlotMask.Amulet, AffixScalingLaw.Percentage, 15, 10, utility: true),
             new AffixDefinition("gold_find_pct", EquipmentSlotMask.Ring | EquipmentSlotMask.Amulet, AffixScalingLaw.Percentage, 20, 15, utility: true),
+
+            // Modul: roadmap 3.6, the combat affixes. crushing_blow_pct adds to the
+            // War node's chance to double a hit (3% at its top), 1-4.2% per affix
+            // by rarity, on gloves only, so one slot never outgrows the node.
+            new AffixDefinition("crushing_blow_pct", EquipmentSlotMask.Gloves, AffixScalingLaw.Percentage, 10, 8),
         };
 
         private static readonly Dictionary<string, int> _indexById = BuildIndex();

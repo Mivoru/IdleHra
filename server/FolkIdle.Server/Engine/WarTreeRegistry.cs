@@ -521,5 +521,13 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>Crushing Blow's chance as a probability, 0-1.</summary>
         public readonly double CrushingChance => Math.Clamp(CrushingChanceTenths / 1000.0, 0.0, 1.0);
+
+        /// <summary>
+        /// Crushing Blow's chance with the gear's crushing_blow_pct added (roadmap
+        /// 3.6). The ONE place the two sum, so the live swing and the projection
+        /// cannot disagree about it (WarMechanicParityTests).
+        /// </summary>
+        public readonly double CrushingChanceWith(in EquippedAffixTotals affixes)
+            => Math.Clamp((CrushingChanceTenths + affixes.CrushingChanceTenthsPct) / 1000.0, 0.0, 1.0);
     }
 }

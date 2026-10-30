@@ -5083,7 +5083,8 @@ namespace FolkIdle.Server.Domain.Combat
                     // HuntingProjection takes the same terms as an expectation, and
                     // WarMechanicParityTests holds the two together.
                     var warHit = WarTreeRegistry.Resolve(in payload);
-                    bool crushed = warHit.CrushingChanceTenths > 0 && Random.Shared.NextDouble() < warHit.CrushingChance;
+                    double crushChance = warHit.CrushingChanceWith(in payload.CachedAffixTotals);
+                    bool crushed = crushChance > 0 && Random.Shared.NextDouble() < crushChance;
                     // "First" is a monster still at full health: no field to
                     // remember, and the projection can price exactly that.
                     bool firstStrike = warHit.FirstStrikeTenthsPct > 0 && payload.CurrentMonsterHp >= SpawnHpFor(in payload);
