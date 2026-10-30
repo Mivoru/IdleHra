@@ -13458,6 +13458,7 @@ namespace FolkIdle.Server.Network
             if (payload != null)
             {
                 item.AffixPayload = payload;
+                // GoldLedger: not income - a dev refund of a Refine the exercise spent a moment ago.
                 if (gold > 0) await CommodityLedger.AddAsync(db, playerId, "gold", gold);
                 await db.SaveChangesAsync();
             }
