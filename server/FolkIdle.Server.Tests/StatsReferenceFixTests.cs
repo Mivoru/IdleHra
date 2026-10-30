@@ -83,31 +83,31 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void Fortitude_raises_armour_by_two_percent_a_level()
+        public void Ironhide_raises_armour_by_its_share()
         {
             var bare = Character();
-            var tree = bare;
-            tree.Skill_Fortitude = 8;
+            var tree = TestTree.With(bare, (WarTreeRegistry.Ironhide, 5));
 
             var bareStats = SimulationEngine.LiveCombatStats(in bare);
             var treeStats = SimulationEngine.LiveCombatStats(in tree);
 
+            int tenths = WarTreeRegistry.Get(WarTreeRegistry.Ironhide)!.ValueAt(5);
             Assert.True(bareStats.FlatPhysicalArmor > 0);
-            Assert.Equal(bareStats.FlatPhysicalArmor + (long)bareStats.FlatPhysicalArmor * 160 / 1000, treeStats.FlatPhysicalArmor);
+            Assert.Equal(bareStats.FlatPhysicalArmor + (long)bareStats.FlatPhysicalArmor * tenths / 1000, treeStats.FlatPhysicalArmor);
         }
 
         [Fact]
-        public void Fortitude_armour_shrinks_the_monster_hit_and_keeps_its_health_half()
+        public void Ironhide_shrinks_the_monster_hit_and_vitality_raises_health()
         {
             var bare = Character();
-            var tree = bare;
-            tree.Skill_Fortitude = 8;
+            var tree = TestTree.With(bare, (WarTreeRegistry.Ironhide, 5), (WarTreeRegistry.Vitality, 5));
 
             var bareStats = SimulationEngine.LiveCombatStats(in bare);
             var treeStats = SimulationEngine.LiveCombatStats(in tree);
             long bareHp = SimulationEngine.EffectiveMaxMilliHpFor(in bare, in bareStats);
             long treeHp = SimulationEngine.EffectiveMaxMilliHpFor(in tree, in treeStats);
-            Assert.Equal(bareHp + bareHp * 160 / 1000, treeHp);
+            int tenths = WarTreeRegistry.Get(WarTreeRegistry.Vitality)!.ValueAt(5);
+            Assert.Equal(bareHp + bareHp * tenths / 1000, treeHp);
 
             // A region-1 hit big enough that armour, not the 1,000 milli-HP
             // floor, decides what lands.
@@ -117,10 +117,9 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void The_stat_sheet_shows_the_fortitude_armour()
+        public void The_stat_sheet_shows_the_ironhide_armour()
         {
-            var tree = Character();
-            tree.Skill_Fortitude = 8;
+            var tree = TestTree.With(Character(), (WarTreeRegistry.Ironhide, 5));
 
             var sheet = CharacterStatSheet.Build(tree, 0);
             var armourRow = sheet.Sections.SelectMany(s => s.Rows).Single(r => r.Key == "armour");

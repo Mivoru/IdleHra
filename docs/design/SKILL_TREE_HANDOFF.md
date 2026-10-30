@@ -1,7 +1,8 @@
 # Skill tree rework - handoff
 
-Written 2026-10-30, at the end of the session that started the rework.
-Production is **1.0.1344 / client 1.38.2**. Read this first, then
+Written 2026-10-30, at the end of the session that started the rework, and
+updated the same night after the bridges, 2.4 and 2.5 shipped. Production is
+**1.0.1352 / client 1.39.0**: the War half is live for every player. Read this first, then
 `SKILL_TREE_REWORK.md` (the design and every measurement) and
 `SKILL_TREE_ART.md` (icons, callouts, sounds).
 
@@ -360,6 +361,37 @@ The plan as written before the build follows.
 - **`PendingGrantCombatLootTests.AutoSalvageGoldSurvivesAFailure`** fails
   when one name filter runs it together with the parity suites, on main
   too. It is a static loot-queue collision, not a defect.
+
+## 7a. Open after the switch (for the owner)
+
+- **Ruin can cost kills.** On the geared region-5 parity character (fast
+  gear), Ruin measured 94 kills an hour against 97 without. Attack speed
+  counting at 75% outweighs x1.6 on every 8th hit. On the harness's Rare
+  reference it is +2.6%. Whether a keystone may be a loss for fast builds
+  is a design call. The options are a smaller price (85%), a bigger hit
+  (x1.8), or "every 6th".
+- **The secondary targets in design section 8 item 2 are not measured.**
+  They are keystone builds within 15% of each other, and Fortune keeping 70%
+  of the Duelist's damage.
+- **The Hearth half (phase 4)** takes over Craft, Harvest and Scholar. Their
+  hooks (`Skill_Craft`, `Skill_Harvest`, `Skill_Scholar`, `ScholarRate`)
+  read 0 until then.
+- **The dev fixture's free respec is used**, so the next check that respecs
+  it pays 6,000 gold.
+
+## 7b. The cleanup PR
+
+`claude/skill-tree-2-5-cleanup` deletes the old tree's readers. It leaves
+`SkillTreeRegistry` as a legacy table, for `LegacyRefundOf` and the Insight
+hooks.
+- **Fixed on the way:** the Character roster applied only the old Fortitude
+  armour, so after the switch it showed no Ironhide, Evasion, Shield Wall
+  or Steady Hand. It now calls `SimulationEngine.ApplyTreeStats`, as
+  `LiveCombatStats` does.
+- **Tests:** the old tree's mirror tests are gone. The harness keeps today's
+  measured best as frozen constants (`TreeBuildHarnessTests.TodayBest`).
+- **The Ruin parity row:** it moved to region 5 and checks that the tick
+  reads it either way. At region 3 its +1.7% sat inside one hour's noise.
 
 ## 8. Open items outside the rework
 

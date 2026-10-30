@@ -163,7 +163,10 @@ namespace FolkIdle.Server.Tests
         private const double FleeceChance = 0.01; // every hundredth kill
         private const int FleeceTiers = 2;
 
-        internal static TickStatePayload Level94Region5Payload() => new TickStatePayload
+        // Modul: the build's tree is the War half since 2026-10-30: Scavenger 5
+        // and Rarity 5 (7.5% each) stand where the old Fortune root 10 and
+        // Rarity bough 8 (10% and 8%) stood, and Golden Fleece is the keystone.
+        internal static TickStatePayload Level94Region5Payload() => TestTree.With(new TickStatePayload
         {
             PlayerId = 8L,
             CurrentLevel = 94,
@@ -172,16 +175,13 @@ namespace FolkIdle.Server.Tests
             CON = 120,
             LCK = BuildLck,
             Inherit_LootLuck = 4,
-            Skill_LootRarity = 10,
-            Skill_Rarity = 8,
-            Skill_GoldenFleece = 1,
             Aptitude_Fortune = 4,
             // GuildBonusesCache answers 0 for guild 0 - the account's DropRate
             // buff expired on 2026-09-09.
             GuildId = 0,
             CompletedAreaFlags = 0,
             CachedAffixTotals = default,
-        };
+        }, (WarTreeRegistry.Scavenger, 5), (WarTreeRegistry.Rarity, 5), (WarTreeRegistry.GoldenFleece, 1));
 
         /// <summary>The identical 16-argument call the live tick makes (SimulationEngine, the combat block).</summary>
         internal static CombatStats StatsFor(in TickStatePayload p) => StatsCalculator.Calculate(
@@ -243,25 +243,25 @@ namespace FolkIdle.Server.Tests
             report.AppendLine("Loot luck, term by term, for a level-94 region-5 build (LCK 300):");
             report.AppendLine($"  stats (LCK curve + Scavenger + areas + affixes)  {breakdown.Stats,7:F2}");
             report.AppendLine($"  inheritance (level 4)                            {breakdown.Inheritance,7:F2}");
-            report.AppendLine($"  Fortune root (10 levels)                         {breakdown.FortuneRoot,7:F2}");
+            report.AppendLine($"  Scavenger (5 ranks)                              {breakdown.FortuneRoot,7:F2}");
             report.AppendLine($"  guild DropRate                                   {breakdown.GuildDropRate,7:F2}");
             report.AppendLine($"  Fortune aptitude (4)                             {breakdown.FortuneAptitude,7:F2}");
             report.AppendLine($"  TOTAL LootLuckPct                                {breakdown.Total,7:F2}");
             report.AppendLine("Rarity elevation:");
             report.AppendLine($"  stats (LCK curve + traits)                       {breakdown.StatsElevation,7:F2}");
-            report.AppendLine($"  Rarity bough (8 levels)                          {breakdown.RarityBough,7:F2}");
+            report.AppendLine($"  Rarity (5 ranks)                                 {breakdown.RarityBough,7:F2}");
             report.AppendLine($"  TOTAL RarityElevationPct                         {request.RarityElevationPct,7:F2}");
             _output.WriteLine(report.ToString());
 
             Assert.Equal(28.78, breakdown.Stats, 2);          // 1.2*sqrt(300) = 20.78, + 8 Scavenger
             Assert.Equal(8.0, breakdown.Inheritance, 2);
-            Assert.Equal(10.0, breakdown.FortuneRoot, 2);
+            Assert.Equal(7.5, breakdown.FortuneRoot, 2);
             Assert.Equal(0.0, breakdown.GuildDropRate, 2);
             Assert.Equal(6.0, breakdown.FortuneAptitude, 2);
-            Assert.Equal(52.78, breakdown.Total, 2);           // 60.78 before task 26 option B
+            Assert.Equal(50.28, breakdown.Total, 2);           // 52.78 on the old tree, 60.78 before task 26 option B
             Assert.Equal(6.06, breakdown.StatsElevation, 2);   // 0.35*sqrt(300)
-            Assert.Equal(8.0, breakdown.RarityBough, 2);       // elevation since option B, was luck
-            Assert.Equal(14.06, request.RarityElevationPct, 2); // 6.06 before option B
+            Assert.Equal(7.5, breakdown.RarityBough, 2);       // elevation since option B, was luck
+            Assert.Equal(13.56, request.RarityElevationPct, 2); // 14.06 on the old tree, 6.06 before option B
 
             // The breakdown and the drop path cannot drift apart.
             Assert.Equal(breakdown.Total, request.LootLuckPct);

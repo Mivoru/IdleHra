@@ -56,7 +56,12 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "double strike r3", 3, r3, new[] { WarTreeRegistry.DoubleStrike }, new byte[] { 3 } };
             // Riposte answers the block's share of each connecting swing.
             yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
-            yield return new object[] { "ruin r3", 3, r3, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 } };
+            // Ruin is a TRADE: x1.6 every 8th hit against attack speed counting
+            // 75%. On this geared region-5 character, whose gear is fast, it
+            // costs kills (measured 94 against 97), so the row proves the tick
+            // reads it either way rather than that it pays. At region 3 its
+            // gain (+1.7%) sat inside one hour's noise and the row flickered.
+            yield return new object[] { "ruin r5", 5, r5, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 }, true };
             yield return new object[] { "perfect sequence r3", 3, r3, new[] { WarTreeRegistry.PerfectSequence }, new byte[] { 1 } };
             // The bridges (owner, 2026-10-30). Character() beats every boss
             // behind the monster, so region 3 is the highest unlocked one.
@@ -75,18 +80,19 @@ namespace FolkIdle.Server.Tests
         {
             int boss = RaceUnlockRegistry.GetRegionBossMonsterId(2);
             var war = War(4, boss, (WarTreeRegistry.Bossbreaker, 5));
-            var today = OfflineCombatParityTests.Character(4, geared: true, boss, food: 20_000);
-            today.Skill_FirstBlood = (byte)SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood);
+            // Today's First Blood at its cap, the relief the walls were solved against.
+            float firstBlood = SkillTreeRegistry.GetBonusPercent(
+                SkillTreeRegistry.BoughFirstBlood, SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood)) / 100f;
             var bare = War(4, boss);
             WarTreeRegistry.TestValueScale.Value = 1; // exact values: the real numbers
 
             Assert.True(BossFirstClearRules.IsFirstClearPending(war.DefeatedRegionBossMask, boss));
             long warHp = BossFirstClearRules.MaxHpFor(war.DefeatedRegionBossMask, boss, BossFirstClearRules.ReliefFor(in war));
-            long todayHp = BossFirstClearRules.MaxHpFor(today.DefeatedRegionBossMask, boss, BossFirstClearRules.ReliefFor(in today));
+            long todayHp = BossFirstClearRules.MaxHpFor(war.DefeatedRegionBossMask, boss, firstBlood);
             long bareHp = BossFirstClearRules.MaxHpFor(bare.DefeatedRegionBossMask, boss, BossFirstClearRules.ReliefFor(in bare));
             Assert.Equal(todayHp, warHp);
             Assert.True(warHp < bareHp);
-            Assert.Equal(todayHp, BossFirstClearRules.MaxHpFor(today.DefeatedRegionBossMask, boss, today.Skill_FirstBlood));
+            Assert.Equal(firstBlood, BossFirstClearRules.MaxRelief, 4);
         }
 
         /// <summary>
@@ -134,7 +140,7 @@ namespace FolkIdle.Server.Tests
 
         [Theory]
         [MemberData(nameof(Rows))]
-        public void A_war_mechanic_pays_the_same_away_as_watched(string row, int region, int monsterId, int[] ids, byte[] ranks)
+        public void A_war_mechanic_pays_the_same_away_as_watched(string row, int region, int monsterId, int[] ids, byte[] ranks, bool eitherWay = false)
         {
             var set = new (int, byte)[ids.Length];
             for (int i = 0; i < ids.Length; i++) set[i] = (ids[i], ranks[i]);
@@ -148,7 +154,10 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"{row,-22} kills offline {offline.Kills:F0} / live {live.Kills:F0}, live without it {liveWithout.Kills:F0}");
 
             Assert.Equal(0.0, live.DeathShare);
-            Assert.True(live.Kills > liveWithout.Kills * 1.01, $"{row}: the live tick does not use it ({live.Kills:F0} vs {liveWithout.Kills:F0} without)");
+            bool moved = eitherWay
+                ? Math.Abs(live.Kills - liveWithout.Kills) > liveWithout.Kills * 0.01
+                : live.Kills > liveWithout.Kills * 1.01;
+            Assert.True(moved, $"{row}: the live tick does not use it ({live.Kills:F0} vs {liveWithout.Kills:F0} without)");
             double slack = Math.Max(live.Kills * 0.05, 1.0);
             Assert.True(Math.Abs(offline.Kills - live.Kills) <= slack, $"{row}: offline {offline.Kills:F1}, live {live.Kills:F1}");
         }

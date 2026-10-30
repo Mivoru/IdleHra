@@ -91,12 +91,12 @@ namespace FolkIdle.Server.Tests
                 InventorySpaceRemaining = int.MaxValue,
                 PlayerHp = 100_000_000,
                 TownHallLevel = 1,
-                Skill_Plenty = 3,
                 CachedCodexYieldMultiplier = 2.0f,
                 CachedCodexDamageMultiplier = 1.0f,
                 Food1_ItemId = ContentRegistry.RawFishItemIds.First(),
                 Food1_Count = 1_000_000,
             };
+            payload = TestTree.With(payload, (WarTreeRegistry.Plenty, 5));
             RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId: 1, levelsGained: 96);
             payload.CachedAffixTotals.FlatAttack = 50_000;
             payload.CachedAffixTotals.FlatDefense = 50_000;

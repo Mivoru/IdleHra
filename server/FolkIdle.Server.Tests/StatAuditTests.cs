@@ -123,19 +123,27 @@ namespace FolkIdle.Server.Tests
         private static readonly Dictionary<string, string> NotInProbe = new()
         {
             ["inheritance:LootLuck"] = "CombatLootEngine's drop roll (Inheritance term), not CombatStats.LootLuckPct",
-            ["skill:0"] = "Fortune - loot rarity, CombatLootEngine",
-            ["skill:1"] = "Giantslayer - world boss strike damage, WorldBossStrike",
-            ["skill:5"] = "Plenty - material quantity per drop, CombatLootEngine",
-            ["skill:6"] = "Rarity - rarity elevation chance, CombatLootEngine",
-            ["skill:7"] = "First Blood - first-clear boss HP, BossFirstClearRules",
-            ["skill:8"] = "Trophy Hunter - boss gold, CombatGoldReward boss path",
-            ["skill:11"] = "Bloodthirst - damage dealt as healing, RunCombatTick / HuntingProjection",
-            ["skill:13"] = "Craft - craft time, SimulationEngine.CraftTicksFor",
-            ["skill:15"] = "Golden Fleece - every Nth kill, ApplyKillProgression",
-            ["skill:16"] = "Thunderer - opening blow, PendingSkillDamageMultiplier",
-            ["skill:17"] = "Double Strike - a crit lands twice, RunCombatTick / PlayerSwing",
-            ["skill:18"] = "Last Stand - survives one killing blow an hour, ApplyCombatDeath",
-            ["skill:19"] = "Scholar - offline rate, ScholarRate",
+            // The War half's nodes the probe cannot see; each is proven where it
+            // lands by WarMechanicParityTests.
+            ["war:scavenger"] = "loot luck, LootLuckBreakdown (WarMechanicParityTests.Fortune_loot_nodes_reach_the_drop_request)",
+            ["war:trophy_hunter"] = "region boss gold, CombatGoldReward boss path",
+            ["war:plenty"] = "material quantity per drop, CombatLootDropRequest",
+            ["war:rarity"] = "rarity elevation chance, LootLuckBreakdown",
+            ["war:codex_scholar"] = "the codex damage bonus, which the probe holds at x1 (WarMechanicParityTests)",
+            ["war:golden_fleece"] = "every Nth kill, ApplyKillProgression",
+            ["war:breach"] = "First Strike - a monster at full health, RunCombatTick / FightSetup",
+            ["war:crushing_blow"] = "a hit doubled, RunCombatTick / HuntingProjection.Landed",
+            ["war:executioner"] = "a monster below 35%, RunCombatTick / FightSetup",
+            ["war:bossbreaker"] = "first-clear boss HP, BossFirstClearRules.ReliefFor",
+            ["war:thunderer"] = "opening blow on a boss, PendingSkillDamageMultiplier",
+            ["war:echo"] = "a crit repeats, RunCombatTick / PlayerSwing",
+            ["war:steady_hand"] = "accuracy, which the probe does not read (CombatDamageModel.HitChance)",
+            ["war:double_strike"] = "a crit lands twice, RunCombatTick / PlayerSwing",
+            ["war:perfect_sequence"] = "every Nth swing a crit, RunCombatTick / PlayerSwing",
+            ["war:bloodthirst"] = "damage dealt as healing, RunCombatTick / HuntingProjection",
+            ["war:riposte"] = "a dodged or blocked swing answers, RunCombatTick / PlayerSwing",
+            ["war:last_stand"] = "survives one killing blow an hour, ApplyCombatDeath",
+            ["war:know_your_prey"] = "damage and gold on the frontier region, RunCombatTick / Landed / CombatGoldReward",
             ["trait:fae_touched"] = "rarity elevation, CombatLootEngine",
             ["pet:WorldBossDamage"] = "world boss strike, ServerStrikeDamage",
             ["pet:DropChance"] = "drop chance, CombatLootEngine",
@@ -195,13 +203,13 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Every_skill_tree_node_moves_the_probe()
         {
+            // The War half since rework slice 2.5; every node at its maximum.
             var failures = new List<string>();
             var before = Probe(Baseline());
-            for (int node = 0; node < SkillTreeRegistry.NodeCount; node++)
+            foreach (var node in WarTreeRegistry.All())
             {
-                var p = Baseline();
-                SimulationEngine.SetSkillTreeLevel(ref p, node, (byte)SkillTreeRegistry.MaxLevelOf(node));
-                AssertMovesOrIsListed($"skill:{node}", before, Probe(p), failures);
+                var p = TestTree.With(Baseline(), (node.Id, (byte)node.MaxLevel));
+                AssertMovesOrIsListed($"war:{node.Icon}", before, Probe(p), failures);
             }
             Assert.True(failures.Count == 0, string.Join("\n", failures));
         }

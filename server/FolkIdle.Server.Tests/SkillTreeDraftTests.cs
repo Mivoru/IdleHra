@@ -119,9 +119,9 @@ namespace FolkIdle.Server.Tests
         {
             var live = new TickStatePayload();
             var copy = live;
-            FolkIdle.Server.Domain.Combat.SimulationEngine.SetSkillTreeLevel(ref copy, SkillTreeRegistry.CrownDoubleStrike, 1);
-            Assert.Equal(0, live.Skill_DoubleStrike);
-            Assert.Equal(1, copy.Skill_DoubleStrike);
+            FolkIdle.Server.Domain.Combat.SimulationEngine.SetSkillTreeLevel(ref copy, WarTreeRegistry.DoubleStrike, 1);
+            Assert.Equal(0, live.SkillRanks[WarTreeRegistry.DoubleStrike]);
+            Assert.Equal(1, copy.SkillRanks[WarTreeRegistry.DoubleStrike]);
         }
     }
 }

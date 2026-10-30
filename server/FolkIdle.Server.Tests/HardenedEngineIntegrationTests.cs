@@ -6723,13 +6723,13 @@ namespace FolkIdle.Server.Tests
 
             // Every source below was missing from the offline sum. Each must
             // raise the figure on its own.
-            var withRoot = new TickStatePayload { PlayerId = 1L, Skill_LootRarity = 10 };
-            var withBough = new TickStatePayload { PlayerId = 1L, Skill_Rarity = 8 };
+            var withRoot = TestTree.With(new TickStatePayload { PlayerId = 1L }, (WarTreeRegistry.Scavenger, 5));
+            var withBough = TestTree.With(new TickStatePayload { PlayerId = 1L }, (WarTreeRegistry.Rarity, 5));
             var withFortune = new TickStatePayload { PlayerId = 1L, Aptitude_Fortune = 50 };
 
             foreach (var (name, payload) in new[]
             {
-                ("Fortune root (loot rarity skill)", withRoot),
+                ("Scavenger (loot luck skill)", withRoot),
                 ("Fortune breeding aptitude", withFortune),
             })
             {
@@ -6740,20 +6740,20 @@ namespace FolkIdle.Server.Tests
                     $"{name} does not reach LootLuckPct - it has fallen out of the sum, which is the offline-drops bug again");
             }
 
-            // Modul: the Rarity bough is ELEVATION since task 26 (option B),
-            // which is what its card always said. It must reach the elevation
-            // chance, +1% a level, and must no longer be counted as luck.
+            // Modul: Rarity is ELEVATION since task 26 (option B), which is
+            // what its card always said. It must reach the elevation chance,
+            // at its own value, and must not be counted as luck.
             var boughRequest = CombatLootDropRequest.Build(
                 in withBough, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
             var bareRequest = CombatLootDropRequest.Build(
                 in bare, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
             Assert.Equal(baseline, boughRequest.LootLuckPct, 3);
-            Assert.Equal(bareRequest.RarityElevationPct + 8f, boughRequest.RarityElevationPct, 3);
+            Assert.Equal(bareRequest.RarityElevationPct + TestTree.Value(WarTreeRegistry.Rarity, 5), boughRequest.RarityElevationPct, 3);
 
             // Plenty is a DIFFERENT question - how much of a material falls,
             // not what falls - and must not be folded into loot luck. An edit
             // once did exactly that.
-            var withPlenty = new TickStatePayload { PlayerId = 1L, Skill_Plenty = 8 };
+            var withPlenty = TestTree.With(new TickStatePayload { PlayerId = 1L }, (WarTreeRegistry.Plenty, 5));
             var plentyRequest = CombatLootDropRequest.Build(
                 in withPlenty, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
             Assert.Equal(baseline, plentyRequest.LootLuckPct, 3);
@@ -6814,10 +6814,9 @@ namespace FolkIdle.Server.Tests
                 Food1_ItemId = 1,
                 Food1_Count = 1_000_000,
                 // The bonuses offline used to discard.
-                Skill_LootRarity = 10,
-                Skill_Rarity = 8,
                 Aptitude_Fortune = 50,
             };
+            payload = TestTree.With(payload, (WarTreeRegistry.Scavenger, 5), (WarTreeRegistry.Rarity, 5));
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {

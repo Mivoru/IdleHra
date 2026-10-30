@@ -19,6 +19,28 @@ do next.
 
 ---
 
+# 2026-10-30 (later) - The War skill tree is live for everyone
+
+**Read `docs/design/SKILL_TREE_HANDOFF.md` sections 4-7 first.** The owner
+was away and asked for the rest of the rework to be finished alone. Every
+decision and its reason is written there.
+
+- **#225 bridges, #226 tuning (slice 2.4), #227 switch (slice 2.5)**, all
+  deployed. Production is 1.0.1352 / client 1.39.0.
+- **Tuning:** the War half's best build is 0.98-1.04x today's at every band.
+  Bossbreaker became the War half's First Blood, so the walls did not move.
+- **Switch:** the old tree was refunded on load. Four production players got
+  97/95/3/104 points back and a free respec, and the points held through the
+  flush. A respec can now be bought for gold (points x level x 15).
+- **Verified:** exercise 388/388, and a real "CRUSH!" callout in a fight.
+- **Cleanup PR** (`claude/skill-tree-2-5-cleanup`): deletes the old tree's
+  readers and its client mirror, and fixes the Character roster, which
+  showed no War stats. Craft, Harvest and Scholar stay at 0 for the Hearth
+  half to take over.
+- **Open for the owner:** see the handoff, section 7a.
+
+---
+
 # 2026-10-30 - Skill tree rework, phases 1 to 2.3e
 
 **Read `docs/design/SKILL_TREE_HANDOFF.md` first.** It holds the state, the
