@@ -243,6 +243,22 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// A2: a region's step 10 cleared gives +2% damage against its monsters,
+        /// read by the live swing and the away projection alike.
+        /// </summary>
+        [Fact]
+        public void Ascension_mastery_pays_the_same_away_as_watched()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3);
+            with.BossAscensionPacked = BossAscensionRegistry.WithHighestStep(0, 3, BossAscensionRegistry.MaxStep);
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            _output.WriteLine($"ascension mastery r3 kills offline {offline.Kills:F0} / live {live.Kills:F0}");
+            Assert.True(Math.Abs(offline.Kills - live.Kills) <= Math.Max(live.Kills * 0.05, 1.0), $"offline {offline.Kills:F1}, live {live.Kills:F1}");
+        }
+
+        /// <summary>
         /// Bloodthirst heals rather than kills, so it shows in the larder: the
         /// same hour eats fewer fish with it, live and away alike.
         /// </summary>

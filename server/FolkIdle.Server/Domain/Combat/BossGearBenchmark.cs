@@ -248,14 +248,29 @@ namespace FolkIdle.Server.Domain.Combat
             double damageTaken = 0.0;
             int bitesEaten = 0;
             double minHpFraction = 1.0;
+            // A2's mechanics, as the live tick runs them: Enrage below 30% of the
+            // bar, and a 3 s Ward each time the boss loses a quarter of it.
+            int wardQuarters = 0;
+            int wardUntilTick = 0;
+            int wardTicks = AscensionModifiers.WardTenths * 100 / TickMs;
 
             for (int tick = 1; tick <= MaxTicks; tick++)
             {
                 playerSwingAccumulator += TickMs;
-                if (playerSwingAccumulator >= playerIntervalMs)
+                // A swing during a ward still happens - it just lands on the ward.
+                if (playerSwingAccumulator >= playerIntervalMs && modifiers.Ward && tick < wardUntilTick)
+                {
+                    playerSwingAccumulator -= playerIntervalMs;
+                }
+                else if (playerSwingAccumulator >= playerIntervalMs)
                 {
                     playerSwingAccumulator -= playerIntervalMs;
                     remainingBossMilliHp -= playerMilliDamagePerSwing;
+                    if (modifiers.Ward && remainingBossMilliHp > 0)
+                    {
+                        int lost = (int)Math.Min(3.0, Math.Floor((bossMilliHp - remainingBossMilliHp) * 4.0 / bossMilliHp));
+                        if (lost > wardQuarters) { wardQuarters = lost; wardUntilTick = tick + wardTicks; }
+                    }
 
                     // Lifesteal heals on the damage DEALT, as the tick does.
                     if (stats.LifestealPct > 0f)
@@ -270,8 +285,11 @@ namespace FolkIdle.Server.Domain.Combat
                 if (bossSwingAccumulator >= bossIntervalMs)
                 {
                     bossSwingAccumulator -= bossIntervalMs;
-                    playerMilliHp -= bossMilliDamagePerSwing;
-                    damageTaken += bossMilliDamagePerSwing;
+                    double hit = modifiers.Enrage && remainingBossMilliHp * 100.0 < bossMilliHp * AscensionModifiers.EnrageBelowPct
+                        ? bossMilliDamagePerSwing * AscensionModifiers.EnrageAttackPct / 100.0
+                        : bossMilliDamagePerSwing;
+                    playerMilliHp -= hit;
+                    damageTaken += hit;
                     minHpFraction = Math.Min(minHpFraction, playerMilliHp / playerMaxMilliHp);
                 }
 

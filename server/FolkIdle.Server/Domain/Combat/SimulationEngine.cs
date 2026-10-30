@@ -5121,6 +5121,9 @@ namespace FolkIdle.Server.Domain.Combat
                     // before this hit lands.
                     int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
                     if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
+                    // A2: step 10 cleared on this region's boss - +2% against its monsters.
+                    int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, activeMonster.RegionTier);
+                    if (mastery > 0) netDamage += (int)((long)netDamage * mastery / 1000L);
                     if (warHit.ExecuteTenthsPct > 0
                         && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
                         netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
@@ -5142,7 +5145,28 @@ namespace FolkIdle.Server.Domain.Combat
                         netDamage = (int)(netDamage * (1f + (combatStats.SetFireDamageMultiplierPct / 100f)));
                     }
 
+                    // A2 Ward: a warded boss takes nothing; each quarter of its bar
+                    // it loses raises a new ward for 3 s of the fight clock.
+                    bool warded = false;
+                    if (TryGetAscensionModifiers(in payload, out var wardMods) && wardMods.Ward)
+                    {
+                        long spawn = SpawnHpFor(in payload);
+                        if (payload.CurrentMonsterHp >= spawn) { payload.AscensionWardQuarters = 0; payload.AscensionWardUntilTenths = 0; }
+                        if (payload.CombatTargetTickAccumulator < payload.AscensionWardUntilTenths) { netDamage = 0; warded = true; }
+                    }
+
                     payload.CurrentMonsterHp -= netDamage;
+
+                    if (!warded && wardMods.Ward && payload.CurrentMonsterHp > 0)
+                    {
+                        long spawn = SpawnHpFor(in payload);
+                        int quartersLost = (int)Math.Min(3L, (spawn - payload.CurrentMonsterHp) * 4L / Math.Max(1L, spawn));
+                        if (quartersLost > payload.AscensionWardQuarters)
+                        {
+                            payload.AscensionWardQuarters = (byte)quartersLost;
+                            payload.AscensionWardUntilTenths = payload.CombatTargetTickAccumulator + AscensionModifiers.WardTenths;
+                        }
+                    }
 
                     // Modul: Bloodthirst, the Cruelty bough - a share of the
                     // damage dealt comes back as health.
@@ -5363,6 +5387,10 @@ namespace FolkIdle.Server.Domain.Combat
                     else if (TryGetAscensionModifiers(in payload, out var ascensionMods))
                     {
                         monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, in ascensionMods);
+                        // A2 Enrage: below 30% of its bar the boss hits a third harder.
+                        if (ascensionMods.Enrage
+                            && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * AscensionModifiers.EnrageBelowPct)
+                            monsterAttackPower = monsterAttackPower * AscensionModifiers.EnrageAttackPct / 100L;
                     }
                     float blockStrengthFraction = PlayerBlockFraction(in combatStats);
                     long finalDamage = LandedMonsterMilliDamage(

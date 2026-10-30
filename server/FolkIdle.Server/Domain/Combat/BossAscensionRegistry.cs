@@ -33,7 +33,18 @@ namespace FolkIdle.Server.Domain.Combat
     public readonly record struct AscensionModifiers(
         int AttackPct, int BossHpPct, int TimeLimitPctOfSwift)
     {
-        public bool IsNone => AttackPct == 0 && BossHpPct == 0 && TimeLimitPctOfSwift == 0;
+        /// <summary>Steps 4+ (A2, 2026-10-30): below EnrageBelowPct of its health the boss hits a third harder.</summary>
+        public bool Enrage { get; init; }
+
+        /// <summary>Steps 7+ (A2): each quarter of health it loses, the boss is warded for WardTenths.</summary>
+        public bool Ward { get; init; }
+
+        public bool IsNone => AttackPct == 0 && BossHpPct == 0 && TimeLimitPctOfSwift == 0 && !Enrage && !Ward;
+
+        public const int EnrageBelowPct = 30;
+        public const int EnrageAttackPct = 133;
+        /// <summary>The ward's length, in the fight clock's tenths of a second (3 s).</summary>
+        public const int WardTenths = 30;
     }
 
     /// <summary>
@@ -64,6 +75,17 @@ namespace FolkIdle.Server.Domain.Combat
     public static class BossAscensionRegistry
     {
         public const int MaxStep = 10;
+
+        /// <summary>
+        /// A2 (owner, 2026-10-30): clearing step 10 of a region's boss gives the
+        /// account +2% damage against that region's monsters, for good - at most
+        /// +10% across all five, under one War node so it never outweighs the tree.
+        /// </summary>
+        public const int MasteryTenthsPct = 20;
+
+        /// <summary>The step-10 mastery bonus, in tenths of a percent, against a monster of <paramref name="monsterRegion"/>.</summary>
+        public static int MasteryTenthsPctFor(int bossAscensionPacked, int monsterRegion)
+            => IsValidRegion(monsterRegion) && HighestStepOf(bossAscensionPacked, monsterRegion) >= MaxStep ? MasteryTenthsPct : 0;
 
         public static int FirstRegion => RaceUnlockRegistry.FirstRegion;
         public static int LastRegion => RaceUnlockRegistry.LastRegion;
@@ -269,7 +291,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // A later time limit REPLACES an earlier one; it only ever tightens.
                 if (d.Kind == AscensionModifierKind.TimeLimitPctOfSwift) limit = limit == 0 ? d.Value : Math.Min(limit, d.Value);
             }
-            return new AscensionModifiers(atkPct, hpPct, limit);
+            // A2 (owner, 2026-10-30): mechanics by band - Enrage from step 4,
+            // Ward from step 7, both at step 10.
+            return new AscensionModifiers(atkPct, hpPct, limit) { Enrage = s >= 4, Ward = s >= 7 };
         }
 
         /// <summary>"x2.1" - a total percent over base, said as a multiplier.</summary>
@@ -290,6 +314,8 @@ namespace FolkIdle.Server.Domain.Combat
         {
             var m = ModifiersFor(region, step);
             string strength = $"The boss has {Times(m.BossHpPct)} health and {Times(m.AttackPct)} attack.";
+            if (m.Enrage && m.Ward) strength += " It enrages when hurt and wards itself at every quarter of its health.";
+            else if (m.Enrage) strength += $" Below {AscensionModifiers.EnrageBelowPct}% health it enrages and hits a third harder.";
             var def = Step(step);
             if (def.Kind != AscensionModifierKind.TimeLimitPctOfSwift) return strength;
             string clock = step == 2
@@ -309,6 +335,9 @@ namespace FolkIdle.Server.Domain.Combat
             if (m.AttackPct > 0) lines.Add($"Boss attack {Times(m.AttackPct)}");
             if (m.BossHpPct > 0) lines.Add($"Boss health {Times(m.BossHpPct)}");
             if (m.TimeLimitPctOfSwift > 0) lines.Add($"Kill it within {TimeLimitSecondsFor(region, step)} s");
+            if (m.Enrage) lines.Add($"Enrage: below {AscensionModifiers.EnrageBelowPct}% health it hits a third harder");
+            if (m.Ward) lines.Add($"Ward: at each quarter of its health it takes no damage for {AscensionModifiers.WardTenths / 10} s");
+            if (step >= MaxStep) lines.Add($"Clearing it: +{MasteryTenthsPct / 10}% damage against this region's monsters, for good");
             return lines.ToArray();
         }
 
