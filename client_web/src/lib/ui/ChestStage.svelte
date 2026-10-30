@@ -138,6 +138,15 @@
 </script>
 
 <div class="stage" data-testid="chest-stage" data-rarity={r} data-open={showOpen}>
+  {#if !reduceMotion()}
+    <!-- Ambience: dust in a shaft of light, the owner's Veo loop (5 s, its end
+         cross-faded into its start so the loop has no seam). Light only on
+         black, drawn with `screen`, behind the chest. -->
+    <video class="dust" autoplay muted loop playsinline aria-hidden="true">
+      <source src="/fx/vault-dust.webm" type="video/webm" />
+      <source src="/fx/vault-dust.mp4" type="video/mp4" />
+    </video>
+  {/if}
   <canvas bind:this={canvas} class="light" aria-hidden="true"></canvas>
   <div class="chest" bind:this={chestEl}>
     <img src={showOpen ? stills.open : stills.closed} alt={showOpen ? 'An open chest' : 'A closed chest'} draggable="false" />
@@ -165,6 +174,17 @@
     display: grid;
     place-items: end center;
     isolation: isolate;
+  }
+  .dust {
+    position: absolute;
+    inset: -20% -45% 0;
+    width: 190%;
+    height: 120%;
+    object-fit: cover;
+    z-index: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.85;
   }
   .light {
     position: absolute;
