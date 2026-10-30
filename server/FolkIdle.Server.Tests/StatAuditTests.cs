@@ -162,6 +162,8 @@ namespace FolkIdle.Server.Tests
             ["hearth:strong_blood"] = "the up-mutation chance, BreedingAptitudes.Mutate",
             ["hearth:patron"] = "Great Works progress per material, GreatWorksEngine contribute (GreatWorksPatron)",
             ["hearth:nursery"] = "the breeding cooldown, BreedingEngine.CooldownSecondsFor",
+            ["hearth:mentor"] = "XP while a child works in a slot; the probe's baseline has no child (HearthTreeRegistryTests)",
+            ["hearth:bloodline_memory"] = "a +1 chance on each bred aptitude, BreedingAptitudes.Breed",
             ["hearth:deep_vein"] = "every 20th harvest of wood or ore, RunGatheringTick / CalculateGatheringProjection (HearthTreeRegistryTests)",
             ["hearth:moonlit_catch"] = "every 20th catch of fish or herbs, RunGatheringTick / CalculateGatheringProjection (HearthTreeRegistryTests)",
         };

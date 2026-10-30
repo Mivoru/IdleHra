@@ -4132,6 +4132,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// The XP multiplier a live kill pays at, in percent, before the
         /// global-event and mentorship-penalty terms ProcessMonsterDeath adds.
         /// </summary>
+        /// <summary>Whether any slot holds a character still in childhood (Mentor's condition).</summary>
+        internal static bool AChildWorksInASlot(in TickStatePayload payload)
+            => (payload.Slot1_CharacterId != Guid.Empty && payload.Slot1_AgePhase == AgePhaseCurve.Child)
+               || (payload.Slot2_CharacterId != Guid.Empty && payload.Slot2_AgePhase == AgePhaseCurve.Child)
+               || (payload.Slot3_CharacterId != Guid.Empty && payload.Slot3_AgePhase == AgePhaseCurve.Child);
+
         internal static int LiveKillXpMultiplierPct(in TickStatePayload payload, int localXpMultiplier)
         {
             int finalXpMultiplier = localXpMultiplier;
@@ -4145,7 +4151,10 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             // The War half's Quick Study, in the same additive layer.
             finalXpMultiplier += WarTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
-            finalXpMultiplier += HearthTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
+            var hearthXp = HearthTreeRegistry.Resolve(in payload);
+            finalXpMultiplier += hearthXp.XpTenthsPct / 10;
+            if (hearthXp.MentorXpTenthsPct > 0 && AChildWorksInASlot(in payload))
+                finalXpMultiplier += hearthXp.MentorXpTenthsPct / 10;
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
             // The character's pet (PetRegistry), on the active slot's totals.
             finalXpMultiplier += payload.CachedAffixTotals.XpTenthsPct / 10;

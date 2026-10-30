@@ -234,6 +234,20 @@ namespace FolkIdle.Server.Engine
         /// <summary>What an epic mutation adds to every aptitude.</summary>
         public const int EpicBonus = 1;
 
+        /// <summary>
+        /// Bloodline Memory (Hearth keystone): each aptitude's chance of +1.
+        /// </summary>
+        /// <remarks>
+        /// Modul: MEASURED, NOT THE DESIGN'S +10% (owner, 2026-10-30). 40,000
+        /// generations at Grounds 12 on the selected aptitude: today +0.33 a
+        /// generation (about 92 generations from 20 to 50); "+10% of the parents'
+        /// average" was +2.3 to +4.3 (ten generations, breeding solved); a flat +1
+        /// was +1.32; a 25% chance of +1 is +0.57, about 1.75x - a strong keystone
+        /// that still leaves a climb. The bloodline ceiling caps it like
+        /// everything else.
+        /// </remarks>
+        public const int BloodlineMemoryChancePercent = 25;
+
         // --- the whole child ---------------------------------------------------
 
         /// <summary>
@@ -253,7 +267,8 @@ namespace FolkIdle.Server.Engine
             int groundsLevel,
             Random rng,
             int ceiling = MaxValue,
-            int upBonusPercent = 0)
+            int upBonusPercent = 0,
+            bool bloodlineMemory = false)
         {
             if (father is null || father.Length < Count) throw new ArgumentException("father vector", nameof(father));
             if (mother is null || mother.Length < Count) throw new ArgumentException("mother vector", nameof(mother));
@@ -281,6 +296,7 @@ namespace FolkIdle.Server.Engine
 
                 child[i] = Mutate(inherited, isInbred, rng, groundsLevel, upBonusPercent);
                 if (isEpic) child[i] = child[i] + EpicBonus;
+                if (bloodlineMemory && rng.Next(100) < BloodlineMemoryChancePercent) child[i] = child[i] + 1;
                 child[i] = Math.Min(child[i], ChildLimit(father[i], mother[i], ceiling));
             }
             return child;

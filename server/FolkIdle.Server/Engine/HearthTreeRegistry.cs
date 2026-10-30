@@ -160,7 +160,12 @@ namespace FolkIdle.Server.Engine
             // minutes - a node worth nothing. It cuts the breeding cooldown
             // instead, which is the Kin column's real loop.
             Add(Nursery, "Nursery", "nursery", ColumnKin, 3, 0, "Minor", 5, 1, HearthEffect.BreedingCooldownPct, 50, "-{0}% breeding cooldown");
-            Add(Mentor, "Mentor", "mentor", ColumnKin, 3, 1, "Notable", 3, 2, HearthEffect.MentorXpPct, 0, "+{0}% XP for characters below your main's level", ranks: new[] { 50, 100, 150 });
+            // Modul: NOT "CHARACTERS BELOW YOUR MAIN'S LEVEL" (2026-10-30). Level
+            // and XP are the account's - the slot swap does not move them - so
+            // that line could never pay. It pays while a child is growing up in
+            // a slot (children age only on their own work), which is the moment
+            // the Kin column is about.
+            Add(Mentor, "Mentor", "mentor", ColumnKin, 3, 1, "Notable", 3, 2, HearthEffect.MentorXpPct, 0, "+{0}% XP while a child works in one of your slots", ranks: new[] { 50, 100, 150 });
             Add(BloodlineMemory, "Bloodline Memory", "bloodline_memory", ColumnKin, 4, -1, "Keystone", 1, 5, HearthEffect.BloodlineMemory, 1, "A newborn inherits +10% of each parent's aptitude");
 
             return t;
@@ -180,6 +185,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
             HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct, HearthEffect.SalvageGoldPct,
             HearthEffect.BreedingCostPct, HearthEffect.AptitudeMutationPct, HearthEffect.GreatWorksPct, HearthEffect.BreedingCooldownPct,
+            HearthEffect.MentorXpPct, HearthEffect.BloodlineMemory,
         };
 
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
@@ -291,6 +297,7 @@ namespace FolkIdle.Server.Engine
                     case HearthEffect.XpPct: e.XpTenthsPct += v; break;
                     case HearthEffect.CraftTimePct: e.CraftTimeTenthsPct += v; break;
                     case HearthEffect.SalvageGoldPct: e.SalvageGoldTenthsPct += v; break;
+                    case HearthEffect.MentorXpPct: e.MentorXpTenthsPct += v; break;
                     case HearthEffect.DeepVein: e.DeepVein = true; break;
                     case HearthEffect.MoonlitCatch: e.MoonlitCatch = true; break;
                 }
@@ -363,6 +370,8 @@ namespace FolkIdle.Server.Engine
         public int CraftTimeTenthsPct;
         /// <summary>Extra auto-salvage gold, in tenths of a percent (Salvager).</summary>
         public int SalvageGoldTenthsPct;
+        /// <summary>XP while a child works in a slot, in tenths of a percent (Mentor).</summary>
+        public int MentorXpTenthsPct;
         /// <summary>Keystones: every KeystoneEvery-th harvest of wood or ore (Deep Vein) or fish or herbs (Moonlit Catch) adds a roll of the node's rarest entry.</summary>
         public bool DeepVein;
         public bool MoonlitCatch;

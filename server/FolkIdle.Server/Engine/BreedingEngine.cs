@@ -220,6 +220,7 @@ namespace FolkIdle.Server.Engine
 
                 int strongBlood = HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.StrongBlood,
                     await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.StrongBlood)) / 10;
+                bool bloodlineMemory = await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.BloodlineMemory) > 0;
                 int[] childAptitudes = BreedingAptitudes.Breed(
                     pLineage.AptitudeVector(),
                     mLineage.AptitudeVector(),
@@ -229,7 +230,8 @@ namespace FolkIdle.Server.Engine
                     breedingLevel,
                     Random.Shared,
                     ceiling,
-                    strongBlood);
+                    strongBlood,
+                    bloodlineMemory);
 
                 // Modul: TRAITS, from the same pairing and the same dice - see
                 // BreedingTraits. A related pair risks a visible flaw here, which
@@ -459,9 +461,10 @@ namespace FolkIdle.Server.Engine
 
                 int strongBlood = HearthTreeRegistry.ValueAtLevel(HearthTreeRegistry.StrongBlood,
                     await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.StrongBlood)) / 10;
+                bool bloodlineMemory = await HearthTreeRegistry.StoredLevelAsync(dbContext, playerId, HearthTreeRegistry.BloodlineMemory) > 0;
                 int[] childAptitudes = heroIsFather
-                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling, strongBlood)
-                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling, strongBlood);
+                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling, strongBlood, bloodlineMemory)
+                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling, strongBlood, bloodlineMemory);
 
                 long childTraits = heroIsFather
                     ? BreedingTraits.Inherit(heroLineage.TraitMask, newcomer.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared)

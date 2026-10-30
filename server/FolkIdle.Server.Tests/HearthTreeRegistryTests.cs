@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Domain.Shared;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -96,6 +97,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
                 HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
                 HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood, HearthTreeRegistry.Patron, HearthTreeRegistry.Nursery,
+                HearthTreeRegistry.Mentor, HearthTreeRegistry.BloodlineMemory,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -205,6 +207,36 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(250, full);
             Assert.Equal(3600, BreedingEngine.CooldownSecondsFor(0));
             Assert.Equal(2700, BreedingEngine.CooldownSecondsFor(full));
+        }
+
+        [Fact]
+        public void MentorPaysOnlyWhileAChildWorksInASlot()
+        {
+            var adult = Maxed(HearthTreeRegistry.Mentor);
+            adult.Slot1_CharacterId = Guid.NewGuid();
+            adult.Slot1_AgePhase = AgePhaseCurve.Adult;
+            var withChild = adult;
+            withChild.Slot2_CharacterId = Guid.NewGuid();
+            withChild.Slot2_AgePhase = AgePhaseCurve.Child;
+            int without = SimulationEngine.LiveKillXpMultiplierPct(in adult, 100);
+            int with = SimulationEngine.LiveKillXpMultiplierPct(in withChild, 100);
+            Assert.Equal(15, with - without);
+        }
+
+        [Fact]
+        public void BloodlineMemoryAddsAQuarterChanceOfPlusOneToEveryAptitude()
+        {
+            var rng = new Random(7);
+            long plain = 0, memory = 0;
+            const int N = 20000;
+            for (int i = 0; i < N; i++)
+            {
+                var p = new[] { 20, 20, 20, 20 };
+                plain += BreedingAptitudes.Breed(p, p, false, false, 0, 0, new Random(i), 50, 0, false).Sum();
+                memory += BreedingAptitudes.Breed(p, p, false, false, 0, 0, new Random(i), 50, 0, true).Sum();
+            }
+            double perAptitude = (memory - plain) / (double)N / 4;
+            Assert.InRange(perAptitude, 0.22, 0.28);
         }
 
         [Fact]
