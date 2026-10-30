@@ -1,3 +1,4 @@
+using System.Linq;
 using FolkIdle.Server.Engine;
 using Xunit;
 
@@ -424,9 +425,9 @@ namespace FolkIdle.Server.Tests
                 Assert.True(AffixRegistry.TryGetDefinition(id, out var d) && d.Utility && !d.Retired, id);
             }
             // Appended, never inserted: the order is auto-reroll's wire index.
-            var defs = AffixRegistry.Definitions;
-            Assert.Equal("block_chance_pct", defs[defs.Length - 4].Id);
-            Assert.Equal("gold_find_pct", defs[defs.Length - 1].Id);
+            var ids = AffixRegistry.Definitions.ToArray().Select(d => d.Id).ToList();
+            int block = ids.IndexOf("block_chance_pct");
+            Assert.Equal(new[] { "boss_dmg_pct", "loot_luck_pct", "gold_find_pct" }, ids.Skip(block + 1).Take(3));
         }
 }
 }
