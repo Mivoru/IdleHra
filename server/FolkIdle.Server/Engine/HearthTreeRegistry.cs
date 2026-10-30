@@ -171,7 +171,7 @@ namespace FolkIdle.Server.Engine
             HearthEffect.YieldWoodMine, HearthEffect.YieldFishHerb,
             HearthEffect.RareWoodMine, HearthEffect.RareFishHerb,
             HearthEffect.KeepMaterialsPct, HearthEffect.OfflineRatePct, HearthEffect.XpPct,
-            HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct,
+            HearthEffect.DeepVein, HearthEffect.MoonlitCatch, HearthEffect.CraftTimePct, HearthEffect.SalvageGoldPct,
         };
 
         /// <summary>Deep Vein and Moonlit Catch fire on every Nth completed harvest.</summary>
@@ -282,6 +282,7 @@ namespace FolkIdle.Server.Engine
                     case HearthEffect.OfflineRatePct: e.RewardRatePermille += v; break;
                     case HearthEffect.XpPct: e.XpTenthsPct += v; break;
                     case HearthEffect.CraftTimePct: e.CraftTimeTenthsPct += v; break;
+                    case HearthEffect.SalvageGoldPct: e.SalvageGoldTenthsPct += v; break;
                     case HearthEffect.DeepVein: e.DeepVein = true; break;
                     case HearthEffect.MoonlitCatch: e.MoonlitCatch = true; break;
                 }
@@ -337,6 +338,8 @@ namespace FolkIdle.Server.Engine
         public int XpTenthsPct;
         /// <summary>Craft time cut, in tenths of a percent (Quick Hands, Batch Work).</summary>
         public int CraftTimeTenthsPct;
+        /// <summary>Extra auto-salvage gold, in tenths of a percent (Salvager).</summary>
+        public int SalvageGoldTenthsPct;
         /// <summary>Keystones: every KeystoneEvery-th harvest of wood or ore (Deep Vein) or fish or herbs (Moonlit Catch) adds a roll of the node's rarest entry.</summary>
         public bool DeepVein;
         public bool MoonlitCatch;

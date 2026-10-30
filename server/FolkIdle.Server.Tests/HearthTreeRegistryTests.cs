@@ -94,7 +94,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.KeenAngler, HearthTreeRegistry.Netmaker, HearthTreeRegistry.FullNet,
                 HearthTreeRegistry.Thrifty, HearthTreeRegistry.Studious, HearthTreeRegistry.Homebody, HearthTreeRegistry.LongAbsence,
                 HearthTreeRegistry.DeepVein, HearthTreeRegistry.MoonlitCatch,
-                HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork,
+                HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));
@@ -154,6 +154,18 @@ namespace FolkIdle.Server.Tests
             int after = SimulationEngine.CraftTicksFor(in built, in recipe);
             Assert.Equal(SimulationEngine.CraftTicksFor(in recipe), before);
             Assert.Equal((int)((long)before * 840 / 1000), after);
+        }
+
+        [Fact]
+        public void SalvagerRidesTheDropRequest_SoLiveAndOfflineKillsPayIt()
+        {
+            var built = Maxed(HearthTreeRegistry.Salvager);
+            var stats = SimulationEngine.LiveCombatStats(in built);
+            var request = CombatLootDropRequest.Build(in built, in stats, ContentRegistry.FirstCanonicalMonsterId, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            Assert.Equal(150, request.SalvageGoldTenthsPct);
+            var bare = new TickStatePayload();
+            var bareStats = SimulationEngine.LiveCombatStats(in bare);
+            Assert.Equal(0, CombatLootDropRequest.Build(in bare, in bareStats, ContentRegistry.FirstCanonicalMonsterId, 1, 0, false).SalvageGoldTenthsPct);
         }
 
         [Fact]
