@@ -148,9 +148,9 @@
           <button
             class="primary enter"
             data-testid="dungeon-enter"
-            disabled={running || dungeon.Tickets <= 0 || stage.LockedReason !== ''}
+            disabled={running || (dungeon.Tickets <= 0 && !data.FreeRuns) || stage.LockedReason !== ''}
             onclick={enter}
-          >{running ? 'Entering...' : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
+          >{running ? 'Entering...' : data.FreeRuns ? `Enter stage ${stage.Stage} (admin test, free)` : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
         </div>
       {/if}
     {/if}

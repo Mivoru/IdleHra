@@ -43,6 +43,8 @@ export interface DungeonView {
   Online: boolean;
   TicketCap: number;
   TicketsPerDay: number;
+  /** An admin testing in production: runs spend no ticket. */
+  FreeRuns?: boolean;
   Waves: number;
   MealCap: number;
   /** XP, Gold, Equipment - the server's order, which is the gates' order. */
