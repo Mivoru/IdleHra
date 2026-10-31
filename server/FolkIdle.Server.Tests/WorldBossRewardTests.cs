@@ -19,7 +19,7 @@ namespace FolkIdle.Server.Tests
         public void TheMilestonesPayExactlyTheDelvesWeeklyDiamondCeiling()
         {
             // The boss must not quietly out-pay the game's calibrated diamond tap.
-            Assert.Equal(DelveRegistry.MaxDiamondsPerWeek, WorldBossRewards.Milestones.Sum(m => m.Diamonds));
+            Assert.Equal(DelveRegistry.TapYardstickDiamondsPerWeek, WorldBossRewards.Milestones.Sum(m => m.Diamonds));
         }
 
         [Fact]

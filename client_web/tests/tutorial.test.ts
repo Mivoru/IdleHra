@@ -186,7 +186,7 @@ const TRIGGERS: readonly {
     { id: 'world_boss', fields: { WorldBossEventState: 1 } },
     { id: 'deeds', fields: { AchievementTierTotal: 1 } },
     { id: 'ancestors', fields: { Slot2_AgePhase: 2 } },
-    { id: 'inheritance', fields: { PremiumCurrencyBalance: 40 } },
+    { id: 'inheritance', fields: { PremiumCurrencyBalance: 100 } },
   ];
 
 describe('discovery moments: each fires on its own trigger and nothing else', () => {

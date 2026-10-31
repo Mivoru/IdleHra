@@ -1227,6 +1227,7 @@ namespace FolkIdle.Server.Domain.Shared
                 .ToListAsync();
             long loadedForgeUpgrades = lifetimeProgress.FirstOrDefault(a => a.AchievementId == AchievementMilestones.ForgingAchievementId)?.CurrentProgress ?? 0L;
             long loadedHarvests = lifetimeProgress.FirstOrDefault(a => a.AchievementId == AchievementMilestones.LogisticsAchievementId)?.CurrentProgress ?? 0L;
+            long loadedPotionsDrunk = lifetimeProgress.FirstOrDefault(a => a.AchievementId == AchievementMilestones.AlchemistAchievementId)?.CurrentProgress ?? 0L;
 
             var chroniclePass = await dbContext.PlayerChroniclePasses
                 .AsNoTracking()
@@ -1406,6 +1407,7 @@ namespace FolkIdle.Server.Domain.Shared
                 EventCurrencyEarnedToday = player.EventCurrencyEarnedToday,
                 ForgeUpgradeCount = (int)Math.Min(int.MaxValue, loadedForgeUpgrades),
                 LifetimeHarvests = loadedHarvests,
+                LifetimePotionsDrunk = loadedPotionsDrunk,
                 GuildId = player.GuildId,
                 ActiveGuildWarId = activeGuildWarId,
                 ActiveCrossShardMatchId = activeCrossShardMatchId,
@@ -1967,6 +1969,9 @@ namespace FolkIdle.Server.Domain.Shared
 
             await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.LogisticsAchievementId,
                 AchievementMilestones.EvaluateLogisticsTier(state.LifetimeHarvests), state.LifetimeHarvests);
+
+            await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.AlchemistAchievementId,
+                AchievementMilestones.EvaluateAlchemistTier(state.LifetimePotionsDrunk), state.LifetimePotionsDrunk);
         }
 
         private static async Task EvaluateAndAwardTierAsync(FolkIdleDbContext dbContext, PlayerRecord player, long playerId, int achievementId, int newTier, long currentProgress)

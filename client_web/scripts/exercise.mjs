@@ -5781,7 +5781,7 @@ await go('Progress');
   // Achievements PR 1: the only claims on Progress are the quest line's, in
   // its Getting started chapter - the lifetime tiers still pay themselves.
   const claimButtons = await page.locator('[data-testid="deeds-lifetime"]').getByRole('button', { name: /^Claim/ }).count();
-  record('the Book has a Lifetime chapter of four named achievements', lifetimeRows === 4, `${lifetimeRows} rows`);
+  record('the Book has a Lifetime chapter of five named achievements', lifetimeRows === 5, `${lifetimeRows} rows`);
   record('the Lifetime chapter offers no claim button', claimButtons === 0, `${claimButtons} claim button(s)`);
   const started = page.locator('[data-testid="deeds-getting-started"]');
   const startedTally = await started.locator('.tally').innerText().catch(() => '');
@@ -5810,7 +5810,8 @@ await go('Progress');
   const meters = await page.locator('.deeds .count').allInnerTexts();
   record(
     'unfinished deeds carry a live counter',
-    meters.length > 0 && meters.every((m) => /\d[\d,]*\s*\/\s*\d/.test(m)),
+    // formatNumber shortens big ones ("49.5 M / 100 M").
+    meters.length > 0 && meters.every((m) => /\d[\d,.\s]*[KMB]?\s*\/\s*\d/.test(m)),
     meters.slice(0, 3).join(', '),
   );
 

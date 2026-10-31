@@ -15,7 +15,7 @@ namespace FolkIdle.Server.Engine
     /// WHY DIAMONDS, AND WHY THESE AMOUNTS.
     ///
     /// The Delve is the game's calibrated diamond tap and it is capped at
-    /// <see cref="DelveRegistry.MaxDiamondsPerWeek"/> = 60 a week, deliberately,
+    /// <see cref="DelveRegistry.TapYardstickDiamondsPerWeek"/> = 60 a week, deliberately,
     /// so it cannot become the economy. Store packs run 500 / 1,100 / 2,400 /
     /// 5,200. So the whole ladder below is sized so that FIRST PLACE for a
     /// whole week is worth about one good week of Delving, and everything under

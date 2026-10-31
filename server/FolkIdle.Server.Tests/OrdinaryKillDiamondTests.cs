@@ -37,7 +37,7 @@ namespace FolkIdle.Server.Tests
             // Expected 60.5; the band is about +-4 standard deviations.
             Assert.InRange(diamonds, 30, 95);
             Assert.InRange(killsPerWeek * SimulationEngine.OrdinaryKillDiamondChance,
-                DelveRegistry.MaxDiamondsPerWeek * 0.9, DelveRegistry.MaxDiamondsPerWeek * 1.1);
+                DelveRegistry.TapYardstickDiamondsPerWeek * 0.9, DelveRegistry.TapYardstickDiamondsPerWeek * 1.1);
         }
     }
 }

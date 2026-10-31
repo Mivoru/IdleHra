@@ -1482,13 +1482,17 @@ export const INHERITANCE_STATS: readonly { id: number; name: string; blurb: stri
 ];
 
 /** InheritanceRegistry.MaxLevel and PercentPerLevel. */
-export const INHERITANCE_MAX_LEVEL = 20;
-export const INHERITANCE_PCT_PER_LEVEL = 2;
+// Option B (2026-10-31): ten levels of +4% at 100 x 1.25^level. Pinned to
+// InheritanceRegistry.cs by tests/serverMirrors.test.ts.
+export const INHERITANCE_MAX_LEVEL = 10;
+export const INHERITANCE_PCT_PER_LEVEL = 4;
+export const INHERITANCE_COST_BASE = 100;
+export const INHERITANCE_COST_GROWTH = 1.25;
 
-/** InheritanceRegistry.GetUpgradeCost — 40 diamonds, x1.28 per level. */
+/** InheritanceRegistry.GetUpgradeCost — 100 diamonds, x1.25 per level. */
 export function inheritanceUpgradeCost(currentLevel: number): number {
   if (currentLevel >= INHERITANCE_MAX_LEVEL) return 0;
-  return Math.floor(40 * Math.pow(1.28, Math.max(0, currentLevel)));
+  return Math.floor(INHERITANCE_COST_BASE * Math.pow(INHERITANCE_COST_GROWTH, Math.max(0, currentLevel)));
 }
 
 export function purchaseInheritanceLevel(statId: number, currentLevel: number, diamonds: number): CommandOutcome {

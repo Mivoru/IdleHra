@@ -936,3 +936,21 @@ describe('the Wiki rebirth tables mirror RebirthRules', () => {
     }
   });
 });
+
+// Modul: INHERITANCE OPTION B (2026-10-31). The screen prices every level from
+// these four numbers; a server retune that left them behind would show a
+// price the server refuses.
+describe('inheritance mirrors InheritanceRegistry', () => {
+  it('has the same ceiling, step and price curve', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, '..', '..', 'server', 'FolkIdle.Server', 'Engine', 'InheritanceRegistry.cs'), 'utf8');
+    const cmd = await import('../src/lib/net/commands');
+    expect(cmd.INHERITANCE_MAX_LEVEL).toBe(Number(src.match(/MaxLevel = (\d+);/)?.[1]));
+    expect(cmd.INHERITANCE_PCT_PER_LEVEL).toBe(Number(src.match(/PercentPerLevel = (\d+);/)?.[1]));
+    expect(cmd.INHERITANCE_COST_BASE).toBe(Number(src.match(/CostBase = ([\d.]+);/)?.[1]));
+    expect(cmd.INHERITANCE_COST_GROWTH).toBe(Number(src.match(/CostGrowth = ([\d.]+);/)?.[1]));
+  });
+});

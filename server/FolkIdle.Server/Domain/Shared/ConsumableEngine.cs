@@ -116,6 +116,7 @@ namespace FolkIdle.Server.Domain.Shared
             if (shelfCount <= 0 || !PotionRegistry.TryGet(shelfItem, out var potion) || potion.Slot != slot) return false;
 
             shelfCount--;
+            payload.LifetimePotionsDrunk++;
             ActiveId(ref payload, slot) = potion.ItemId;
             Duration(ref payload, slot) = potion.DurationMs;
             if (shelfCount == 0) shelfItem = 0;

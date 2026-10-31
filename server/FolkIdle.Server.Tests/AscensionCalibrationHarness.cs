@@ -60,8 +60,8 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"player {playerId}: level {real.CurrentLevel}, rebirths {real.RenownedRebirths}, inherit dmg {real.Inherit_Damage} hp {real.Inherit_MaxHp}");
 
             TickStatePayload maxed = real;
-            maxed.Inherit_Damage = 20;
-            maxed.Inherit_MaxHp = 20;
+            maxed.Inherit_Damage = InheritanceRegistry.MaxLevel;
+            maxed.Inherit_MaxHp = InheritanceRegistry.MaxLevel;
             maxed.RenownedRebirths = 12;
             // Skills and aptitudes stay the real character's: several boughs
             // trade defence for offence, and forcing every one to the cap made

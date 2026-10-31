@@ -6,6 +6,9 @@ import {
   tierLabel,
   achievementName,
   crossedTierReward,
+  ACHIEVEMENT_NAMES,
+  LEGENDARY_TIER_DIAMONDS,
+  isLegendaryReward,
 } from '../src/lib/stores/achievementToasts';
 
 describe('achievement toast edge detection', () => {
@@ -121,5 +124,38 @@ describe('pricing the card for the tier just earned', () => {
 
   it('shows nothing when the deed was absent from the earlier snapshot', () => {
     expect(crossedTierReward(undefined, 1)).toBe(0);
+  });
+});
+
+// Modul: the card names come from this table, so a new server achievement
+// (Alchemist, 2026-10-31) that is missing here would toast as "Deed #5".
+describe('achievement names mirror AchievementMilestones', () => {
+  it('names every lifetime achievement the server has', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, '..', '..', 'server', 'FolkIdle.Server', 'Engine', 'AchievementMilestones.cs'), 'utf8');
+    const ids = new Map([...src.matchAll(/public const int (\w+)AchievementId = (\d+);/g)].map((m) => [m[1], Number(m[2])]));
+    const titleBlock = src.slice(src.indexOf('TitleFor('), src.indexOf('DescriptionFor('));
+    const titles = [...titleBlock.matchAll(/(\w+)AchievementId => "([^"]+)",/g)];
+    expect(titles.length).toBeGreaterThanOrEqual(5);
+    for (const [, key, title] of titles) {
+      expect(ACHIEVEMENT_NAMES[ids.get(key)!], key).toBe(title);
+    }
+  });
+});
+
+describe('the Legendary card', () => {
+  it('is the top band of the server reward table, and only that', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, '..', '..', 'server', 'FolkIdle.Server', 'Engine', 'AchievementMilestones.cs'), 'utf8');
+    expect(LEGENDARY_TIER_DIAMONDS).toBe(Number(src.match(/LegendaryDiamonds = (\d+);/)?.[1]));
+    expect(isLegendaryReward(100)).toBe(true);
+    expect(isLegendaryReward(40)).toBe(false);
+    expect(isLegendaryReward(0)).toBe(false);
   });
 });

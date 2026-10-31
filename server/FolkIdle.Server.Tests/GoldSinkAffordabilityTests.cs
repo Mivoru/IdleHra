@@ -106,8 +106,12 @@ namespace FolkIdle.Server.Tests
         /// </summary>
         private const int TopCodexLevelSum = 17_660;
 
-        /// <summary>Inheritance damage level 4 (player_inheritance_stats, StatId 0, 2026-09-24).</summary>
-        private const int TopInheritDamageLevel = 4;
+        /// <summary>
+        /// Inheritance damage level 4 (player_inheritance_stats, StatId 0,
+        /// 2026-09-24) - level 2 since the DiamondRework migration halved levels
+        /// and doubled their step, the same +8%.
+        /// </summary>
+        private const int TopInheritDamageLevel = 2;
 
         /// <summary>The strongest region-5 regular - the Death Knight, 2,050 base gold.</summary>
         private static int TopMonsterId =>
