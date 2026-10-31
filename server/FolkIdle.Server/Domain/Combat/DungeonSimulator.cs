@@ -56,6 +56,20 @@ namespace FolkIdle.Server.Domain.Combat
         private const int MaxTicks = 30 * 60 * 1000 / TickMs; // half an hour of fight time
         private const int MaxEvents = 80;
 
+        /// <summary>
+        /// Stage 10 is Malakor at Ascension 10 with attack times this and health
+        /// times this^0.68; stages 6-9 step geometrically from stage 5 to it.
+        /// MEASURED (2026-10-31, production copy, AscensionCalibrationHarness):
+        /// the maxed profile wins stage 10 up to x0.256 using all five meals -
+        /// the waves and the meal cap make a run far harder than the Ascension
+        /// fight alone, where the same profile clears A7. 0.24 is "clears it
+        /// with effort", the owner's target.
+        /// </summary>
+        public const double AscensionBandScale = 0.24;
+
+        /// <summary>Calibration only (the harness's search); 0 = use AscensionBandScale.</summary>
+        internal static double CalibrationScale;
+
         public static int RegionOfStage(int stage) => Math.Clamp(stage, 1, 5);
 
         /// <summary>The boss monster whose body the stage borrows (its region's boss, Malakor from 6).</summary>
@@ -74,15 +88,27 @@ namespace FolkIdle.Server.Domain.Combat
                 return ((long)(hp * 1.1), (long)(attack * 1.1), false);
             }
 
-            int step = stage <= 10 ? (stage - 5) * 2 : BossAscensionRegistry.MaxStep;
-            var modifiers = BossAscensionRegistry.ModifiersFor(5, step);
-            hp = BossAscensionRules.ScaleBossHp(hp, in modifiers);
-            attack = BossAscensionRules.ScaleBossAttack(attack, in modifiers);
-            if (stage > 10)
+            // Stage 10's target: Malakor at A10, scaled by the measured band scale.
+            var top = BossAscensionRegistry.ModifiersFor(5, BossAscensionRegistry.MaxStep);
+            double scale = CalibrationScale > 0 ? CalibrationScale : AscensionBandScale;
+            double topAttack = BossAscensionRules.ScaleBossAttack(attack, in top) * scale;
+            double topHp = BossAscensionRules.ScaleBossHp(hp, in top) * Math.Pow(scale, 0.68);
+            double fiveAttack = attack * 1.1, fiveHp = hp * 1.1;
+            // The Ascension step a stage stands for, for Enrage (from step 4).
+            var modifiers = BossAscensionRegistry.ModifiersFor(5, stage <= 10 ? (stage - 5) * 2 : BossAscensionRegistry.MaxStep);
+            if (stage <= 10)
+            {
+                // Geometric steps from stage 5 to stage 10, so every stage is
+                // harder than the one before whatever the scale.
+                double t = (stage - 5) / 5.0;
+                attack = (long)(fiveAttack * Math.Pow(Math.Max(1.0, topAttack / fiveAttack), t));
+                hp = (long)(fiveHp * Math.Pow(Math.Max(1.0, topHp / fiveHp), t));
+            }
+            else
             {
                 double factor = 1.5 * Math.Pow(1.4, stage - 11);
-                attack = (long)(attack * factor);
-                hp = (long)(hp * Math.Pow(factor, 0.68));
+                attack = (long)(Math.Max(topAttack, fiveAttack) * factor);
+                hp = (long)(Math.Max(topHp, fiveHp) * Math.Pow(factor, 0.68));
             }
             return (hp, attack, modifiers.Enrage);
         }
@@ -126,16 +152,25 @@ namespace FolkIdle.Server.Domain.Combat
             stage = Math.Clamp(stage, 1, StageCount);
             CombatStats stats = SimulationEngine.LiveCombatStats(in payload);
             long maxMilliHp = Math.Max(1000L, SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats));
-            long rawMilliAttack = payload.CachedEffectiveMilliAttack > 0
-                ? payload.CachedEffectiveMilliAttack
-                : StatsCalculator.ComputeEffectiveMilliAttack(in stats, damageScalePerLevelPct: 0, level: Math.Max(1, payload.CurrentLevel));
+            // The tick's own attack (aptitudes, inheritance, the lineage's scale) -
+            // computed here, not read from the cache, so a payload loaded from the
+            // database (the calibration harness) gets the same number as a live one.
+            long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(ref payload, in stats, SimulationEngine.LineageOf(in payload).DamageScalePerLevelPct);
 
             MonsterDefinition boss = ContentRegistry.Monsters[BossMonsterIdFor(stage) - 1];
             var (bossMilliHp, bossAttack, enrage) = BossStrength(stage);
 
-            double playerHit = CombatDamageModel.ExpectedMilliDamagePerSwing(in stats, in boss, rawMilliAttack, codexDamageMultiplier: 1f)
-                * (1.0 - MortarDodgePct(stage) / 100.0);
-            int playerIntervalMs = Math.Max(TickMs, CombatDamageModel.AttackIntervalMs(in stats));
+            // Modul: THE OFFLINE PROJECTION'S SWING, which is parity-tested against
+            // the live tick: crit and double hit, Crushing Blow, Know Your Prey,
+            // the codex, set fire and burn, Riposte. The first cut used the plain
+            // CombatDamageModel swing the boss-wall benchmark uses for reference
+            // gear, and measured on the owner's character it dealt about a
+            // twentieth of the live damage - the reference model has no skill
+            // tree and no codex, which a real character's damage mostly is.
+            var swing = HuntingProjection.PlayerSwing.For(in payload, in stats, in boss, rawMilliAttack);
+            double playerHit = swing.Mean * (1.0 - MortarDodgePct(stage) / 100.0);
+            double healPerSwing = swing.ExpectedHeal(maxMilliHp / 100) * (1.0 - MortarDodgePct(stage) / 100.0);
+            int playerIntervalMs = Math.Max(TickMs, SimulationEngine.LiveAttackIntervalMs(in payload, in stats));
             int bossIntervalMs = boss.AttackIntervalMs > 0 ? boss.AttackIntervalMs : 2000;
 
             int healPerBite = foodItemId > 0 && foodInLarder > 0 ? FoodRegistry.GetHealMilliHp(foodItemId, maxMilliHp) : 0;
@@ -208,7 +243,7 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             enemy -= dealt;
                         }
-                        if (stats.LifestealPct > 0f) hp = Math.Min(maxMilliHp, hp + dealt * (stats.LifestealPct / 100f));
+                        if (healPerSwing > 0) hp = Math.Min(maxMilliHp, hp + healPerSwing * (dealt / Math.Max(1.0, playerHit)));
 
                         if (isBoss && !fenceRaised && FencePct(stage) > 0 && enemy > 0 && enemy <= enemyMax * 0.5)
                         {

@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.49.0',
+    date: '2026-10-31',
+    headline: 'The Equipment Dungeon opens.',
+    sections: [
+      {
+        title: 'Dungeon',
+        items: [
+          'A new screen under Play: the Equipment Dungeon. Five waves and Baba Yaga, with your health carried from fight to fight and at most five meals from the larder.',
+          "Fifteen stages in three bands - the regions, the Ascension, and beyond anything else in the game. Each stage shows Baba Yaga's abilities with their numbers, so you can see what beat you.",
+          'Win and she drops a piece of gear (Rare, Epic or Legendary or better by band) and a loot chest; every stage also pays diamonds the first time you clear it.',
+          'Two tickets a day, up to four. It opens once you have beaten the region 2 boss.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.48.0',
     date: '2026-10-31',
     headline: 'One Book of goals, and diamonds that go further.',

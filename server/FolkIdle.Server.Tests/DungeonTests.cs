@@ -27,17 +27,16 @@ namespace FolkIdle.Server.Tests
         };
 
         [Fact]
-        public void TheAscensionBandIsMalakorsLadder()
+        public void StageTenIsMalakorsTopStepAtTheMeasuredScale()
         {
             int malakor = RaceUnlockRegistry.GetRegionBossMonsterId(5);
             byte cleared = BossFirstClearRules.MarkDefeated(0, malakor);
-            for (int stage = 6; stage <= 10; stage++)
-            {
-                var modifiers = BossAscensionRegistry.ModifiersFor(5, (stage - 5) * 2);
-                var (hp, attack, _) = DungeonSimulator.BossStrength(stage);
-                Assert.Equal(BossAscensionRules.ScaleBossAttack(BossFirstClearRules.AttackPowerFor(cleared, malakor), in modifiers), attack);
-                Assert.Equal(BossAscensionRules.ScaleBossHp(BossFirstClearRules.MaxHpFor(cleared, malakor) * 1000L, in modifiers), hp);
-            }
+            var top = BossAscensionRegistry.ModifiersFor(5, BossAscensionRegistry.MaxStep);
+            long expected = (long)(BossAscensionRules.ScaleBossAttack(BossFirstClearRules.AttackPowerFor(cleared, malakor), in top) * DungeonSimulator.AscensionBandScale);
+            var (_, attack, enrage) = DungeonSimulator.BossStrength(10);
+            Assert.InRange(attack, expected - 2, expected + 2);
+            Assert.True(enrage);
+            Assert.False(DungeonSimulator.BossStrength(6).Enrage); // A2: no Enrage yet
         }
 
         [Fact]

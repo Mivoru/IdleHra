@@ -245,6 +245,9 @@
   .stage[data-band='Beyond'] {
     border-color: var(--danger, #b3261e);
   }
+  .stage:disabled {
+    opacity: 0.45;
+  }
   .stage.cleared::after {
     content: ' ✓';
     font-weight: 400;
