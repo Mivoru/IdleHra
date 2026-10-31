@@ -52,7 +52,9 @@ if (LANGUAGE_CODES.length === 0) {
 export const SCREENS = [
   // Task 95: regrouped (Play, Hero, Make, Friends & Guilds, Game) and renamed
   // - Home not Map, Auto-Eat not Supplies, Friends not Community.
-  'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve', 'Dungeon',
+  // The Dungeon is shown only to admin accounts while it is rebuilt (owner,
+  // 2026-10-31), so it is not a destination the fixture or a guest can reach.
+  'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve',
   'Character', 'Skill Tree', 'Rebirth', 'Wardrobe', 'Chest', 'Auto-Eat',
   'Village', 'Crafting', 'Forge', 'Bloodline', 'Codex',
   // Community, Guild and Market are menu entries of their own since task 95, as

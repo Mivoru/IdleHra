@@ -17,6 +17,13 @@ namespace FolkIdle.Server.Network
         // The equipment dungeon (CHESTS_DUNGEONS_DIAMONDS.md 2.6a). REST, like
         // the Delve and the loot chests: a run is one request that the server
         // decides and writes; nothing is added to StateUpdatePacket.
+        // Modul: HIDDEN FROM PLAYERS (owner, 2026-10-31: "far from how I want it
+        // to look"). Only the admin accounts may open or run it; everyone else
+        // gets a closed lobby and a refused run, so a remembered screen or an
+        // old client cannot spend a ticket. The code, tables and tickets stay;
+        // delete this gate when the rework lands.
+        private const string DungeonClosedReason = "The dungeon is closed while it is being rebuilt.";
+
         private async Task<bool> TryHandleDungeonAsync(HttpListenerContext context, string requestPath)
         {
             if (!requestPath.StartsWith("/api/v1/dungeon", StringComparison.Ordinal)) return false;
@@ -50,6 +57,11 @@ namespace FolkIdle.Server.Network
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
                 if (player == null) { context.Response.StatusCode = 404; return; }
+                if (!IsAdmin(player))
+                {
+                    await WriteJsonAsync(context, new { Open = false, LockedReason = DungeonClosedReason, Stages = Array.Empty<object>() });
+                    return;
+                }
                 if (DungeonEngine.TopUpTickets(player, DateTime.UtcNow)) await db.SaveChangesAsync();
 
                 var snapshot = await MainCharacterSnapshotAsync(playerId);
@@ -108,6 +120,17 @@ namespace FolkIdle.Server.Network
                 {
                     context.Response.StatusCode = 400;
                     return;
+                }
+
+                using (var gateScope = _serviceProvider.CreateScope())
+                {
+                    var gateDb = gateScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    var gatePlayer = await gateDb.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
+                    if (!IsAdmin(gatePlayer))
+                    {
+                        await WriteJsonAsync(context, new { Outcome = "Locked", Reason = DungeonClosedReason });
+                        return;
+                    }
                 }
 
                 // The fight is the live character's: no session, no run.
