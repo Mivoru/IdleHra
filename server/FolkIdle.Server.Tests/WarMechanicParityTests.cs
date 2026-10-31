@@ -37,6 +37,12 @@ namespace FolkIdle.Server.Tests
             WarTreeRegistry.TestValueScale.Value = Scale;
             var payload = OfflineCombatParityTests.Character(region, geared: true, monsterId, food: 20_000);
             payload.SkillTreeVersion = 1;
+            // Modul: no gear thorns on the War rows (2026-10-31, thorns rolls
+            // again). Shield Wall's block cuts the blows thorns reflect, which
+            // cancelled Riposte's gain (175 vs 174 kills) - a row measures one
+            // tree mechanic, so the chest's rolled reflect is taken off here.
+            // Thorns_from_gear prices the affix on its own.
+            payload.CachedAffixTotals.ThornsTenthsPct = 0;
             foreach (var (id, rank) in ranks) payload.SkillRanks[id] = rank;
             return payload;
         }

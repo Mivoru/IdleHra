@@ -232,12 +232,16 @@ namespace FolkIdle.Server.Engine
             new AffixDefinition("crushing_blow_pct", EquipmentSlotMask.Gloves, AffixScalingLaw.Percentage, 10, 8),
             // thorns_pct adds to the set's 20% reflect, 2-8% per affix by rarity,
             // on the chest only - the defensive build's damage.
-            // Modul: NOT ROLLED YET (2026-10-30). Wired and parity-tested on its own
-            // (Thorns_from_gear), but once geared test characters could roll it,
-            // three OfflineCombatParityTests rows drifted 6-40% between the away
-            // projection's thorns path and the live tick, and two fixes did not
-            // close it. Retired from rolls until that path is made exact; the id
-            // keeps its place (wire index) and every reader stays wired.
+            // Modul: NOT ROLLED YET. Retired on 2026-10-30 because three
+            // OfflineCombatParityTests rows drifted 6-40% once geared test
+            // characters could roll it. That cause is FIXED (2026-10-31): the
+            // away projection left the exact swing count for mean-health
+            // tracking whenever thorns were on; thorns are now priced per player
+            // swing, as Riposte is, and with the affix rollable every parity row
+            // passed (58/58). What still holds it back is BALANCE: the boss-wall
+            // benchmark's chest then rolls it, and WallWindowScanTests breaks
+            // for regions 2 and 3 (the gear under the requirement wins). Rolling
+            // it needs the owner's call - recalibrate those walls or shrink it.
             new AffixDefinition("thorns_pct", EquipmentSlotMask.Chest, AffixScalingLaw.Percentage, 20, 15, retired: true),
         };
 

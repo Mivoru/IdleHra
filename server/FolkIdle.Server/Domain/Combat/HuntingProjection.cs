@@ -236,8 +236,6 @@ namespace FolkIdle.Server.Domain.Combat
                 bool thorns = thornsFraction > 0;
                 int effectiveMaxHp = SimulationEngine.BarAsInt(maxMilliHp);
 
-                // Thorns end fights between the player's swings, which a swing
-                // count cannot describe - those fights track health instead.
                 // First Strike: the first CONNECTING hit of each fight lands
                 // harder. Priced as the health it takes off before the count
                 // starts - the mean of a connecting swing, times the bonus.
@@ -246,11 +244,33 @@ namespace FolkIdle.Server.Domain.Combat
                 double pHit = CombatDamageModel.HitChance(in stats, in monster);
                 long opening = firstStrike > 0 && pHit > 0 ? (long)(swing.Mean / pHit * firstStrike / 1000.0) : 0L;
 
+                // Modul: THORNS AS A SHARE OF EVERY SWING, like Riposte (2026-10-31).
+                // Thorns fights used to leave the swing-count distribution for
+                // mean-health tracking, and that path, not thorns, drifted 6-40%
+                // from the live tick once geared rows could roll the affix: a
+                // mean cannot describe a monster that dies in one to three
+                // swings. The reflect is now the expected thorns damage per
+                // PLAYER swing (monster swings per player interval x the landed
+                // monster blow x the fraction) spread over the swing's outcomes,
+                // so the count stays exact. Only the kill count reads it - the
+                // heals stay on the hit, and a fight too long to count still
+                // tracks health with the reflect applied on the monster's swing.
+                int playerMs = SimulationEngine.LiveAttackIntervalMs(in copy, in stats);
+                double firstClearMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, mask, maxMilliHp);
+                double farmMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, farmMask, maxMilliHp);
+                PlayerSwing WithThorns(double monsterSwing)
+                {
+                    if (!thorns) return swing;
+                    int monsterMs = monster.AttackIntervalMs > 0 ? monster.AttackIntervalMs : 2000;
+                    return swing.WithExtraPerSwing(playerMs / (double)monsterMs * monsterSwing * thornsFraction);
+                }
+
                 // Executioner: the bar's last 35% priced as smaller by the bonus.
-                SwingsToKill? firstClearKill = thorns ? null : SwingsToKill.For(in swing, Math.Max(1L, warFight.ExecuteAdjustedHp(firstClearHp) - opening));
-                SwingsToKill? farmKill = thorns ? null
-                    : farmHp == firstClearHp ? firstClearKill
-                    : SwingsToKill.For(in swing, Math.Max(1L, warFight.ExecuteAdjustedHp(farmHp) - opening));
+                var firstClearSwing = WithThorns(firstClearMonsterSwing);
+                var farmSwing = WithThorns(farmMonsterSwing);
+                SwingsToKill? firstClearKill = SwingsToKill.For(in firstClearSwing, Math.Max(1L, warFight.ExecuteAdjustedHp(firstClearHp) - opening));
+                SwingsToKill? farmKill = farmHp == firstClearHp && farmMonsterSwing == firstClearMonsterSwing ? firstClearKill
+                    : SwingsToKill.For(in farmSwing, Math.Max(1L, warFight.ExecuteAdjustedHp(farmHp) - opening));
 
                 return new FightSetup
                 {
@@ -258,7 +278,7 @@ namespace FolkIdle.Server.Domain.Combat
                     Monster = monster,
                     Stats = stats,
                     MaxMilliHp = maxMilliHp,
-                    PlayerIntervalMs = SimulationEngine.LiveAttackIntervalMs(in copy, in stats),
+                    PlayerIntervalMs = playerMs,
                     Swing = swing,
                     EatAtMilliHp = (copy.AutoEatThreshold / 100.0f) * effectiveMaxHp,
                     LifestealCeiling = effectiveMaxHp / 100,
@@ -280,10 +300,10 @@ namespace FolkIdle.Server.Domain.Combat
                     FirstClearMilliHp = firstClearHp,
                     ThornsFirstClearMilliHp = Math.Max(1L, warFight.ExecuteAdjustedHp(firstClearHp) - opening),
                     ThornsFarmMilliHp = Math.Max(1L, warFight.ExecuteAdjustedHp(farmHp) - opening),
-                    FirstClearMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, mask, maxMilliHp),
+                    FirstClearMonsterSwing = firstClearMonsterSwing,
                     FirstClearKill = firstClearKill,
                     FarmMilliHp = farmHp,
-                    FarmMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, farmMask, maxMilliHp),
+                    FarmMonsterSwing = farmMonsterSwing,
                     FarmKill = farmKill,
                 };
             }
@@ -760,6 +780,18 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
                 return new PlayerSwing(pHit, pCrit, pDouble, normal, crit, dbl, stats.LifestealPct, bloodthirst, burnFactor);
+            }
+
+            /// <summary>
+            /// This swing with <paramref name="extra"/> milli-damage more on
+            /// average, spread over the outcomes by scaling them (as Riposte
+            /// is), with the heals left on the hit alone.
+            /// </summary>
+            public PlayerSwing WithExtraPerSwing(double extra)
+            {
+                if (extra <= 0 || Mean <= 0) return this;
+                double k = 1.0 + extra / Mean;
+                return new PlayerSwing(_pHit, _pCrit, _pDouble, _normal * k, _crit * k, _double * k, _lifestealPct, _bloodthirstTenths, _burnFactor * k);
             }
 
             /// <summary>Landed damage of one connecting swing, burn included.</summary>
