@@ -55,12 +55,13 @@ green". Every own decision is written in the design doc it belongs to
   three): `CHESTS_DUNGEONS_DIAMONDS.md` 2.8.
 
 **Open, in order:**
-1. **thorns_pct parity** (still `retired: true`). Lead found, not proven: with
-   thorns the offline projection leaves the exact swing-count distribution
-   (`SwingsToKill`) for mean-HP tracking (`HuntingProjection.Advance`,
-   `s.MonsterHp -= swing.Mean`). Test first whether the drift appears with a
-   near-zero thorns fraction - if it does, the mean path is the cause, not
-   thorns. Un-retire only when both parity suites pass with it rollable.
+1. **thorns_pct** (still `retired: true`, parity FIXED 2026-10-31). The cause
+   was the mean-health path: thorns fights left `SwingsToKill`. Thorns are now
+   priced per player swing like Riposte (`HuntingProjection.FightSetup.For`);
+   with the affix rollable all 58 parity rows passed. Still retired for
+   BALANCE: the boss-wall benchmark chest then rolls it and
+   `WallWindowScanTests` breaks for regions 2 and 3. Owner decides: recalibrate
+   those walls, or shrink the affix.
 2. **Inheritance milestones** at levels 5 and 10 (option B's extra effects) -
    twelve new mechanics, each needing a parity row; not built.
 3. **Dungeon rework** - slices 1-2 built (2.8). Next: the owner looks at
