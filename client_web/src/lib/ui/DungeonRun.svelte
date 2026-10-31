@@ -91,6 +91,7 @@
   let banner = $state<{ text: string; kind: string; key: number } | null>(null);
   let bannerKey = 0;
   let enemyHit = $state(0);
+  let lastShake = 0;
   let selfHit = $state(0);
   let enemyHp = $state(100);
   let enemyShield = $state(0);
@@ -100,6 +101,16 @@
   let showGate = $state(true);
   /** Bonuses and penalties taken so far, as chips. */
   let taken = $state<{ name: string; penalty: boolean }[]>([]);
+  /** The same bonus taken twice is one chip with "x2" (owner, 2026-10-31), in first-taken order. */
+  const stacked = $derived.by(() => {
+    const out: { name: string; penalty: boolean; count: number }[] = [];
+    for (const t of taken) {
+      const same = out.find((o) => o.name === t.name && o.penalty === t.penalty);
+      if (same) same.count++;
+      else out.push({ ...t, count: 1 });
+    }
+    return out;
+  });
 
   // The telegraph on screen: the swipes asked for, how many are in, the clock.
   let telegraph = $state<{ dirs: string[]; windowMs: number; startedAt: number } | null>(null);
@@ -186,7 +197,13 @@
     const f = Math.min(1, Math.max(0, (t - prev.AtSeconds) / (next.AtSeconds - prev.AtSeconds)));
     const e = freshFight ? prev.EnemyHpPct : prev.EnemyHpPct + (next.EnemyHpPct - prev.EnemyHpPct) * f;
     const s = prev.PlayerHpPct + (next.PlayerHpPct - prev.PlayerHpPct) * f;
-    if (e < enemyHp - 0.6) enemyHit++;
+    // Modul: at most one shake every 450 ms (owner, 2026-10-31: "smaller and
+    // slower"). A fast fight drops the bar on nearly every frame, and
+    // restarting the shake each time made the enemy jitter non-stop.
+    if (e < enemyHp - 0.6 && performance.now() - lastShake > 450) {
+      lastShake = performance.now();
+      enemyHit++;
+    }
     if (s < selfHp - 0.6) selfHit++;
     enemyHp = e;
     selfHp = s;
@@ -421,7 +438,7 @@
 
     {#if taken.length > 0}
       <ul class="taken" aria-label="Bonuses and penalties this run" data-testid="dungeon-taken">
-        {#each taken as t, i (i)}<li class:bad={t.penalty}>{t.name}</li>{/each}
+        {#each stacked as t (t.name + t.penalty)}<li class:bad={t.penalty}>{t.name}{#if t.count > 1}<b class="times">&times;{t.count}</b>{/if}</li>{/each}
       </ul>
     {/if}
 
@@ -682,7 +699,7 @@
   }
   .shake {
     display: inline-block;
-    animation: struck 0.22s ease-out;
+    animation: struck 0.4s ease-out;
   }
   .shake.dead {
     animation: fall 0.9s ease-in forwards;
@@ -908,9 +925,9 @@
   }
 
   @keyframes struck {
-    0% { transform: translateX(0); filter: brightness(1.8); }
-    35% { transform: translateX(7px); }
-    70% { transform: translateX(-4px); }
+    0% { transform: translateX(0); filter: brightness(1.3); }
+    35% { transform: translateX(3px); }
+    70% { transform: translateX(-2px); }
     100% { transform: translateX(0); filter: none; }
   }
   @keyframes hurt {
@@ -979,6 +996,11 @@
     background: rgb(20 60 40 / 0.85);
     color: #bff5d8;
     border: 1px solid #4fd1a5;
+  }
+  .taken .times {
+    margin-left: 0.25rem;
+    font-weight: 900;
+    color: #fff;
   }
   .taken li.bad {
     background: rgb(70 20 20 / 0.85);
