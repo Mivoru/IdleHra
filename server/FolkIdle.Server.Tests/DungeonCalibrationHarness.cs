@@ -106,6 +106,63 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// The players who would meet the dungeons first: every account in the
+        /// copy that has beaten the region 2 boss - can each clear the first
+        /// stages, without telegraphs and with every one dodged?
+        /// </summary>
+        [Fact]
+        public async Task Print_TheFirstStagesForFreshGateOpeners()
+        {
+            if (string.IsNullOrEmpty(Conn)) return;
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(o => o.UseNpgsql(Conn));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+            services.AddSingleton(new RetryingDbContextOptions(new DbContextOptionsBuilder<FolkIdleDbContext>().UseNpgsql(Conn).Options));
+            var redis = await StackExchange.Redis.ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false");
+            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redis);
+            services.AddSingleton(new RedisPlayerSessionLock(redis));
+            var provider = services.BuildServiceProvider();
+            var manager = new StateCheckpointManager(provider);
+            await using var db = await provider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContextAsync();
+            var ids = await db.PlayerRecords.AsNoTracking().Select(p => p.Id).ToListAsync();
+            int r2 = RaceUnlockRegistry.GetRegionBossMonsterId(2), r3 = RaceUnlockRegistry.GetRegionBossMonsterId(3);
+            foreach (long id in ids)
+            {
+                TickStatePayload p;
+                try { p = await manager.LoadPlayerState(id); } catch { continue; }
+                if (!BossFirstClearRules.IsDefeated(p.DefeatedRegionBossMask, r2)) continue;
+                bool beyond = BossFirstClearRules.IsDefeated(p.DefeatedRegionBossMask, r3);
+                var food = DungeonEngine.BestFood(p);
+                var line = new System.Text.StringBuilder($"player {id,4} lvl {p.CurrentLevel,3}{(beyond ? " (r3+)" : "      ")} food {food.Count,5}:");
+                foreach (var kind in DungeonBoss.All)
+                {
+                    line.Append($" {kind}");
+                    foreach (var mode in new[] { "none", "Berserk" })
+                    {
+                        int highest = 0;
+                        for (int stage = 1; stage <= 5; stage++)
+                        {
+                            var runner = new DungeonRunner(p, kind, stage, food.ItemId, food.Count, new[] { 0 }, challenges: mode != "none");
+                            var rng = new Random(stage);
+                            runner.Advance();
+                            int guard = 0;
+                            while (runner.Result == null && guard++ < 20)
+                            {
+                                runner.Dodge();
+                                var pick = DungeonPerks.Offer(runner.Mods, rng).OrderBy(o => o.School == mode ? 0 : 1).FirstOrDefault();
+                                if (pick == null || !runner.Choose(pick.Id)) runner.Resume();
+                                runner.Advance();
+                            }
+                            if (runner.Result!.Won) highest = stage; else break;
+                        }
+                        line.Append($" {mode[0]}{highest}");
+                    }
+                }
+                _output.WriteLine(line.ToString());
+            }
+        }
+
+        /// <summary>
         /// "none" = no telegraphs; "missed" = every one missed; "greedy" = the
         /// old pick order (damage first, any school); a school name = always
         /// the card of that school when offered; "risky" = a risky card first.

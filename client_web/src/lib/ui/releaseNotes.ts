@@ -35,6 +35,31 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.50.0',
+    date: '2026-10-31',
+    headline: 'The Dungeons open: three gates, a fight you can see, and dodges that build your run.',
+    sections: [
+      {
+        title: 'Three gates',
+        items: [
+          "Koschei's Tower pays experience, Zmey's Hoard pays gold, and Baba Yaga's Hut pays a piece of gear and a loot chest. Fifteen stages each, and every stage pays diamonds the first time you clear it.",
+          'Each boss fights in his own way - Koschei rises again, Zmey has three heads, Baba Yaga hexes your blows - and every stage shows his abilities with their numbers.',
+          'Two tickets a day for each gate, up to four. Loot chests can hold an extra ticket (up to eight). A stage you have beaten can be swept for its reward without the fight.',
+          'The gates open once you have beaten the region 2 boss.',
+        ],
+      },
+      {
+        title: 'Dodge and build',
+        items: [
+          'The enemy winds up a few times a run: swipe (or press WASD or the arrow keys) in the direction shown, one after another, before the time runs out.',
+          'A clean dodge lets you pick one of two blessings for the rest of the run; a miss lands a heavy blow and a curse.',
+          'Blessings belong to four schools - Berserk, Guardian, Blood and Storm. Two of one school unlock its set bonus, three a stronger one. Risky cards are strong, with a price.',
+          'Beat stage 6 of a gate and a second hero from your roster can fight beside you; stage 11 opens the third. Their own gear counts, so dress them.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.49.1',
     date: '2026-10-31',
     sections: [

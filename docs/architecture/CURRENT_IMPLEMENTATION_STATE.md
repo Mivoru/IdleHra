@@ -1055,10 +1055,10 @@ The design reasoning is in `docs/design/HERBS_POTIONS_ASCENSION.md` 1.2a and
 - **Equipment dungeon** - REST only (`GET /api/v1/dungeon`,
   `POST /api/v1/dungeon/run`, dev `/api/v1/dev/dungeon/tickets`), simulated by
   `DungeonSimulator`, written by `DungeonEngine`, migration
-  `20261031021155_AddEquipmentDungeon` (additive). **Hidden from players since
-  1.49.1**: only `IsAdmin` accounts get stages or may run it, and only they see
-  the menu entry (and, for testing, any server with dev tools on and a dev
-  client build). **Reworked into three dungeons** (`CHESTS_DUNGEONS_DIAMONDS.md`
+  `20261031021155_AddEquipmentDungeon` (additive). **Open to every player since
+  client 1.50.0** (it was admin-only from 1.49.1 while it was rebuilt); the
+  region 2 boss is the only gate. A live run's ticket is taken when it is
+  paid, so a run lost to a restart costs nothing. **Reworked into three dungeons** (`CHESTS_DUNGEONS_DIAMONDS.md`
   2.8): `DungeonBoss` subclasses in `Domain/Combat/DungeonBosses.cs` hold each
   boss's abilities as hooks the simulator calls; per-gate state is the
   `DungeonProgress` table (the four PlayerRecords columns are no longer read);

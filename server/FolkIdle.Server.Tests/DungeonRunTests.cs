@@ -139,33 +139,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task AnAdminTestRunSpendsNoTicketAndRecordsWhatItPaid()
-        {
-            const long playerId = 950_420_004L;
-            var account = Guid.NewGuid();
-            var now = new DateTime(2026, 10, 31, 12, 0, 0, DateTimeKind.Utc);
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = account, AuthenticatorToken = Guid.NewGuid() });
-                db.DungeonProgress.Add(new DungeonProgress { PlayerId = playerId, Kind = (int)DungeonKind.Xp, Tickets = 0, TicketDay = DungeonEngine.UtcDay(now) });
-                await db.SaveChangesAsync();
-            }
-            int fish = FoodRegistry.FirstRawFishOfTier(1);
-            var income = new DungeonEngine.Income(HourlyXp: 120_000, HourlyGold: 0);
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var run = await DungeonEngine.RunAsync(db, playerId, DungeonKind.Xp, 1, Strong(playerId), fish, 100, income, now, new Random(1), freeRun: true);
-                Assert.Equal(DungeonEngine.RunOutcome.Ok, run.Outcome);
-                Assert.Equal(0, run.TicketsLeft);
-            }
-            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var logged = await verify.AccountAnalyticsLogs.AsNoTracking().Where(l => l.AccountId == account).ToListAsync();
-            Assert.Equal(DungeonEngine.XpFor(1, 120_000, won: true), logged.Single(l => l.EventTypeHash == DungeonEngine.TestGrantXp).PayloadMetric);
-            Assert.Equal(DungeonEngine.FirstClearDiamonds(1), logged.Single(l => l.EventTypeHash == DungeonEngine.TestGrantDiamonds).PayloadMetric);
-        }
-
-        [Fact]
-        public async Task ALiveRunTakesItsTicketAtTheStartAndASweepNeedsABeatenStage()
+        public async Task ALiveRunTakesItsTicketAtTheEndAndASweepNeedsABeatenStage()
         {
             const long playerId = 950_420_005L;
             var now = new DateTime(2026, 10, 31, 12, 0, 0, DateTimeKind.Utc);
@@ -182,13 +156,14 @@ namespace FolkIdle.Server.Tests
             }
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var start = await DungeonEngine.StartLiveAsync(db, playerId, DungeonKind.Gold, 1, mask, now, freeRun: false);
+                var start = await DungeonEngine.StartLiveAsync(db, playerId, DungeonKind.Gold, 1, mask, now);
                 Assert.Equal(DungeonEngine.RunOutcome.Ok, start.Outcome);
-                Assert.Equal(DungeonEngine.TicketCap - 1, start.TicketsLeft);
+                Assert.Equal(DungeonEngine.TicketCap, start.TicketsLeft); // a run lost to a restart costs nothing
             }
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var finish = await DungeonEngine.FinishLiveAsync(db, playerId, DungeonKind.Gold, 1, won: true, new DungeonEngine.Income(0, 3_000_000), now, new Random(1), freeRun: false);
+                var finish = await DungeonEngine.FinishLiveAsync(db, playerId, DungeonKind.Gold, 1, won: true, new DungeonEngine.Income(0, 3_000_000), now, new Random(1));
+                Assert.Equal(DungeonEngine.TicketCap - 1, finish.TicketsLeft);
                 Assert.Equal(DungeonEngine.GoldFor(1, 3_000_000, won: true), finish.Reward!.Gold);
                 Assert.Equal(DungeonEngine.FirstClearDiamonds(1), finish.Reward.Diamonds);
             }
