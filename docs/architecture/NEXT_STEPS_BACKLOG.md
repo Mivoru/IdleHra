@@ -19,6 +19,52 @@ do next.
 
 ---
 
+# 2026-10-31 (autonomous run) - What shipped, what is open
+
+Owner away ~6 h with "decide by your own recommendation, deploy when CI is
+green". Every own decision is written in the design doc it belongs to
+(`docs/design/HERBS_POTIONS_ASCENSION.md` 1.2a, `docs/design/CHESTS_DUNGEONS_DIAMONDS.md`
+2.7 and 5.8).
+
+**Deployed** (backups taken before each, in `~/folkidle-backups`):
+- **1.0.1472 / client 1.47.0** - #250 herbs + potions complete (shelves, three
+  slots, offline stretches, measured effects: Ironbark cut to 6%/9% because
+  +15% armour broke the region 1-3 walls), herbs in every loot chest, quest
+  step 6, **larder race fixed** (restocking restored eaten food, unloading
+  duplicated it); #254 unused chest clips deleted.
+- **1.0.1482 / client 1.48.0** - #255 Book of Deeds is the one list
+  (Getting started = quest line, Closest to done); #256 one reward table
+  5/15/40/100, Alchemist achievement, Delve 60 -> 80, inheritance option B
+  (10 x 4%, 100 x 1.25^level), offline + Legendary achievement cards.
+  NON-additive `DiamondRework` migration: tiers remapped, inheritance levels
+  ceil(old / 2) - verified in production.
+- **1.0.1486 / client 1.49.0** - #257 the Equipment Dungeon (5 waves + Baba
+  Yaga, 15 stages, tickets 2/day cap 4), calibrated on a production copy:
+  stage 10 = Malakor A10 x0.24; owner's character clears 9, maxed profile 10.
+
+**Open, in order:**
+1. **thorns_pct parity** (still `retired: true`). Lead found, not proven: with
+   thorns the offline projection leaves the exact swing-count distribution
+   (`SwingsToKill`) for mean-HP tracking (`HuntingProjection.Advance`,
+   `s.MonsterHp -= swing.Mean`). Test first whether the drift appears with a
+   near-zero thorns fraction - if it does, the mean path is the cause, not
+   thorns. Un-retire only when both parity suites pass with it rollable.
+2. **Inheritance milestones** at levels 5 and 10 (option B's extra effects) -
+   twelve new mechanics, each needing a parity row; not built.
+3. **Dungeon, next slices:** the XP (Koschei) and Gold (Zmey) dungeons,
+   tickets from chests, stage-15 titles, run art and sounds
+   (`LOOT_DUNGEON_VISUALS.md`). The dev fixture has not beaten the region 2
+   boss, so `exercise`'s dungeon section sees the locked lobby on the real
+   gate (it was verified 20/20 with the gate lowered locally).
+4. **Phase 2b (simulator) and phase 5 (affix families)** - not started. 2b is a
+   rewrite of the offline combat path with a week of production comparison
+   behind a flag; it should not be done unsupervised.
+5. Known noise: `check:touch` flags Wardrobe and Market cosmetics controls,
+   `check:safearea` sits at its baseline (task 119), the Wiki odds check needs
+   a kill in the same session.
+
+---
+
 # 2026-10-30 (plans) - What comes next
 
 **`docs/design/ROADMAP_2026_10_30.md` holds the plan for everything open.**
