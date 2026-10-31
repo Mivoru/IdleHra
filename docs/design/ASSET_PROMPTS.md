@@ -59,7 +59,7 @@ centred, the whole chest in frame with a margin.
 
 ### 1.1 Cosmetic casket (rebuild of today's chest)
 
-References: `client_web/public/chest/idle.webp` (today's chest, for the
+References: the chest still that was `client_web/public/chest/idle.webp` (deleted 2026-10-31 with the opening clips; in git history before that) (today's chest, for the
 design to keep).
 
 | File | Prompt |
