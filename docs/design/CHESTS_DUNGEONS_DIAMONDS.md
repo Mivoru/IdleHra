@@ -377,6 +377,14 @@ mortar blurring aside, a hex sigil over the champion's weapon.
 
 ### 2.7 Built: the equipment dungeon (2026-10-31, autonomous run)
 
+> **Hidden from players since client 1.49.1 (owner, 2026-10-31: "far from how
+> I want it to look").** `NetworkBroadcastSystem.Dungeon.cs` answers every
+> account except the admin ones with a closed lobby (no stages) and refuses a
+> run with `Outcome: "Locked"`; `Game.svelte` shows the menu entry only to an
+> admin. Code, tables, tickets and first-clear masks stay. Remove both gates
+> (`DungeonClosedReason`, `MENU_HIDDEN_PLAYERS`) when the rework lands, and put
+> `Dungeon` back in `scripts/screens.mjs`.
+
 The first slice of the phase - Baba Yaga's equipment dungeon (D4) - with the
 decisions D1-D6 as approved. What is in it, and the calls made along the way:
 

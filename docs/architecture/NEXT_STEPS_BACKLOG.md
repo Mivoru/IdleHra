@@ -41,6 +41,10 @@ green". Every own decision is written in the design doc it belongs to
 - **1.0.1486 / client 1.49.0** - #257 the Equipment Dungeon (5 waves + Baba
   Yaga, 15 stages, tickets 2/day cap 4), calibrated on a production copy:
   stage 10 = Malakor A10 x0.24; owner's character clears 9, maxed profile 10.
+- **client 1.49.1** - #259 the dungeon is **hidden from players again** at the
+  owner's request (it is far from how it should look): non-admin accounts get
+  a closed lobby and a refused run, the menu entry shows only to admins. See
+  `CHESTS_DUNGEONS_DIAMONDS.md` 2.7 for how to lift it.
 
 **Open, in order:**
 1. **thorns_pct parity** (still `retired: true`). Lead found, not proven: with
@@ -51,7 +55,8 @@ green". Every own decision is written in the design doc it belongs to
    thorns. Un-retire only when both parity suites pass with it rollable.
 2. **Inheritance milestones** at levels 5 and 10 (option B's extra effects) -
    twelve new mechanics, each needing a parity row; not built.
-3. **Dungeon, next slices:** the XP (Koschei) and Gold (Zmey) dungeons,
+3. **Dungeon rework first** (owner: the look is wrong - get the owner's picture
+   of it before building more), then the next slices: the XP (Koschei) and Gold (Zmey) dungeons,
    tickets from chests, stage-15 titles, run art and sounds
    (`LOOT_DUNGEON_VISUALS.md`). The dev fixture has not beaten the region 2
    boss, so `exercise`'s dungeon section sees the locked lobby on the real
