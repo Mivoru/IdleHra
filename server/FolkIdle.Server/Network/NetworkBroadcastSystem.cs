@@ -2399,6 +2399,11 @@ namespace FolkIdle.Server.Network
             }
 
             // Loot chests - see NetworkBroadcastSystem.LootChests.cs.
+            if (await TryHandleDungeonAsync(context, requestPath))
+            {
+                return;
+            }
+
             if (await TryHandleLootChestsAsync(context, requestPath))
             {
                 return;
@@ -12590,6 +12595,14 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/dev/materials/grant" && context.Request.HttpMethod == "POST")
                 {
                     await HandleDevMaterialGrant(context, playerId);
+                    return;
+                }
+
+                // The equipment dungeon: set the caller's tickets (exercise.mjs
+                // runs a stage and puts them back).
+                if (requestPath == "/api/v1/dev/dungeon/tickets" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevDungeonTickets(context, playerId);
                     return;
                 }
 

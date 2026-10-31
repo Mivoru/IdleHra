@@ -1740,6 +1740,58 @@ if (want('potions')) {
   await apiPost('/api/v1/dev/potions/expire', {});
 }
 
+// --- the equipment dungeon (2026-10-31) --------------------------------------
+// Modul: proved by what CHANGED: a ticket leaves, the server answers with a
+// played-back run, and a won stage puts a piece and a loot chest where the
+// player can open them. Round-trips the fixture: the tickets are set back by a
+// dev route, the piece is binned, and the chest is opened (it pays only
+// materials and gold, which the fixture has plenty of) - so this passes on
+// every run, not once.
+}
+if (want('dungeon')) {
+{
+  await go('Dungeon');
+  const lobby = page.getByTestId('dungeon');
+  const shown = await lobby.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  record('the Dungeon screen shows its lobby', shown);
+  const view = await apiGet('/api/v1/dungeon').catch(() => null);
+  record('the lobby lists fifteen stages with Baba Yaga\u2019s abilities', view?.Stages?.length === 15
+    && view.Stages[10].Abilities.filter((a) => a.Active).length === 4, view ? `${view.Stages.length} stages, open ${view.Open}` : 'no answer');
+
+  if (view?.Open) {
+    const ticketsBefore = view.Tickets;
+    await apiPost('/api/v1/dev/dungeon/tickets', { Tickets: 4 });
+    await go('Home');
+    await go('Dungeon');
+    await page.getByTestId('dungeon-stage-1').click().catch(() => {});
+    await page.getByTestId('dungeon-enter').click({ timeout: 10000 }).catch(() => {});
+    const run = page.getByTestId('dungeon-run');
+    await run.waitFor({ timeout: 15000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Skip to the end' }).click().catch(() => {});
+    const result = page.getByTestId('dungeon-result');
+    const finished = await result.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+    const resultText = finished ? (await result.innerText()).replace(/\s+/g, ' ') : '';
+    record('a run plays back and ends in a verdict', finished && /Victory|Defeat/.test(resultText), resultText.slice(0, 120));
+    const after = await apiGet('/api/v1/dungeon').catch(() => null);
+    record('the run took one ticket', after?.Tickets === 3, `tickets 4 -> ${after?.Tickets}`);
+    if (/Victory/.test(resultText)) {
+      record('a won stage pays a piece and a loot chest', /loot chest/.test(resultText) && /(Rare|Epic|Legendary|Mythic|Relic|Ultra)/i.test(resultText), resultText.slice(0, 160));
+    } else {
+      record('a won stage pays a piece and a loot chest (skipped: the fixture lost stage 1)', true);
+    }
+    // Round trip: bin the newest piece the run paid, open the chest it paid,
+    // and put the tickets back.
+    const chests = await apiGet('/api/v1/chests').catch(() => null);
+    const bronze = chests?.Chests?.find((c) => c.Tier === 1);
+    if (bronze?.Count > 0) await apiPost('/api/v1/chests/open', { Tier: 1, Count: 1 }).catch(() => {});
+    const pieceId = Number(await result.getAttribute('data-piece-id').catch(() => '0')) || 0;
+    if (pieceId > 0) await apiPost('/api/v1/chest/discard', { equipmentId: pieceId }).catch(() => {});
+    await apiPost('/api/v1/dev/dungeon/tickets', { Tickets: ticketsBefore });
+  } else {
+    record('a run plays back and ends in a verdict (skipped: dungeon locked for this account)', true);
+  }
+}
+
 // --- Workshop commissions (task 83) ------------------------------------------
 // Modul: THIS RUNS BEFORE "crafting as a job". That step puts a character to
 // work on a recipe, and the worker then eats birch log and copper ore every

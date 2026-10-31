@@ -342,7 +342,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// its crit roll, in the live tick's order: dodge, then the monster crit,
         /// then armour, then block, then the 1000 milli-HP floor.
         /// </summary>
-        private static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower)
+        internal static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower)
         {
             // The tick's own curve, not a copy of it - a copy is what would have
             // kept the old dead zone here after the tick lost it.
