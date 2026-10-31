@@ -126,7 +126,8 @@
               <span class="gate-name">{d.Name}</span>
               <span class="gate-pays">{g.pays}</span>
               <span class="gate-tickets" title="{d.Tickets} of {data.TicketCap} tickets" data-testid="dungeon-tickets-{d.Key.toLowerCase()}">
-                {#each Array(data.TicketCap) as _, i (i)}<i class:full={i < d.Tickets}></i>{/each}
+                {#each Array(Math.max(data.TicketCap, d.Tickets)) as _, i (i)}<i class:full={i < d.Tickets}></i>{/each}
+                <b class="ticket-count">{d.Tickets}/{data.TicketCap}</b>
               </span>
             </button>
             <div class="stage-field" aria-label="{d.Name} stage">
@@ -304,6 +305,7 @@
     grid-row: 4;
     display: flex;
     justify-content: center;
+    align-items: center;
     gap: 3px;
     padding: 0.25rem 0 0.45rem;
   }
@@ -315,6 +317,14 @@
   }
   .gate-tickets i.full {
     background: var(--tone);
+  }
+  .ticket-count {
+    margin-left: 4px;
+    font-size: 0.68rem;
+    line-height: 8px;
+    color: #fff;
+    text-shadow: 0 1px 2px #000;
+    font-variant-numeric: tabular-nums;
   }
 
   .stage-field {

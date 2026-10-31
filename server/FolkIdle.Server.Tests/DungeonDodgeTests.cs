@@ -54,9 +54,8 @@ namespace FolkIdle.Server.Tests
                 runner.Advance();
                 Assert.True(pauses < 20);
             }
-            // Five waves and the boss's opening; the 2/3 and 1/3 telegraphs only
-            // when the boss lives through them - a 2000-attribute hero may not let it.
-            Assert.InRange(pauses, 6, 8);
+            // Waves 2 and 4, the boss's opening, and the half-health one when he lives that long.
+            Assert.InRange(pauses, 3, 4);
             Assert.True(runner.Result.Won);
             Assert.Equal(pauses, runner.Result.Dodged);
         }
@@ -123,10 +122,10 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TelegraphsGrowLongerAndFasterWithTheStage()
         {
-            Assert.Equal(1, DungeonPerks.SequenceLength(1, boss: false));
-            Assert.Equal(2, DungeonPerks.SequenceLength(1, boss: true));
-            Assert.Equal(4, DungeonPerks.SequenceLength(15, boss: false));
-            Assert.Equal(5, DungeonPerks.SequenceLength(15, boss: true));
+            Assert.Equal(2, DungeonPerks.SequenceLength(1, boss: false));
+            Assert.Equal(3, DungeonPerks.SequenceLength(1, boss: true));
+            Assert.Equal(5, DungeonPerks.SequenceLength(15, boss: false));
+            Assert.Equal(6, DungeonPerks.SequenceLength(15, boss: true));
             Assert.True(DungeonPerks.MsPerSwipe(15) < DungeonPerks.MsPerSwipe(1));
             Assert.All(DungeonPerks.Telegraph(9, boss: false, new Random(2)), d => Assert.Contains(d, DungeonPerks.Directions));
         }
