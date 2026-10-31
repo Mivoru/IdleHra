@@ -55,6 +55,8 @@ namespace FolkIdle.Server.Engine
         QuestLine = 13,
         /// <summary>Gold out of an opened loot chest (LootChestEngine), including gold paid for refused diamonds.</summary>
         LootChest = 14,
+        /// <summary>The Gold dungeon's payout (DungeonEngine) - a reward, so never part of the earned base.</summary>
+        Dungeon = 15,
     }
 
     /// <summary>

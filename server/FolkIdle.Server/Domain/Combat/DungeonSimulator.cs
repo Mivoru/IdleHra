@@ -5,7 +5,13 @@ using FolkIdle.Server.Engine;
 namespace FolkIdle.Server.Domain.Combat
 {
     /// <summary>One thing that happened in a dungeon run, for the playback and the feed.</summary>
-    public readonly record struct DungeonEvent(double AtSeconds, string Kind, string Text, int Value = 0);
+    /// <summary>
+    /// One thing that happened in a dungeon run, for the playback: when, what,
+    /// and both bars right after it (percent), so the client can animate the
+    /// fight between events without inferring health from text.
+    /// </summary>
+    public readonly record struct DungeonEvent(double AtSeconds, string Kind, string Text, int Value = 0,
+        int PlayerHpPct = 0, int EnemyHpPct = 0, int ShieldPct = 0);
 
     public sealed record DungeonRunResult(
         bool Won,
@@ -15,14 +21,17 @@ namespace FolkIdle.Server.Domain.Combat
         int BossHpLeftPct,
         double Seconds,
         int MealsEaten,
-        IReadOnlyList<DungeonEvent> Events);
+        IReadOnlyList<DungeonEvent> Events,
+        DungeonKind Kind = DungeonKind.Equipment,
+        IReadOnlyList<int>? WaveMonsterIds = null);
 
     /// <summary>One of the boss's abilities as it stands at a stage, for the lobby.</summary>
     public readonly record struct DungeonAbilityView(string Id, string Name, int FromStage, string Line, bool Active);
 
     /// <summary>
-    /// The equipment dungeon's run, simulated on the server (owner D1-D6,
-    /// CHESTS_DUNGEONS_DIAMONDS.md 2.6a): five waves and Baba Yaga, health
+    /// A dungeon run, simulated on the server (owner D1-D6,
+    /// CHESTS_DUNGEONS_DIAMONDS.md 2.6a): five waves and the dungeon's boss
+    /// (DungeonBoss: Baba Yaga, Koschei, Zmey), health
     /// carried from fight to fight, at most five meals from the larder.
     /// </summary>
     /// <remarks>
@@ -113,32 +122,25 @@ namespace FolkIdle.Server.Domain.Combat
             return (hp, attack, modifiers.Enrage);
         }
 
-        // ---------------------------------------------------------------
-        // Baba Yaga's four abilities - each a rule in the loop below, with
-        // its numbers growing linearly from its first stage to stage 15.
-        // ---------------------------------------------------------------
-
-        private static double Grow(int stage, int from, double start, double end)
-            => stage < from ? 0 : start + (end - start) * (stage - from) / Math.Max(1, StageCount - from);
-
-        public static double MortarDodgePct(int stage) => Grow(stage, 1, 10, 25);
-        public static double HexEverySeconds(int stage) => stage < 4 ? 0 : 15 - 5.0 * (stage - 4) / (StageCount - 4);
-        public static int HexHits(int stage) => stage < 4 ? 0 : (int)Math.Round(3 + 2.0 * (stage - 4) / (StageCount - 4));
-        public const double HexDamageCut = 0.4;
-        public static double FencePct(int stage) => Grow(stage, 8, 15, 30);
-        public static double SweepEverySeconds(int stage) => stage < 11 ? 0 : 30 - 10.0 * (stage - 11) / (StageCount - 11);
-        public static double SweepSeconds(int stage) => stage < 11 ? 0 : 6 + 4.0 * (stage - 11) / (StageCount - 11);
-
-        public static IReadOnlyList<DungeonAbilityView> AbilitiesAt(int stage) => new[]
+        /// <summary>
+        /// The monsters the five waves wear, for the playback: the ordinary
+        /// monsters of the stage's region, in turn. Their numbers are the
+        /// wave's (40% of the boss), not theirs - this is only whose face it is.
+        /// </summary>
+        public static IReadOnlyList<int> WaveMonsterIdsFor(int stage)
         {
-            new DungeonAbilityView("mortar", "Mortar Flight", 1, $"Dodges {MortarDodgePct(Math.Max(stage, 1)):0}% of your attacks.", stage >= 1),
-            new DungeonAbilityView("hex", "Hex", 4,
-                stage >= 4 ? $"Every {HexEverySeconds(stage):0} s your next {HexHits(stage)} hits deal {HexDamageCut * 100:0}% less." : "Your next hits deal 40% less.", stage >= 4),
-            new DungeonAbilityView("fence", "Bone Fence", 8,
-                stage >= 8 ? $"At half health a skull-lantern with {FencePct(stage):0}% of her health must fall before she can be hit." : "At half health a skull-lantern shields her.", stage >= 8),
-            new DungeonAbilityView("sweep", "Broom Sweep", 11,
-                stage >= 11 ? $"Every {SweepEverySeconds(stage):0} s no meal can be eaten for {SweepSeconds(stage):0} s." : "Sweeps the larder away for a while.", stage >= 11),
-        };
+            int region = RegionOfStage(stage);
+            int boss = RaceUnlockRegistry.GetRegionBossMonsterId(region);
+            var pool = new List<int>();
+            for (int id = ContentRegistry.FirstCanonicalMonsterId; id <= ContentRegistry.Monsters.Length; id++)
+                if (id != boss && ContentRegistry.GetMonsterRegionTier(id) == region) pool.Add(id);
+            var waves = new int[Waves];
+            for (int i = 0; i < Waves; i++) waves[i] = pool.Count > 0 ? pool[i % pool.Count] : boss;
+            return waves;
+        }
+
+        /// <summary>The boss's abilities at a stage, for the lobby.</summary>
+        public static IReadOnlyList<DungeonAbilityView> AbilitiesAt(DungeonKind kind, int stage) => DungeonBoss.For(kind).AbilitiesAt(stage);
 
         /// <summary>
         /// Runs the stage for the character in <paramref name="payload"/> (a
@@ -148,8 +150,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// many of it there are; the run eats at most <see cref="MealCap"/>.
         /// </summary>
         public static DungeonRunResult Run(TickStatePayload payload, int stage, int foodItemId, int foodInLarder)
+            => Run(payload, DungeonKind.Equipment, stage, foodItemId, foodInLarder);
+
+        public static DungeonRunResult Run(TickStatePayload payload, DungeonKind kind, int stage, int foodItemId, int foodInLarder)
         {
             stage = Math.Clamp(stage, 1, StageCount);
+            DungeonBoss rules = DungeonBoss.For(kind);
             CombatStats stats = SimulationEngine.LiveCombatStats(in payload);
             long maxMilliHp = Math.Max(1000L, SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats));
             // The tick's own attack (aptitudes, inheritance, the lineage's scale) -
@@ -168,8 +174,7 @@ namespace FolkIdle.Server.Domain.Combat
             // twentieth of the live damage - the reference model has no skill
             // tree and no codex, which a real character's damage mostly is.
             var swing = HuntingProjection.PlayerSwing.For(in payload, in stats, in boss, rawMilliAttack);
-            double playerHit = swing.Mean * (1.0 - MortarDodgePct(stage) / 100.0);
-            double healPerSwing = swing.ExpectedHeal(maxMilliHp / 100) * (1.0 - MortarDodgePct(stage) / 100.0);
+            double bossHitFactor = rules.PlayerHitFactor(stage, in swing);
             int playerIntervalMs = Math.Max(TickMs, SimulationEngine.LiveAttackIntervalMs(in payload, in stats));
             int bossIntervalMs = boss.AttackIntervalMs > 0 ? boss.AttackIntervalMs : 2000;
 
@@ -179,30 +184,36 @@ namespace FolkIdle.Server.Domain.Combat
             double eatBelow = maxMilliHp * (thresholdPct / 100.0);
 
             var events = new List<DungeonEvent>();
-            void Note(int tick, string kind, string text, int value = 0)
-            {
-                if (events.Count < MaxEvents) events.Add(new DungeonEvent(tick * TickMs / 1000.0, kind, text, value));
-            }
-
-            double hp = maxMilliHp;
+            var f = new DungeonFightState { Stage = stage, PlayerMax = maxMilliHp, PlayerHp = maxMilliHp };
             int tick = 0, meals = 0, eatCooldown = 0, wavesCleared = 0, bossHpLeftPct = 100;
+            void Note(string kindOfEvent, string text, int value = 0)
+            {
+                if (events.Count >= MaxEvents) return;
+                events.Add(new DungeonEvent(tick * TickMs / 1000.0, kindOfEvent, text, value,
+                    Pct(f.PlayerHp, f.PlayerMax), Pct(f.Enemy, f.EnemyMax), Pct(f.Shield, f.EnemyMax)));
+            }
+            f.Note = (_, text, v) => Note("ability", text, v);
 
             // Six fights: five waves at WaveStrength, then the boss.
             for (int fight = 0; fight <= Waves; fight++)
             {
                 bool isBoss = fight == Waves;
-                double enemyMax = isBoss ? bossMilliHp : bossMilliHp * WaveStrength;
-                double enemy = enemyMax;
+                f.EnemyMax = isBoss ? bossMilliHp : bossMilliHp * WaveStrength;
+                f.Enemy = f.EnemyMax;
+                f.Shield = 0;
+                f.EnemySwings = 0;
+                f.BurnPerTick = 0;
+                f.BurnUntil = 0;
+                f.BossState = null;
+                f.Now = 0;
                 double enemyHit = BossGearBenchmark.ExpectedBossMilliDamagePerSwing(in stats, in boss, isBoss ? bossAttack : (long)(bossAttack * WaveStrength));
-                Note(tick, isBoss ? "boss" : "wave", isBoss ? "Baba Yaga flies in on her mortar." : $"Wave {fight + 1} of {Waves}.", fight + 1);
+                double playerHit = swing.Mean * (isBoss ? bossHitFactor : 1.0);
+                double healPerSwing = swing.ExpectedHeal(maxMilliHp / 100) * (isBoss ? bossHitFactor : 1.0);
+                if (isBoss) rules.Begin(f);
+                Note(isBoss ? "boss" : "wave", isBoss ? rules.Intro : $"Wave {fight + 1} of {Waves}.", fight + 1);
 
-                int playerAcc = 0, enemyAcc = 0;
-                double fence = 0;
-                bool fenceRaised = false;
-                int hexLeft = 0;
-                double nextHex = isBoss && HexEverySeconds(stage) > 0 ? HexEverySeconds(stage) : double.MaxValue;
-                double nextSweep = isBoss && SweepEverySeconds(stage) > 0 ? SweepEverySeconds(stage) : double.MaxValue;
-                double sweptUntil = 0;
+                int playerAcc = 0;
+                double enemyAcc = 0;
                 int fightStart = tick;
 
                 while (true)
@@ -210,92 +221,86 @@ namespace FolkIdle.Server.Domain.Combat
                     tick++;
                     if (tick > MaxTicks)
                     {
-                        Note(tick, "timeout", "The fight drags on past half an hour - the run is lost.");
+                        Note("timeout", "The fight drags on past half an hour - the run is lost.");
                         return Finish(false);
                     }
-                    double now = (tick - fightStart) * TickMs / 1000.0;
-
-                    if (isBoss && now >= nextHex)
-                    {
-                        hexLeft = HexHits(stage);
-                        nextHex += HexEverySeconds(stage);
-                        Note(tick, "ability", $"Hex - your next {hexLeft} hits are cursed.", hexLeft);
-                    }
-                    if (isBoss && now >= nextSweep)
-                    {
-                        sweptUntil = now + SweepSeconds(stage);
-                        nextSweep += SweepEverySeconds(stage);
-                        Note(tick, "ability", $"Broom Sweep - no meals for {SweepSeconds(stage):0} s.");
-                    }
+                    f.Now = (tick - fightStart) * TickMs / 1000.0;
+                    if (isBoss) rules.OnTime(f);
 
                     playerAcc += TickMs;
                     if (playerAcc >= playerIntervalMs)
                     {
                         playerAcc -= playerIntervalMs;
-                        double dealt = playerHit;
-                        if (hexLeft > 0) { dealt *= 1.0 - HexDamageCut; hexLeft--; }
-                        if (fence > 0)
+                        double dealt = isBoss ? rules.ModifyDealt(f, playerHit) : playerHit;
+                        if (f.Shield > 0)
                         {
-                            fence -= dealt;
-                            if (fence <= 0) Note(tick, "ability", "The skull-lantern shatters.");
+                            f.Shield -= dealt;
+                            if (f.Shield <= 0)
+                            {
+                                f.Shield = 0;
+                                Note("ability", "The shield shatters.");
+                            }
                         }
                         else
                         {
-                            enemy -= dealt;
+                            f.Enemy -= dealt;
                         }
-                        if (healPerSwing > 0) hp = Math.Min(maxMilliHp, hp + healPerSwing * (dealt / Math.Max(1.0, playerHit)));
-
-                        if (isBoss && !fenceRaised && FencePct(stage) > 0 && enemy > 0 && enemy <= enemyMax * 0.5)
-                        {
-                            fenceRaised = true;
-                            fence = enemyMax * FencePct(stage) / 100.0;
-                            Note(tick, "ability", $"Bone Fence - a skull-lantern with {FencePct(stage):0}% of her health.");
-                        }
+                        if (healPerSwing > 0) f.PlayerHp = Math.Min(maxMilliHp, f.PlayerHp + healPerSwing * (dealt / Math.Max(1.0, playerHit)));
+                        if (isBoss) rules.AfterPlayerSwing(f);
                     }
 
-                    if (enemy <= 0) break;
+                    if (f.Enemy <= 0 && !(isBoss && rules.Survives(f))) break;
 
                     enemyAcc += TickMs;
-                    if (enemyAcc >= bossIntervalMs)
+                    double interval = bossIntervalMs * (isBoss ? rules.EnemyIntervalFactor(f) : 1.0);
+                    if (enemyAcc >= interval)
                     {
-                        enemyAcc -= bossIntervalMs;
-                        bool enraged = isBoss && enrage && enemy * 100.0 < enemyMax * AscensionModifiers.EnrageBelowPct;
-                        hp -= enraged ? enemyHit * AscensionModifiers.EnrageAttackPct / 100.0 : enemyHit;
+                        enemyAcc -= interval;
+                        f.EnemySwings++;
+                        bool enraged = isBoss && enrage && f.Enemy * 100.0 < f.EnemyMax * AscensionModifiers.EnrageBelowPct;
+                        double hit = (enraged ? enemyHit * AscensionModifiers.EnrageAttackPct / 100.0 : enemyHit) * (isBoss ? rules.EnemyHitFactor(f) : 1.0);
+                        f.PlayerHp -= hit;
+                        if (isBoss) rules.AfterEnemySwing(f, hit);
                     }
+                    if (f.BurnPerTick > 0 && f.Now < f.BurnUntil) f.PlayerHp -= f.BurnPerTick;
 
-                    if (hp <= 0)
+                    if (f.PlayerHp <= 0)
                     {
-                        Note(tick, "defeat", isBoss
-                            ? $"Defeated by Baba Yaga at {Math.Max(0, (int)Math.Ceiling(enemy * 100 / enemyMax))}% of her health."
+                        f.PlayerHp = 0;
+                        bossHpLeftPct = isBoss ? Math.Max(1, (int)Math.Ceiling(f.Enemy * 100 / f.EnemyMax)) : 100;
+                        Note("defeat", isBoss
+                            ? $"Defeated by {rules.BossName} at {bossHpLeftPct}% of the boss's health."
                             : $"Defeated in wave {fight + 1}.");
-                        bossHpLeftPct = isBoss ? Math.Max(1, (int)Math.Ceiling(enemy * 100 / enemyMax)) : 100;
                         return Finish(false);
                     }
 
                     if (eatCooldown > 0) eatCooldown--;
-                    else if (hp <= eatBelow && healPerBite > 0 && meals < mealsAvailable && now >= sweptUntil)
+                    else if (f.PlayerHp <= eatBelow && healPerBite > 0 && meals < mealsAvailable && (!isBoss || rules.CanEat(f)))
                     {
-                        hp = Math.Min(maxMilliHp, hp + healPerBite);
+                        f.PlayerHp = Math.Min(maxMilliHp, f.PlayerHp + healPerBite);
                         meals++;
                         eatCooldown = SimulationEngine.AutoEatCooldownTicks;
-                        Note(tick, "meal", meals == mealsAvailable ? "The last meal of the run." : $"A meal ({meals} of {mealsAvailable}).", meals);
+                        Note("meal", meals == mealsAvailable ? "The last meal of the run." : $"A meal ({meals} of {mealsAvailable}).", meals);
                     }
                 }
 
+                f.Enemy = 0;
                 if (!isBoss)
                 {
                     wavesCleared++;
-                    Note(tick, "cleared", $"Wave {fight + 1} cleared, {(int)Math.Ceiling(hp * 100 / maxMilliHp)}% health left.", (int)Math.Ceiling(hp * 100 / maxMilliHp));
+                    int left = (int)Math.Ceiling(f.PlayerHp * 100 / maxMilliHp);
+                    Note("cleared", $"Wave {fight + 1} cleared, {left}% health left.", left);
                 }
             }
 
-            Note(tick, "victory", "Baba Yaga falls.");
+            Note("victory", rules.Fall);
             bossHpLeftPct = 0;
             return Finish(true);
 
             DungeonRunResult Finish(bool won) => new(won, stage, wavesCleared, wavesCleared >= Waves, won ? 0 : bossHpLeftPct,
-                tick * TickMs / 1000.0, meals, events);
+                tick * TickMs / 1000.0, meals, events, kind, WaveMonsterIdsFor(stage));
         }
 
+        private static int Pct(double part, double whole) => whole <= 0 ? 0 : Math.Clamp((int)Math.Ceiling(part * 100 / whole), 0, 100);
     }
 }

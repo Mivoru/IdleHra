@@ -1740,63 +1740,91 @@ if (want('potions')) {
   await apiPost('/api/v1/dev/potions/expire', {});
 }
 
-// --- the equipment dungeon (2026-10-31) --------------------------------------
-// Modul: proved by what CHANGED: a ticket leaves, the server answers with a
-// played-back run, and a won stage puts a piece and a loot chest where the
-// player can open them. Round-trips the fixture: the tickets are set back by a
-// dev route, the piece is binned, and the chest is opened (it pays only
-// materials and gold, which the fixture has plenty of) - so this passes on
-// every run, not once.
+// --- the three dungeons (2026-10-31) -----------------------------------------
+// Modul: proved by what CHANGED: a ticket leaves THAT gate only, the server
+// answers with a run the scene plays back, and a won stage pays what its gate
+// promises - XP, gold, or a piece and a loot chest. Round-trips the fixture:
+// the tickets are set back by a dev route, the piece is binned, and the chest
+// is opened (it pays only materials and gold, which the fixture has plenty
+// of) - so this passes on every run, not once.
 }
 if (want('dungeon')) {
 // Modul: hidden from players while it is rebuilt (owner, 2026-10-31). The
-// server answers a non-admin with a closed lobby and no stages, so for the
+// server answers a non-admin with a closed lobby and no dungeons, so for the
 // fixture this proves the gate holds - a run is refused - and stops there.
 const gateView = await apiGet('/api/v1/dungeon').catch(() => null);
-if (gateView && gateView.Open === false && (gateView.Stages?.length ?? 0) === 0) {
-  const refused = await apiPost('/api/v1/dungeon/run', { Stage: 1 }).catch(() => null);
+if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 0) {
+  const refused = await apiPost('/api/v1/dungeon/run', { Kind: 1, Stage: 1 }).catch(() => null);
   record('the hidden dungeon refuses a run to a non-admin', refused?.Outcome === 'Locked', refused ? refused.Outcome : 'no answer');
 } else {
+  // The fixture has not beaten the region 2 boss; open the dungeons for it in
+  // the server's memory only (cleared at the end of this step).
+  await apiPost('/api/v1/dev/dungeon/unlock', { Regions: 2 }).catch(() => {});
   await go('Dungeon');
   const lobby = page.getByTestId('dungeon');
   const shown = await lobby.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
   record('the Dungeon screen shows its lobby', shown);
   const view = await apiGet('/api/v1/dungeon').catch(() => null);
-  record('the lobby lists fifteen stages with Baba Yaga\u2019s abilities', view?.Stages?.length === 15
-    && view.Stages[10].Abilities.filter((a) => a.Active).length === 4, view ? `${view.Stages.length} stages, open ${view.Open}` : 'no answer');
+  const kinds = (view?.Dungeons ?? []).map((d) => d.Key).join(',');
+  record('the lobby has three gates with fifteen stages and four abilities each', kinds === 'Xp,Gold,Equipment'
+    && view.Dungeons.every((d) => d.Stages.length === 15 && d.Stages[10].Abilities.filter((a) => a.Active).length === 4), kinds || 'no answer');
 
   if (view?.Open) {
-    const ticketsBefore = view.Tickets;
+    const before = Object.fromEntries(view.Dungeons.map((d) => [d.Key, d.Tickets]));
     await apiPost('/api/v1/dev/dungeon/tickets', { Tickets: 4 });
     await go('Home');
     await go('Dungeon');
-    await page.getByTestId('dungeon-stage-1').click().catch(() => {});
+    // The Gold gate, stage 1 (the field starts on the highest open stage).
+    await page.getByTestId('dungeon-gate-gold').click().catch(() => {});
+    for (let i = 0; i < 15; i++) {
+      const lower = page.getByTestId('dungeon-gate-gold').locator('..').getByRole('button', { name: 'Lower stage' });
+      if (!(await lower.isEnabled().catch(() => false))) break;
+      await lower.click().catch(() => {});
+    }
     await page.getByTestId('dungeon-enter').click({ timeout: 10000 }).catch(() => {});
     const run = page.getByTestId('dungeon-run');
     await run.waitFor({ timeout: 15000 }).catch(() => {});
-    await page.getByRole('button', { name: 'Skip to the end' }).click().catch(() => {});
+    await page.getByTestId('dungeon-skip').click().catch(() => {});
     const result = page.getByTestId('dungeon-result');
     const finished = await result.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
     const resultText = finished ? (await result.innerText()).replace(/\s+/g, ' ') : '';
-    record('a run plays back and ends in a verdict', finished && /Victory|Defeat/.test(resultText), resultText.slice(0, 120));
+    record('a run plays back in the scene and ends in a verdict', finished && /Victory|Defeat/.test(resultText), resultText.slice(0, 120));
     const after = await apiGet('/api/v1/dungeon').catch(() => null);
-    record('the run took one ticket', after?.Tickets === 3, `tickets 4 -> ${after?.Tickets}`);
-    if (/Victory/.test(resultText)) {
-      record('a won stage pays a piece and a loot chest', /loot chest/.test(resultText) && /(Rare|Epic|Legendary|Mythic|Relic|Ultra)/i.test(resultText), resultText.slice(0, 160));
-    } else {
-      record('a won stage pays a piece and a loot chest (skipped: the fixture lost stage 1)', true);
+    const left = Object.fromEntries((after?.Dungeons ?? []).map((d) => [d.Key, d.Tickets]));
+    record('the run took one ticket from the Gold gate only', left.Gold === 3 && left.Xp === 4 && left.Equipment === 4, JSON.stringify(left));
+    record('a Gold run pays gold', /gold/.test(resultText), resultText.slice(0, 160));
+    await page.getByRole('button', { name: 'Back to the gates' }).click().catch(() => {});
+
+    // The Equipment gate pays a piece and a chest; bin and open them after.
+    await page.getByTestId('dungeon-gate-equipment').click().catch(() => {});
+    for (let i = 0; i < 15; i++) {
+      const lower = page.getByTestId('dungeon-gate-equipment').locator('..').getByRole('button', { name: 'Lower stage' });
+      if (!(await lower.isEnabled().catch(() => false))) break;
+      await lower.click().catch(() => {});
     }
-    // Round trip: bin the newest piece the run paid, open the chest it paid,
-    // and put the tickets back.
+    await page.getByTestId('dungeon-enter').click({ timeout: 10000 }).catch(() => {});
+    await page.getByTestId('dungeon-run').waitFor({ timeout: 15000 }).catch(() => {});
+    await page.getByTestId('dungeon-skip').click().catch(() => {});
+    const eq = page.getByTestId('dungeon-result');
+    const eqDone = await eq.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+    const eqText = eqDone ? (await eq.innerText()).replace(/\s+/g, ' ') : '';
+    if (/Victory/.test(eqText)) {
+      record('a won Equipment stage pays a piece and a loot chest', /loot chest/.test(eqText) && /(Rare|Epic|Legendary|Mythic|Relic|Ultra)/i.test(eqText), eqText.slice(0, 160));
+    } else {
+      record('a won Equipment stage pays a piece and a loot chest (skipped: the fixture lost stage 1)', true);
+    }
     const chests = await apiGet('/api/v1/chests').catch(() => null);
     const bronze = chests?.Chests?.find((c) => c.Tier === 1);
     if (bronze?.Count > 0) await apiPost('/api/v1/chests/open', { Tier: 1, Count: 1 }).catch(() => {});
-    const pieceId = Number(await result.getAttribute('data-piece-id').catch(() => '0')) || 0;
+    const pieceId = Number(await eq.getAttribute('data-piece-id').catch(() => '0')) || 0;
     if (pieceId > 0) await apiPost('/api/v1/chest/discard', { equipmentId: pieceId }).catch(() => {});
-    await apiPost('/api/v1/dev/dungeon/tickets', { Tickets: ticketsBefore });
+    for (const [key, kind] of [['Equipment', 0], ['Xp', 1], ['Gold', 2]]) {
+      await apiPost('/api/v1/dev/dungeon/tickets', { Kind: kind, Tickets: before[key] ?? 4 });
+    }
   } else {
     record('a run plays back and ends in a verdict (skipped: dungeon locked for this account)', true);
   }
+  await apiPost('/api/v1/dev/dungeon/unlock', { Regions: 0 }).catch(() => {});
 }
 
 // --- Workshop commissions (task 83) ------------------------------------------

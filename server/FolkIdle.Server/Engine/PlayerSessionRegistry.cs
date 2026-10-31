@@ -211,6 +211,15 @@ namespace FolkIdle.Server.Engine
         public int Added;
     }
 
+    // Modul: a dungeon run's XP (DungeonEngine) - decided and committed off the
+    // tick, applied on it, because the tick owns XP and the level-up loop.
+    // Always for the main character (slot 1), the run's champion.
+    public struct DungeonXpGrantNotification
+    {
+        public long PlayerId;
+        public long Xp;
+    }
+
     public struct CommandResultNotification
     {
         public long PlayerId;
@@ -560,6 +569,9 @@ namespace FolkIdle.Server.Engine
 
         // Modul: larder - see LarderSlotUpdateNotification.
         public ConcurrentQueue<LarderSlotUpdateNotification> LarderSlotUpdateQueue { get; } = new();
+
+        // Modul: dungeon XP - see DungeonXpGrantNotification.
+        public ConcurrentQueue<DungeonXpGrantNotification> DungeonXpGrantQueue { get; } = new();
 
         // Modul: Guild War scoreboard sync - see
         // GuildWarScoreboardNotification for what was missing.

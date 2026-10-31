@@ -537,6 +537,31 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("DelveRunRecords");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.DungeonProgress", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BestStage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FirstClearMask")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TicketDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Tickets")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PlayerId", "Kind");
+
+                    b.ToTable("DungeonProgress");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.EcoTelemetryLedger", b =>
                 {
                     b.Property<long>("LogId")

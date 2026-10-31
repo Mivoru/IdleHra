@@ -377,7 +377,7 @@ mortar blurring aside, a hex sigil over the champion's weapon.
 
 ### 2.7 Built: the equipment dungeon (2026-10-31, autonomous run)
 
-> **Hidden from players since client 1.49.1 (owner, 2026-10-31: "far from how
+> **Superseded by the rework in 2.8.** **Hidden from players since client 1.49.1 (owner, 2026-10-31: "far from how
 > I want it to look").** `NetworkBroadcastSystem.Dungeon.cs` answers every
 > account except the admin ones with a closed lobby (no stages) and refuses a
 > run with `Outcome: "Locked"`; `Game.svelte` shows the menu entry only to an
@@ -450,6 +450,88 @@ level 112, after the DiamondRework migration):**
 chests, first-clear titles at stage 15, the run's art and sounds from the
 visuals doc, and the calibration-harness report of the highest stage the
 owner's character and the maxed profile clear (needs task 112).
+
+### 2.8 The rework (owner, 2026-10-31) - plan and what is built
+
+The owner hid 2.7 ("far from how I want it to look") and gave the direction.
+Decisions, all approved the same day:
+
+- **Three gates side by side** - XP (Koschei), Gold (Zmey), Equipment (Baba
+  Yaga) - each with a stage field under it; stage N+1 opens when N is beaten.
+- **The fight is shown, not written.** The run plays in a scene like the
+  Combat screen's, not as a log.
+- **Not wholly passive (slice 3).** During a fight the enemy telegraphs an
+  attack or a sequence of attacks and the player swipes up, down, left or
+  right to dodge (arrow keys or WASD on a PC). A miss costs a run-long
+  penalty (less damage, health or armour); a clean dodge offers **one of
+  three bonuses**, Vampire Survivors style (damage, crit, crit damage, health,
+  armour...). **Bonuses and penalties last for the run only** and stack.
+  Sequences grow with the stage: longer, with a shorter window; about one per
+  wave and two or three in the boss fight.
+- **A run becomes a live session on the server (slice 3).** The server
+  simulates to the next telegraph, sends it, waits for the swipes, judges
+  them against the right directions and the window, and goes on. The client
+  never reports "I dodged" - the server knows the answer. Bonuses are capped,
+  because a bot can swipe too.
+- **Sweep for cleared stages (slice 3):** a stage already beaten can be paid
+  out for a ticket without playing it, so the minigame is for new stages and
+  not a daily chore.
+- **The roster grows to three characters (slice 4):** a second champion
+  after stage 6 of a dungeon, a third after stage 11, so an endgame player
+  gears three characters. The Beyond band is then calibrated for three.
+
+**Order, each slice admin-only until the owner has seen it:**
+1. The three gates, the stage field, the XP and Gold dungeons. **Built.**
+2. The run played back as a scene. **Built.**
+3. Dodges and bonuses, the server-side run session, sweep.
+4. Roster slots 2 and 3.
+5. The remaining art and sound (fight backgrounds, wave monsters, ability
+   effects and sounds from LOOT_DUNGEON_VISUALS.md section 8).
+
+**What slices 1-2 built:**
+- `DungeonBoss` (`Domain/Combat/DungeonBosses.cs`): one class per boss with
+  its four abilities as hooks the loop calls (hit factor, timed abilities,
+  shield, survive-at-zero, swing speed and size, burns, can-eat). Koschei:
+  Deathless (rises at 15% -> 40% by stage 10, twice from 13), Bone Ward,
+  Soul Drain, The Needle (crits +25 -> 60%, other hits -20 -> -35%). Zmey:
+  Three Heads (each head lost cuts his damage by a third, the rest swing
+  15 -> 30% faster), Fire Breath (every 6th, from 10 every 5th swing; 3 -> 6%
+  of max health a second for 3 s, armour ignored), Regrowth (a head grows
+  back after 20 -> 10 s unless the next falls first), Gold Hide (20 -> 40%
+  less from every hit). Baba Yaga as in 2.7.
+- `DungeonProgress` table: one row per player per dungeon (tickets, ticket
+  day, best stage, first-clear mask). Migration `AddDungeonProgress` copies
+  the four old PlayerRecords columns into Kind 0 rows; the columns stay,
+  unread, to be dropped later. **Tickets are per gate**: 2 a day each, cap 4.
+- Rewards: XP and Gold pay **20 + 8 x stage minutes** (28 -> 140) of the
+  champion's own income - the best hunting XP an hour over the monsters of
+  open regions they survive (`BestHuntingXpPerHour`, the projection the
+  Combat advisor uses), or the account's earned gold an hour
+  (`GoldRewardScale`). A lost run pays a quarter. First clears pay 5 / 10 /
+  20 diamonds **in each dungeon** (525 a player, once). XP reaches the live
+  payload through `DungeonXpGrantQueue` and the warp path's level-up loop;
+  gold is a ledger write (`GoldIncomeSource.Dungeon`, never in the earned
+  base) and a ReloadState.
+- Every run event carries both bars in percent, and the result names the
+  five wave monsters (the ordinary monsters of the stage's region), so the
+  scene animates from server numbers and never infers health.
+- Client: `routes/Dungeon.svelte` (three gates with painted art, ticket pips,
+  a stage stepper per gate, the boss's abilities at the chosen stage) and
+  `lib/ui/DungeonRun.svelte` (gate-opening light clip, wave pips and the
+  boss skull, the wave monster or the boss portrait, both bars, ability and
+  meal banners, the boss intro card, 1x / 2x / Skip, the verdict and the
+  reward). Gate and boss art: `tools/assets/gemini.json`
+  (`dungeon_gate_*`, `dungeon_boss_*`), in `client_web/public/dungeon/`.
+- Still admin-only in production. The server also opens it where its dev
+  tools are on and a dev build shows the menu entry, so `exercise.mjs` runs
+  the whole flow on the dev fixture; `/api/v1/dev/dungeon/unlock` counts the
+  region bosses as beaten in memory only, for the fixture.
+
+**Not measured yet:** Koschei's and Zmey's stages against the maxed profile.
+`AscensionCalibrationHarness` now reports all three dungeons; the band scale
+was calibrated on Baba Yaga alone, and the other two bosses' abilities make
+their stages easier or harder for a given build. Run it on the production
+copy before the dungeons open to players, and record the numbers here.
 
 ### 2.6 Decisions for the owner
 

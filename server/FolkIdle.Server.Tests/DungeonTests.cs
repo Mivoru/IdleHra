@@ -9,8 +9,8 @@ using Xunit;
 namespace FolkIdle.Server.Tests
 {
     /// <summary>
-    /// The equipment dungeon (owner D1-D6, 2026-10-31): the stage bands are
-    /// pinned to the boss ladders they borrow, each Baba Yaga ability does what
+    /// The three dungeons (owner D1-D6, 2026-10-31): the stage bands are
+    /// pinned to the boss ladders they borrow, each boss ability does what
     /// its line says at its first and last stage, the meal cap holds, and the
     /// ticket rules top up without ever passing the cap.
     /// </summary>
@@ -57,24 +57,24 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void BabaYagasAbilitiesMatchTheirLinesAtFirstAndLastStage()
         {
-            Assert.Equal(10, DungeonSimulator.MortarDodgePct(1), 3);
-            Assert.Equal(25, DungeonSimulator.MortarDodgePct(15), 3);
-            Assert.Equal(0, DungeonSimulator.HexHits(3));
-            Assert.Equal(15, DungeonSimulator.HexEverySeconds(4), 3);
-            Assert.Equal(3, DungeonSimulator.HexHits(4));
-            Assert.Equal(10, DungeonSimulator.HexEverySeconds(15), 3);
-            Assert.Equal(5, DungeonSimulator.HexHits(15));
-            Assert.Equal(0, DungeonSimulator.FencePct(7), 3);
-            Assert.Equal(15, DungeonSimulator.FencePct(8), 3);
-            Assert.Equal(30, DungeonSimulator.FencePct(15), 3);
-            Assert.Equal(0, DungeonSimulator.SweepEverySeconds(10), 3);
-            Assert.Equal(30, DungeonSimulator.SweepEverySeconds(11), 3);
-            Assert.Equal(6, DungeonSimulator.SweepSeconds(11), 3);
-            Assert.Equal(20, DungeonSimulator.SweepEverySeconds(15), 3);
-            Assert.Equal(10, DungeonSimulator.SweepSeconds(15), 3);
+            Assert.Equal(10, BabaYaga.MortarDodgePct(1), 3);
+            Assert.Equal(25, BabaYaga.MortarDodgePct(15), 3);
+            Assert.Equal(0, BabaYaga.HexHits(3));
+            Assert.Equal(15, BabaYaga.HexEverySeconds(4), 3);
+            Assert.Equal(3, BabaYaga.HexHits(4));
+            Assert.Equal(10, BabaYaga.HexEverySeconds(15), 3);
+            Assert.Equal(5, BabaYaga.HexHits(15));
+            Assert.Equal(0, BabaYaga.FencePct(7), 3);
+            Assert.Equal(15, BabaYaga.FencePct(8), 3);
+            Assert.Equal(30, BabaYaga.FencePct(15), 3);
+            Assert.Equal(0, BabaYaga.SweepEverySeconds(10), 3);
+            Assert.Equal(30, BabaYaga.SweepEverySeconds(11), 3);
+            Assert.Equal(6, BabaYaga.SweepSeconds(11), 3);
+            Assert.Equal(20, BabaYaga.SweepEverySeconds(15), 3);
+            Assert.Equal(10, BabaYaga.SweepSeconds(15), 3);
 
-            Assert.Equal(1, DungeonSimulator.AbilitiesAt(1).Count(a => a.Active));
-            Assert.Equal(4, DungeonSimulator.AbilitiesAt(11).Count(a => a.Active));
+            Assert.Equal(1, BabaYaga.Instance.AbilitiesAt(1).Count(a => a.Active));
+            Assert.Equal(4, BabaYaga.Instance.AbilitiesAt(11).Count(a => a.Active));
         }
 
         [Fact]
@@ -109,18 +109,18 @@ namespace FolkIdle.Server.Tests
         public void TicketsTopUpTwoADayAndNeverPastFour()
         {
             var day = new DateTime(2026, 10, 31, 12, 0, 0, DateTimeKind.Utc);
-            var player = new PlayerRecord { DungeonTickets = 0, DungeonTicketDay = 0 };
-            Assert.True(DungeonEngine.TopUpTickets(player, day));
-            Assert.Equal(DungeonEngine.TicketCap, player.DungeonTickets);
+            var row = new DungeonProgress { Tickets = 0, TicketDay = 0 };
+            Assert.True(DungeonEngine.TopUpTickets(row, day));
+            Assert.Equal(DungeonEngine.TicketCap, row.Tickets);
 
-            player.DungeonTickets = 1;
-            Assert.False(DungeonEngine.TopUpTickets(player, day.AddHours(5)));
-            Assert.Equal(1, player.DungeonTickets);
+            row.Tickets = 1;
+            Assert.False(DungeonEngine.TopUpTickets(row, day.AddHours(5)));
+            Assert.Equal(1, row.Tickets);
 
-            Assert.True(DungeonEngine.TopUpTickets(player, day.AddDays(1)));
-            Assert.Equal(3, player.DungeonTickets);
-            Assert.True(DungeonEngine.TopUpTickets(player, day.AddDays(9)));
-            Assert.Equal(DungeonEngine.TicketCap, player.DungeonTickets);
+            Assert.True(DungeonEngine.TopUpTickets(row, day.AddDays(1)));
+            Assert.Equal(3, row.Tickets);
+            Assert.True(DungeonEngine.TopUpTickets(row, day.AddDays(9)));
+            Assert.Equal(DungeonEngine.TicketCap, row.Tickets);
         }
 
         [Fact]
@@ -147,6 +147,91 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(LootChestTier.Gold, DungeonEngine.ChestFor(13));
             Assert.Equal(LootChestTier.Ancient, DungeonEngine.ChestFor(15));
             Assert.Equal(5 * 5 + 10 * 5 + 20 * 5, Enumerable.Range(1, 15).Sum(DungeonEngine.FirstClearDiamonds));
+        }
+
+        [Fact]
+        public void KoscheisAbilitiesGrowFromTheirFirstStageToFifteen()
+        {
+            Assert.Equal(15, Koschei.RisePct(1), 3);
+            Assert.Equal(40, Koschei.RisePct(10), 3);
+            Assert.Equal(40, Koschei.RisePct(15), 3);
+            Assert.Equal(1, Koschei.Rises(12));
+            Assert.Equal(2, Koschei.Rises(13));
+            Assert.Equal(0, Koschei.WardPct(3), 3);
+            Assert.Equal(5, Koschei.WardPct(4), 3);
+            Assert.Equal(12, Koschei.WardPct(15), 3);
+            Assert.Equal(20, Koschei.WardEverySeconds(4), 3);
+            Assert.Equal(14, Koschei.WardEverySeconds(15), 3);
+            Assert.Equal(0, Koschei.DrainPct(7), 3);
+            Assert.Equal(10, Koschei.DrainPct(8), 3);
+            Assert.Equal(30, Koschei.DrainPct(15), 3);
+            Assert.Equal(25, Koschei.NeedleCritBonusPct(11), 3);
+            Assert.Equal(60, Koschei.NeedleCritBonusPct(15), 3);
+            Assert.Equal(20, Koschei.NeedleNormalCutPct(11), 3);
+            Assert.Equal(35, Koschei.NeedleNormalCutPct(15), 3);
+            Assert.Equal(4, Koschei.Instance.AbilitiesAt(11).Count(a => a.Active));
+        }
+
+        [Fact]
+        public void ZmeysAbilitiesGrowFromTheirFirstStageToFifteen()
+        {
+            Assert.Equal(15, Zmey.HeadsFasterPct(1), 3);
+            Assert.Equal(30, Zmey.HeadsFasterPct(15), 3);
+            Assert.Equal(0, Zmey.BreathEverySwings(3));
+            Assert.Equal(6, Zmey.BreathEverySwings(4));
+            Assert.Equal(5, Zmey.BreathEverySwings(15));
+            Assert.Equal(3, Zmey.BreathPctPerSecond(4), 3);
+            Assert.Equal(6, Zmey.BreathPctPerSecond(15), 3);
+            Assert.Equal(0, Zmey.RegrowSeconds(7), 3);
+            Assert.Equal(20, Zmey.RegrowSeconds(8), 3);
+            Assert.Equal(10, Zmey.RegrowSeconds(15), 3);
+            Assert.Equal(0, Zmey.HidePct(10), 3);
+            Assert.Equal(20, Zmey.HidePct(11), 3);
+            Assert.Equal(40, Zmey.HidePct(15), 3);
+        }
+
+        [Fact]
+        public void KoscheiRisesWhenFirstKilled()
+        {
+            // A strong character beats stage 1, and Deathless fires on the way.
+            var run = DungeonSimulator.Run(Character(60, 2000), DungeonKind.Xp, 1, FoodRegistry.FirstRawFishOfTier(1), 100);
+            Assert.True(run.Won);
+            Assert.Equal(DungeonKind.Xp, run.Kind);
+            Assert.Contains(run.Events, e => e.Text.StartsWith("Deathless"));
+        }
+
+        [Fact]
+        public void ZmeyLosesHisHeadsOneByOne()
+        {
+            // A character who needs several blows per head sees both heads fall
+            // before the last one (a blow bigger than a head can take two).
+            var run = DungeonSimulator.Run(Character(30, 300), DungeonKind.Gold, 1, FoodRegistry.FirstRawFishOfTier(1), 100);
+            Assert.True(run.Won, string.Join(" | ", run.Events.Select(e => e.Text)));
+            Assert.Equal(2, run.Events.Count(e => e.Text.StartsWith("A head falls")));
+        }
+
+        [Fact]
+        public void EveryEventCarriesBothBars()
+        {
+            var run = DungeonSimulator.Run(Character(40, 120), DungeonKind.Gold, 4, FoodRegistry.FirstRawFishOfTier(1), 100);
+            Assert.All(run.Events, e =>
+            {
+                Assert.InRange(e.PlayerHpPct, 0, 100);
+                Assert.InRange(e.EnemyHpPct, 0, 100);
+            });
+            Assert.Equal(100, run.Events[0].PlayerHpPct);
+            Assert.Equal(100, run.Events[0].EnemyHpPct);
+        }
+
+        [Fact]
+        public void IncomeRewardsScaleWithTheStageAndALossPaysAQuarter()
+        {
+            Assert.Equal(28, DungeonEngine.IncomeMinutes(1));
+            Assert.Equal(140, DungeonEngine.IncomeMinutes(15));
+            Assert.Equal(60_000L * 28 / 60, DungeonEngine.XpFor(1, 60_000, won: true));
+            Assert.Equal(60_000L * 28 / 60 / 4, DungeonEngine.XpFor(1, 60_000, won: false));
+            Assert.Equal(GoldRewardScale.ForMinutes(6_000_000, 140), DungeonEngine.GoldFor(15, 6_000_000, won: true));
+            Assert.Equal(GoldRewardScale.ForMinutes(6_000_000, 140) / 4, DungeonEngine.GoldFor(15, 6_000_000, won: false));
         }
     }
 }

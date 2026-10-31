@@ -189,10 +189,12 @@
   // Modul: the Equipment Dungeon is hidden from players while it is rebuilt
   // (owner, 2026-10-31). The server refuses it to everyone but the admin
   // accounts, so the entry shows only to them - delete this with the gate in
-  // NetworkBroadcastSystem.Dungeon.cs.
+  // NetworkBroadcastSystem.Dungeon.cs. A dev build shows it too, because the
+  // server opens it wherever its dev tools are on - that is how exercise.mjs
+  // and the local stack test the rework on the dev fixture.
   const MENU_HIDDEN_PLAYERS: ReadonlySet<string> = new Set(['store', 'dungeon']);
   let isAdmin = $state(false);
-  const MENU_HIDDEN = $derived(isAdmin ? MENU_HIDDEN_ALWAYS : MENU_HIDDEN_PLAYERS);
+  const MENU_HIDDEN = $derived(isAdmin || import.meta.env.DEV ? MENU_HIDDEN_ALWAYS : MENU_HIDDEN_PLAYERS);
 
   // Modul: SCREENS REACHED THROUGH A TAB, not a menu entry (task 59). Each
   // keeps its own key, so everything that names a screen - the tutorial's

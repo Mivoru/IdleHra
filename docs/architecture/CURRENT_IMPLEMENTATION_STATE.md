@@ -1057,5 +1057,12 @@ The design reasoning is in `docs/design/HERBS_POTIONS_ASCENSION.md` 1.2a and
   `DungeonSimulator`, written by `DungeonEngine`, migration
   `20261031021155_AddEquipmentDungeon` (additive). **Hidden from players since
   1.49.1**: only `IsAdmin` accounts get stages or may run it, and only they see
-  the menu entry.
+  the menu entry (and, for testing, any server with dev tools on and a dev
+  client build). **Reworked into three dungeons** (`CHESTS_DUNGEONS_DIAMONDS.md`
+  2.8): `DungeonBoss` subclasses in `Domain/Combat/DungeonBosses.cs` hold each
+  boss's abilities as hooks the simulator calls; per-gate state is the
+  `DungeonProgress` table (the four PlayerRecords columns are no longer read);
+  XP lands on the tick through `DungeonXpGrantQueue` /
+  `DungeonTickCoordinator`; gold is `GoldIncomeSource.Dungeon`. Client:
+  `routes/Dungeon.svelte` (gates) and `lib/ui/DungeonRun.svelte` (the scene).
 
