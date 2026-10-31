@@ -35,6 +35,32 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.46.0',
+    date: '2026-10-31',
+    headline: 'Quieter, clearer sounds.',
+    sections: [
+      {
+        title: 'Sound',
+        items: [
+          "Coming back after a long time no longer plays every sound at once. A burst of drops makes one sound, for the best thing in it, and the big sounds wait their turn.",
+          'Rare drops have new sounds in three steps: Rare to Epic, Legendary to Mythic, and Relic and better. The old sound got higher and shriller with every tier.',
+          'New sounds for opening a loot chest, finding a pet, the Forge, a child being born and a building being finished.',
+        ],
+      },
+      {
+        title: 'Chests',
+        items: [
+          'The cosmetic chest fits the screen on phones and stands in the middle.',
+          'What a loot chest gives you is in colour: gold, diamonds, rare materials and the piece in its rarity.',
+        ],
+      },
+      {
+        title: 'Chat',
+        items: ['News announces drops from Relic up. Mythic drops no longer fill the channel.'],
+      },
+    ],
+  },
+  {
     version: '1.45.0',
     date: '2026-10-30',
     headline: 'Ascension rebuilt.',
