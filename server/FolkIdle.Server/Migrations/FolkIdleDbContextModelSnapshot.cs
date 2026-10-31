@@ -1997,6 +1997,12 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("ActiveFoodId")
                         .HasColumnType("integer");
 
+                    b.Property<long>("ActiveGatheringPotionExpiresEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ActiveGatheringPotionId")
+                        .HasColumnType("integer");
+
                     b.Property<long>("ActiveOffensivePotionExpiresEpoch")
                         .HasColumnType("bigint");
 
@@ -2243,6 +2249,27 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<Guid>("PlayerGuid")
                         .HasColumnType("uuid");
+
+                    b.Property<byte>("PotionAutoDrinkMask")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("PotionShelf1Count")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PotionShelf1ItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PotionShelf2Count")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PotionShelf2ItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PotionShelf3Count")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PotionShelf3ItemId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("PremiumDiamonds")
                         .HasColumnType("integer");

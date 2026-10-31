@@ -776,6 +776,8 @@ namespace FolkIdle.Server.Domain.Combat
                 if (knowYourPrey > 0) net += (int)((long)net * knowYourPrey / 1000L);
                 int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, monster.RegionTier);
                 if (mastery > 0) net += (int)((long)net * mastery / 1000L);
+                int bossbane = SimulationEngine.BossbaneTenthsPctFor(in payload, in monster);
+                if (bossbane > 0) net += (int)((long)net * bossbane / 1000L);
                 net = (int)(net * SimulationEngine.LiveCodexDamageMultiplier(in payload));
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {

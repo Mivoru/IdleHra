@@ -278,7 +278,19 @@ namespace FolkIdle.Server.Network
         // the event is live, that the tier's region boss has been beaten and
         // the tier below cleared, the boss and its strength. Deploys slot 1
         // and arms the tier, like StartBossAscension; every answer is a result.
-        StartSeasonalBoss = 82
+        StartSeasonalBoss = 82,
+
+        // Modul: THE POTION SHELF (herbs and potions, 2026-10-31). Three
+        // shelves, one per potion slot (0 rewards, 1 combat, 2 gathering), in
+        // TargetSlotIndex. StockPotionShelf moves DepositQuantity of the potion
+        // ConsumableItemId from the chest onto the shelf (0 takes the shelf
+        // back); the server checks the potion belongs to that slot and the
+        // shelf holds no other. DrinkPotion drinks the shelf's next one.
+        // SetPotionAutoDrink turns auto-drink on (IsBuy = 1) or off. Every
+        // answer is a command result. See PotionShelfTickCoordinator.
+        StockPotionShelf = 83,
+        DrinkPotion = 84,
+        SetPotionAutoDrink = 85
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

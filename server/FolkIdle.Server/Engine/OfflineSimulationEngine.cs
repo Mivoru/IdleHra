@@ -214,6 +214,17 @@ namespace FolkIdle.Server.Engine
             // two descriptions of it.
             int unlockedSlots = CharacterSlotEngine.GetUnlockedSlotCount(payload.TownHallLevel);
 
+            // Potions (H2): the absence in stretches with exactly the potions
+            // that were running in each - see OfflinePotionPlan. With no potion
+            // anywhere this is one stretch, the whole window, as before. What
+            // the load computed for NOW is kept aside and settled at the end.
+            int nowRewardsMs = payload.OffensivePotionDurationMs, nowCombatMs = payload.DefensivePotionDurationMs, nowGatheringMs = payload.GatheringPotionDurationMs;
+            var potionStretches = OfflinePotionPlan.Plan(in payload, payload.LastLogoutTimestamp, earningSeconds);
+            var wholeWindow = new List<OfflinePotionPlan.Stretch> { new(earningSeconds, 0, 0, 0) };
+            long[] slotGoldSum = new long[3];
+            long[] slotXpSum = new long[3];
+            int[] slotDropsSum = new int[3];
+
             // Modul: TWO PASSES - every other job first, crafting last
             // (offline parity, 2026-09-30). Live, a crafter and a gatherer run
             // side by side and a craft refused for want of materials is simply
@@ -222,6 +233,10 @@ namespace FolkIdle.Server.Engine
             // Crafting after them is that total; crafting first would starve
             // the crafter of everything its own village gathered overnight.
             for (int pass = 0; pass < 2; pass++)
+            foreach (var stretch in pass == 0 ? potionStretches : wholeWindow)
+            {
+            if (pass == 0) OfflinePotionPlan.Apply(ref payload, in stretch);
+            long stretchSeconds = stretch.Seconds;
             for (int slotIndex = 0; slotIndex < unlockedSlots; slotIndex++)
             {
                 if (slotIndex > 0 && !SlotHoldsCharacter(ref payload, slotIndex))
@@ -253,7 +268,7 @@ namespace FolkIdle.Server.Engine
                         // Scholar: each completion pays one more with its
                         // chance, as the live job's tick does.
                         long attempts = ScholarRate.RewardUnits(Random.Shared,
-                            earningSeconds * 10L / SimulationEngine.CraftTicksFor(in payload, in craftingRecipe), ScholarRate.BonusPermille(in payload));
+                            stretchSeconds * 10L / SimulationEngine.CraftTicksFor(in payload, in craftingRecipe), ScholarRate.BonusPermille(in payload));
                         var crafted = await CraftingEngine.ExecuteOfflineCraftsAsync(db, payload.PlayerId, craftingRecipe, attempts, Random.Shared);
                         // Mirrors CraftingTickCoordinator.DrainCraftingCompletions:
                         // the wire counter tracks what the engine just added to
@@ -263,7 +278,7 @@ namespace FolkIdle.Server.Engine
                     }
                     else if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
                     {
-                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, earningSeconds, Random.Shared);
+                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, stretchSeconds, Random.Shared);
                         slotDrops += projection.Drops;
                         await GrantMaterialDeltasAsync(db, payload.PlayerId, projection.MaterialDeltas, recordAsGathered: true);
                     }
@@ -271,7 +286,7 @@ namespace FolkIdle.Server.Engine
                     {
                         // Task 85: the fight, and wherever an automation rule
                         // sends the character after it - see ProjectCombatLegs.
-                        foreach (OfflineLeg leg in ProjectCombatLegs(ref payload, earningSeconds, Random.Shared))
+                        foreach (OfflineLeg leg in ProjectCombatLegs(ref payload, stretchSeconds, Random.Shared))
                         {
                             slotDrops += leg.Projection.Drops;
                             await GrantMaterialDeltasAsync(db, payload.PlayerId, leg.Projection.MaterialDeltas, recordAsGathered: leg.IsGathering);
@@ -282,30 +297,33 @@ namespace FolkIdle.Server.Engine
                     int slotXp = ClampToInt(payload.CurrentXp - slotXpBefore);
                     materialDropsGrantedThisCatchUp += slotDrops;
 
-                    switch (slotIndex)
-                    {
-                        case 0:
-                            payload.OfflineSlot1Gold = slotGold;
-                            payload.OfflineSlot1Xp = slotXp;
-                            payload.OfflineSlot1Drops = slotDrops;
-                            break;
-                        case 1:
-                            payload.OfflineSlot2Gold = slotGold;
-                            payload.OfflineSlot2Xp = slotXp;
-                            payload.OfflineSlot2Drops = slotDrops;
-                            break;
-                        default:
-                            payload.OfflineSlot3Gold = slotGold;
-                            payload.OfflineSlot3Xp = slotXp;
-                            payload.OfflineSlot3Drops = slotDrops;
-                            break;
-                    }
+                    // Summed across the stretches, written once below.
+                    slotGoldSum[Math.Min(slotIndex, 2)] += slotGold;
+                    slotXpSum[Math.Min(slotIndex, 2)] += slotXp;
+                    slotDropsSum[Math.Min(slotIndex, 2)] += slotDrops;
                 }
                 finally
                 {
                     SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slotIndex);
                 }
             }
+            }
+
+            payload.OfflineSlot1Gold = ClampToInt(slotGoldSum[0]);
+            payload.OfflineSlot1Xp = ClampToInt(slotXpSum[0]);
+            payload.OfflineSlot1Drops = slotDropsSum[0];
+            payload.OfflineSlot2Gold = ClampToInt(slotGoldSum[1]);
+            payload.OfflineSlot2Xp = ClampToInt(slotXpSum[1]);
+            payload.OfflineSlot2Drops = slotDropsSum[1];
+            payload.OfflineSlot3Gold = ClampToInt(slotGoldSum[2]);
+            payload.OfflineSlot3Xp = ClampToInt(slotXpSum[2]);
+            payload.OfflineSlot3Drops = slotDropsSum[2];
+
+            // The potions as they stand now: what auto-drink took from each
+            // shelf over the real absence, and what is still running.
+            OfflinePotionPlan.Settle(ref payload, payload.LastLogoutTimestamp, rawDeltaSeconds,
+                payload.OffensivePotionLoadedId, payload.DefensivePotionLoadedId, payload.GatheringPotionLoadedId,
+                nowRewardsMs, nowCombatMs, nowGatheringMs);
 
             payload.OfflineElapsedSeconds = elapsedSeconds;
             payload.OfflineGoldEarned = Math.Max(0L, payload.CurrentGold - goldBeforeOfflineCatchUp);

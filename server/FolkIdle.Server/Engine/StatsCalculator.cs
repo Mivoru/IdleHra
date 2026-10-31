@@ -110,8 +110,6 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
-        /// <summary>Dodge points a defensive potion adds per item region tier.</summary>
-        public const float DefensivePotionDodgePerTier = 1f;
 
         public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, TraitTotals traits = default, EquippedSetIds equippedSetIds = default)
         {
@@ -221,27 +219,18 @@ namespace FolkIdle.Server.Engine
                 stats.LifestealPct += RaceMasteryResolver.GetDraugrLifestealBonusPct(draugrMastery);
             }
 
-            if (activeOffensivePotionId > 0 && activeOffensivePotionId <= ContentRegistry.ItemDefinitions.Length)
-            {
-                var offDef = ContentRegistry.ItemDefinitions[activeOffensivePotionId - 1];
-                int tier = offDef.RegionTier;
-                stats.FlatMeleeDamage += tier * 10;
-                stats.FlatRangedDamage += tier * 10;
-                stats.FlatArmorPenetration += tier * 5;
-            }
-
-            if (activeDefensivePotionId > 0 && activeDefensivePotionId <= ContentRegistry.ItemDefinitions.Length)
-            {
-                var defDef = ContentRegistry.ItemDefinitions[activeDefensivePotionId - 1];
-                int tier = defDef.RegionTier;
-                stats.MaxHp += tier * 100;
-                stats.FlatPhysicalArmor += tier * 5;
-                // Modul: one dodge POINT a tier. It was `tier * 0.01`, at most
-                // 0.05 - a fraction written into a points stat - and inside the
-                // old 5.26-point dead zone besides, so the potion's dodge had
-                // never done anything (owner, 2026-10-29).
-                stats.DodgeChancePct += tier * DefensivePotionDodgePerTier;
-            }
+            // Modul: POTIONS PAY THEIR OWN EFFECT, NOTHING ELSE (2026-10-31).
+            // This block used to give ANY offensive-slot item flat damage and
+            // armour penetration by its region tier, and any defensive one HP,
+            // armour and dodge - formulas from the legacy potions deleted on
+            // 2026-10-07. With the herb potions in those slots every one of them
+            // would have paid those as well as its own effect. The effects are
+            // PotionRegistry's now; armour is applied as a percentage at the end,
+            // over the total. XP and boss damage are read where they are paid.
+            var potions = PotionEffects.From(activeOffensivePotionId, activeDefensivePotionId, 0);
+            stats.LootLuckPct += potions.LootLuckPct;
+            stats.GoldAcquisitionMultiplierPct += potions.GoldPct;
+            stats.AttackSpeedPct += potions.AttackSpeedPct;
 
             // Modul 13.4.3: innate, always-on racial baseline passives - distinct
             // from the mastery-level-scaled RaceMasteryResolver bonuses above,
@@ -370,6 +359,11 @@ namespace FolkIdle.Server.Engine
             if (setBonus.TotalArmorMultiplierPct > 0f)
             {
                 stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + setBonus.TotalArmorMultiplierPct / 100f));
+            }
+            // Ironbark Brew: a share of the whole armour, after gear and sets.
+            if (potions.ArmourPct > 0)
+            {
+                stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + potions.ArmourPct / 100f));
             }
             stats.SetFireDamageMultiplierPct = setBonus.FireDamageMultiplierPct;
             stats.SetThornsReflectionActive = setBonus.ThornsReflectionActive;

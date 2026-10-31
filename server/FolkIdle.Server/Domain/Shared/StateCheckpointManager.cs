@@ -712,6 +712,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
                         player.ActiveDefensivePotionExpiresEpoch = state.DefensivePotionDurationMs > 0 ? consumableFlushEpoch + state.DefensivePotionDurationMs / 1000L : 0L;
+                        ApplyPotionShelf(player, in state, consumableFlushEpoch);
                         player.ActiveFoodId = state.ActiveFoodBuffId;
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
@@ -1488,6 +1489,24 @@ namespace FolkIdle.Server.Domain.Shared
                 OffensivePotionDurationMs = player.ActiveOffensivePotionExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveOffensivePotionExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
                 ActiveDefensivePotionId = player.ActiveDefensivePotionExpiresEpoch > nowEpochSeconds ? player.ActiveDefensivePotionId : 0,
                 DefensivePotionDurationMs = player.ActiveDefensivePotionExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveDefensivePotionExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
+                ActiveGatheringPotionId = player.ActiveGatheringPotionExpiresEpoch > nowEpochSeconds ? player.ActiveGatheringPotionId : 0,
+                GatheringPotionDurationMs = player.ActiveGatheringPotionExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveGatheringPotionExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
+                // The offline projection's view of the same three slots: when
+                // each ran out (or runs out), in absolute time, ids kept even
+                // when expired so the absence can still count the potion.
+                OffensivePotionExpiresEpoch = player.ActiveOffensivePotionId > 0 ? player.ActiveOffensivePotionExpiresEpoch : 0L,
+                DefensivePotionExpiresEpoch = player.ActiveDefensivePotionId > 0 ? player.ActiveDefensivePotionExpiresEpoch : 0L,
+                GatheringPotionExpiresEpoch = player.ActiveGatheringPotionId > 0 ? player.ActiveGatheringPotionExpiresEpoch : 0L,
+                OffensivePotionLoadedId = player.ActiveOffensivePotionId,
+                DefensivePotionLoadedId = player.ActiveDefensivePotionId,
+                GatheringPotionLoadedId = player.ActiveGatheringPotionId,
+                PotionShelf1_ItemId = player.PotionShelf1ItemId,
+                PotionShelf1_Count = player.PotionShelf1Count,
+                PotionShelf2_ItemId = player.PotionShelf2ItemId,
+                PotionShelf2_Count = player.PotionShelf2Count,
+                PotionShelf3_ItemId = player.PotionShelf3ItemId,
+                PotionShelf3_Count = player.PotionShelf3Count,
+                PotionAutoDrinkMask = player.PotionAutoDrinkMask,
                 ActiveFoodBuffId = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? player.ActiveFoodId : 0,
                 FoodBuffDurationMs = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveFoodExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
                 CachedAffixTotals = equippedAffixTotals,
@@ -1701,6 +1720,25 @@ namespace FolkIdle.Server.Domain.Shared
         // accumulated, so a checkpoint that fires twice in one second cannot
         // inflate it, and a session that never checkpoints loses at most the
         // time since its last one.
+        /// <summary>
+        /// The potions' third slot and the three shelves (2026-10-31). The
+        /// payload is the truth for the shelf counts, exactly as for the larder:
+        /// drinking decrements them on the tick, so a row PotionShelfEngine
+        /// wrote is older than this.
+        /// </summary>
+        internal static void ApplyPotionShelf(PlayerRecord player, in TickStatePayload state, long flushEpoch)
+        {
+            player.ActiveGatheringPotionId = state.GatheringPotionDurationMs > 0 ? state.ActiveGatheringPotionId : 0;
+            player.ActiveGatheringPotionExpiresEpoch = state.GatheringPotionDurationMs > 0 ? flushEpoch + state.GatheringPotionDurationMs / 1000L : 0L;
+            player.PotionShelf1ItemId = state.PotionShelf1_Count > 0 ? state.PotionShelf1_ItemId : 0;
+            player.PotionShelf1Count = state.PotionShelf1_Count;
+            player.PotionShelf2ItemId = state.PotionShelf2_Count > 0 ? state.PotionShelf2_ItemId : 0;
+            player.PotionShelf2Count = state.PotionShelf2_Count;
+            player.PotionShelf3ItemId = state.PotionShelf3_Count > 0 ? state.PotionShelf3_ItemId : 0;
+            player.PotionShelf3Count = state.PotionShelf3_Count;
+            player.PotionAutoDrinkMask = state.PotionAutoDrinkMask;
+        }
+
         private static void ApplyLifetimeStatistics(PlayerRecord player, TickStatePayload state)
         {
             player.TotalDeaths = state.LifetimeDeaths;
@@ -2055,6 +2093,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
                         player.ActiveDefensivePotionExpiresEpoch = state.DefensivePotionDurationMs > 0 ? consumableFlushEpoch + state.DefensivePotionDurationMs / 1000L : 0L;
+                        ApplyPotionShelf(player, in state, consumableFlushEpoch);
                         player.ActiveFoodId = state.ActiveFoodBuffId;
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
