@@ -54,7 +54,7 @@
            the tier in words. -->
       <button class="body" type="button" onclick={() => openBook(toast.id)} aria-label="Open the Book of Deeds: {toast.title}">
         <span class="eyebrow">Deed accomplished</span>
-        <strong class="title">{toast.title}{#if toast.tierLabel} - tier {toast.tierLabel}{/if}</strong>
+        <strong class="title">{toast.title}{toast.tierLabel ? ` - tier ${toast.tierLabel}` : ''}</strong>
         {#if toast.reward}<span class="reward">{toast.reward}</span>{/if}
       </button>
 
@@ -78,7 +78,7 @@
       <span class="legend-seal" aria-hidden="true">
         {#if toast.tierLabel}{toast.tierLabel}{:else}<svg class="sealmark" viewBox="0 0 24 24"><path d="M12 2 L14.9 8.6 L22 9.4 L16.7 14.2 L18.2 21.2 L12 17.6 L5.8 21.2 L7.3 14.2 L2 9.4 L9.1 8.6 Z" fill="currentColor" /></svg>{/if}
       </span>
-      <strong class="legend-title">{toast.title}{#if toast.tierLabel} - tier {toast.tierLabel}{/if}</strong>
+      <strong class="legend-title">{toast.title}{toast.tierLabel ? ` - tier ${toast.tierLabel}` : ''}</strong>
       {#if toast.reward}<span class="reward">{toast.reward}</span>{/if}
       <div class="legend-acts">
         <button type="button" onclick={() => openBook(toast.id)}>Open the Book</button>
