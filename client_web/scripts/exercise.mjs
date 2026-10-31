@@ -1749,7 +1749,14 @@ if (want('potions')) {
 // every run, not once.
 }
 if (want('dungeon')) {
-{
+// Modul: hidden from players while it is rebuilt (owner, 2026-10-31). The
+// server answers a non-admin with a closed lobby and no stages, so for the
+// fixture this proves the gate holds - a run is refused - and stops there.
+const gateView = await apiGet('/api/v1/dungeon').catch(() => null);
+if (gateView && gateView.Open === false && (gateView.Stages?.length ?? 0) === 0) {
+  const refused = await apiPost('/api/v1/dungeon/run', { Stage: 1 }).catch(() => null);
+  record('the hidden dungeon refuses a run to a non-admin', refused?.Outcome === 'Locked', refused ? refused.Outcome : 'no answer');
+} else {
   await go('Dungeon');
   const lobby = page.getByTestId('dungeon');
   const shown = await lobby.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);

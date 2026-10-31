@@ -1026,3 +1026,36 @@ narrow screens. The dock reserves its own footprint at the end of a page, but
 a long scrolling page always has something under a fixed corner; the durable
 fix is moving chat into the nav, which is a UX decision rather than a layout
 bug.
+
+## 22. Systems added 2026-10-31 (autonomous run)
+
+The design reasoning is in `docs/design/HERBS_POTIONS_ASCENSION.md` 1.2a and
+`docs/design/CHESTS_DUNGEONS_DIAMONDS.md` 2.7 and 5.8; this is where the code is.
+
+- **Potion shelves.** Three slots (rewards, combat, gathering) on the main
+  character, stocked from the chest by opcode 83 `StockPotionShelf`, drunk by
+  84 `DrinkPotion`, auto-drink set by 85 `SetPotionAutoDrink`. The tick owns
+  the shelf (`PotionShelfTickCoordinator`, applied as deltas), and offline
+  catch-up stretches the timers through `OfflinePotionPlan`. The client mirror
+  of the effect lines is `lib/ui/potions.ts`, pinned by `tests/potions.test.ts`.
+  Herbs reach players through loot chests (`LootChestRules.HerbsPerHourOfPicking`).
+- **The larder is tick-owned.** `LarderTickCoordinator` applies
+  `LarderSlotUpdateNotification` deltas (`Added`, may be negative) through
+  `TakeFromSlot`; REST and engine code enqueue a delta and never write a slot
+  directly. Before this, a restock restored eaten food and an unload
+  duplicated it.
+- **Book of Deeds** is the one goal list: the quest line is its first chapter
+  (`questClaim.ts` is the shared claim), `/api/v1/deeds/snapshot` carries
+  `Closest` (the deed nearest to done).
+- **Diamond rework.** One reward table 5/15/40/100, inheritance 10 levels x 4%
+  costing 100 x 1.25^level. Migration `20261031030000_DiamondRework` is NOT
+  additive (tiers remapped, inheritance levels halved rounding up). World boss
+  milestones and ordinary kills still pay on the 60-a-week yardstick
+  (`TapYardstickDiamondsPerWeek`).
+- **Equipment dungeon** - REST only (`GET /api/v1/dungeon`,
+  `POST /api/v1/dungeon/run`, dev `/api/v1/dev/dungeon/tickets`), simulated by
+  `DungeonSimulator`, written by `DungeonEngine`, migration
+  `20261031021155_AddEquipmentDungeon` (additive). **Hidden from players since
+  1.49.1**: only `IsAdmin` accounts get stages or may run it, and only they see
+  the menu entry.
+

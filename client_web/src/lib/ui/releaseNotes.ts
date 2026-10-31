@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.49.1',
+    date: '2026-10-31',
+    sections: [
+      {
+        title: 'Dungeon',
+        items: [
+          'The Equipment Dungeon is closed again while it is rebuilt to look the way it should. Tickets, first-clear rewards and everything you won stay yours.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.49.0',
     date: '2026-10-31',
     headline: 'The Equipment Dungeon opens.',
