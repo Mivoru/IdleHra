@@ -581,7 +581,24 @@ wearing nothing).** Highest stage cleared, best region-5 fish:
   pays 229M XP or 43.6M gold. Two tickets a day at stage 9-10 in all three
   gates add about 13-14% to a day's hunting XP and earned gold.
 
-**Not calibrated yet:** a party of geared champions (no production account has one), and the bonus and penalty sizes now that a run has four telegraphs instead of eight.
+**Second pass (owner approved A, B, C the same day):**
+- A. Bonuses and penalties doubled (Fury +25% to 100%, Keen Eye +10% to 40%,
+  Brutality +50% to 150%, Vigour +25% to 75%, Iron Skin 20% to 60%, Leech 2%
+  to 6%, Swiftness +20% to 60%, Second Wind heals 50%; curses -20% damage,
+  +20% taken, -15% speed, -20% health, each with a floor), and a miss lands
+  three ordinary hits on every champion instead of two. Re-measured on the
+  same account: all missed / no telegraphs / all dodged = 8 / 9 / 10 for
+  Koschei and Zmey, 8 / 9 / 9 for Baba Yaga; the party of three (two
+  ungeared) 6 / 8 / 8-9. A dodge is now worth one to two stages.
+- B. Chests pay one dungeon ticket for a random gate: Bronze 10%, Silver 20%,
+  Gold 35%, Ancient 60%, shown in the chest's odds - only to accounts that
+  can see the dungeons. Chest tickets may sit above the daily cap of 4, up to
+  8 (`BonusTicketCap`); the daily top-up never lowers them.
+- C. The party picker shows each champion's damage a second (against the
+  stage-10 boss's body), max health and gear worn, and warns when a champion
+  without full gear goes.
+
+**Not calibrated yet:** a party of geared champions (no production account has one).
 
 ### 2.6 Decisions for the owner
 

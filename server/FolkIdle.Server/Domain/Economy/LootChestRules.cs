@@ -21,7 +21,8 @@ namespace FolkIdle.Server.Domain.Economy
         bool Equipment,
         int EquipmentRarityFloor,
         int Diamonds,
-        long GoldInsteadOfDiamonds);
+        long GoldInsteadOfDiamonds,
+        int DungeonTickets = 0);
 
     /// <summary>
     /// What a loot chest holds (CHESTS_DUNGEONS_DIAMONDS.md section 1, owner
@@ -97,7 +98,22 @@ namespace FolkIdle.Server.Domain.Economy
         /// The published odds, one line per slot, for the chest screen (store
         /// rules ask for them, and the cosmetic chests already show theirs).
         /// </summary>
-        public static IReadOnlyList<string> OddsLines(LootChestTier tier)
+        /// <summary>
+        /// The chance a chest holds one dungeon ticket for a random gate
+        /// (owner, 2026-10-31): Bronze 10%, Silver 20%, Gold 35%, Ancient 60%.
+        /// Chests are few - the weekly Deep, first clears, Ascension steps and
+        /// won Equipment runs - so the loop dungeon -> chest -> ticket pays
+        /// about 0.2-0.7 tickets a day, never a run for free.
+        /// </summary>
+        public static int DungeonTicketPermille(LootChestTier tier) => tier switch
+        {
+            LootChestTier.Bronze => 100,
+            LootChestTier.Silver => 200,
+            LootChestTier.Gold => 350,
+            _ => 600,
+        };
+
+        public static IReadOnlyList<string> OddsLines(LootChestTier tier, bool dungeonTickets = false)
         {
             var t = TableFor(tier);
             var lines = new List<string> { $"Materials of the region: always ({t.MaterialMinutes} min of gathering)" };
@@ -106,11 +122,13 @@ namespace FolkIdle.Server.Domain.Economy
             lines.Add($"Gold: always ({t.GoldMinutes} min of your income)");
             lines.Add($"Equipment: {t.EquipmentPermille / 10.0:0.#}%, {RarityTier.GetName(t.EquipmentRarityFloor)} or better");
             if (t.DiamondPermille > 0) lines.Add($"Diamonds: {t.DiamondPermille / 10.0:0.#}%, {t.DiamondsMin}-{t.DiamondsMax}");
+            if (dungeonTickets) lines.Add($"A dungeon ticket: {DungeonTicketPermille(tier) / 10.0:0.#}%");
             return lines;
         }
 
         public static LootChestRoll Roll(
-            LootChestTier tier, int chestRegion, int highestRegion, double goldPerMinute, int diamondRoomThisWeek, Random rng)
+            LootChestTier tier, int chestRegion, int highestRegion, double goldPerMinute, int diamondRoomThisWeek, Random rng,
+            bool dungeonTickets = false)
         {
             var t = TableFor(tier);
             int region = Math.Clamp(chestRegion, WorkshopCommissionRules.FirstRegion, WorkshopCommissionRules.LastRegion);
@@ -133,7 +151,9 @@ namespace FolkIdle.Server.Domain.Economy
                 goldInstead = (long)Math.Round(Math.Max(0.0, goldPerMinute) * GoldMinutesPerRefusedDiamond * (rolled - diamonds));
             }
 
-            return new LootChestRoll(materials, gold, equipment, t.EquipmentRarityFloor, diamonds, goldInstead);
+            // Rolled last, so every earlier draw is what it was before tickets existed.
+            int tickets = dungeonTickets && rng.Next(1000) < DungeonTicketPermille(tier) ? 1 : 0;
+            return new LootChestRoll(materials, gold, equipment, t.EquipmentRarityFloor, diamonds, goldInstead, tickets);
         }
 
         private static void AddMaterials(List<(string, long)> into, int region, int minutes)

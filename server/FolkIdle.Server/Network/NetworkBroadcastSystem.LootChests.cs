@@ -27,13 +27,20 @@ namespace FolkIdle.Server.Network
 
         private sealed record LootChestShelfRow(int Tier, string Name, int Count, string[] Odds);
 
-        private static async Task<LootChestShelfRow[]> ShelfAsync(FolkIdleDbContext db, long playerId)
+        private async Task<LootChestShelfRow[]> ShelfAsync(FolkIdleDbContext db, long playerId)
         {
             var counts = await LootChestEngine.CountsAsync(db, playerId);
+            bool tickets = await ChestsPayDungeonTicketsAsync(db, playerId);
             return Enum.GetValues<LootChestTier>()
-                .Select(t => new LootChestShelfRow((int)t, t.ToString(), counts.GetValueOrDefault(t), LootChestRules.OddsLines(t).ToArray()))
+                .Select(t => new LootChestShelfRow((int)t, t.ToString(), counts.GetValueOrDefault(t), LootChestRules.OddsLines(t, tickets).ToArray()))
                 .ToArray();
         }
+
+        // Modul: chests pay dungeon tickets only to someone who can see the
+        // dungeons - while they are admin-only, a ticket for a gate nobody can
+        // open would be a reward line that means nothing.
+        private async Task<bool> ChestsPayDungeonTicketsAsync(FolkIdleDbContext db, long playerId)
+            => MaySeeDungeon(await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId));
 
         private async Task HandleLootChestView(HttpListenerContext context)
         {
@@ -81,7 +88,8 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var opened = await LootChestEngine.OpenAsync(db, playerId, (LootChestTier)tier, count, DateTime.UtcNow, Random.Shared);
+                bool tickets = await ChestsPayDungeonTicketsAsync(db, playerId);
+                var opened = await LootChestEngine.OpenAsync(db, playerId, (LootChestTier)tier, count, DateTime.UtcNow, Random.Shared, tickets);
                 db.ChangeTracker.Clear();
 
                 await WriteJsonAsync(context, new
@@ -95,6 +103,7 @@ namespace FolkIdle.Server.Network
                         Gold = o.Roll.Gold + o.Roll.GoldInsteadOfDiamonds,
                         o.Roll.Diamonds,
                         Piece = o.Piece,
+                        o.DungeonTicket,
                     }).ToArray(),
                     Chests = await ShelfAsync(db, playerId),
                 });

@@ -102,7 +102,11 @@ namespace FolkIdle.Server.Network
                     // each slot and from which stage a dungeon takes them.
                     Roster = snapshot == null ? Array.Empty<object>() : Enumerable.Range(0, 3)
                         .Where(slot => SlotHoldsCharacter(snapshot.Value.Payload, slot))
-                        .Select(slot => (object)new { Slot = slot, UnlockStage = DungeonEngine.PartyUnlockStage(slot) }).ToArray(),
+                        .Select(slot =>
+                        {
+                            var power = DungeonRunner.ChampionPower(snapshot.Value.Payload, slot);
+                            return (object)new { Slot = slot, UnlockStage = DungeonEngine.PartyUnlockStage(slot), power.Dps, power.MaxHp, power.Worn };
+                        }).ToArray(),
                     DungeonEngine.TicketCap,
                     DungeonEngine.TicketsPerDay,
                     DungeonSimulator.Waves,

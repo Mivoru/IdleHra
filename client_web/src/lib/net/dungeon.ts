@@ -50,7 +50,7 @@ export interface DungeonView {
   Waves: number;
   MealCap: number;
   /** The roster slots holding a character, and the stage that opens each for a dungeon. */
-  Roster: { Slot: number; UnlockStage: number }[];
+  Roster: { Slot: number; UnlockStage: number; Dps: number; MaxHp: number; Worn: number }[];
   /** XP, Gold, Equipment - the server's order, which is the gates' order. */
   Dungeons: DungeonInfo[];
 }

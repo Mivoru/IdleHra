@@ -43,24 +43,28 @@ namespace FolkIdle.Server.Domain.Combat
     {
         private sealed record Def(string Id, string Name, string Line, bool Penalty, Func<DungeonMods, bool> Open, Action<DungeonMods> Apply);
 
+        // Modul: SIZES DOUBLED (owner, 2026-10-31) when the run went from eight
+        // telegraphs to four: measured on the owner's account, all dodged
+        // against all missed moved the result by one stage at most, so a
+        // dodge did not matter. Each step is clamped at its cap or floor.
         private static readonly Def[] Bonuses =
         {
-            new("fury", "Fury", "+15% damage for the rest of the run.", false, m => m.DamagePct < 75, m => m.DamagePct += 15),
-            new("keen", "Keen Eye", "+6% critical chance.", false, m => m.CritChancePct < 30, m => m.CritChancePct += 6),
-            new("brutal", "Brutality", "+30% critical damage.", false, m => m.CritDamagePct < 120, m => m.CritDamagePct += 30),
-            new("vigour", "Vigour", "+15% max health, and the new health is healed now.", false, m => m.MaxHpPct < 60, m => m.MaxHpPct += 15),
-            new("iron", "Iron Skin", "Take 10% less damage.", false, m => m.ArmorPct < 40, m => m.ArmorPct += 10),
-            new("leech", "Leech", "Every swing heals 1% of max health.", false, m => m.LeechTenths < 40, m => m.LeechTenths += 10),
-            new("swift", "Swiftness", "+10% attack speed.", false, m => m.SpeedPct < 40, m => m.SpeedPct += 10),
-            new("wind", "Second Wind", "Heal 35% of max health now and gain one more meal.", false, m => m.ExtraMeals < 2, m => m.ExtraMeals += 1),
+            new("fury", "Fury", "+25% damage for the rest of the run.", false, m => m.DamagePct < 100, m => m.DamagePct = Math.Min(100, m.DamagePct + 25)),
+            new("keen", "Keen Eye", "+10% critical chance.", false, m => m.CritChancePct < 40, m => m.CritChancePct = Math.Min(40, m.CritChancePct + 10)),
+            new("brutal", "Brutality", "+50% critical damage.", false, m => m.CritDamagePct < 150, m => m.CritDamagePct = Math.Min(150, m.CritDamagePct + 50)),
+            new("vigour", "Vigour", "+25% max health, and the new health is healed now.", false, m => m.MaxHpPct < 75, m => m.MaxHpPct = Math.Min(75, m.MaxHpPct + 25)),
+            new("iron", "Iron Skin", "Take 20% less damage.", false, m => m.ArmorPct < 60, m => m.ArmorPct = Math.Min(60, m.ArmorPct + 20)),
+            new("leech", "Leech", "Every swing heals 2% of max health.", false, m => m.LeechTenths < 60, m => m.LeechTenths = Math.Min(60, m.LeechTenths + 20)),
+            new("swift", "Swiftness", "+20% attack speed.", false, m => m.SpeedPct < 60, m => m.SpeedPct = Math.Min(60, m.SpeedPct + 20)),
+            new("wind", "Second Wind", "Heal 50% of max health now and gain one more meal.", false, m => m.ExtraMeals < 2, m => m.ExtraMeals += 1),
         };
 
         private static readonly Def[] Penalties =
         {
-            new("staggered", "Staggered", "-10% damage for the rest of the run.", true, m => m.DamagePct > -40, m => m.DamagePct -= 10),
-            new("cracked", "Cracked Armour", "Take 10% more damage.", true, m => m.ArmorPct > -40, m => m.ArmorPct -= 10),
-            new("slowed", "Slowed", "-8% attack speed.", true, m => m.SpeedPct > -32, m => m.SpeedPct -= 8),
-            new("wounded", "Wounded", "-10% max health.", true, m => m.MaxHpPct > -40, m => m.MaxHpPct -= 10),
+            new("staggered", "Staggered", "-20% damage for the rest of the run.", true, m => m.DamagePct > -60, m => m.DamagePct = Math.Max(-60, m.DamagePct - 20)),
+            new("cracked", "Cracked Armour", "Take 20% more damage.", true, m => m.ArmorPct > -60, m => m.ArmorPct = Math.Max(-60, m.ArmorPct - 20)),
+            new("slowed", "Slowed", "-15% attack speed.", true, m => m.SpeedPct > -45, m => m.SpeedPct = Math.Max(-45, m.SpeedPct - 15)),
+            new("wounded", "Wounded", "-20% max health.", true, m => m.MaxHpPct > -60, m => m.MaxHpPct = Math.Max(-60, m.MaxHpPct - 20)),
         };
 
         public static DungeonPerkView View(string id)
