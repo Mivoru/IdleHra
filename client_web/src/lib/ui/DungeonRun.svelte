@@ -358,8 +358,35 @@
     segmentEnd();
   }
 
-  // The gate opens first: its own painting, split into two doors.
-  setTimeout(() => (showGate = false), motionMs(2400) || 0);
+  // Modul: THE GATE OPENS FIRST - the owner's clip (2026-10-31): the camera
+  // walks into the gate and smoke fills the frame, cut from 10 s to 3 s,
+  // H.264 so Safari plays it too. The smoke's last frame fades into the
+  // fight. A clip that has not started within 1.2 s (blocked autoplay, slow
+  // network, decode error) gives way to the CSS doors - the grey video icon
+  // the owner saw once must never be what a player looks at.
+  const GATE_CLIP: Record<DungeonInfo['Key'], string> = {
+    Xp: '/dungeon/gate-xp.mp4',
+    Gold: '/dungeon/gate-gold.mp4',
+    Equipment: '/dungeon/gate-equipment.mp4',
+  };
+  let gateMode = $state<'video' | 'doors'>(motionMs(1000) === 0 ? 'doors' : 'video');
+  let gateFading = $state(false);
+  let gateStarted = false;
+  function closeGate() {
+    if (!showGate || gateFading) return;
+    gateFading = true;
+    setTimeout(() => (showGate = false), 400);
+  }
+  function gateFallback() {
+    if (gateStarted || gateMode === 'doors') return;
+    gateMode = 'doors';
+    setTimeout(() => (showGate = false), motionMs(2400) || 0);
+  }
+  if (gateMode === 'doors') setTimeout(() => (showGate = false), motionMs(2400) || 0);
+  else {
+    setTimeout(gateFallback, 1200);
+    setTimeout(closeGate, 5000); // a clip that stalls halfway still ends
+  }
   raf = requestAnimationFrame(frame);
   onDestroy(() => cancelAnimationFrame(raf));
 </script>
@@ -479,12 +506,30 @@
            video sometimes failed to load and left a grey video icon, and
            Safari on iOS does not play webm at all. An image already in the
            cache cannot fail that way. -->
-      <div class="gate-open" style="--gate-art: url('{GATE_ART[dungeon.Key]}')" data-testid="dungeon-gate-open">
-        <div class="glow"></div>
-        <div class="door left"></div>
-        <div class="door right"></div>
-        <strong class="gate-title">{dungeon.Name}</strong>
-      </div>
+      {#if gateMode === 'video'}
+        <div class="gate-clip" class:fading={gateFading} data-testid="dungeon-gate-open">
+          <video
+            src={GATE_CLIP[dungeon.Key]}
+            poster={GATE_ART[dungeon.Key]}
+            autoplay
+            muted
+            playsinline
+            preload="auto"
+            disablepictureinpicture
+            onplaying={() => (gateStarted = true)}
+            onended={closeGate}
+            onerror={gateFallback}
+          ></video>
+          <strong class="gate-title">{dungeon.Name}</strong>
+        </div>
+      {:else}
+        <div class="gate-open" style="--gate-art: url('{GATE_ART[dungeon.Key]}')" data-testid="dungeon-gate-open">
+          <div class="glow"></div>
+          <div class="door left"></div>
+          <div class="door right"></div>
+          <strong class="gate-title">{dungeon.Name}</strong>
+        </div>
+      {/if}
     {/if}
 
     {#if finished && result}
@@ -876,6 +921,22 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .shake, .self-face.hurt, .banner, .intro, .intro img, .verdict { animation: none; }
+  }
+  .gate-clip {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    background: #000;
+    transition: opacity 0.4s ease;
+  }
+  .gate-clip.fading {
+    opacity: 0;
+  }
+  .gate-clip video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
   /* While a telegraph is up a swipe is an answer, not a scroll. */
   .scene.tg {
