@@ -55,8 +55,12 @@ namespace FolkIdle.Server.Domain.Shared
             ref int item = ref SlotItem(ref payload, larderUpdate.SlotIndex);
             ref int count = ref SlotCount(ref payload, larderUpdate.SlotIndex);
             if (count > 0 && item != larderUpdate.ItemId) return false;
+            // A negative delta is food eaten off the tick (a dungeon run's meals):
+            // never below zero, and an emptied slot holds nothing.
+            if (larderUpdate.Added < 0 && count == 0) return true;
             item = larderUpdate.ItemId;
-            count = Math.Min(Network.LarderLimits.SlotCapacity, count + larderUpdate.Added);
+            count = Math.Clamp(count + larderUpdate.Added, 0, Network.LarderLimits.SlotCapacity);
+            if (count == 0) item = 0;
 
             // Modul: halt reasons. Stocking food is the direct answer to
             // an OutOfFood halt, so clear the banner as soon as there is

@@ -2113,6 +2113,18 @@ namespace FolkIdle.Server.Migrations
                     b.Property<string>("DeviceId")
                         .HasColumnType("text");
 
+                    b.Property<int>("DungeonBestStage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DungeonFirstClearMask")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DungeonTicketDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DungeonTickets")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Email")
                         .HasColumnType("text");
 

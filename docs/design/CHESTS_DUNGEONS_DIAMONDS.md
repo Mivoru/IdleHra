@@ -375,6 +375,74 @@ mortar blurring aside, a hex sigil over the champion's weapon.
 - The calibration harness reports, for the owner's character and the maxed
   profile, the highest stage each clears; the target is checked there.
 
+### 2.7 Built: the equipment dungeon (2026-10-31, autonomous run)
+
+The first slice of the phase - Baba Yaga's equipment dungeon (D4) - with the
+decisions D1-D6 as approved. What is in it, and the calls made along the way:
+
+- **The fight** (`DungeonSimulator`): the live character (a snapshot of the
+  live payload, main slot) through five waves at 40% of the boss and then the
+  boss, health carried over, **at most five meals**. It reuses the live
+  helpers (LiveCombatStats, EffectiveMaxMilliHpFor, CombatDamageModel's
+  swing, the benchmark's monster swing, FoodRegistry's heal, the auto-eat
+  cooldown) and replaces rolls by their expected values, as the wall
+  benchmark does - so a run is deterministic, honest to play back and
+  testable. *Own decision:* expected values instead of seeded rolls. A run
+  that can flip on a die is more exciting, but a deterministic answer is what
+  the lobby can explain ("she had 40% left") and what a test can pin; rolls
+  can be layered on later without changing the rules.
+- **Stages:** 1-5 = region N's boss (as farmed) x1.1, 6-10 = Malakor A2-A10,
+  11-15 = A10 x1.5 then x1.4 a stage (stage 15 = 5.76x stage 10's attack,
+  pinned). The absolute top still waits for the task-112 re-measure.
+- **Baba Yaga's four abilities**, each a rule in the loop and an event in
+  the feed, growing linearly to stage 15: Mortar Flight (dodge 10% -> 25%),
+  Hex from 4 (every 15 s -> 10 s, next 3 -> 5 hits deal 40% less), Bone Fence
+  from 8 (a lantern of 15% -> 30% of her health at half health), Broom Sweep
+  from 11 (every 30 s -> 20 s, no meals for 6 s -> 10 s). *Own decision:* the
+  Bone Fence rises once (at 50%) at every stage - the second and third
+  lanterns at the top are left for the tuning pass.
+- **Tickets** (`DungeonEngine`): 2 a day, at most 4, topped up on read
+  (no job). A new row's first read gives the cap.
+- **Unlock:** the lobby opens with the region 2 boss; stage N needs its
+  boss (region N, Malakor from 6) and stage N-1 cleared.
+- **Rewards:** a won stage pays a piece of region min(stage, 5) with a
+  rarity floor of Rare / Epic / Legendary by band, and a loot chest (Bronze
+  1-5, Silver 6-8, Gold 9-13, Ancient 14-15), plus 5 / 10 / 20 diamonds on
+  the first clear. *Own decision for "a lost run pays a quarter":* a Bronze
+  chest one time in four, which is about a quarter of a win's chest and
+  needs no second reward table.
+- **REST**, not the wire: `GET /api/v1/dungeon`, `POST /api/v1/dungeon/run`
+  (one transaction: ticket, fight, reward); meals eaten leave the live
+  larder as a negative delta the tick applies. Dev route
+  `/api/v1/dev/dungeon/tickets` for exercise.
+- **Client:** a Dungeon screen under Play - stage grid by band, the boss's
+  abilities with their numbers at the chosen stage (from the server), the
+  run played back line by line, the result card.
+
+**Measured on a production copy (2026-10-31, task 112 re-run, player 8,
+level 112, after the DiamondRework migration):**
+- Ascension headroom on Malakor: the real character x45 (clears A5, not A6),
+  the maxed profile x70 (clears A7, not A8). So A10 (x85) is above even the
+  maxed profile now - the old x32/x49 figures were before the War tree.
+- The first dungeon fight model (the reference-gear swing the wall benchmark
+  uses) dealt about a twentieth of a real character's live damage - it has no
+  skill tree and no codex. It now uses the offline projection's swing
+  (`HuntingProjection.PlayerSwing`, parity-tested against the live tick).
+- With the waves and the meal cap a run is far harder than the Ascension
+  fight alone: at Malakor's raw ladder the maxed profile cleared only stage 6.
+  The harness searched the band scale: the maxed profile wins stage 10 up to
+  x0.256 using all five meals. **Shipped: stage 10 = Malakor A10 x0.24**
+  (attack; health x0.24^0.68), stages 6-9 stepping geometrically from stage 5,
+  Beyond as designed (x1.5, then x1.4 a stage).
+- Result: the owner's character clears **stage 9**; the maxed profile clears
+  **stage 10 with every meal spent** and loses stage 11 with Baba Yaga at 69%;
+  stages 12-15 are out of its reach. That is the target the owner approved.
+
+**Not built yet:** the XP (Koschei) and Gold (Zmey) dungeons, tickets from
+chests, first-clear titles at stage 15, the run's art and sounds from the
+visuals doc, and the calibration-harness report of the highest stage the
+owner's character and the maxed profile clear (needs task 112).
+
 ### 2.6 Decisions for the owner
 
 - **D1. Fight model: A (simulated), B (interactive) or C (timer)?**

@@ -100,6 +100,7 @@
         { key: 'gathering', label: 'Gathering' },
         { key: 'worldboss', label: 'World Boss' },
         { key: 'delve', label: 'The Delve' },
+        { key: 'dungeon', label: 'Dungeon' },
       ],
     },
     {
@@ -337,6 +338,7 @@
     rebirth: () => import('./routes/Rebirth.svelte'),
     inheritance: () => import('./routes/Inheritance.svelte'),
     delve: () => import('./routes/Delve.svelte'),
+    dungeon: () => import('./routes/Dungeon.svelte'),
     store: () => import('./routes/Store.svelte'),
     settings: () => import('./routes/Settings.svelte'),
     mailbox: () => import('./routes/Mailbox.svelte'),

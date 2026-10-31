@@ -112,6 +112,45 @@ namespace FolkIdle.Server.Tests
                     _output.WriteLine(line.ToString());
                 }
             }
+
+            // The equipment dungeon (2026-10-31): the highest stage each profile
+            // clears, with the best fish of region 5 in the larder - the target
+            // is stage 10 for the maxed profile, with effort.
+            int bestFish = FoodRegistry.FirstRawFishOfTier(5);
+            foreach (var (name, profile) in new[] { ("real", real), ("maxed", maxed) })
+            {
+                var line = new System.Text.StringBuilder($"dungeon {name,-6}:");
+                int highest = 0;
+                for (int stage = 1; stage <= Domain.Combat.DungeonSimulator.StageCount; stage++)
+                {
+                    var run = Domain.Combat.DungeonSimulator.Run(profile, stage, bestFish, 9999);
+                    line.Append(run.Won ? $" {stage}={run.Seconds:F0}s/{run.MealsEaten}m" : $" {stage}=X({run.WavesCleared}w,{run.BossHpLeftPct}%,{run.MealsEaten}m,{run.Events[^1].Kind})");
+                    if (run.Won) highest = stage;
+                }
+                _output.WriteLine(line.ToString());
+                _output.WriteLine($"dungeon {name,-6}: highest stage cleared {highest}");
+            }
+
+            // The band scale the maxed profile beats stage 10 at, with every meal
+            // spent: the largest scale it still wins at (the target is "clears
+            // stage 10 with effort").
+            {
+                double lo = 0.01, hi = 1.0;
+                bool Wins(double scale)
+                {
+                    Domain.Combat.DungeonSimulator.CalibrationScale = scale;
+                    try { return Domain.Combat.DungeonSimulator.Run(maxed, 10, bestFish, 9999).Won; }
+                    finally { Domain.Combat.DungeonSimulator.CalibrationScale = 0; }
+                }
+                while (Wins(hi) && hi < 100) { lo = hi; hi *= 2; }
+                if (!Wins(lo)) lo = 0;
+                for (int i = 0; lo > 0 && i < 20; i++) { double mid = Math.Sqrt(lo * hi); if (Wins(mid)) lo = mid; else hi = mid; }
+                _output.WriteLine($"dungeon maxed : stage 10 is won up to band scale x{lo:F3}");
+                Domain.Combat.DungeonSimulator.CalibrationScale = lo;
+                var edge = Domain.Combat.DungeonSimulator.Run(maxed, 10, bestFish, 9999);
+                Domain.Combat.DungeonSimulator.CalibrationScale = 0;
+                _output.WriteLine($"dungeon maxed : at that scale stage 10 takes {edge.Seconds:F0}s and {edge.MealsEaten} meals");
+            }
         }
 
         private const double HpExponent = 0.68;

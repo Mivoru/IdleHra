@@ -18,6 +18,8 @@ namespace FolkIdle.Server.Domain.Economy
         DeepFloor = 1,
         BossFirstClear = 2,
         AscensionStep = 3,
+        // The equipment dungeon (2026-10-31): a won stage, or a lost run's consolation.
+        Dungeon = 4,
     }
 
     /// <summary>
@@ -202,7 +204,7 @@ namespace FolkIdle.Server.Domain.Economy
             return opened;
         }
 
-        private static EquipmentInstance? AddPiece(FolkIdleDbContext db, long playerId, int region, int rarityFloor, Random rng)
+        internal static EquipmentInstance? AddPiece(FolkIdleDbContext db, long playerId, int region, int rarityFloor, Random rng)
         {
             var pool = WorkshopCommissionRules.CommissionableItemIds()
                 .Where(id => ContentRegistry.ItemDefinitions[id - 1].RegionTier == region)

@@ -244,6 +244,16 @@ namespace FolkIdle.Server.Models
         public int PotionShelf3ItemId { get; set; }
         public int PotionShelf3Count { get; set; }
         public byte PotionAutoDrinkMask { get; set; }
+
+        // The equipment dungeon (2026-10-31): free tickets (2 a day, at most 4 -
+        // a new row starts at 0 with day 0, so its first read tops it to 4;
+        // topped up on read - DungeonEngine), the UTC day they were last topped
+        // up, the highest stage cleared, and which stages' first clear has paid
+        // (bit N = stage N).
+        public int DungeonTickets { get; set; }
+        public int DungeonTicketDay { get; set; }
+        public int DungeonBestStage { get; set; }
+        public int DungeonFirstClearMask { get; set; }
         public int ActiveFoodId { get; set; }
         public long ActiveFoodExpiresEpoch { get; set; }
 
