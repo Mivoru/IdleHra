@@ -95,8 +95,8 @@ namespace FolkIdle.Server.Tests
         {
             Assert.Equal(0, AchievementMilestones.EvaluateTreasuryTier(99_999));
             Assert.Equal(1, AchievementMilestones.EvaluateTreasuryTier(100_000));
-            Assert.Equal(2, AchievementMilestones.EvaluateTreasuryTier(5_000_000));
-            Assert.Equal(4, AchievementMilestones.EvaluateTreasuryTier(2_500_000_000));
+            Assert.Equal(3, AchievementMilestones.EvaluateTreasuryTier(5_000_000));
+            Assert.Equal(7, AchievementMilestones.EvaluateTreasuryTier(2_500_000_000));
             Assert.Contains("Spend", AchievementMilestones.TiersFor(AchievementMilestones.TreasuryAchievementId)[0].Goal);
         }
 

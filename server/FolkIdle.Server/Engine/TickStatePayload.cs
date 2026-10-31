@@ -827,6 +827,9 @@ namespace FolkIdle.Server.Engine
         // offline projection alike. ForgeUpgradeCount above had the same
         // missing load and is hydrated beside it.
         public long LifetimeHarvests;
+        // Potions drunk, ever - the Alchemist achievement's counter, kept on its
+        // lifetime row like LifetimeHarvests (achievements PR 2, 2026-10-31).
+        public long LifetimePotionsDrunk;
 
         // Modul 16/21: cached, pre-summed equipped-gear stat bonuses (weapon +
         // armor combined). Recomputed only by EquipmentSlotEngine on equip/

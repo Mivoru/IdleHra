@@ -49,7 +49,7 @@ namespace FolkIdle.Server.Engine
             => MaxSlots + Math.Clamp(greatWorkSlots, 0, MaxGreatWorkSlots);
 
         // 250 diamonds, doubling. Four slots run to 3,750 - the same order as a
-        // deep inheritance stat (~6,000 for twenty levels), which is the
+        // whole inheritance stat (~3,300 for ten levels since 2026-10-31), which is the
         // comparison a player actually makes when deciding what to spend on.
         private const long FirstSlotCostDiamonds = 250L;
 

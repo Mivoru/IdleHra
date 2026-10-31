@@ -2490,7 +2490,8 @@ namespace FolkIdle.Server.Domain.Combat
                                     Engine.AchievementMilestones.EvaluateTreasuryTier(Engine.GoldLedger.KnownLifetimeSpent(currentPayload.PlayerId))
                                     + Engine.AchievementMilestones.EvaluateForgingTier(
                                         currentPayload.ForgeUpgradeCount, currentPayload.HighestForgeSynthesisTier)
-                                    + Engine.AchievementMilestones.EvaluateLogisticsTier(currentPayload.LifetimeHarvests)),
+                                    + Engine.AchievementMilestones.EvaluateLogisticsTier(currentPayload.LifetimeHarvests)
+                                    + Engine.AchievementMilestones.EvaluateAlchemistTier(currentPayload.LifetimePotionsDrunk)),
                                 OfflineElapsedSeconds = currentPayload.OfflineElapsedSeconds,
                                 OfflineGoldEarned = currentPayload.OfflineGoldEarned,
                                 OfflineSlot1Gold = currentPayload.OfflineSlot1Gold,

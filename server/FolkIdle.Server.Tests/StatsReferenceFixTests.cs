@@ -59,7 +59,7 @@ namespace FolkIdle.Server.Tests
             var bareYield = SimulationEngine.GatheringYieldFor(ref bare, in node, 100);
             var boughtYield = SimulationEngine.GatheringYieldFor(ref bought, in node, 100);
 
-            Assert.Equal(bareYield.MultiplierPct + 20 * 2, boughtYield.MultiplierPct);
+            Assert.Equal(bareYield.MultiplierPct + InheritanceRegistry.GetBonusPct(10) * 2, boughtYield.MultiplierPct);
         }
 
         [Fact]

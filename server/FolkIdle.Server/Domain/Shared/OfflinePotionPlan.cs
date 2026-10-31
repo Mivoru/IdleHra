@@ -134,6 +134,7 @@ namespace FolkIdle.Server.Domain.Shared
                 long drunk = Math.Min(shelfCount, (needed + each - 1) / each);
                 long coveredUntil = remaining + drunk * each;
                 shelfCount -= (int)drunk;
+                payload.LifetimePotionsDrunk += drunk;
                 if (coveredUntil > realSeconds)
                 {
                     ConsumableEngine.ActiveId(ref payload, slot) = potion.ItemId;

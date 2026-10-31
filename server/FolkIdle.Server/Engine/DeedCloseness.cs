@@ -47,7 +47,7 @@ namespace FolkIdle.Server.Engine
 
             foreach (var a in lifetime)
             {
-                if (a.Id == AchievementMilestones.ForgingAchievementId && a.CompletedTier >= 2) continue;
+                if (a.Id == AchievementMilestones.ForgingAchievementId && a.CompletedTier >= AchievementMilestones.ForgingCountTiers) continue;
                 long target = AchievementMilestones.GetNextTierTarget(a.Id, a.CompletedTier);
                 if (target <= 1 || a.Progress >= target || a.CompletedTier >= a.Tiers.Count) continue;
                 string tierName = a.Tiers[a.CompletedTier].Name;

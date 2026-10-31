@@ -61,12 +61,22 @@ namespace FolkIdle.Server.Engine
         /// <summary>
         /// Modul: THE TAP'S CEILING, and it ships in the first version.
         ///
-        /// 60 a week is about 780 across a 90-day season - less than one
-        /// premium Chronicle pass (950) and a sixth of the smallest purchasable
-        /// pack per week. Enough that grinding it is worth doing, nowhere near
-        /// enough to replace buying, which is the line this has to stay under.
+        /// 60 a week was about 780 across a 90-day season - less than one
+        /// premium Chronicle pass (950). Raised to 80 on 2026-10-31 (owner M1)
+        /// together with the cheaper inheritance (Option B), as one change:
+        /// about 1,040 a season, still under a Chronicle pass plus one pack.
+        /// Enough that grinding it is worth doing, nowhere near enough to
+        /// replace buying, which is the line this has to stay under.
         /// </summary>
-        public const int MaxDiamondsPerWeek = 60;
+        public const int MaxDiamondsPerWeek = 80;
+
+        /// <summary>
+        /// The Delve's OLD ceiling, kept as the yardstick the world boss
+        /// milestones and the ordinary-kill diamond chance were sized against.
+        /// The owner raised the Delve alone (M1, 2026-10-31); the other taps
+        /// stay where they were measured rather than rising with it silently.
+        /// </summary>
+        public const int TapYardstickDiamondsPerWeek = 60;
 
         /// <summary>
         /// The random source for one Deep floor's doors (task 61): the SAME for
