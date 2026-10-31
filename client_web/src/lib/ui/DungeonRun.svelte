@@ -19,6 +19,7 @@
     type DungeonInfo,
     type DungeonEvent,
     type DungeonPerk,
+    type DungeonSchoolCount,
     type DungeonReward,
     type DungeonRunResult,
   } from '../net/dungeon';
@@ -68,6 +69,8 @@
   let reward = $state<DungeonReward | null>(answer.Reward ?? null);
   // svelte-ignore state_referenced_locally
   let offer = $state<DungeonPerk[] | null>(answer.Offer ?? null);
+  // svelte-ignore state_referenced_locally
+  let schools = $state<DungeonSchoolCount[]>(answer.Schools ?? []);
   // svelte-ignore state_referenced_locally
   const partySize = answer.PartySize ?? answer.Result?.PartySize ?? 1;
   let busy = false;
@@ -288,6 +291,7 @@
     baseRate = Math.max(1, (end - segStart) / 4);
     paused = reply.Paused ?? false;
     offer = reply.Offer ?? null;
+    if (reply.Schools) schools = reply.Schools;
     if (reply.Result) result = reply.Result;
     if (reply.Reward) reward = reply.Reward;
     // A dodge's own event ("Dodged!") is in this segment; show it now, the cards over it.
@@ -496,13 +500,18 @@
         <strong class="tg-title">Clean dodge! Choose a blessing</strong>
         <div class="cards">
           {#each offer as p (p.Id)}
-            <button class="card" data-testid="dungeon-perk" data-perk={p.Id} onclick={() => choose(p)}>
+            <button class="card" class:risky={p.Risky} data-school={p.School} data-testid="dungeon-perk" data-perk={p.Id} onclick={() => choose(p)}>
+              {#if p.School}<small class="school">{p.School}{p.Risky ? ' · risky' : ''}</small>{/if}
               <strong>{p.Name}</strong>
               <span>{p.Line}</span>
+              {#if p.Unlocks}<em class="unlocks" data-testid="dungeon-unlocks">Completes a set - {p.Unlocks}</em>{/if}
             </button>
           {/each}
         </div>
-        <p class="tg-hint">It lasts until the end of this run.</p>
+        {#if schools.length > 0}
+          <p class="tg-hint" data-testid="dungeon-schools">Your build: {schools.map((x) => `${x.School} ${x.Cards}`).join(' · ')}</p>
+        {/if}
+        <p class="tg-hint">Two cards of one school unlock its set bonus. It all lasts until the end of this run.</p>
       </div>
     {/if}
 
@@ -1118,6 +1127,29 @@
   }
   .card:nth-child(2) {
     animation-delay: 0.08s;
+  }
+  /* Modul: each school has its own colour, so a build reads before its words do. */
+  .card[data-school='Berserk'] { --tone: #ff7a59; }
+  .card[data-school='Guardian'] { --tone: #7fb2ff; }
+  .card[data-school='Blood'] { --tone: #e5527a; }
+  .card[data-school='Storm'] { --tone: #6ee0c8; }
+  .card.risky {
+    border-style: dashed;
+    background: linear-gradient(to bottom, rgb(60 15 15 / 0.95), rgb(20 5 5 / 0.95));
+  }
+  .card .school {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tone);
+    opacity: 0.9;
+  }
+  .card .unlocks {
+    font-size: 0.68rem;
+    font-style: normal;
+    line-height: 1.3;
+    color: #ffe08a;
   }
   .card strong {
     font-size: 0.95rem;

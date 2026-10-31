@@ -80,9 +80,9 @@ namespace FolkIdle.Server.Tests
                 foreach (var (label, party) in new[] { ("solo", new[] { 0 }), ($"party{slots.Count}", slots.ToArray()) })
                 {
                     if (label != "solo" && slots.Count == 1) continue;
-                    foreach (var mode in new[] { "none", "missed", "dodged" })
+                    foreach (var mode in Modes)
                     {
-                        var line = new System.Text.StringBuilder($"{kind,-9} {label,-6} {mode,-6}:");
+                        var line = new System.Text.StringBuilder($"{kind,-9} {label,-6} {mode,-9}:");
                         int highest = 0;
                         for (int stage = 1; stage <= DungeonSimulator.StageCount; stage++)
                         {
@@ -91,7 +91,7 @@ namespace FolkIdle.Server.Tests
                             if (r.Won) highest = stage; else break;
                         }
                         _output.WriteLine(line.ToString());
-                        _output.WriteLine($"{kind,-9} {label,-6} {mode,-6}: highest {highest}");
+                        _output.WriteLine($"{kind,-9} {label,-6} {mode,-9}: highest {highest}");
                     }
                 }
             }
@@ -105,11 +105,26 @@ namespace FolkIdle.Server.Tests
                 _output.WriteLine($"stage {stage,2}: XP {DungeonEngine.XpFor(stage, hourlyXp, true):N0}, gold {DungeonEngine.GoldFor(stage, hourlyGold, true):N0} ({DungeonEngine.IncomeMinutes(stage)} min)");
         }
 
-        /// <summary>A run with every telegraph answered one way: "none" = no telegraphs at all.</summary>
+        /// <summary>
+        /// "none" = no telegraphs; "missed" = every one missed; "greedy" = the
+        /// old pick order (damage first, any school); a school name = always
+        /// the card of that school when offered; "risky" = a risky card first.
+        /// Each scenario plays several seeds and reports the run that a
+        /// typical player gets: the median of five.
+        /// </summary>
+        private static readonly string[] Modes = { "none", "missed", "greedy", "Berserk", "Guardian", "Blood", "Storm", "risky" };
+
         private static DungeonRunResult Play(TickStatePayload payload, DungeonKind kind, int stage, int fish, int[] party, string mode)
         {
+            var runs = Enumerable.Range(0, mode is "none" or "missed" ? 1 : 5).Select(seed => PlayOne(payload, kind, stage, fish, party, mode, seed)).ToList();
+            return runs.OrderBy(r => r.Won ? 1 : 0).ThenBy(r => -r.Seconds).ElementAt(runs.Count / 2);
+        }
+
+        private static DungeonRunResult PlayOne(TickStatePayload payload, DungeonKind kind, int stage, int fish, int[] party, string mode, int seed)
+        {
             var runner = new DungeonRunner(payload, kind, stage, fish, 9999, party, challenges: mode != "none");
-            var rng = new Random(stage * 31 + (int)kind);
+            var rng = new Random(stage * 31 + (int)kind + seed * 1009);
+            string[] order = { "fury", "brutal", "keen", "swift", "iron", "vigour", "leech", "wind" };
             runner.Advance();
             int guard = 0;
             while (runner.Result == null && guard++ < 20)
@@ -118,10 +133,13 @@ namespace FolkIdle.Server.Tests
                 else
                 {
                     runner.Dodge();
-                    // A sensible pick: damage first, then survival, as a player would.
                     var offer = DungeonPerks.Offer(runner.Mods, rng);
-                    string[] order = { "fury", "brutal", "keen", "swift", "iron", "vigour", "leech", "wind" };
-                    var pick = offer.OrderBy(o => Array.IndexOf(order, o.Id)).FirstOrDefault();
+                    var pick = offer.OrderBy(o => mode switch
+                    {
+                        "risky" => o.Risky ? 0 : 1,
+                        "greedy" => o.Risky ? 99 : (Array.IndexOf(order, o.Id) is var i && i >= 0 ? i : 50),
+                        _ => o.School == mode ? 0 : 1,
+                    }).FirstOrDefault();
                     if (pick == null || !runner.Choose(pick.Id)) runner.Resume();
                 }
                 runner.Advance();

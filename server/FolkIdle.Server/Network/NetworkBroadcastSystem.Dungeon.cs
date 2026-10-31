@@ -331,7 +331,7 @@ namespace FolkIdle.Server.Network
                             if (run.Telegraph == null)
                             {
                                 run.Telegraph = DungeonPerks.Telegraph(run.Stage, runner.PausedOnBoss, run.Rng);
-                                run.WindowMs = DungeonPerks.WindowMs(run.Stage, runner.PausedOnBoss);
+                                run.WindowMs = DungeonPerks.WindowMs(run.Stage, runner.PausedOnBoss, runner.Mods.QuickstepPct);
                                 run.IssuedUtc = DateTime.UtcNow;
                             }
                             double used = (DateTime.UtcNow - run.IssuedUtc).TotalMilliseconds;
@@ -430,7 +430,9 @@ namespace FolkIdle.Server.Network
                 Tickets = left,
                 PartySize = runner.PartySize,
                 WaveMonsterIds = DungeonSimulator.WaveMonsterIdsFor(run.Stage),
-                Mods = new { m.DamagePct, m.CritChancePct, m.CritDamagePct, m.MaxHpPct, m.ArmorPct, m.SpeedPct, m.LeechTenths, m.ExtraMeals },
+                Mods = new { m.DamagePct, m.CritChancePct, m.CritDamagePct, m.MaxHpPct, m.ArmorPct, m.SpeedPct, m.LeechTenths, m.ExtraMeals, m.FeastPct, m.EvadePct, m.QuickstepPct, m.NoMeals },
+                Schools = Enum.GetValues<DungeonSchool>().Where(x => x != DungeonSchool.None).Select(x => new { School = x.ToString(), Cards = m.CountOf(x) }).Where(x => x.Cards > 0).ToArray(),
+                Sets = DungeonPerks.SetBonuses.Where(x => m.Sets.Contains(x.Id)).ToArray(),
             };
         }
 

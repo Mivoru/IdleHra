@@ -188,5 +188,69 @@ namespace FolkIdle.Server.Tests
             DungeonEngine.TopUpTickets(row, new DateTime(1970, 1, 1).AddDays(101));
             Assert.Equal(3, row.Tickets);
         }
+
+        [Fact]
+        public void LaterOffersHoldACardOfTheLeadingSchoolAndSometimesARiskyOne()
+        {
+            int risky = 0;
+            for (int seed = 0; seed < 400; seed++)
+            {
+                var rng = new Random(seed);
+                var first = DungeonPerks.Offer(new DungeonMods(), rng);
+                Assert.Equal(2, first.Count);
+                Assert.NotEqual(first[0].School, first[1].School);
+
+                var mods = new DungeonMods();
+                Assert.True(DungeonPerks.Apply(mods, "iron"));
+                var offer = DungeonPerks.Offer(mods, rng);
+                Assert.Equal(2, offer.Count);
+                Assert.Equal("Guardian", offer[0].School);
+                Assert.NotEqual("Guardian", offer[1].School);
+                Assert.StartsWith("Last Stand", offer[0].Unlocks);
+                if (offer[1].Risky) risky++;
+            }
+            Assert.InRange(risky, 60, 140); // about one offer in four
+        }
+
+        [Fact]
+        public void TwoCardsOfASchoolUnlockItsSet()
+        {
+            var runner = new DungeonRunner(Character(60, 2000), DungeonKind.Xp, 1, Fish, 100, new[] { 0 }, challenges: true);
+            runner.Advance();
+            runner.Dodge();
+            Assert.True(runner.Choose("fury"));
+            Assert.Empty(runner.Mods.Sets);
+            runner.Advance();
+            runner.Dodge();
+            Assert.True(runner.Choose("glass"));
+            Assert.Contains(DungeonPerks.Executioner, runner.Mods.Sets);
+            Assert.Contains(runner.AllEvents, e => e.Kind == "perk" && e.Text.StartsWith("Executioner"));
+            Assert.Equal(85, runner.Mods.DamagePct);
+            Assert.Equal(-30, runner.Mods.MaxHpPct);
+            Assert.False(DungeonPerks.Apply(runner.Mods, "glass")); // a risky card once a run
+        }
+
+        [Fact]
+        public void UnshakableTurnsAMissIntoHalfABlowWithoutACurse()
+        {
+            var runner = new DungeonRunner(Character(40, 300), DungeonKind.Xp, 2, Fish, 100, new[] { 0 }, challenges: true);
+            runner.Advance();
+            foreach (var id in new[] { "iron", "vigour", "bastion" }) DungeonPerks.Apply(runner.Mods, id);
+            DungeonPerks.UnlockSets(runner.Mods);
+            Assert.Contains(DungeonPerks.LastStand, runner.Mods.Sets);
+            Assert.Contains(DungeonPerks.Unshakable, runner.Mods.Sets);
+            Assert.Null(runner.Miss(new Random(3)));
+        }
+
+        [Fact]
+        public void QuickstepWidensTheWindowAndBloodlustStopsMeals()
+        {
+            Assert.True(DungeonPerks.WindowMs(10, false, 50) > DungeonPerks.WindowMs(10, false));
+            var mods = new DungeonMods();
+            Assert.True(DungeonPerks.Apply(mods, "bloodlust"));
+            Assert.True(mods.NoMeals);
+            Assert.False(DungeonPerks.Apply(mods, "feast"));
+            Assert.False(DungeonPerks.Apply(mods, "wind"));
+        }
     }
 }
