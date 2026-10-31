@@ -28,6 +28,12 @@ namespace FolkIdle.Server.Network
         // where exercise.mjs runs the whole flow on the dev fixture).
         private bool MaySeeDungeon(PlayerRecord? player) => IsAdmin(player) || DevToolsEnabled();
 
+        // Modul: an admin in production runs the dungeon without spending
+        // tickets, while the owner tests it (2026-10-31). Not where dev tools
+        // are on: exercise.mjs signs in as the admin fixture and asserts that
+        // a run takes a ticket from its own gate only.
+        private bool FreeDungeonRuns(PlayerRecord? player) => IsAdmin(player) && !DevToolsEnabled();
+
         // Modul: DEV ONLY - region bosses counted as beaten for the dungeons,
         // in memory and never written. The dev fixture has not beaten the
         // region 2 boss, so the lobby is shut for it; exercise.mjs opens it
@@ -86,6 +92,7 @@ namespace FolkIdle.Server.Network
                     Open = open,
                     LockedReason = open ? string.Empty : DungeonEngine.StageLockedReason(1, mask, 0) ?? string.Empty,
                     Online = snapshot != null,
+                    FreeRuns = FreeDungeonRuns(player),
                     DungeonEngine.TicketCap,
                     DungeonEngine.TicketsPerDay,
                     DungeonSimulator.Waves,
@@ -153,10 +160,12 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                bool freeRun;
                 using (var gateScope = _serviceProvider.CreateScope())
                 {
                     var gateDb = gateScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                     var gatePlayer = await gateDb.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
+                    freeRun = FreeDungeonRuns(gatePlayer);
                     if (!MaySeeDungeon(gatePlayer))
                     {
                         await WriteJsonAsync(context, new { Outcome = "Locked", Reason = DungeonClosedReason });
@@ -182,7 +191,7 @@ namespace FolkIdle.Server.Network
                     kind == DungeonKind.Xp ? DungeonEngine.BestHuntingXpPerHour(in payload, snapshot.Value.GlobalXpMultiplier, snapshot.Value.ActiveGlobalEventId) : 0,
                     kind == DungeonKind.Gold ? await GoldRewardScale.HourlyIncomeAsync(db, playerId, DateTime.UtcNow) : 0);
                 var (outcome, reason, result, reward, tickets) = await DungeonEngine.RunAsync(
-                    db, playerId, kind, stage, payload, food.ItemId, food.Count, income, DateTime.UtcNow, Random.Shared);
+                    db, playerId, kind, stage, payload, food.ItemId, food.Count, income, DateTime.UtcNow, Random.Shared, freeRun);
 
                 // Meals eaten come out of the live larder, as a delta the tick applies.
                 if (result != null && result.MealsEaten > 0 && food.SlotIndex >= 0)

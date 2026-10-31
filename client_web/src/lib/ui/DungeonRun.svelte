@@ -175,8 +175,8 @@
     finish();
   }
 
-  // The gate opens first - the light clip over the gate's own painting.
-  setTimeout(() => (showGate = false), motionMs(1600) || 0);
+  // The gate opens first: its own painting, split into two doors.
+  setTimeout(() => (showGate = false), motionMs(2400) || 0);
   raf = requestAnimationFrame(frame);
   onDestroy(() => cancelAnimationFrame(raf));
 
@@ -247,8 +247,16 @@
     {/if}
 
     {#if showGate}
-      <div class="gate-open">
-        <video src="/fx/dungeon-gate.webm" autoplay muted playsinline></video>
+      <!-- Modul: the gate opens in CSS from the gate's own painting, split
+           into two doors. It replaced a webm clip (owner, 2026-10-31): a
+           video sometimes failed to load and left a grey video icon, and
+           Safari on iOS does not play webm at all. An image already in the
+           cache cannot fail that way. -->
+      <div class="gate-open" style="--gate-art: url('{GATE_ART[dungeon.Key]}')" data-testid="dungeon-gate-open">
+        <div class="glow"></div>
+        <div class="door left"></div>
+        <div class="door right"></div>
+        <strong class="gate-title">{dungeon.Name}</strong>
       </div>
     {/if}
 
@@ -493,14 +501,74 @@
     inset: 0;
     z-index: 6;
     background: #000;
-    display: grid;
-    place-items: center;
+    overflow: hidden;
+    perspective: 900px;
+    animation: gate-fade 2.4s ease-in forwards;
   }
-  .gate-open video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    mix-blend-mode: screen;
+  .gate-open .door {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    background-image: var(--gate-art);
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    box-shadow: inset 0 0 40px rgb(0 0 0 / 0.6);
+  }
+  .gate-open .door.left {
+    left: 0;
+    background-position: left center;
+    transform-origin: left center;
+    animation: door-left 1.6s cubic-bezier(0.55, 0, 0.3, 1) 0.5s forwards;
+  }
+  .gate-open .door.right {
+    right: 0;
+    background-position: right center;
+    transform-origin: right center;
+    animation: door-right 1.6s cubic-bezier(0.55, 0, 0.3, 1) 0.5s forwards;
+  }
+  .gate-open .glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, #fff8e0 0%, #ffcf6a 18%, rgb(255 140 40 / 0.5) 40%, transparent 70%);
+    opacity: 0;
+    transform: scale(0.3);
+    animation: glow 1.9s ease-out 0.5s forwards;
+  }
+  .gate-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 12%;
+    text-align: center;
+    color: #fff;
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px #000;
+    animation: title 2.4s ease forwards;
+  }
+  @keyframes door-left {
+    to { transform: rotateY(-100deg); }
+  }
+  @keyframes door-right {
+    to { transform: rotateY(100deg); }
+  }
+  @keyframes glow {
+    40% { opacity: 1; }
+    to { opacity: 1; transform: scale(2.4); }
+  }
+  @keyframes title {
+    0% { opacity: 0; transform: translateY(8px); }
+    15%, 55% { opacity: 1; transform: none; }
+    to { opacity: 0; }
+  }
+  @keyframes gate-fade {
+    0%, 80% { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gate-open, .gate-open * { animation-duration: 0.01s !important; animation-delay: 0s !important; }
   }
 
   .verdict {

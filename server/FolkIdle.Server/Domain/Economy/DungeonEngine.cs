@@ -147,7 +147,7 @@ namespace FolkIdle.Server.Domain.Economy
         /// </summary>
         public static async Task<(RunOutcome Outcome, string? Reason, DungeonRunResult? Result, RunReward? Reward, int TicketsLeft)> RunAsync(
             FolkIdleDbContext db, long playerId, DungeonKind kind, int stage, TickStatePayload snapshot, int foodItemId, int foodCount,
-            Income income, DateTime utcNow, Random rng)
+            Income income, DateTime utcNow, Random rng, bool freeRun = false)
         {
             await using var tx = await db.Database.BeginTransactionAsync();
             var player = await db.PlayerRecords
@@ -163,7 +163,7 @@ namespace FolkIdle.Server.Domain.Economy
                 await tx.CommitAsync();
                 return (RunOutcome.Locked, locked, null, null, row.Tickets);
             }
-            if (row.Tickets <= 0)
+            if (row.Tickets <= 0 && !freeRun)
             {
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -171,7 +171,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
 
             var result = DungeonSimulator.Run(snapshot, kind, stage, foodItemId, foodCount);
-            row.Tickets--;
+            if (!freeRun) row.Tickets--;
 
             int diamonds = 0;
             if (result.Won)
@@ -194,9 +194,35 @@ namespace FolkIdle.Server.Domain.Economy
                 _ => await PayEquipmentAsync(db, playerId, stage, result.Won, diamonds, utcNow, rng),
             };
 
+            if (freeRun) RecordTestGrant(db, player.PlayerGuid, utcNow, reward);
+
             await db.SaveChangesAsync();
             await tx.CommitAsync();
             return (RunOutcome.Ok, null, result, reward, row.Tickets);
+        }
+
+        // Modul: ADMIN TEST RUNS (owner, 2026-10-31: "give me unlimited
+        // attempts so I can test, then reset it, rewards included"). A free run
+        // writes what it paid into AccountAnalyticsLogs under these hashes, so
+        // the reset can take back exactly that XP, gold, piece, chest and
+        // diamonds. Diamonds are also recoverable from FirstClearMask; the XP
+        // and the piece are not recorded anywhere else.
+        public const uint TestGrantXp = 0xD06E0001, TestGrantGold = 0xD06E0002, TestGrantPiece = 0xD06E0003,
+            TestGrantChest = 0xD06E0004, TestGrantDiamonds = 0xD06E0005;
+
+        private static void RecordTestGrant(FolkIdleDbContext db, Guid account, DateTime utcNow, RunReward? reward)
+        {
+            if (reward == null) return;
+            long at = new DateTimeOffset(utcNow).ToUnixTimeSeconds();
+            void Add(uint hash, long value)
+            {
+                if (value > 0) db.AccountAnalyticsLogs.Add(new AccountAnalyticsLog { AccountId = account, EventTypeHash = hash, TimestampEpoch = at, PayloadMetric = value });
+            }
+            Add(TestGrantXp, reward.Xp);
+            Add(TestGrantGold, reward.Gold);
+            Add(TestGrantPiece, reward.PieceId);
+            Add(TestGrantChest, reward.ChestId);
+            Add(TestGrantDiamonds, reward.Diamonds);
         }
 
         private static async Task<RunReward> PayGoldAsync(FolkIdleDbContext db, long playerId, long gold, int diamonds)
