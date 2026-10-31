@@ -2920,6 +2920,8 @@ export interface OpenedLootChest {
   Gold: number;
   Diamonds: number;
   Piece: { InstanceId: number; BaseItemId: string; QualityTier: number; RarityName: string } | null;
+  /** The dungeon a ticket fell for, or empty. */
+  DungeonTicket?: string;
 }
 
 export interface LootChestOpenResult {

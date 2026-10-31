@@ -49,12 +49,27 @@ namespace FolkIdle.Server.Domain.Economy
         public static int UtcDay(DateTime utcNow) => (int)(utcNow.Date - DateTime.UnixEpoch.Date).TotalDays;
 
         /// <summary>Tops the row's tickets up to today. True when it changed anything.</summary>
+        /// <summary>
+        /// Tickets from chests may sit above the daily cap, up to this (owner,
+        /// 2026-10-31); the daily top-up never takes them away.
+        /// </summary>
+        public const int BonusTicketCap = 8;
+
+        /// <summary>One ticket from a chest; false when the gate already holds BonusTicketCap.</summary>
+        public static bool AddBonusTicket(DungeonProgress row)
+        {
+            if (row.Tickets >= BonusTicketCap) return false;
+            row.Tickets++;
+            return true;
+        }
+
         public static bool TopUpTickets(DungeonProgress row, DateTime utcNow)
         {
             int today = UtcDay(utcNow);
             if (row.TicketDay >= today) return false;
             long days = today - (long)row.TicketDay;
-            row.Tickets = (int)Math.Min(TicketCap, row.Tickets + days * TicketsPerDay);
+            // Modul: never DOWN to the cap - a chest's tickets above it stay.
+            row.Tickets = (int)Math.Max(row.Tickets, Math.Min(TicketCap, row.Tickets + days * TicketsPerDay));
             row.TicketDay = today;
             return true;
         }

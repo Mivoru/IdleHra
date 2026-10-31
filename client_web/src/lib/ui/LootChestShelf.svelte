@@ -72,6 +72,7 @@
 
   const totalGold = $derived(results.reduce((a, r) => a + r.Gold, 0));
   const totalDiamonds = $derived(results.reduce((a, r) => a + r.Diamonds, 0));
+  const tickets = $derived(results.map((r) => r.DungeonTicket ?? '').filter((t) => t !== ''));
   const materials = $derived.by(() => {
     const sum = new Map<string, number>();
     for (const r of results) for (const m of r.Materials) sum.set(m.ItemId, (sum.get(m.ItemId) ?? 0) + m.Quantity);
@@ -129,6 +130,7 @@
         <ul>
           {#if totalGold > 0}<li class="gold" data-kind="gold">{formatGold(totalGold)}</li>{/if}
           {#if totalDiamonds > 0}<li class="diamonds" data-kind="diamonds">{formatNumber(totalDiamonds)} diamonds</li>{/if}
+          {#each tickets as t, i (i)}<li data-kind="ticket">A dungeon ticket for {t}</li>{/each}
           {#each materials as [item, qty]}
             <li class="mat" class:rare={isRareMaterial(item)} data-kind={isRareMaterial(item) ? 'rare-material' : 'material'}>
               <ItemIcon baseItemId={item} name={prettifyBaseId(item)} size="sm" />

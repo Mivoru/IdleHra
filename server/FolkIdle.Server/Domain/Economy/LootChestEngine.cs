@@ -53,7 +53,7 @@ namespace FolkIdle.Server.Domain.Economy
         /// </summary>
         private static readonly double[] GoldPerMinuteFloorByRegion = { 100, 300, 900, 2700, 8000 };
 
-        public sealed record Opened(long ChestId, LootChestTier Tier, int Region, LootChestRoll Roll, OpenedPiece? Piece);
+        public sealed record Opened(long ChestId, LootChestTier Tier, int Region, LootChestRoll Roll, OpenedPiece? Piece, string DungeonTicket = "");
 
         public sealed record OpenedPiece(long InstanceId, string BaseItemId, int QualityTier, string RarityName);
 
@@ -128,10 +128,11 @@ namespace FolkIdle.Server.Domain.Economy
         /// Answers what came out of each; an empty list means there was none.
         /// </summary>
         public static async Task<List<Opened>> OpenAsync(
-            FolkIdleDbContext db, long playerId, LootChestTier tier, int count, DateTime utcNow, Random rng)
+            FolkIdleDbContext db, long playerId, LootChestTier tier, int count, DateTime utcNow, Random rng, bool dungeonTickets = false)
         {
             var opened = new List<Opened>();
-            var pieces = new List<(LootChest Chest, LootChestRoll Roll, EquipmentInstance? Piece)>();
+            var pieces = new List<(LootChest Chest, LootChestRoll Roll, EquipmentInstance? Piece, string Ticket)>();
+            Dictionary<Domain.Combat.DungeonKind, DungeonProgress>? gates = null;
             count = Math.Clamp(count, 1, 10);
 
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
@@ -159,7 +160,14 @@ namespace FolkIdle.Server.Domain.Economy
                 // materials from further ahead; a Deep chest was granted at the
                 // player's highest region already, so it pays that.
                 int top = (LootChestSource)chest.Source == LootChestSource.DeepFloor ? highest : chest.Region;
-                var roll = LootChestRules.Roll((LootChestTier)chest.Tier, chest.Region, top, perMinute, room, rng);
+                var roll = LootChestRules.Roll((LootChestTier)chest.Tier, chest.Region, top, perMinute, room, rng, dungeonTickets);
+                string ticket = string.Empty;
+                if (roll.DungeonTickets > 0)
+                {
+                    gates ??= await DungeonEngine.LoadAsync(db, playerId, utcNow);
+                    var kind = Domain.Combat.DungeonBoss.All[rng.Next(Domain.Combat.DungeonBoss.All.Count)];
+                    if (DungeonEngine.AddBonusTicket(gates[kind])) ticket = Domain.Combat.DungeonBoss.For(kind).DungeonName;
+                }
 
                 foreach (var (item, quantity) in roll.Materials)
                 {
@@ -183,7 +191,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 db.LootChests.Remove(chest);
-                pieces.Add((chest, roll, piece));
+                pieces.Add((chest, roll, piece, ticket));
             }
 
             if (goldTotal > 0)
@@ -196,10 +204,10 @@ namespace FolkIdle.Server.Domain.Economy
             await tx.CommitAsync();
 
             // Built after the save, because a piece's id exists only then.
-            foreach (var (chest, roll, piece) in pieces)
+            foreach (var (chest, roll, piece, ticket) in pieces)
             {
                 opened.Add(new Opened(chest.Id, (LootChestTier)chest.Tier, chest.Region, roll,
-                    piece == null ? null : new OpenedPiece(piece.Id, piece.BaseItemId, piece.QualityTier, RarityTier.GetName(piece.QualityTier))));
+                    piece == null ? null : new OpenedPiece(piece.Id, piece.BaseItemId, piece.QualityTier, RarityTier.GetName(piece.QualityTier)), ticket));
             }
             return opened;
         }

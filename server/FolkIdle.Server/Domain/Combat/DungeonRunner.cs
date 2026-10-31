@@ -127,6 +127,27 @@ namespace FolkIdle.Server.Domain.Combat
             _f.Note = (_, text, v) => Note("ability", text, v);
         }
 
+        /// <summary>
+        /// What one champion brings, for the lobby's party picker: damage a
+        /// second against the stage-10 boss's body, max health, and how many of
+        /// the eight combat slots they wear. Level and attributes are the
+        /// account's; the gear is the champion's own, which is the difference.
+        /// </summary>
+        public static (long Dps, long MaxHp, int Worn) ChampionPower(TickStatePayload payload, int slot)
+        {
+            var p = payload;
+            SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+            CombatStats stats = SimulationEngine.LiveCombatStats(in p);
+            long maxHp = SimulationEngine.EffectiveMaxMilliHpFor(in p, in stats) / 1000;
+            long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(ref p, in stats, SimulationEngine.LineageOf(in p).DamageScalePerLevelPct);
+            MonsterDefinition boss = ContentRegistry.Monsters[DungeonSimulator.BossMonsterIdFor(10) - 1];
+            var swing = HuntingProjection.PlayerSwing.For(in p, in stats, in boss, rawMilliAttack);
+            int interval = Math.Max(DungeonSimulator.TickMs, SimulationEngine.LiveAttackIntervalMs(in p, in stats));
+            int worn = new[] { p.EquippedWeaponId, p.EquippedHelmetId, p.EquippedArmorId, p.EquippedLeggingsId,
+                p.EquippedBootsId, p.EquippedGlovesId, p.EquippedAmuletId, p.EquippedRingId }.Count(id => id > 0);
+            return ((long)(swing.Mean / 1000.0 * 1000.0 / interval), maxHp, worn);
+        }
+
         /// <summary>The events added since the last call, for the next playback segment.</summary>
         public IReadOnlyList<DungeonEvent> TakeNewEvents()
         {
@@ -166,9 +187,12 @@ namespace FolkIdle.Server.Domain.Combat
             return true;
         }
 
+        /// <summary>Ordinary hits a missed telegraph lands on each champion at once (owner, 2026-10-31: three).</summary>
+        public const double MissBlowHits = 3.0;
+
         /// <summary>
-        /// A missed telegraph: a heavy blow on the whole party (twice an
-        /// ordinary hit on each champion, through armour) and a penalty.
+        /// A missed telegraph: a heavy blow on the whole party (MissBlowHits
+        /// ordinary hits on each champion, through armour) and a penalty.
         /// Returns the penalty's id, or null when every floor is reached.
         /// </summary>
         public string? Miss(Random rng)
@@ -176,7 +200,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (!Paused) return null;
             Missed++;
             bool boss = _fight >= DungeonSimulator.Waves;
-            double blow = _party.Sum(m => (boss ? m.BossHit : m.WaveHit) * 2.0) * TakenFactor();
+            double blow = _party.Sum(m => (boss ? m.BossHit : m.WaveHit) * MissBlowHits) * TakenFactor();
             _f.PlayerHp = Math.Max(1, _f.PlayerHp - blow);
             Note("missed", "The blow lands!");
             var penalty = DungeonPerks.RollPenalty(Mods, rng);
@@ -204,7 +228,7 @@ namespace FolkIdle.Server.Domain.Combat
                 _f.PlayerHp = Math.Min(_f.PlayerHp, _f.PlayerMax);
                 _appliedMaxHpPct = Mods.MaxHpPct;
             }
-            if (id == "wind") _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + _f.PlayerMax * 0.35);
+            if (id == "wind") _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + _f.PlayerMax * 0.5);
         }
 
         private double TakenFactor() => Math.Max(0.2, 1 - Mods.ArmorPct / 100.0);

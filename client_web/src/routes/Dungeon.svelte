@@ -8,6 +8,7 @@
   import QueryError from '../lib/ui/QueryError.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import DungeonRun from '../lib/ui/DungeonRun.svelte';
+  import { formatNumber } from '../lib/ui/format';
 
   // Modul: THREE GATES (owner, 2026-10-31). XP, Gold and Equipment side by
   // side, each with its own stage field under it; a stage opens when the one
@@ -164,18 +165,23 @@
               {@const open = slot < dungeon.PartySlots}
               <li>
                 {#if slot === 0}
-                  <span class="seat on">Champion 1 <em>always goes</em></span>
+                  <span class="seat on">Champion 1 <em>always goes</em>{#if member}{@render power(member)}{/if}</span>
                 {:else if !open}
                   <span class="seat locked">Champion {slot + 1} <em>beat stage {slot === 1 ? 6 : 11} here</em></span>
                 {:else if !member}
                   <span class="seat locked">Champion {slot + 1} <em>no character in slot {slot + 1}</em></span>
                 {:else}
                   <button class="seat" class:on={!benched[slot]} aria-pressed={!benched[slot]} data-testid="dungeon-seat-{slot}"
-                    onclick={() => (benched[slot] = !benched[slot])}>Champion {slot + 1} <em>{benched[slot] ? 'stays home' : 'goes'}</em></button>
+                    onclick={() => (benched[slot] = !benched[slot])}>Champion {slot + 1} <em>{benched[slot] ? 'stays home' : 'goes'}</em>{@render power(member)}</button>
                 {/if}
               </li>
             {/each}
           </ul>
+          {#if data.Roster.some((r) => r.Slot > 0 && r.Slot < dungeon.PartySlots && r.Worn < 8 && !benched[r.Slot])}
+            <p class="tiny warn" data-testid="dungeon-party-warn">
+              A champion without full gear takes a share of the blows and adds little damage - the party can be weaker than you alone.
+            </p>
+          {/if}
           <p class="dim tiny how">
             Dodge the telegraphed blows by swiping (arrow keys or WASD on a computer). A clean dodge lets you choose one of
             two blessings; a miss hurts and leaves a curse. Both last until the run ends.
@@ -197,6 +203,10 @@
   </section>
   {/if}
 </div>
+
+{#snippet power(m: { Dps: number; MaxHp: number; Worn: number })}
+  <span class="power" class:bare={m.Worn < 8}>{formatNumber(m.Dps)} DPS &middot; {formatNumber(m.MaxHp)} HP &middot; gear {m.Worn}/8</span>
+{/snippet}
 
 <style>
   .wrap {
@@ -427,6 +437,19 @@
   .seat.on {
     border-color: var(--tone);
     box-shadow: inset 0 0 0 1px var(--tone);
+  }
+  .power {
+    font-size: 0.6rem;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+  }
+  .power.bare {
+    color: var(--danger);
+  }
+  .warn {
+    color: var(--danger);
+    margin: 0 0 0.4rem;
   }
   .seat.locked {
     opacity: 0.55;

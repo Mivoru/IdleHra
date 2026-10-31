@@ -72,7 +72,7 @@ namespace FolkIdle.Server.Tests
             furious.Advance();
             furious.Dodge();
             Assert.True(furious.Choose("fury"));
-            Assert.Equal(15, furious.Mods.DamagePct);
+            Assert.Equal(25, furious.Mods.DamagePct);
             // Play both to the end, answering nothing else.
             foreach (var r in new[] { plain, furious })
             {
@@ -96,9 +96,9 @@ namespace FolkIdle.Server.Tests
         {
             var mods = new DungeonMods();
             for (int i = 0; i < 20; i++) DungeonPerks.Apply(mods, "fury");
-            Assert.Equal(75, mods.DamagePct);
+            Assert.Equal(100, mods.DamagePct);
             for (int i = 0; i < 20; i++) DungeonPerks.Apply(mods, "staggered");
-            Assert.Equal(-45, mods.DamagePct); // the floor is checked before the step: -40 is still open, -45 is not
+            Assert.Equal(-60, mods.DamagePct);
             var offer = DungeonPerks.Offer(new DungeonMods(), new Random(1));
             Assert.Equal(2, offer.Count);
             Assert.NotEqual(offer[0].Id, offer[1].Id);
@@ -163,6 +163,30 @@ namespace FolkIdle.Server.Tests
             Assert.NotNull(runner.Result);
             Assert.Equal(0, runner.Result!.Dodged);
             Assert.True(runner.Result.Missed >= 1);
+        }
+
+        [Fact]
+        public void ChestsPayDungeonTicketsAtTheirOddsAndTheTopUpKeepsThem()
+        {
+            var rng = new Random(7);
+            foreach (var (tier, permille) in new[] { (LootChestTier.Bronze, 100), (LootChestTier.Silver, 200), (LootChestTier.Gold, 350), (LootChestTier.Ancient, 600) })
+            {
+                int hits = 0;
+                for (int i = 0; i < 20_000; i++) hits += LootChestRules.Roll(tier, 1, 1, 100, 0, rng, dungeonTickets: true).DungeonTickets;
+                Assert.InRange(hits / 20.0, permille - 15, permille + 15);
+                Assert.Equal(0, LootChestRules.Roll(tier, 1, 1, 100, 0, rng).DungeonTickets);
+            }
+
+            var row = new FolkIdle.Server.Models.DungeonProgress { Tickets = 4, TicketDay = 100 };
+            for (int i = 0; i < 6; i++) DungeonEngine.AddBonusTicket(row);
+            Assert.Equal(DungeonEngine.BonusTicketCap, row.Tickets);
+            Assert.False(DungeonEngine.AddBonusTicket(row));
+            DungeonEngine.TopUpTickets(row, new DateTime(1970, 1, 1).AddDays(103));
+            Assert.Equal(DungeonEngine.BonusTicketCap, row.Tickets); // never down to the cap
+            row.Tickets = 1;
+            row.TicketDay = 100;
+            DungeonEngine.TopUpTickets(row, new DateTime(1970, 1, 1).AddDays(101));
+            Assert.Equal(3, row.Tickets);
         }
     }
 }
