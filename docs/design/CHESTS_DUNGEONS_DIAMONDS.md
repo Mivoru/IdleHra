@@ -483,8 +483,8 @@ Decisions, all approved the same day:
 **Order, each slice admin-only until the owner has seen it:**
 1. The three gates, the stage field, the XP and Gold dungeons. **Built.**
 2. The run played back as a scene. **Built.**
-3. Dodges and bonuses, the server-side run session, sweep.
-4. Roster slots 2 and 3.
+3. Dodges and bonuses, the server-side run session, sweep. **Built.**
+4. Roster slots 2 and 3. **Built (uncalibrated).**
 5. The remaining art and sound (fight backgrounds, wave monsters, ability
    effects and sounds from LOOT_DUNGEON_VISUALS.md section 8).
 
@@ -526,6 +526,40 @@ Decisions, all approved the same day:
   tools are on and a dev build shows the menu entry, so `exercise.mjs` runs
   the whole flow on the dev fixture; `/api/v1/dev/dungeon/unlock` counts the
   region bosses as beaten in memory only, for the fixture.
+
+**What slices 3-4 built (2026-10-31, after the owner's second look):**
+- The owner changed one number: a clean dodge offers **two** bonuses, as
+  cards with their line, not three.
+- `DungeonRunner` (`Domain/Combat/DungeonRunner.cs`) is the simulator's loop
+  with its state kept, so a run can stop and go on. `DungeonSimulator.Run`
+  is the same runner without pauses (calibration, sweep, tests), so a live
+  run plays the numbers the calibration measured.
+- Telegraphs: one as each wave opens, one as the boss fight opens, and one
+  more each below two thirds and one third of the boss's health (when he
+  lives that long). One swipe on stages 1-4, one more every four stages, at
+  most four (five for the boss); 1.4 s a swipe on stage 1 down to 0.77 s on
+  stage 15, plus 0.6 s to read (`DungeonPerks`).
+- The server holds the run (`DungeonLiveRuns`, in memory, one per player):
+  `POST /dungeon/run` takes the ticket and answers the first segment;
+  `POST /dungeon/act` with `telegraph` shows the swipes and starts the
+  window on the server, `answer` judges them (right order, inside the window
+  plus 1.2 s for the network, not faster than 90 ms a swipe), `pick` takes a
+  bonus. The client never says "I dodged".
+- A miss lands twice an ordinary hit on every champion and a random penalty
+  (-10% damage, +10% damage taken, -8% speed, -10% max health). Bonuses:
+  damage, crit chance, crit damage, max health, damage taken, leech, speed,
+  Second Wind - each capped (the caps are the anti-bot).
+- A run left alone is played out with every telegraph missed and paid when
+  the player starts another run or opens the lobby 10 minutes later. A server
+  restart mid-run loses that run and its ticket.
+- Sweep: a beaten stage pays as won for a ticket, no fight
+  (`RunAsync(sweep: true)`); no first clear, by definition.
+- The party: a second champion after stage 6 of THAT dungeon, a third after
+  stage 11, from roster slots that hold a character. Each swings with their
+  own gear; each enemy swing lands on the next champion through their
+  armour; the health is one shared pool, so the bosses' rules work unchanged.
+  **Not calibrated:** a party of three is far stronger than one champion and
+  the stages do not yet scale for it.
 
 **Not measured yet:** Koschei's and Zmey's stages against the maxed profile.
 `AscensionCalibrationHarness` now reports all three dungeons; the band scale
