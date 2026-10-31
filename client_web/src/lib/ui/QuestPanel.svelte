@@ -25,10 +25,9 @@
   // minute. The quest line also REPLACED three tier-three objectives that
   // pointed at the same acts - see tutorialObjectives.ts.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { claimQuest, fetchQuests, questKeys, type QuestLine, type QuestStep } from '../net/quests';
-  import { invalidateOwnedItems } from '../net/queryClient';
+  import { fetchQuests, questKeys, type QuestStep } from '../net/quests';
+  import { claimQuestStep } from './questClaim';
   import { prettifyBaseId } from '../net/content';
-  import { pushLocalNotice } from '../stores/game';
   import { tutorialPrompt } from '../stores/tutorial';
   import { questSpotlight, showMe, clearSpotlight } from '../stores/questSpotlight';
   import { claimableSteps, describeReward, nextQuest, questLineFinished, questSummary } from './questLine';
@@ -73,29 +72,11 @@
     }
   }
 
-  const FAILURE_TEXT: Record<string, string> = {
-    Locked: 'That step is not open yet.',
-    NotDone: 'Do the step first, then claim it.',
-    AlreadyClaimed: 'That reward was already claimed.',
-    Restricted: 'This account cannot claim rewards right now.',
-    UnknownStep: 'That step no longer exists.',
-    PlayerNotFound: 'Could not find your account.',
-  };
-
   async function claim(step: QuestStep) {
     if (claiming) return;
     claiming = step.Id;
     try {
-      const answer: QuestLine = await claimQuest(step.Id);
-      client.setQueryData(questKeys.all, answer);
-      if (answer.Result === 'Ok') {
-        invalidateOwnedItems(client);
-        pushLocalNotice(`Quest reward: ${describeReward(answer.Reward, prettifyBaseId)}.`, 'info');
-      } else {
-        pushLocalNotice(FAILURE_TEXT[answer.Result ?? ''] ?? 'The reward was not paid.', 'error');
-      }
-    } catch {
-      pushLocalNotice('The reward could not be claimed. Nothing was lost - try again.', 'error');
+      await claimQuestStep(client, step.Id);
     } finally {
       claiming = '';
     }

@@ -6485,6 +6485,9 @@ namespace FolkIdle.Server.Network
                     NewlySealedMask = newlyAwarded,
                     Lifetime = lifetime,
                     LifetimeDiamondsPaidNow = lifetimePaid,
+                    // Achievements PR 1: the goals nearest done, across the
+                    // open chapters and the lifetime tiers (DeedCloseness).
+                    Closest = Engine.DeedCloseness.Closest(progress, doneMask, lifetime),
                     // Hidden deeds say only their category until they are done.
                     Hidden = Engine.DeedRegistry.Hidden.Select(h =>
                     {
