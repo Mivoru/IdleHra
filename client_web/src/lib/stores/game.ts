@@ -11,7 +11,7 @@
 import { refreshUnopenedChests } from './cosmeticChests';
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
-import { FLASH_MIN_TIER, LootFeelGate, lootPitch, shouldReplaceReveal } from '../ui/lootFeel';
+import { FLASH_MIN_TIER, LootFeelGate, LootSoundGate, LOOT_SOUND_WINDOW_MS, shouldReplaceReveal } from '../ui/lootFeel';
 import { resolveSlotIndex, isAutomationNote } from '../ui/slots';
 import { loadContent, itemName } from '../net/content';
 import { accountIdOf } from '../net/auth';
@@ -228,6 +228,16 @@ export const lootFlash = writable<{ id: number; itemId: number; qualityTier: num
 /** Task 50: the Legendary+ drop on the reveal card, or null. */
 export const lootReveal = writable<LootEntry | null>(null);
 const lootFeel = new LootFeelGate();
+const lootSound = new LootSoundGate();
+
+/** One loot sound per burst of drops, at the burst's best band (lootFeel.ts). */
+function offerLootSound(tier: number): void {
+  if (!lootSound.offer(tier)) return;
+  setTimeout(() => {
+    const clip = lootSound.flush(Date.now());
+    if (clip) play(clip);
+  }, LOOT_SOUND_WINDOW_MS);
+}
 
 export function dismissLootReveal(): void {
   lootReveal.set(null);
@@ -255,7 +265,7 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   // loot drop sound - I only want rare loot"). A gatherer lands a material
   // every few seconds, so the plain drop clip was a metronome, and a sound on
   // every drop is a sound on none. Haptics stay on the top tiers.
-  if (kind === 1 && tier >= FLASH_MIN_TIER) play('lootRare', lootPitch(tier));
+  if (kind === 1 && tier >= FLASH_MIN_TIER) offerLootSound(tier);
   if (tier >= 10) tap('success');
 
   // Task 51: a best-drop record (Rare+, against the durable baseline).
@@ -306,7 +316,9 @@ const CHEST_NAMES = ['', 'Common', 'Rare', 'Epic', 'Legendary'];
 
 function acceptCosmeticChest(rarity: number, monsterId: number): void {
   const name = CHEST_NAMES[rarity] ?? 'Cosmetic';
-  play('lootRare', lootPitch(Math.min(14, 7 + rarity)));
+  // A cosmetic chest (rarity 1-4) rings like a Legendary drop, a Legendary
+  // chest like a Relic - through the same burst gate as the loot.
+  offerLootSound(rarity >= 4 ? 9 : 7);
   if (rarity >= 3) tap('success');
   // MonsterId 0 is a level reward (every fifth level), anything else a kill.
   pushLocalNotice(

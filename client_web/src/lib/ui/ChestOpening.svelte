@@ -107,6 +107,12 @@
   const chestName = $derived(rarityNames[chestRarity] ?? 'Common');
   const resultClass = $derived(opened ? rarityClass(opened.Rarity) : '');
 
+  // A cosmetic's rarity (1-4) picks a loot band clip rather than pitching one
+  // clip up - the pitched version was the shrill one (owner, 2026-10-31).
+  function cosmeticClip(rarity: number): 'lootRare' | 'lootLegendary' | 'lootRelic' {
+    return rarity >= 4 ? 'lootRelic' : rarity >= 3 ? 'lootLegendary' : 'lootRare';
+  }
+
   function later(fn: () => void, ms: number): void {
     timers.push(setTimeout(fn, ms));
   }
@@ -155,7 +161,7 @@
   function showNext(): void {
     if (cursor >= results.length - 1) return;
     cursor++;
-    play('lootRare', 1 + ((results[cursor]?.Rarity ?? 1) - 1) * 0.08);
+    play(cosmeticClip(results[cursor]?.Rarity ?? 1));
   }
 
   function onShakeEnded(): void {
@@ -176,7 +182,7 @@
   function reveal(): void {
     if (chest.phase !== 'opening' || !opened) return;
     chest = { ...chest, phase: 'revealed' };
-    play('lootRare', 1 + (opened.Rarity - 1) * 0.08);
+    play(cosmeticClip(opened.Rarity));
   }
 
   function again(next = 1): void {
@@ -369,7 +375,7 @@
       --floor: 73%;
       /* Capped by the window: a portrait tablet crops the painting's sides
          and blows it up, and the chest with it. */
-      --chest-h: min(68%, 64dvh);
+      --chest-h: min(68%, 54dvh);
     }
     .scene {
       background-image: var(--portrait);
@@ -468,8 +474,14 @@
     left: 0;
     right: 0;
     margin-inline: auto;
-    top: calc(var(--floor) - 0.85 * var(--chest-h));
-    height: var(--chest-h);
+    /* Modul: CAPPED BY THE WIDTH TOO (owner, 2026-10-31: "the cosmetic
+       chest is too big and not in the middle"). The box is square and sized
+       by HEIGHT, so on a phone 64dvh came out about 590px wide on a 410px
+       screen - wider than its container, which auto margins cannot centre,
+       so it ran off to the right. --chest-w is the square's real side. */
+    --chest-w: min(var(--chest-h), 86vw);
+    top: calc(var(--floor) - 0.85 * var(--chest-w));
+    height: var(--chest-w);
     aspect-ratio: 1;
     padding: 0;
     border: 0;

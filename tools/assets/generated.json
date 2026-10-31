@@ -3674,6 +3674,126 @@
       "estimatedUsd": 0.067,
       "seconds": 10,
       "at": "2026-10-30T20:07:06.391Z"
+    },
+    {
+      "id": "sfx_loot_rare",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "Two soft plucked cimbalom notes with a gentle warm sparkle, a small good find, folk instrument, mellow, low-mid register, short, no reverb tail",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_loot_rare.mp3",
+      "bytes": 17179,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:13:54.577Z"
+    },
+    {
+      "id": "sfx_loot_legendary",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A struck bronze bell with a warm low male choir hum swelling under it and a soft shimmer, a precious find, folk and earthy, mellow, not shrill",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_loot_legendary.mp3",
+      "bytes": 29300,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:13:58.795Z"
+    },
+    {
+      "id": "sfx_loot_relic",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A deep ancient gong and a low choral drone rising, one long wooden fujara flute note on top, mystical and grand but low pitched and calm, not shrill, no brass",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_loot_relic.mp3",
+      "bytes": 41838,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:14:02.855Z"
+    },
+    {
+      "id": "sfx_pet_found",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A small forest creature's happy chirp followed by a short warm wooden flute trill, cute and gentle, folk",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_pet_found.mp3",
+      "bytes": 23030,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:14:07.074Z"
+    },
+    {
+      "id": "sfx_forge_reroll",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A hammer striking glowing iron on an anvil once, with a short soft magical shimmer after, close",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_forge_reroll.mp3",
+      "bytes": 13835,
+      "credits": 0,
+      "seconds": 4,
+      "at": "2026-10-30T23:14:11.846Z"
+    },
+    {
+      "id": "sfx_child_born",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A soft warm choral swell with a single gentle high wooden flute note, wondrous and tender, folk lullaby feel, no baby crying",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_child_born.mp3",
+      "bytes": 29300,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:14:16.163Z"
+    },
+    {
+      "id": "sfx_building_done",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A hammer on timber twice, then a heavy wooden beam settling into place with a satisfying thud, warm, constructive",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_building_done.mp3",
+      "bytes": 21358,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:14:20.695Z"
+    },
+    {
+      "id": "sfx_chest_open_rare",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A wooden chest lid creaking open with a bright soft chime of plucked strings, small treasure, folk",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_chest_open_rare.mp3",
+      "bytes": 26792,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:20:26.305Z"
+    },
+    {
+      "id": "sfx_chest_open_epic",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A heavy iron-banded chest lid thrown open, a low warm choir breath and a bell, glittering, folk fantasy, not shrill",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_chest_open_epic.mp3",
+      "bytes": 36405,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:20:30.218Z"
+    },
+    {
+      "id": "sfx_chest_open_legendary",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A deep thud as an ancient chest bursts open, a low gong, a warm male choir swell and a ringing bronze bell, golden and grand but mellow, no brass",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_chest_open_legendary.mp3",
+      "bytes": 48944,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-10-30T23:20:34.476Z"
     }
   ]
 }

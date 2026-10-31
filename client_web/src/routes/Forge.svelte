@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNumber, formatGold } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
+  import { play } from '../lib/ui/audio';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
@@ -240,6 +241,7 @@
     fusionSacOne = 0;
     fusionSacTwo = 0;
     fusionFlash++;
+    play('forgeReroll');
     refresh();
   }
 
@@ -283,6 +285,7 @@
     fusionSacOne = 0;
     fusionSacTwo = 0;
     fusionFlash++;
+    play('forgeReroll');
     refresh();
   }
 
@@ -392,6 +395,7 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     claim(next.target, [...next.sacrifices]);
     fusionFlash++;
+    play('forgeReroll');
     refresh();
   }
 
@@ -538,6 +542,7 @@
     const outcome = rerollAffix(rerollItemId, rerollAffixIndex, REFINE_OPERATION);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     rerollFlash++;
+    play('forgeReroll');
     refresh();
   }
 
@@ -549,6 +554,7 @@
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     rerollFlash++;
+    play('forgeReroll');
     refresh();
   }
 </script>
