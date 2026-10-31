@@ -101,6 +101,8 @@
   // The telegraph on screen: the swipes asked for, how many are in, the clock.
   let telegraph = $state<{ dirs: string[]; windowMs: number; startedAt: number } | null>(null);
   let entered = $state<string[]>([]);
+  /** A touch screen swipes; anything else uses the keyboard. */
+  const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   let wrong = $state(false);
   let timeLeft = $state(1);
 
@@ -466,22 +468,26 @@
     {#if telegraph}
       <!-- The telegraph: swipe the arrows in order (touch), or use the arrow
            keys / WASD; the pad is there for a mouse. -->
+      <!-- Modul: ONE SWIPE AT A TIME (owner, 2026-10-31): no buttons and no
+           sequence shown ahead - only the swipe due now, as an arrow that
+           moves the way to swipe and its words, and dots for how many are
+           left. A phone says "Swipe left"; a computer says WASD once. -->
+      {@const due = telegraph.dirs[Math.min(entered.length, telegraph.dirs.length - 1)]}
       <div class="telegraph" class:wrong data-testid="dungeon-telegraph" data-dirs={telegraph.dirs.join(',')}>
         <strong class="tg-title">{isBoss ? `${dungeon.Boss} strikes!` : 'Dodge!'}</strong>
-        <ol class="arrows">
-          {#each telegraph.dirs as d, i (i)}
-            <li class:hit={i < entered.length && entered[i] === d} class:miss={i < entered.length && entered[i] !== d} class:next={i === entered.length}>
-              {ARROW[d]}
-            </li>
-          {/each}
-        </ol>
+        {#key entered.length}
+          <div class="due" data-dir={due.toLowerCase()} aria-live="assertive">
+            <span class="due-arrow">{ARROW[due]}</span>
+            <span class="due-word">{touch ? `Swipe ${due.toLowerCase()}` : due}</span>
+          </div>
+        {/key}
+        {#if telegraph.dirs.length > 1}
+          <ol class="steps" aria-label="{entered.length} of {telegraph.dirs.length}">
+            {#each telegraph.dirs as _, i (i)}<li class:done={i < entered.length} class:now={i === entered.length}></li>{/each}
+          </ol>
+        {/if}
         <div class="clock"><i style="width: {timeLeft * 100}%"></i></div>
-        <p class="tg-hint">Swipe in this order &middot; arrow keys or WASD</p>
-        <div class="pad">
-          {#each ['Up', 'Left', 'Down', 'Right'] as d (d)}
-            <button class="pad-{d.toLowerCase()}" aria-label="Swipe {d}" data-testid="dungeon-pad-{d.toLowerCase()}" onclick={() => input(d)}>{ARROW[d]}</button>
-          {/each}
-        </div>
+        {#if !touch}<p class="tg-hint">Use WASD or the arrow keys to dodge</p>{/if}
       </div>
     {/if}
 
@@ -1022,41 +1028,60 @@
     font-size: 0.7rem;
     opacity: 0.8;
   }
-  .arrows {
+  .due {
+    display: grid;
+    justify-items: center;
+    gap: 0.2rem;
+    animation: due-in 0.18s ease-out;
+  }
+  .due-arrow {
+    font-size: 4.5rem;
+    line-height: 1;
+    font-weight: 900;
+    color: var(--tone);
+    text-shadow: 0 0 18px var(--tone), 0 2px 4px #000;
+  }
+  .due[data-dir='up'] .due-arrow { animation: nudge-up 0.55s ease-in-out infinite; }
+  .due[data-dir='down'] .due-arrow { animation: nudge-down 0.55s ease-in-out infinite; }
+  .due[data-dir='left'] .due-arrow { animation: nudge-left 0.55s ease-in-out infinite; }
+  .due[data-dir='right'] .due-arrow { animation: nudge-right 0.55s ease-in-out infinite; }
+  @keyframes nudge-up { 50% { transform: translateY(-18px); } }
+  @keyframes nudge-down { 50% { transform: translateY(18px); } }
+  @keyframes nudge-left { 50% { transform: translateX(-18px); } }
+  @keyframes nudge-right { 50% { transform: translateX(18px); } }
+  @keyframes due-in {
+    from { opacity: 0; transform: scale(0.8); }
+  }
+  .due-word {
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-shadow: 0 2px 6px #000;
+  }
+  .steps {
     display: flex;
-    gap: 0.4rem;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  .arrows li {
-    width: 3rem;
-    height: 3rem;
-    display: grid;
-    place-items: center;
-    font-size: 1.9rem;
-    font-weight: 900;
-    border-radius: 10px;
-    border: 2px solid rgb(255 255 255 / 0.35);
-    background: rgb(255 255 255 / 0.08);
+  .steps li {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1px solid rgb(255 255 255 / 0.6);
   }
-  .arrows li.next {
-    border-color: var(--tone);
-    box-shadow: 0 0 14px var(--tone);
-    animation: pulse 0.6s ease-in-out infinite alternate;
-  }
-  .arrows li.hit {
+  .steps li.done {
+    background: #4fd1a5;
     border-color: #4fd1a5;
-    background: rgb(79 209 165 / 0.35);
   }
-  .arrows li.miss {
-    border-color: var(--danger);
-    background: rgb(220 60 60 / 0.45);
+  .steps li.now {
+    border-color: var(--tone);
+    box-shadow: 0 0 6px var(--tone);
   }
-  @keyframes pulse {
-    to {
-      transform: scale(1.08);
-    }
+  @media (prefers-reduced-motion: reduce) {
+    .due-arrow { animation: none !important; }
   }
   .clock {
     width: min(16rem, 80%);
@@ -1069,34 +1094,6 @@
     display: block;
     height: 100%;
     background: var(--tone);
-  }
-  .pad {
-    display: grid;
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(2, 44px);
-    gap: 4px;
-  }
-  .pad button {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0;
-    font-size: 1.2rem;
-  }
-  .pad-up {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .pad-left {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .pad-down {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .pad-right {
-    grid-column: 3;
-    grid-row: 2;
   }
   .cards {
     display: grid;
