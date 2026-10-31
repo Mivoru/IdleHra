@@ -5,8 +5,8 @@
 // feature goes wrong: fire on the wrong edge and every player gets a wall of
 // cards for things they earned months ago, the first time they log in.
 //
-// THE SIGNAL is StateUpdatePacket.AchievementTierTotal - the sum of the three
-// tiered achievements' current tiers, 0-12, computed live on the server from
+// THE SIGNAL is StateUpdatePacket.AchievementTierTotal - the sum of the
+// tiered achievements' current tiers (0-24 since 2026-10-31), computed live on the server from
 // counters the tick payload already carries. It says THAT a tier moved, never
 // which one; naming the deed needs the REST snapshot, which the card needs
 // anyway to draw a title and a reward.
@@ -32,6 +32,15 @@ export interface AchievementToast {
   /** Roman numeral for the tier, or '' for the untiered kill achievement. */
   tierLabel: string;
   reward: string;
+  /** A Legendary tier (100 diamonds): the big centred card, not the corner toast. */
+  legendary?: boolean;
+}
+
+/** AchievementMilestones.LegendaryDiamonds - the top band of the one reward table. */
+export const LEGENDARY_TIER_DIAMONDS = 100;
+
+export function isLegendaryReward(diamonds: number): boolean {
+  return diamonds >= LEGENDARY_TIER_DIAMONDS;
 }
 
 /** The tracker's memory between packets. Serialisable on purpose. */
@@ -69,7 +78,8 @@ export function observeTierTotal(mark: ToastWatermark, total: number): boolean {
   return false;
 }
 
-const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+// Up to VII since the one reward table (2026-10-31): Treasury has seven tiers.
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
 export function tierLabel(tier: number): string {
   return ROMAN[tier] ?? String(tier);
@@ -81,6 +91,7 @@ export const ACHIEVEMENT_NAMES: Record<number, string> = {
   2: 'Treasury',
   3: 'Master Smith',
   4: 'Logistics',
+  5: 'Alchemist',
 };
 
 export function achievementName(id: number): string {

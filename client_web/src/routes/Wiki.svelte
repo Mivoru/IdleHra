@@ -1624,7 +1624,7 @@
             <li><strong>Every door wants one attribute</strong>, and each floor offers three. A door that shows what it wants also shows your odds; a door that does not is the gamble.</li>
             <li><strong>Fortune decides how often a door tells you.</strong> 55% with none, 77% at 100, and it never reaches certainty. This is the one place Fortune does something you can watch happen.</li>
             <li><strong>Banking pays diamonds</strong> — a full clear is worth about 20, and walking out at floor five about 6. Pushing raises the multiplier on everything already banked, so a failure costs more the deeper it happens.</li>
-            <li><strong>There is a weekly ceiling of 60 diamonds</strong>, and the screen shows how much of it you have taken. Past it a run pays gold back from the gate instead — worth playing, and still a net cost.</li>
+            <li><strong>There is a weekly ceiling of {DELVE_WEEKLY_DIAMOND_CEILING} diamonds</strong>, and the screen shows how much of it you have taken. Past it a run pays gold back from the gate instead — worth playing, and still a net cost.</li>
           </ul>
           <p class="dim small">
             Nothing about a run is decided by your device: the odds, the doors

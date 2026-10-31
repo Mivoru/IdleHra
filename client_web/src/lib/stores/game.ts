@@ -45,6 +45,7 @@ import {
   tierLabel,
   achievementName,
   crossedTierReward,
+  isLegendaryReward,
   type AchievementToast,
 } from './achievementToasts';
 import { CommandType, type StateUpdate, type ResponseChatMessage, type ResponseLootDrop, type ResponseCombatEvent } from '../net/protocol.generated';
@@ -587,14 +588,91 @@ const toastWatermark = createWatermark();
 let lastTierSnapshot: AchievementEntry[] | null = null;
 let toastSequence = 0;
 
+// Modul: TIERS EARNED WHILE AWAY (achievements PR 3, 2026-10-31). The first
+// packet of a session is a baseline, so a tier crossed by the offline catch-up
+// was paid and never announced. The last snapshot a session saw is kept per
+// player in this browser; the next session's first snapshot is diffed against
+// it, and the difference is announced - after the offline summary, never on
+// top of it. A browser that never saw a snapshot announces nothing (a first
+// sign-in on a new device must not card every deed ever earned).
+const TIER_ROWS_KEY = 'folkidle.achievementRows.';
+
+function readStoredTierRows(playerId: number): AchievementEntry[] | null {
+  if (playerId <= 0) return null;
+  try {
+    const raw = localStorage.getItem(TIER_ROWS_KEY + playerId);
+    return raw ? (JSON.parse(raw) as AchievementEntry[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeTierRows(playerId: number, rows: AchievementEntry[]): void {
+  if (playerId <= 0) return;
+  try {
+    localStorage.setItem(TIER_ROWS_KEY + playerId, JSON.stringify(rows));
+  } catch {
+    // Private mode or a full quota: the offline queue simply stays quiet.
+  }
+}
+
 /** Fetches the session's first snapshot, the "before" every later card is diffed and priced against. */
 async function primeTierSnapshot(): Promise<void> {
   try {
     const rows = await fetchAchievements();
-    if (lastTierSnapshot === null) lastTierSnapshot = rows;
+    if (lastTierSnapshot !== null) return;
+    lastTierSnapshot = rows;
+    const playerId = connection.currentPlayerId;
+    const stored = readStoredTierRows(playerId);
+    storeTierRows(playerId, rows);
+    if (stored) showAchievementCards(cardsFor(stored, rows));
   } catch {
     // A crossing will take its own fetch as the baseline instead.
   }
+}
+
+/** One card per deed that moved between two snapshots, priced from the earlier one. */
+function cardsFor(before: AchievementEntry[], rows: AchievementEntry[]): AchievementToast[] {
+  return diffTiers(before, rows).map(({ achievementId, tier }) => {
+    const reward = crossedTierReward(
+      before.find((entry) => entry.AchievementId === achievementId),
+      tier,
+    );
+    return {
+      id: ++toastSequence,
+      achievementId,
+      title: achievementName(achievementId),
+      tier,
+      tierLabel: tierLabel(tier),
+      reward: reward > 0 ? `+${reward} diamonds` : '',
+      legendary: isLegendaryReward(reward),
+    };
+  });
+}
+
+/**
+ * Shows cards, one sound for the lot, and retires each on its own clock -
+ * a clock that starts only once the offline summary is closed, because the
+ * cards wait behind it (AchievementToast.svelte).
+ */
+function showAchievementCards(cards: AchievementToast[]): void {
+  if (cards.length === 0) return;
+  achievementToasts.update((list) => [...list, ...cards]);
+  const start = () => {
+    play(cards.some((card) => card.legendary) ? 'lootLegendary' : 'achievementUnlock');
+    // Four seconds reads a title and a tier without becoming furniture; a
+    // Legendary card is a moment and stays twice as long.
+    for (const card of cards) setTimeout(() => dismissAchievementToast(card.id), card.legendary ? 8000 : 4000);
+  };
+  if (get(offlineSummary) === null) {
+    start();
+    return;
+  }
+  const unsubscribe = offlineSummary.subscribe((summary) => {
+    if (summary !== null) return;
+    queueMicrotask(() => unsubscribe());
+    start();
+  });
 }
 
 export function dismissAchievementToast(id: number): void {
@@ -609,19 +687,18 @@ export function dismissAchievementToast(id: number): void {
 // draws nothing. Dev builds only; `import.meta.env.DEV` is statically false in
 // a production bundle, so the whole block is dropped at build time.
 if (import.meta.env.DEV) {
-  (globalThis as Record<string, unknown>).__folkidleDemoAchievement = (tier = 3) => {
-    achievementToasts.update((list) => [
-      ...list,
+  (globalThis as Record<string, unknown>).__folkidleDemoAchievement = (tier = 3, diamonds = 15) => {
+    showAchievementCards([
       {
         id: ++toastSequence,
         achievementId: 2,
         title: achievementName(2),
         tier,
         tierLabel: tierLabel(tier),
-        reward: '+250 diamonds',
+        reward: `+${diamonds} diamonds`,
+        legendary: isLegendaryReward(diamonds),
       },
     ]);
-    play('achievementUnlock');
   };
 
   // Modul: a way to FILL the loot panel without fighting for an hour.
@@ -731,35 +808,11 @@ async function raiseAchievementToasts(): Promise<void> {
 
   const before = lastTierSnapshot;
   lastTierSnapshot = rows;
+  storeTierRows(connection.currentPlayerId, rows);
   // No baseline to diff against: this fetch becomes it, and no card is shown
   // rather than one for every deed the player has ever earned.
   if (before === null) return;
-  const crossed = diffTiers(before, rows);
-  if (crossed.length === 0) return;
-
-  const cards: AchievementToast[] = crossed.map(({ achievementId, tier }) => {
-    const reward = crossedTierReward(
-      before.find((entry) => entry.AchievementId === achievementId),
-      tier,
-    );
-    return {
-      id: ++toastSequence,
-      achievementId,
-      title: achievementName(achievementId),
-      tier,
-      tierLabel: tierLabel(tier),
-      reward: reward > 0 ? `+${reward} diamonds` : '',
-    };
-  });
-
-  achievementToasts.update((list) => [...list, ...cards]);
-  play('achievementUnlock');
-
-  // Each card retires itself. Four seconds is long enough to read a title and
-  // a tier without becoming furniture, and the component animates out first.
-  for (const card of cards) {
-    setTimeout(() => dismissAchievementToast(card.id), 4000);
-  }
+  showAchievementCards(cardsFor(before, rows));
 }
 
 // ---------------------------------------------------------------------------

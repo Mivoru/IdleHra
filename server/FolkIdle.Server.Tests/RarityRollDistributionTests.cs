@@ -174,7 +174,8 @@ namespace FolkIdle.Server.Tests
             DEX = 200,
             CON = 120,
             LCK = BuildLck,
-            Inherit_LootLuck = 4,
+            // Level 4 at +2% before the diamond rework; the migration made it 2 at +4%.
+            Inherit_LootLuck = 2,
             Aptitude_Fortune = 4,
             // GuildBonusesCache answers 0 for guild 0 - the account's DropRate
             // buff expired on 2026-09-09.
@@ -242,7 +243,7 @@ namespace FolkIdle.Server.Tests
             var report = new StringBuilder();
             report.AppendLine("Loot luck, term by term, for a level-94 region-5 build (LCK 300):");
             report.AppendLine($"  stats (LCK curve + Scavenger + areas + affixes)  {breakdown.Stats,7:F2}");
-            report.AppendLine($"  inheritance (level 4)                            {breakdown.Inheritance,7:F2}");
+            report.AppendLine($"  inheritance (level 2)                            {breakdown.Inheritance,7:F2}");
             report.AppendLine($"  Scavenger (5 ranks)                              {breakdown.FortuneRoot,7:F2}");
             report.AppendLine($"  guild DropRate                                   {breakdown.GuildDropRate,7:F2}");
             report.AppendLine($"  Fortune aptitude (4)                             {breakdown.FortuneAptitude,7:F2}");

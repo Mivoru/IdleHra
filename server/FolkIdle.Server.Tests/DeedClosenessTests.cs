@@ -49,10 +49,10 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void MasterSmithsRarityTiersAreLeftOut()
         {
-            // Two fusion tiers done; the next gates on rarity 10, progress counts fusions.
+            // Every fusion-count tier done; the next gates on rarity 10, progress counts fusions.
             var lifetime = new List<LifetimeAchievementBank.AchievementView>
             {
-                Lifetime(AchievementMilestones.ForgingAchievementId, 7, 2),
+                Lifetime(AchievementMilestones.ForgingAchievementId, 7, AchievementMilestones.ForgingCountTiers),
             };
             var closest = DeedCloseness.Closest(default(DeedContext) with { Level = 50 }, doneMask: 0, lifetime);
             Assert.DoesNotContain(closest, g => g.Id == "lifetime-" + AchievementMilestones.ForgingAchievementId);

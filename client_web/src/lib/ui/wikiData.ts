@@ -569,7 +569,7 @@ export const DEEP_LAST_DIAMOND_FLOOR = 19;
 /** The Deep's OWN weekly diamond ceiling (DelveRegistry.MaxDeepDiamondsPerWeek), apart from the Delve's. */
 export const DEEP_WEEKLY_DIAMOND_CEILING = 20;
 /** The Delve's weekly diamond ceiling (DelveRegistry.MaxDiamondsPerWeek). */
-export const DELVE_WEEKLY_DIAMOND_CEILING = 60;
+export const DELVE_WEEKLY_DIAMOND_CEILING = 80;
 export const DEEP_MIN_DOOR_CHANCE_PCT = 25;
 export const DEEP_MAX_LANTERNS = 8;
 export const DEEP_TITLE_FLOORS: readonly number[] = [10, 15, 20, 30, 40, 50];
@@ -807,7 +807,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'longgame', anchor: 'rebirth-vault', title: 'The Vault: keeping gear through a rebirth', keywords: 'rebirth vault keep gear equipment price gold rarity save treasury' },
   { tab: 'longgame', anchor: 'deeds', title: 'The Book of Deeds and Seals', keywords: 'deeds chapters seals skill points permanent' },
   { tab: 'longgame', anchor: 'hall', title: 'The Hall of Ancestors and the cull', keywords: 'ancestors slots keep mark cull survive field roster' },
-  { tab: 'longgame', anchor: 'inheritance', title: 'Inheritance', keywords: 'diamonds permanent damage health experience gold gathering luck 2% 20 levels' },
+  { tab: 'longgame', anchor: 'inheritance', title: 'Inheritance', keywords: 'diamonds permanent damage health experience gold gathering luck 4% 10 levels' },
   { tab: 'longgame', anchor: 'leaderboard', title: 'Leaderboard rank', keywords: 'leaderboard rank top fifty placement' },
   { tab: 'combat', anchor: 'pets', title: 'Pets', keywords: 'pet pets monster pet phoenix witch slot second duplicate diamonds hugin nisse' },
 

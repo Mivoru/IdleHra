@@ -653,6 +653,41 @@ One **Achievements** screen (or a tab of Progress):
 
 ---
 
+### 5.8 Built (2026-10-31, autonomous run - decisions recorded here)
+
+**PR 1 - one list.** The Book of Deeds opens with **Getting started**, which
+is the quest line itself (same steps, same claim, same query as the Home
+panel; the Home panel stays as the pointer to the next step), and **Closest
+to done**, the unfinished goals nearest their target across the open
+chapters and the lifetime tiers, ranked on the server (`DeedCloseness`).
+Goals without a real fraction (one-step deeds, Master Smith's rarity tiers,
+whose progress counts fusions) are left out rather than shown wrong.
+
+**PR 2 - one reward table and one diamond change.**
+- Lifetime tiers pay **5 / 15 / 40 / 100** only. Treasury became seven tiers
+  (100k, 1M, 5M, 25M, 100M, 500M, 2.5B), Master Smith six (50, 200, 500
+  fusions; rarity 10, 12, 14), Logistics keeps its four thresholds and its
+  speed bonus with the new diamonds. Every old threshold is still a
+  threshold, so the `DiamondRework` migration moves a stored tier to its new
+  index (`AchievementMilestones.MigratedTier`, tested against the ladders):
+  nothing already paid is paid again or taken back.
+- **Alchemist** (new, id 5): 1 / 10 / 50 / 250 potions drunk, counted on the
+  tick and offline - the potion achievements moved here from the potions PR.
+- **Delve 60 -> 80** a week (M1). The world boss milestones and the
+  ordinary-kill diamond chance were sized "like the Delve" and stay at 60
+  (`DelveRegistry.TapYardstickDiamondsPerWeek`): the owner raised the Delve,
+  not every tap.
+- **Inheritance Option B** (I1): ten levels of +4% at 100 x 1.25^level.
+  Owned levels convert to ceil(old / 2) - never less bonus (old 11 = 22%
+  becomes 6 = 24%), no refund needed. **The milestone effects at levels 5
+  and 10 are NOT built yet** - twelve new mechanics, each needing parity;
+  they are their own PR.
+- **The one model** (`DiamondReworkTests.TheEconomyModel_Report`): 100 free
+  diamonds a week (Delve 80 + Deep 20). First level 100 (1 week); one stat
+  to level 5: 820 (8.2 weeks); one stat to 10: 3,323 (33 weeks); all six:
+  19,938 (3.8 years, was ~23 years at 118,000); every lifetime tier once:
+  950 diamonds (9.5 weeks of taps, was ~4,260 in four milestones).
+
 ## 6. Suggested order
 
 1. The Deep reward (done, section 0). Watch the Deep's spend for two weeks.

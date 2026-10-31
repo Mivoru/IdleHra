@@ -30,22 +30,26 @@ namespace FolkIdle.Server.Engine
         public const int StatCount = 6;
 
         /// <summary>
-        /// The ceiling per stat. Twenty levels at 2% is +40% - meaningful after
-        /// several seasons and nowhere near enough to trivialise a region on
-        /// its own, which is the shape a permanent bonus has to have when it
-        /// can only ever grow.
+        /// The ceiling per stat. Ten levels at 4% is +40% - the same ceiling as
+        /// the old twenty at 2%, reached in steps a player can feel.
         /// </summary>
-        public const int MaxLevel = 20;
+        /// <remarks>
+        /// Modul: OPTION B (owner I1, 2026-10-31). Twenty levels of +2% at
+        /// 40 x 1.28^level made a stat cost ~19,800 diamonds and its tenth step
+        /// ~470 for +2% - the most invested account was 7-8 weeks of free
+        /// diamonds from its next step. Ten levels of +4% at 100 x 1.25^level
+        /// put a whole stat at ~3,300. The DiamondRework migration converts
+        /// owned levels to ceil(old / 2), so nobody's bonus goes down.
+        /// InheritanceEconomyModelTests prints the weeks to each step against
+        /// the free diamond taps - the one model the owner asked for.
+        /// </remarks>
+        public const int MaxLevel = 10;
 
         /// <summary>Percentage points added per level, for every stat.</summary>
-        public const int PercentPerLevel = 2;
+        public const int PercentPerLevel = 4;
 
-        // 40 diamonds for the first level, x1.28 each time. Level 20 costs
-        // about 6,000 and a full stat runs to roughly 25,000 - years of daily
-        // logins, or a purchase. Both are intended: this is the sink that gives
-        // the premium currency a reason to exist.
-        private const double CostBase = 40.0;
-        private const double CostGrowth = 1.28;
+        private const double CostBase = 100.0;
+        private const double CostGrowth = 1.25;
 
         public static string GetName(int statId) => statId switch
         {

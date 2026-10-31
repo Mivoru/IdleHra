@@ -9,7 +9,7 @@
   // Separate from Toasts.svelte deliberately. That one reports whether a
   // command worked and must stay small and dismissible; this one is meant to
   // be looked at. Sharing a component would have made both worse.
-  import { achievementToasts, dismissAchievementToast } from '../stores/game';
+  import { achievementToasts, dismissAchievementToast, offlineSummary } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
 
   // Task 109: the card is a way in, not only a notice - it opens the Book of
@@ -20,8 +20,13 @@
   }
 </script>
 
+<!-- Modul: THE CARDS WAIT BEHIND THE OFFLINE SUMMARY (achievements PR 3,
+     2026-10-31). Tiers earned while away are announced at sign-in, and the
+     summary is what the player reads first - a card on top of it would be
+     dismissed unread. Their clocks start when the summary closes. -->
+{#if $offlineSummary === null}
 <div class="deeds" role="status" aria-live="polite">
-  {#each $achievementToasts as toast (toast.id)}
+  {#each $achievementToasts.filter((t) => !t.legendary) as toast (toast.id)}
     <div class="deed">
       <!-- Modul: was a private .sweep span with its own keyframes. Now the
            shared .folk-sweep in app.css, because four other moments wanted the
@@ -49,7 +54,7 @@
            the tier in words. -->
       <button class="body" type="button" onclick={() => openBook(toast.id)} aria-label="Open the Book of Deeds: {toast.title}">
         <span class="eyebrow">Deed accomplished</span>
-        <strong class="title">{toast.title}{#if toast.tierLabel} - tier {toast.tierLabel}{/if}</strong>
+        <strong class="title">{toast.title}{toast.tierLabel ? ` - tier ${toast.tierLabel}` : ''}</strong>
         {#if toast.reward}<span class="reward">{toast.reward}</span>{/if}
       </button>
 
@@ -62,7 +67,112 @@
   {/each}
 </div>
 
+<!-- Modul: A LEGENDARY TIER IS A MOMENT (owner A3, 2026-10-31): the 100-diamond
+     band gets the big centred card with a light burst, like a rare drop, and
+     the legendary sound - not the corner toast every Bronze tier gets. -->
+{#each $achievementToasts.filter((t) => t.legendary) as toast (toast.id)}
+  <div class="legend-wrap" role="alertdialog" aria-label="Legendary deed: {toast.title}" data-testid="achievement-legendary">
+    <div class="legend">
+      <span class="burst" aria-hidden="true"></span>
+      <span class="eyebrow">Legendary deed</span>
+      <span class="legend-seal" aria-hidden="true">
+        {#if toast.tierLabel}{toast.tierLabel}{:else}<svg class="sealmark" viewBox="0 0 24 24"><path d="M12 2 L14.9 8.6 L22 9.4 L16.7 14.2 L18.2 21.2 L12 17.6 L5.8 21.2 L7.3 14.2 L2 9.4 L9.1 8.6 Z" fill="currentColor" /></svg>{/if}
+      </span>
+      <strong class="legend-title">{toast.title}{toast.tierLabel ? ` - tier ${toast.tierLabel}` : ''}</strong>
+      {#if toast.reward}<span class="reward">{toast.reward}</span>{/if}
+      <div class="legend-acts">
+        <button type="button" onclick={() => openBook(toast.id)}>Open the Book</button>
+        <button type="button" class="quiet" onclick={() => dismissAchievementToast(toast.id)}>Close</button>
+      </div>
+    </div>
+  </div>
+{/each}
+{/if}
+
 <style>
+  .legend-wrap {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.45);
+    animation: legend-fade 240ms ease-out;
+  }
+
+  .legend {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    justify-items: center;
+    gap: 0.45rem;
+    width: min(22rem, 100%);
+    padding: 1.4rem 1.2rem 1.1rem;
+    text-align: center;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(255, 214, 120, 0.28), transparent 65%),
+      var(--bg-raised);
+    border: 2px solid var(--brass-lit);
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 1px rgba(216, 180, 90, 0.35), 0 0 48px rgba(255, 200, 90, 0.35), 0 18px 40px rgba(0, 0, 0, 0.55);
+    animation: legend-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+
+  .burst {
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 0deg, transparent 0 10%, rgba(255, 225, 150, 0.22) 12% 16%, transparent 18% 35%,
+      rgba(255, 225, 150, 0.18) 37% 41%, transparent 43% 60%, rgba(255, 225, 150, 0.22) 62% 66%, transparent 68% 85%,
+      rgba(255, 225, 150, 0.18) 87% 91%, transparent 93%);
+    animation: legend-spin 9s linear infinite;
+    pointer-events: none;
+  }
+
+  .legend > :not(.burst) {
+    position: relative;
+  }
+
+  .legend-seal {
+    display: grid;
+    place-items: center;
+    width: 3.4rem;
+    height: 3.4rem;
+    border-radius: 50%;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: #3a2508;
+    background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--brass-lit) 55%, var(--brass));
+    box-shadow: 0 0 22px rgba(255, 210, 110, 0.6);
+  }
+
+  .legend-title {
+    font-size: 1.15rem;
+  }
+
+  .legend-acts {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  @keyframes legend-fade {
+    from { opacity: 0; }
+  }
+
+  @keyframes legend-in {
+    from { opacity: 0; transform: scale(0.82); }
+  }
+
+  @keyframes legend-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .legend, .legend-wrap { animation: none; }
+    .burst { animation: none; }
+  }
+
   .deeds {
     position: fixed;
     right: calc(1rem + var(--sa-right));

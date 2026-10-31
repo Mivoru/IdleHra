@@ -66,7 +66,7 @@ describe('screens unlock as they become useful', () => {
     expect(lockedRequirement('guildops', snapshot(), { hasGuild: true }, NONE)).toBeNull();
     expect(lockedRequirement('breeding', snapshot({ BreedingLevel: 1 }), NO_GUILD, NONE)).toBeNull();
     expect(lockedRequirement('ancestors', snapshot({ Slot1_AgePhase: 2 }), NO_GUILD, NONE)).toBeNull();
-    expect(lockedRequirement('inheritance', snapshot({ PremiumCurrencyBalance: 40 }), NO_GUILD, NONE)).toBeNull();
+    expect(lockedRequirement('inheritance', snapshot({ PremiumCurrencyBalance: 100 }), NO_GUILD, NONE)).toBeNull();
   });
 
   // Gold goes down and a season resets levels and buildings; a screen whose
