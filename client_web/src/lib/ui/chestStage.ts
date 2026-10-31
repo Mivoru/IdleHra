@@ -11,7 +11,7 @@
 // camera, so the hand-over is a light burst that covers the swap.
 
 export type ChestArt = 'cosmetic' | 'loot';
-/** 1 Common, 2 Rare, 3 Epic, 4 Legendary - the same scale as ChestClip. */
+/** 1 Common, 2 Rare, 3 Epic, 4 Legendary - the same scale as the cosmetic chest rarity. */
 export type ChestRarity = 1 | 2 | 3 | 4;
 
 const RARITY_NAMES: Record<ChestRarity, string> = { 1: 'common', 2: 'rare', 3: 'epic', 4: 'legendary' };
