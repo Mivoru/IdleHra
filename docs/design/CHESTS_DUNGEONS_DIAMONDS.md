@@ -534,11 +534,12 @@ Decisions, all approved the same day:
   with its state kept, so a run can stop and go on. `DungeonSimulator.Run`
   is the same runner without pauses (calibration, sweep, tests), so a live
   run plays the numbers the calibration measured.
-- Telegraphs: one as each wave opens, one as the boss fight opens, and one
-  more each below two thirds and one third of the boss's health (when he
-  lives that long). One swipe on stages 1-4, one more every four stages, at
-  most four (five for the boss); 1.4 s a swipe on stage 1 down to 0.77 s on
-  stage 15, plus 0.6 s to read (`DungeonPerks`).
+- Telegraphs (second pass, owner 2026-10-31: "fewer, longer, less time"):
+  four a run - as waves 2 and 4 open, as the boss fight opens, and once more
+  below half his health. Two swipes on stages 1-4, one more every four
+  stages, at most five (six for the boss); 1.0 s a swipe on stage 1 down to
+  0.55 s on stage 15, plus 0.6 s to read (`DungeonPerks`). Only the swipe due
+  is shown, never the sequence ahead.
 - The server holds the run (`DungeonLiveRuns`, in memory, one per player):
   `POST /dungeon/run` takes the ticket and answers the first segment;
   `POST /dungeon/act` with `telegraph` shows the swipes and starts the
@@ -561,11 +562,26 @@ Decisions, all approved the same day:
   **Not calibrated:** a party of three is far stronger than one champion and
   the stages do not yet scale for it.
 
-**Not measured yet:** Koschei's and Zmey's stages against the maxed profile.
-`AscensionCalibrationHarness` now reports all three dungeons; the band scale
-was calibrated on Baba Yaga alone, and the other two bosses' abilities make
-their stages easier or harder for a given build. Run it on the production
-copy before the dungeons open to players, and record the numbers here.
+**Measured (2026-10-31 15:12 UTC production copy, `DungeonCalibrationHarness`,
+the owner's account: level 113, champion 1 fully geared, champions 2 and 3
+wearing nothing).** Highest stage cleared, best region-5 fish:
+
+| Dungeon | solo, no telegraphs | solo, all missed | solo, all dodged | party of 3, all dodged |
+|---|---|---|---|---|
+| Koschei (XP) | 9 | 8 | 9 | 8 |
+| Zmey (Gold) | 9 | 9 | 9 | 8 |
+| Baba Yaga (Equipment) | 9 | 8 | 9 | 8 |
+
+- Dodging moves the result by about one stage; with four telegraphs it is
+  worth too little to matter.
+- An ungeared champion makes the party WEAKER: they add a tenth of the
+  main's damage but take a third of the enemy's swings. Each champion's own
+  gear is what counts; level and attributes are the account's.
+- Rewards for this account: best hunting 137.6M XP/h, gold 26.2M/h; stage 10
+  pays 229M XP or 43.6M gold. Two tickets a day at stage 9-10 in all three
+  gates add about 13-14% to a day's hunting XP and earned gold.
+
+**Not calibrated yet:** a party of geared champions (no production account has one), and the bonus and penalty sizes now that a run has four telegraphs instead of eight.
 
 ### 2.6 Decisions for the owner
 

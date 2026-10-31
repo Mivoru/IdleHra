@@ -53,6 +53,11 @@ namespace FolkIdle.Server.Domain.Combat
         private readonly List<DungeonEvent> _events = new();
         private readonly DungeonFightState _f;
 
+        /// <summary>The waves (0-based) that open with a telegraph.</summary>
+        public static readonly int[] TelegraphWaves = { 1, 3 };
+        /// <summary>Telegraphs inside the boss fight after its opening one.</summary>
+        public const int BossMidTelegraphs = 1;
+
         private int _fight;
         private bool _fightStarted;
         private bool _startChallengeDone;
@@ -246,14 +251,18 @@ namespace FolkIdle.Server.Domain.Combat
                 }
                 if (_challenges && !_startChallengeDone)
                 {
-                    // One telegraph as each fight opens, and two more in the boss
-                    // fight below two thirds and one third of its health.
+                    // Four telegraphs a run (owner, second pass: fewer, harder):
+                    // as waves 2 and 4 open, as the boss fight opens, and once
+                    // more when the boss falls below half his health.
                     _startChallengeDone = true;
-                    Pause(isBoss);
-                    return;
+                    if (isBoss || TelegraphWaves.Contains(_fight))
+                    {
+                        Pause(isBoss);
+                        return;
+                    }
                 }
-                if (_challenges && isBoss && _bossChallenges < 2 && _f.Enemy > 0
-                    && _f.Enemy <= _f.EnemyMax * (_bossChallenges == 0 ? 2.0 / 3 : 1.0 / 3))
+                if (_challenges && isBoss && _bossChallenges < BossMidTelegraphs && _f.Enemy > 0
+                    && _f.Enemy <= _f.EnemyMax * 0.5)
                 {
                     _bossChallenges++;
                     Pause(true);

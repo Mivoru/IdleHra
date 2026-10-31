@@ -97,13 +97,15 @@ namespace FolkIdle.Server.Domain.Combat
         public static readonly string[] Directions = { "Up", "Down", "Left", "Right" };
 
         /// <summary>
-        /// How many swipes a telegraph asks for: one on stages 1-4, then one
-        /// more every four stages, at most four; the boss asks one more.
+        /// How many swipes a telegraph asks for: two on stages 1-4, then one
+        /// more every four stages, at most five; the boss asks one more (six).
+        /// Owner, 2026-10-31 (second pass): fewer telegraphs, each longer and
+        /// faster - one swipe was too easy to matter.
         /// </summary>
-        public static int SequenceLength(int stage, bool boss) => Math.Min(boss ? 5 : 4, 1 + (Math.Clamp(stage, 1, 15) - 1) / 4 + (boss ? 1 : 0));
+        public static int SequenceLength(int stage, bool boss) => Math.Min(boss ? 6 : 5, 2 + (Math.Clamp(stage, 1, 15) - 1) / 4 + (boss ? 1 : 0));
 
-        /// <summary>Time for each swipe: 1.4 s on stage 1 down to 0.77 s on stage 15.</summary>
-        public static int MsPerSwipe(int stage) => 1400 - 45 * (Math.Clamp(stage, 1, 15) - 1);
+        /// <summary>Time for each swipe: 1.0 s on stage 1 down to 0.55 s on stage 15.</summary>
+        public static int MsPerSwipe(int stage) => 1000 - 32 * (Math.Clamp(stage, 1, 15) - 1);
 
         /// <summary>Reading time before the first swipe is due.</summary>
         public const int ReadMs = 600;
