@@ -31,161 +31,51 @@ namespace FolkIdle.Server.Engine
             _playerRegistry = playerRegistry;
         }
 
-        // slotIndex is 0-based on the wire and 1-based in the payload field
-        // names; this is the only place the two conventions meet.
-        //
-        // A quantity of 0 unloads the slot, returning whatever is stocked to
-        // the backpack. Anything else stocks that many units of foodItemId,
-        // consuming them from the backpack. Stocking a different food into an
-        // occupied slot returns the old contents first, so a slot can never
-        // silently destroy what was in it.
-        public async Task ExecuteStockFoodSlotAsync(long playerId, int slotIndex, int foodItemId, int quantity)
+        /// <summary>
+        /// Takes <paramref name="quantity"/> of a food from the chest (backpack
+        /// or stash) for a larder slot, in one serializable transaction. False
+        /// when the chest does not hold that many. The slot itself belongs to
+        /// the tick - see LarderTickCoordinator.HandleStockFoodSlot.
+        /// </summary>
+        public async Task<bool> TakeFoodFromChestAsync(long playerId, int foodItemId, int quantity)
         {
-            if (slotIndex < 0 || slotIndex >= Network.LarderLimits.SlotCount)
-            {
-                _playerRegistry.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
-                return;
-            }
-
-            bool isUnload = quantity <= 0;
-
-            // Modul: A THIRD MEANING - "take N units back out of this slot".
-            //
-            // The screen offered Load and Unload and nothing between them, so a
-            // player who had put 900 fish in a slot could only take all 900
-            // out. Encoded as food id 0 with a POSITIVE quantity, which was
-            // previously an impossible combination (id 0 with quantity 0 is the
-            // unload, and any real request names a food), so it costs no wire
-            // field and no packet resize.
-            bool isPartialWithdrawal = !isUnload && foodItemId == 0;
-
-            if (!isUnload && !isPartialWithdrawal && !FoodRegistry.IsFood(foodItemId))
-            {
-                _playerRegistry.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
-                return;
-            }
+            string foodBaseId = ContentRegistry.GetItemBaseId(foodItemId);
+            if (quantity <= 0 || string.IsNullOrEmpty(foodBaseId)) return false;
 
             var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
             await using var context = new FolkIdleDbContext(retryingOptions.Options);
             var strategy = context.Database.CreateExecutionStrategy();
 
-            // Same result-tuple-not-exception shape as CraftingEngine: running
-            // out of food in the backpack is an ordinary outcome to report, not
-            // a fault to retry.
-            (Network.CommandResultCode result, int storedItemId, int storedCount) = await strategy.ExecuteAsync(async () =>
+            // Same result-not-exception shape as CraftingEngine: running out of
+            // food in the chest is an ordinary outcome to report, not a fault.
+            return await strategy.ExecuteAsync(async () =>
             {
                 context.ChangeTracker.Clear();
                 using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-                var player = await context.PlayerRecords
-                    .FromSqlInterpolated($"SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {playerId} FOR UPDATE")
-                    .SingleOrDefaultAsync();
-
-                if (player == null)
+                if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, foodBaseId, quantity))
                 {
                     await transaction.RollbackAsync();
-                    return (Network.CommandResultCode.TargetNotFound, 0, 0);
+                    return false;
                 }
-
-                (int existingItemId, int existingCount) = ReadSlot(player, slotIndex);
-
-                // Return the current contents to the backpack whenever the slot
-                // is being emptied or repurposed. Deposited rather than
-                // discarded - the player paid materials and cooking time for
-                // every one of these.
-                if (isPartialWithdrawal)
-                {
-                    if (existingCount <= 0 || existingItemId == 0)
-                    {
-                        await transaction.RollbackAsync();
-                        return (Network.CommandResultCode.GenericValidationFailure, existingItemId, existingCount);
-                    }
-
-                    int toReturn = Math.Min(quantity, existingCount);
-                    string withdrawnBaseId = ContentRegistry.GetItemBaseId(existingItemId);
-                    if (!string.IsNullOrEmpty(withdrawnBaseId))
-                    {
-                        await ReturnToBackpackAsync(context, playerId, withdrawnBaseId, toReturn);
-                    }
-
-                    int remaining = existingCount - toReturn;
-                    WriteSlot(player, slotIndex, remaining > 0 ? existingItemId : 0, remaining);
-                    await context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    return (Network.CommandResultCode.Success, remaining > 0 ? existingItemId : 0, remaining);
-                }
-
-                bool replacingContents = existingCount > 0 && (isUnload || existingItemId != foodItemId);
-                if (replacingContents)
-                {
-                    string existingBaseId = ContentRegistry.GetItemBaseId(existingItemId);
-                    if (!string.IsNullOrEmpty(existingBaseId))
-                    {
-                        await ReturnToBackpackAsync(context, playerId, existingBaseId, existingCount);
-                    }
-
-                    existingItemId = 0;
-                    existingCount = 0;
-                }
-
-                int newCount = existingCount;
-                int newItemId = isUnload ? 0 : foodItemId;
-
-                if (!isUnload)
-                {
-                    int headroom = Network.LarderLimits.SlotCapacity - existingCount;
-                    if (headroom <= 0)
-                    {
-                        await transaction.RollbackAsync();
-                        return (Network.CommandResultCode.InventoryFull, existingItemId, existingCount);
-                    }
-
-                    int toMove = Math.Min(quantity, headroom);
-
-                    string foodBaseId = ContentRegistry.GetItemBaseId(foodItemId);
-                    if (string.IsNullOrEmpty(foodBaseId))
-                    {
-                        await transaction.RollbackAsync();
-                        return (Network.CommandResultCode.GenericValidationFailure, existingItemId, existingCount);
-                    }
-
-                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, foodBaseId, toMove))
-                    {
-                        await transaction.RollbackAsync();
-                        return (Network.CommandResultCode.InsufficientMaterials, existingItemId, existingCount);
-                    }
-
-                    newCount = existingCount + toMove;
-                }
-                else
-                {
-                    newCount = 0;
-                }
-
-                WriteSlot(player, slotIndex, newItemId, newCount);
-
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return (Network.CommandResultCode.Success, newItemId, newCount);
+                return true;
             });
+        }
 
-            _playerRegistry.EnqueueCommandResult(playerId, (byte)result);
+        /// <summary>
+        /// Puts food that left a larder slot back in the chest - deposited
+        /// rather than discarded, the player fished for every one of these.
+        /// </summary>
+        public async Task ReturnFoodToChestAsync(long playerId, int foodItemId, int quantity)
+        {
+            string baseId = ContentRegistry.GetItemBaseId(foodItemId);
+            if (quantity <= 0 || string.IsNullOrEmpty(baseId)) return;
 
-            if (result != Network.CommandResultCode.Success)
-            {
-                return;
-            }
-
-            // The live TickStatePayload is owned exclusively by the 10Hz tick
-            // thread and must never be written from here - this is the same
-            // hand-off ActivityChangeQueue uses.
-            _playerRegistry.LarderSlotUpdateQueue.Enqueue(new LarderSlotUpdateNotification
-            {
-                PlayerId = playerId,
-                SlotIndex = slotIndex,
-                ItemId = storedItemId,
-                Count = storedCount
-            });
+            var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+            await using var context = new FolkIdleDbContext(retryingOptions.Options);
+            await ReturnToBackpackAsync(context, playerId, baseId, quantity);
+            await context.SaveChangesAsync();
         }
 
         // Modul: larder. Persists the auto-eat threshold, which
@@ -218,32 +108,6 @@ namespace FolkIdle.Server.Engine
             // request already took from the stack (a swap), the ledger rebases
             // that tracked row so SaveChanges keeps both moves.
             await CommodityLedger.AddAsync(context, playerId, baseItemId, quantity);
-        }
-
-        private static (int ItemId, int Count) ReadSlot(PlayerRecord player, int slotIndex) => slotIndex switch
-        {
-            0 => (player.LarderSlot1ItemId, player.LarderSlot1Count),
-            1 => (player.LarderSlot2ItemId, player.LarderSlot2Count),
-            _ => (player.LarderSlot3ItemId, player.LarderSlot3Count)
-        };
-
-        private static void WriteSlot(PlayerRecord player, int slotIndex, int itemId, int count)
-        {
-            switch (slotIndex)
-            {
-                case 0:
-                    player.LarderSlot1ItemId = itemId;
-                    player.LarderSlot1Count = count;
-                    break;
-                case 1:
-                    player.LarderSlot2ItemId = itemId;
-                    player.LarderSlot2Count = count;
-                    break;
-                default:
-                    player.LarderSlot3ItemId = itemId;
-                    player.LarderSlot3Count = count;
-                    break;
-            }
         }
     }
 }

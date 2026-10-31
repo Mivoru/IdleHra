@@ -88,7 +88,7 @@ namespace FolkIdle.Server.Domain.Combat
         public const int CategoryWoodcutting = 2;
         public const int CategoryMining = 3;
         public const int CategoryFishing = 4;
-        public const int CategoryRetiredHerbalism = 5;
+        public const int CategoryHerbalism = 5;
         public const int CategoryCrafting = 6;
         public const int CategoryWorldBoss = 7;
 
@@ -105,7 +105,7 @@ namespace FolkIdle.Server.Domain.Combat
                     1 => CategoryWoodcutting,
                     2 => CategoryMining,
                     3 => CategoryFishing,
-                    _ => CategoryRetiredHerbalism
+                    _ => CategoryHerbalism
                 };
             }
             // Anything else is its own category: two characters can never both

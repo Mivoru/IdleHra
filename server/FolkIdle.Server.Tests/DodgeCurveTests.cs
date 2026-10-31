@@ -42,25 +42,26 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0.95f, SimulationEngine.MonsterHitChance(WithDodge(-50f)), 4);
         }
 
+        // Modul: the defensive slot's flat dodge-by-tier went with the legacy
+        // potions (2026-10-31). Any item in the slot used to pay it; a slot item
+        // now pays only its own PotionRegistry effect, so a non-potion pays
+        // nothing and Ironbark Brew pays armour, not dodge.
         [Fact]
-        public void A_defensive_potion_adds_one_dodge_point_per_tier()
+        public void The_combat_slot_pays_only_a_potions_own_effect()
         {
             ContentRegistry.Initialize();
-            int potionId = 0;
-            int tier = 0;
-            var items = ContentRegistry.ItemDefinitions;
-            for (int i = 0; i < items.Length; i++)
-            {
-                // Any item works for the stat path: StatsCalculator reads only
-                // the region tier of whatever id sits in the defensive slot.
-                if (items[i].RegionTier >= 2) { potionId = i + 1; tier = items[i].RegionTier; break; }
-            }
-            Assert.True(potionId > 0);
+            var bare = StatsCalculator.Calculate(0, 0, 10, 0);
+            var notAPotion = StatsCalculator.Calculate(0, 0, 10, 0, activeDefensivePotionId: 272); // a fish
+            Assert.Equal(bare.DodgeChancePct, notAPotion.DodgeChancePct, 3);
+            Assert.Equal(bare.MaxHp, notAPotion.MaxHp);
+            Assert.Equal(bare.FlatPhysicalArmor, notAPotion.FlatPhysicalArmor);
 
-            var bare = StatsCalculator.Calculate(0, 0, 0, 0);
-            var potion = StatsCalculator.Calculate(0, 0, 0, 0, activeDefensivePotionId: potionId);
-
-            Assert.Equal(tier * StatsCalculator.DefensivePotionDodgePerTier, potion.DodgeChancePct - bare.DodgeChancePct, 3);
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("ironbark_brew_defensive_potion_consumable", out var ironbark));
+            // Enough armour that 6% of it survives the integer truncation.
+            var sturdy = StatsCalculator.Calculate(0, 0, 1000, 0);
+            var brewed = StatsCalculator.Calculate(0, 0, 1000, 0, activeDefensivePotionId: ironbark.Id);
+            Assert.Equal(sturdy.DodgeChancePct, brewed.DodgeChancePct, 3);
+            Assert.True(brewed.FlatPhysicalArmor > sturdy.FlatPhysicalArmor);
         }
     }
 }

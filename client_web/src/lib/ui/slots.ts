@@ -169,7 +169,7 @@ export function isGatheringActivity(activityId: number): boolean {
 /**
  * Modul: ONE CHARACTER PER KIND OF WORK (2026-10-08). CharacterSlotEngine
  * .ActivityCategory, mirrored: the server refuses a second fighter, woodcutter,
- * miner, fisher or crafter with NodeOccupied, and the screens grey the choice
+ * miner, fisher, herbalist or crafter with NodeOccupied, and the screens grey the choice
  * out first. 0 is idle. serverMirrors.test.ts pins the bands.
  */
 export const WORK_KIND_NAMES: Record<number, string> = {
@@ -177,7 +177,7 @@ export const WORK_KIND_NAMES: Record<number, string> = {
   2: 'woodcutting',
   3: 'mining',
   4: 'fishing',
-  5: 'gathering',
+  5: 'herbalism',
   6: 'crafting',
   7: 'the world boss',
 };
@@ -204,8 +204,9 @@ export const PROFESSIONS: readonly { id: number; name: string; band: number }[] 
   { id: 0, name: 'Woodcutting', band: ACTIVITY_BANDS.woodcutting },
   { id: 1, name: 'Mining', band: ACTIVITY_BANDS.mining },
   { id: 2, name: 'Fishing', band: ACTIVITY_BANDS.fishing },
-  // Modul: Herbalism is gone - the design list has no herb in it, and no
-  // herbalism tool where axes, pickaxes and rods all exist in five tiers.
+  // Modul: Herbalism came back on 2026-10-30, one herb pair per region for
+  // the potions. Picked by hand: it has no tool, the mastery is the speed.
+  { id: 3, name: 'Herbalism', band: ACTIVITY_BANDS.herbalism },
 ];
 
 export function professionName(professionType: number): string {

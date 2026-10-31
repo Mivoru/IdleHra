@@ -102,6 +102,131 @@ the new ring affixes) and measured before shipping, the way the affixes were.
 5. **Sources and sinks:** herbs as a material line in loot chests; potions in
    the quest line and achievements.
 
+**Step 1 built (2026-10-30, branch `claude/herbs-gathered`):**
+- Nodes 4001-4005 (profession 3) with the fishing nodes' thresholds and XP
+  (30/45/60/80/100 ticks, 15-140 XP); items 442-451 (common + rare per
+  region, values 5/20/80/320/1280 like the fish); loot rows 107-116 at 90/10.
+  Rare herbs join `IsRareMaterial` (R1). Herbs are not food - the larder's
+  raw-fish set reads the fishing band only (pinned in GatheringMasteryRoutingTests).
+- **Correction to the plan: herbs have no tool (owner, 2026-10-30).** The plan
+  assumed nothing about tools, and the code's tool switch fell through to the
+  ROD for profession 3, so a fisher's rod would have sped up a herbalist who
+  never wore it. Herbalism now reads tool tier 0 everywhere; the speed is the
+  mastery (40 x sqrt(level) %), plus Green Thumb and the generic extras.
+- Measured harvest time by hand (no tool, no extras), region 1 / region 5:
+  mastery 1: 2.1 s / 7.1 s; mastery 10: 1.3 s / 4.4 s; mastery 25: 1.0 s /
+  3.3 s; mastery 50: 0.7 s / 2.6 s. Region 5 at mastery 25 is ~1,090 harvests
+  an hour (~980 Mugwort, ~110 Fern Flower before yield bonuses). Step 2 sizes
+  the potion recipes against these numbers: a potion lasts 1-2 h, so one
+  hour of picking must buy several hours of a potion, not one.
+- Green Thumb is buyable again. A side fix on the Gathering screen: the
+  monolith line showed the MINING monolith on every non-wood card, though the
+  server pays a monolith only to wood and ore.
+
+**Steps 2-3 plan (2026-10-31, owner set the price):**
+- **Price (owner):** about ten minutes of picking buys an hour of effect. A
+  normal potion costs 150 common herbs of its region; a strong one 100 common
+  + 15 rare (about twenty minutes). Both last 1 h (gathering ones 2 h).
+- **Which region brews what** - an early potion from early herbs, so each
+  region's pair has a use and a new player can brew the first one:
+  r1 Yarrow: Elixir of the Hunt; r2 Marsh Mallow: Ironbark Brew and
+  Gatherer's Draught; r3 Thyme: Swiftroot Tea and Goldmoss Tonic; r4 Sea Kale:
+  Draught of Fortune; r5 Mugwort: Kupala Night and Boss-bane Philtre.
+- **Three slots, one potion each:** *rewards* (Hunt, Fortune, Goldmoss) in
+  the existing offensive slot, *combat* (Ironbark, Swiftroot, Boss-bane) in the
+  defensive slot, and a new *gathering* slot (Gatherer's, Kupala) - one new
+  payload/wire pair, through the add-command skill.
+- **Two traps found while reading (fix in step 3):**
+  1. `StatsCalculator` gives EVERY offensive-slot potion flat damage and
+     armour penetration by tier, and every defensive one HP, armour and
+     dodge. Those formulas belonged to the deleted legacy potions; a new
+     potion must pay only its own effect, so the generic block goes and a
+     per-kind table replaces it.
+  2. The offline projection gets the potion wrong both ways. The load turns
+     the stored absolute expiry into "remaining from NOW" before the
+     projection runs, and the projection reads whatever is left in the slot -
+     so a potion still running at sign-in counts for the WHOLE absence, and
+     one that ran out while away counts for none of it. H2 needs the payload
+     to carry each slot's absolute expiry, and the projection to split the
+     absence into at most four stretches at the expiry times (three slots),
+     each projected with exactly the potions that were running then. A
+     parity row per potion pins it.
+  3. `ConsumeConsumableAsset` sets the buff and takes NOTHING from the
+     inventory: the consumable branch in SimulationEngine returns before the
+     async half that would remove a row (and that half reads
+     EquipmentInstances, where a stack never lives). With real potions that
+     is an unlimited free buff. Potions do not use it.
+- **The shape: a potion shelf, built like the larder.** Each of the three
+  slots gets a shelf on the payload - item id, count, auto-drink on/off -
+  stocked from the chest by a command (as the larder is), so drinking is a
+  synchronous decrement on the tick and the checkpoint persists it, with no
+  async race. Auto-drink refills a slot from its shelf the tick its potion
+  runs out - online, and offline analytically: with N on the shelf and D per
+  potion, the slot is covered for min(absence, remaining + N x D), which
+  the stretches above use. One new command per action (stock, drink, toggle)
+  through the add-command skill; new payload/PlayerRecord fields with an
+  additive migration.
+- **Magnitudes** are measured, not picked: each against what already pays the
+  same stat (War nodes, pets, affixes), and the wall scan run with every
+  combat potion active before it ships.
+
+**Steps 3-5 built (2026-10-31, same branch):**
+- **Shelves and effects (step 3+4).** Three slots - rewards (Hunt, Fortune,
+  Goldmoss), combat (Ironbark, Swiftroot, Boss-bane), gathering (Gatherer's,
+  Kupala) - each with a shelf on the payload (`PotionShelf{1,2,3}`), stocked
+  from the chest by `StockPotionShelf` (83), drunk by `DrinkPotion` (84),
+  auto-drink by `SetPotionAutoDrink` (85). Stocking takes the potions in a
+  serializable transaction and hands the tick a DELTA, never an absolute
+  count, so a drink between the read and the write cannot be undone.
+- **The larder had exactly that race, fixed in the same PR.** LarderEngine
+  read the slot from the PlayerRecords row (as old as the last checkpoint)
+  and sent the tick an ABSOLUTE count: food eaten since the checkpoint came
+  back on every restock, and an unload credited it to the chest as well - a
+  repeatable duplication. The tick now reads the live slot, unloads on the
+  payload and credits exactly what left it; stocking hands back "+N"
+  (`LarderTickCoordinator`, pinned by
+  `Test_Larder_FoodEatenSinceTheLastSaveIsNeitherRestoredNorReturned`).
+  The legacy generic potion stats are gone; `PotionRegistry` holds one table.
+  `ConsumeConsumableAsset` no longer sets a potion buff (it took nothing).
+- **Offline (H2).** `OfflinePotionPlan` cuts the absence at every expiry and
+  where auto-drink empties a shelf; each stretch is projected with exactly the
+  potions running in it, then `Settle` takes what auto-drink drank over the
+  real absence. Pinned by `PotionShelfTests` (a Goldmoss running the whole
+  window pays the live per-kill gold for every kill; one that ran out halfway
+  pays only its stretch).
+- **UI.** A Potions panel on Auto-Eat (shelve, drink, auto-drink, unload),
+  the running potions with their clocks under the header (desktop: a strip
+  under the purse, because the header has only 50-60 px free at 1280-1366 px;
+  phone: beside the event chip), and every Alchemy recipe says what it brews
+  ("+6% armour for 1 h"). The client's table is a mirror of PotionRegistry,
+  compared row by row in `tests/potions.test.ts`.
+- **Measured magnitudes (step 2 of the owner's list).** `PotionMeasurementTests`
+  runs the wall projection with every combat potion active. Damage potions
+  hold every wall: at each requirement Boss-bane cuts the kill 13-20% and
+  Swiftroot 11-20%, and the set two tiers under the requirement still loses.
+  **Armour does not:** Ironbark at +15% let quality 6 beat the region 2 and 3
+  bosses and quality 2 beat region 1 - armour is sustain, and sustain is what
+  decides a wall (the same reason the rare-fish heal was dropped). Swept:
+  normal +8% is the edge for region 2-3, strong +11% breaks region 2, +10%
+  holds. **Shipped: Ironbark 6% / 9%**, one point under each edge. The
+  reward potions (+20%/+30% XP, gold, loot luck points) are about 2-3x a
+  permanent pet (5-12%) for one hour bought with ten or twenty minutes of
+  picking; gathering potions +25%/+40% speed and +5.0%/+8.0% rare find for
+  two hours. These are the working numbers, kept: nothing they touch is a
+  wall, and they are cheap to retune once production shows use.
+- **Sources (step 5).** Every loot chest carries herbs of its region at half
+  its log/ore minutes (900 herbs an hour, the owner's price), so a Bronze
+  chest brews about one potion. Quest line step 6 "Brew and drink a potion"
+  (level 5), latched the first time a potion is running or shelved.
+- **Correction: potion achievements move to the Book of Deeds PR.** Adding a
+  deed to an existing chapter would re-open chapters players have already
+  sealed (a Seal pays +2 skill points every season), and the old tiered
+  achievements are being replaced by the one registry next. The "potions
+  drunk" lifetime deed is built there, with its own counter.
+- **Exercise:** brew from a dev grant (`POST /api/v1/dev/materials/grant`),
+  shelve, drink, the clock in both places, the armour on the server's stat
+  sheet rises (977 -> 1035), auto-drink round-trips, herbs taken back.
+
 ### 1.3 Decisions
 
 - **H1.** Build herbalism + potions as described? Recommendation: yes, as its

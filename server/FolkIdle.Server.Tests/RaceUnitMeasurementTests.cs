@@ -180,7 +180,7 @@ namespace FolkIdle.Server.Tests
             double baseline = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in computed, monsterId, 0, maxHp);
             for (int tier = 1; tier <= 5; tier++)
             {
-                foreach (var (name, perTier) in new[] { ("old potion", 0.01f), ("current", StatsCalculator.DefensivePotionDodgePerTier) })
+                foreach (var (name, perTier) in new[] { ("old potion", 0.01f), ("2026-10-29 to 10-31", 1f) })
                 {
                     var stats = computed;
                     stats.DodgeChancePct += tier * perTier;

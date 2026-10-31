@@ -23,9 +23,15 @@ namespace FolkIdle.Server.Domain.Combat
         // the wall. Default (no set) is what the ladder is calibrated against.
         public readonly EquippedSetIds Sets;
 
-        public ReferenceLoadout(int level, int gearRegionTier, int qualityTier, AffixRarity affixRarity, EquippedSetIds sets = default)
+        // Herbs and potions (2026-10-31): the combat-slot potion running in the
+        // fight, so the wall can be scanned with each one active. 0 (none) is
+        // what the ladder is calibrated against.
+        public readonly int CombatPotionId;
+
+        public ReferenceLoadout(int level, int gearRegionTier, int qualityTier, AffixRarity affixRarity, EquippedSetIds sets = default, int combatPotionId = 0)
         {
             Sets = sets;
+            CombatPotionId = combatPotionId;
             Level = level < 1 ? 1 : level;
             GearRegionTier = gearRegionTier < 1 ? 1 : gearRegionTier;
             QualityTier = Math.Clamp(qualityTier, 1, RarityTier.Transcendent);
@@ -216,6 +222,10 @@ namespace FolkIdle.Server.Domain.Combat
 
             double playerMilliDamagePerSwing = CombatDamageModel.ExpectedMilliDamagePerSwing(
                 in stats, in boss, rawMilliAttack, codexDamageMultiplier: 1f);
+            // Boss-bane Philtre: every fight here is against a region's boss, so
+            // the potion applies as the live swing applies it (BossbaneTenthsPctFor).
+            int bossbanePct = Shared.PotionRegistry.MagnitudeOf(gear.CombatPotionId, Shared.PotionKind.Bossbane);
+            if (bossbanePct > 0) playerMilliDamagePerSwing *= 1.0 + bossbanePct / 100.0;
             int playerIntervalMs = CombatDamageModel.AttackIntervalMs(in stats);
 
             double bossMilliDamagePerSwing = ExpectedBossMilliDamagePerSwing(in stats, in boss, bossAttackPower);
@@ -379,7 +389,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             return StatsCalculator.Calculate(
                 str * levels, dex * levels, con * levels, lck * levels,
-                activeOffensivePotionId: 0, activeDefensivePotionId: 0,
+                activeOffensivePotionId: 0, activeDefensivePotionId: gear.CombatPotionId,
                 activeAgePhase: 1, completedAreaFlags: 0, activeRaceId: RaceIds.Human,
                 humanMastery: 0, vilaMastery: 0, draugrMastery: 0,
                 equippedAffixTotals: totals, equippedSetIds: gear.Sets);

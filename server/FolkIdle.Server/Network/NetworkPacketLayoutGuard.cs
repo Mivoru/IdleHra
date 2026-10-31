@@ -236,7 +236,11 @@ namespace FolkIdle.Server.Network
         // Modul: the skill tree's node levels left the stream, 865 -> 845
         // (2026-10-29, rework slice 2.1b): twenty bytes, now
         // GET /api/v1/skilltree/state.
-        public const int ExpectedStateUpdateSize = 845;
+        // Modul: the potion shelf, 845 -> 866 (2026-10-31, herbs and potions
+        // step 3). The gathering slot's id and countdown (int each), three
+        // shelves of item id and count (ushort each) and the auto-drink mask
+        // (byte): 21 bytes. A drink changes them on the tick.
+        public const int ExpectedStateUpdateSize = 866;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

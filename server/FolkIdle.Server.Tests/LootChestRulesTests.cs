@@ -43,15 +43,18 @@ namespace FolkIdle.Server.Tests
         public void MaterialsComeFromTheChestsRegion_AndSilverUpAddsTheHighestRegion()
         {
             var bronze = LootChestRules.Roll(LootChestTier.Bronze, 1, 4, 100, 0, new Random(2));
-            Assert.Equal(4, bronze.Materials.Count);
+            // Log, ore, their rare pair, and the region's herb pair (step 5).
+            Assert.Equal(6, bronze.Materials.Count);
+            Assert.Contains(bronze.Materials, m => m.ItemId == "yarrow" && m.Quantity == 135);
+            Assert.Contains(bronze.Materials, m => m.ItemId == "golden_chamomile" && m.Quantity == 15);
 
             var silver = LootChestRules.Roll(LootChestTier.Silver, 1, 4, 100, 0, new Random(2));
-            Assert.Equal(8, silver.Materials.Count);
+            Assert.Equal(10, silver.Materials.Count);
             Assert.All(silver.Materials, m => Assert.True(m.Quantity > 0, m.ItemId));
 
             // Same region twice: the lines merge, nothing is listed double.
             var same = LootChestRules.Roll(LootChestTier.Silver, 3, 3, 100, 0, new Random(2));
-            Assert.Equal(4, same.Materials.Count);
+            Assert.Equal(6, same.Materials.Count);
             Assert.Equal(same.Materials.Count, same.Materials.Select(m => m.ItemId).Distinct().Count());
         }
 

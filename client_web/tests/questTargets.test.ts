@@ -40,8 +40,8 @@ describe('the quest line targets', () => {
     targets: [...m[2].matchAll(/"([^"]+)"/g)].map((t) => t[1]),
   }));
 
-  it('finds the twelve steps in the registry', () => {
-    expect(steps).toHaveLength(12);
+  it('finds the thirteen steps in the registry', () => {
+    expect(steps).toHaveLength(13);
     for (const step of steps) expect(step.targets.length).toBeGreaterThan(0);
   });
 

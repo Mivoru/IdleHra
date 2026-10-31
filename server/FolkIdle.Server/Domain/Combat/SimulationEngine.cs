@@ -905,6 +905,9 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.EquipItem] = EquipmentTickCoordinator.HandleEquipItem,
                 [CommandType.UnequipItem] = EquipmentTickCoordinator.HandleUnequipItem,
                 [CommandType.StockFoodSlot] = LarderTickCoordinator.HandleStockFoodSlot,
+                [CommandType.StockPotionShelf] = PotionShelfTickCoordinator.HandleStock,
+                [CommandType.DrinkPotion] = PotionShelfTickCoordinator.HandleDrink,
+                [CommandType.SetPotionAutoDrink] = PotionShelfTickCoordinator.HandleAutoDrink,
                 [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
                 [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
                 [CommandType.StartBossAscension] = BossAscensionTickCoordinator.HandleStartBossAscension,
@@ -1210,10 +1213,10 @@ namespace FolkIdle.Server.Domain.Combat
                     SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
                 }
 
-                // Modul: larder. LarderEngine has already committed the slot to
-                // PlayerRecords; this is the hand-off that makes it live for the
-                // running session, so restocking mid-fight takes effect on the
-                // next tick rather than at the next login.
+                // Modul: larder. LarderEngine has taken the food from the chest;
+                // this adds it to the live slot (a delta - see
+                // LarderTickCoordinator), so restocking mid-fight takes effect
+                // on the next tick, and the checkpoint persists it.
                 //
                 // (The crafting drain that used to sit here, with its own
                 // "Modul: crafting as an assignable job" comment, moved to
@@ -1225,7 +1228,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // under the Warehouse cap (see ProcessPassiveVillageTick).
                 VillageTickCoordinator.DrainProductionGrants(_safeDispatch, _contextFactory);
 
-                LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
+                LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers, _safeDispatch, _larderEngine);
+                PotionShelfTickCoordinator.DrainDeltas(_activePlayers, _safeDispatch, _contextFactory);
 
                 // Task 88: rebirths asked for over REST - suspend, flush, and
                 // let the flush's continuation reset and reload.
@@ -2380,6 +2384,15 @@ namespace FolkIdle.Server.Domain.Combat
                                 OffensivePotionDurationMs = currentPayload.OffensivePotionDurationMs,
                                 ActiveDefensivePotionId = currentPayload.ActiveDefensivePotionId,
                                 DefensivePotionDurationMs = currentPayload.DefensivePotionDurationMs,
+                                ActiveGatheringPotionId = currentPayload.ActiveGatheringPotionId,
+                                GatheringPotionDurationMs = currentPayload.GatheringPotionDurationMs,
+                                PotionShelf1_ItemId = (ushort)Math.Clamp(currentPayload.PotionShelf1_ItemId, 0, ushort.MaxValue),
+                                PotionShelf1_Count = (ushort)Math.Clamp(currentPayload.PotionShelf1_Count, 0, ushort.MaxValue),
+                                PotionShelf2_ItemId = (ushort)Math.Clamp(currentPayload.PotionShelf2_ItemId, 0, ushort.MaxValue),
+                                PotionShelf2_Count = (ushort)Math.Clamp(currentPayload.PotionShelf2_Count, 0, ushort.MaxValue),
+                                PotionShelf3_ItemId = (ushort)Math.Clamp(currentPayload.PotionShelf3_ItemId, 0, ushort.MaxValue),
+                                PotionShelf3_Count = (ushort)Math.Clamp(currentPayload.PotionShelf3_Count, 0, ushort.MaxValue),
+                                PotionAutoDrinkMask = currentPayload.PotionAutoDrinkMask,
                                 WorldBossMaxHp = _worldBossEngine.BossMaxHp,
                                 WorldBossCurrentHp = ClampWorldBossHpToUInt(_worldBossEngine.BossCurrentHp),
                                 ActiveEventType = (byte)ActiveGlobalEventId,
@@ -4147,6 +4160,18 @@ namespace FolkIdle.Server.Domain.Combat
                || (payload.Slot2_CharacterId != Guid.Empty && payload.Slot2_AgePhase == AgePhaseCurve.Child)
                || (payload.Slot3_CharacterId != Guid.Empty && payload.Slot3_AgePhase == AgePhaseCurve.Child);
 
+        /// <summary>
+        /// Boss-bane Philtre (PotionRegistry): extra damage against a region's
+        /// boss, in tenths of a percent, or 0. The live swing and the hunting
+        /// projection both ask here; the world boss reads the slot itself.
+        /// </summary>
+        internal static int BossbaneTenthsPctFor(in TickStatePayload payload, in MonsterDefinition monster)
+        {
+            int pct = PotionRegistry.MagnitudeOf(payload.ActiveDefensivePotionId, PotionKind.Bossbane);
+            if (pct <= 0 || monster.RegionTier < RaceUnlockRegistry.FirstRegion || monster.RegionTier > RaceUnlockRegistry.LastRegion) return 0;
+            return RaceUnlockRegistry.GetRegionBossMonsterId(monster.RegionTier) == monster.Id ? pct * 10 : 0;
+        }
+
         internal static int LiveKillXpMultiplierPct(in TickStatePayload payload, int localXpMultiplier)
         {
             int finalXpMultiplier = localXpMultiplier;
@@ -4171,6 +4196,9 @@ namespace FolkIdle.Server.Domain.Combat
             // Here, so the live kill, the offline window and the hunting
             // projection all pay it from one place.
             finalXpMultiplier += RebirthRules.ReLevelXpBonus(payload.CurrentLevel, payload.PeakLevel);
+            // Elixir of the Hunt (PotionRegistry), the rewards slot - here for the
+            // same reason as the line above: one place every path asks.
+            finalXpMultiplier += PotionRegistry.MagnitudeOf(payload.ActiveOffensivePotionId, PotionKind.Hunt);
             return finalXpMultiplier;
         }
 
@@ -5124,6 +5152,9 @@ namespace FolkIdle.Server.Domain.Combat
                     // A2: step 10 cleared on this region's boss - +2% against its monsters.
                     int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, activeMonster.RegionTier);
                     if (mastery > 0) netDamage += (int)((long)netDamage * mastery / 1000L);
+                    // Boss-bane Philtre: against a region's boss only.
+                    int bossbane = BossbaneTenthsPctFor(in payload, in activeMonster);
+                    if (bossbane > 0) netDamage += (int)((long)netDamage * bossbane / 1000L);
                     if (warHit.ExecuteTenthsPct > 0
                         && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
                         netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
@@ -6157,11 +6188,16 @@ namespace FolkIdle.Server.Domain.Combat
                 1 => payload.MineLevel,
                 _ => 0
             };
+            // Modul: herbs are picked by hand (owner, 2026-10-30) - profession 3
+            // has no tool, so it reads 0 here. Before herbalism came back the
+            // fall-through handed it the ROD's tier, and a fisher's rod would
+            // have sped up a herbalist who never wore it.
             int toolTier = professionType switch
             {
                 0 => payload.AxeToolTier,
                 1 => payload.PickaxeToolTier,
-                _ => payload.RodToolTier
+                2 => payload.RodToolTier,
+                _ => 0
             };
             // Modul: THE HEARTH HALF, NOT THE HARVEST BOUGH (2026-10-30). The War
             // switch emptied slot 14, so this term read 0 for everyone; the
@@ -6170,7 +6206,9 @@ namespace FolkIdle.Server.Domain.Combat
                 + HearthTreeRegistry.Resolve(in payload).SpeedTenthsPctFor(professionType) / 10
                 + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask))
                 // The character's pet (PetRegistry).
-                + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10;
+                + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10
+                // Gatherer's Draught, the gathering potion slot (any profession).
+                + PotionRegistry.MagnitudeOf(payload.ActiveGatheringPotionId, PotionKind.Gatherer);
             return new GatherSpeedTerms(masteryLevel, toolTier, villageProductionLevel, extraPct);
         }
 
@@ -6322,7 +6360,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // 2026-10-29 the affix was summed, stored and read by nothing.
                 LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct
                     + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f
-                    + hearth.RareFindTenthsPctFor(gatheringNode.ProfessionType) / 10f),
+                    + hearth.RareFindTenthsPctFor(gatheringNode.ProfessionType) / 10f
+                    // Kupala Night, in the same tenths as the Hearth's rare find.
+                    + PotionRegistry.MagnitudeOf(payload.ActiveGatheringPotionId, PotionKind.Kupala) / 10f),
             };
         }
 

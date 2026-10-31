@@ -1535,6 +1535,55 @@ await go('Gathering');
     !/Backpack full|EVERYTHING IS STOPPED/i.test(text),
     'storage is the unlimited village chest',
   );
+
+  // Modul: HERBALISM CAME BACK (2026-10-30). It was retired once with its
+  // mastery track left on the wire, so a card could render, a button could
+  // send, and nothing would grow. This asserts the same three things the
+  // fishing check does - its own track moves, fishing's does not, and a herb
+  // lands in the haul - then puts the character back on the fishing node so
+  // the steps after this one find what they always found.
+  const herbSection = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Herbalism', exact: true }) })
+    .last();
+  const herbBtn = herbSection.getByRole('button', { name: 'Gather' }).first();
+  const herbDeployed = (await herbBtn.count()) > 0;
+  record('herbalism has a card with a node to work', herbDeployed, herbDeployed ? 'Gather offered' : 'no Herbalism Gather button');
+  if (herbDeployed) {
+    const herbBefore = await readMastery('Herbalism');
+    await herbBtn.click();
+    // Fishing's baseline is read AFTER the switch has landed: the character
+    // was on the fishing node until the click, and a catch that finished in
+    // that gap moved fishing XP on the first run of this check.
+    await page.waitForFunction(
+      () => /^Picking /.test(document.querySelector('[data-testid="gathering-status"]')?.textContent?.trim() ?? ''),
+      null,
+      { timeout: 10000 },
+    ).catch(() => {});
+    await page.waitForTimeout(1500);
+    const fishBeforeHerbs = await readMastery('Fishing');
+    await page.waitForTimeout(9000);
+    const herbAfter = await readMastery('Herbalism');
+    const fishAfterHerbs = await readMastery('Fishing');
+    record(
+      'picking herbs raises herbalism mastery',
+      herbAfter !== null && herbBefore !== null && (herbAfter.xp > herbBefore.xp || herbAfter.level > herbBefore.level),
+      `herbalism xp ${herbBefore?.xp} -> ${herbAfter?.xp}`,
+    );
+    record(
+      'picking herbs does not raise fishing mastery',
+      fishAfterHerbs !== null && fishBeforeHerbs !== null && fishAfterHerbs.xp === fishBeforeHerbs.xp && fishAfterHerbs.level === fishBeforeHerbs.level,
+      `fishing xp ${fishBeforeHerbs?.xp} -> ${fishAfterHerbs?.xp}`,
+    );
+    const herbStatus = await page.getByTestId('gathering-status').innerText().catch(() => '');
+    record('the status names the herb being picked', /^Picking \S.* - \S/.test(herbStatus.trim()), herbStatus.trim() || 'no status');
+    const herbHaul = await page.evaluate(() => {
+      const heading = [...document.querySelectorAll('h2')].find((h) => /Hauled this session/i.test(h.textContent ?? ''));
+      return heading?.closest('section')?.innerText ?? '';
+    });
+    record('picking herbs yields a herb', /Yarrow|Golden Chamomile/.test(herbHaul), herbHaul.split(String.fromCharCode(10)).filter(Boolean).slice(-2).join(' | ') || 'empty');
+    if (deployed) await fishingSection.getByRole('button', { name: 'Gather' }).first().click().catch(() => {});
+  }
 }
 
 // --- auto-eat accepts what you caught ----------------------------------------
@@ -1571,6 +1620,124 @@ await go('Auto-Eat');
     !/No food in the chest/i.test(text),
     /Load all|\+ Add food/.test(text) ? 'food offered' : 'panel shown',
   );
+}
+// Modul: the larder round-trip (2026-10-31). The slot used to be read from
+// the saved row and written back as an absolute count, so food eaten since
+// the last save came back. Proved by what changes: "-" takes the amount back
+// to the chest from the LIVE slot, "+" puts it back, and both end equal.
+{
+  const row = page.locator('ul.slots li').filter({ has: page.locator('.count') }).first();
+  const countOf = async () => Number((await row.locator('.count').innerText().catch(() => '')).replace(/[^\d]/g, ''));
+  const has = (await row.count()) > 0;
+  if (has) {
+    const before = await countOf();
+    await row.getByRole('button', { name: /Take .* back to the chest/ }).click().catch(() => {});
+    let mid = before;
+    for (let i = 0; i < 20 && mid === before; i++) { await page.waitForTimeout(250); mid = await countOf(); }
+    await row.getByRole('button', { name: /Add .* more/ }).click().catch(() => {});
+    let after = mid;
+    for (let i = 0; i < 20 && after === mid; i++) { await page.waitForTimeout(250); after = await countOf(); }
+    record('a larder slot gives food back to the chest and takes it again', mid < before && after > mid && after <= before,
+      `${before} -> ${mid} -> ${after}`);
+  } else {
+    record('a larder slot gives food back to the chest and takes it again (skipped: no stocked slot)', true);
+  }
+}
+
+// --- potions: brewed, shelved, drunk (herbs and potions, 2026-10-31) --------
+// Modul: proved by what CHANGED: 150 Marsh Mallow leave the chest for one
+// Ironbark Brew, the brew moves onto the combat shelf, drinking it empties the
+// shelf, starts a clock in the header and raises the armour the server's own
+// stat sheet reports. The herbs come from a dev grant (an hour of picking is
+// not a test), and what is left is taken back, so the chest round-trips. The
+// running brew is ended by a dev route, so the fixture ends as it started.
+}
+if (want('potions')) {
+{
+  const sheetArmour = async () => {
+    const sheet = await apiGet('/api/v1/character/stats?slot=0').catch(() => null);
+    return sheet?.Sections?.flatMap((s) => s.Rows).find((r) => r.Key === 'armour')?.Value ?? 0;
+  };
+  const chestCount = async (baseId) => {
+    const mats = await apiGet('/api/v1/player/materials').catch(() => null);
+    return (mats?.Stacks ?? []).find((s) => s.ItemId === baseId)?.Quantity ?? 0;
+  };
+  const brewId = 'ironbark_brew_defensive_potion_consumable';
+
+  // Start from an empty combat shelf: a run stopped halfway leaves a brew on it.
+  await go('Auto-Eat');
+  const leftover = page.getByTestId('potion-slot-1').getByRole('button', { name: 'Unload' });
+  if ((await leftover.count()) > 0) {
+    await leftover.click();
+    await page.waitForTimeout(1500);
+  }
+
+  // A potion left running by an earlier run would already be in the armour
+  // measured below - end it first (dev route), and again at the end.
+  await apiPost('/api/v1/dev/potions/expire', {});
+  await page.waitForTimeout(800);
+  const mallowBefore = await chestCount('marsh_mallow');
+  const brewBefore = await chestCount(brewId);
+  await apiPost('/api/v1/dev/materials/grant', { BaseId: 'marsh_mallow', Quantity: 150 });
+
+  await go('Crafting');
+  await page.getByLabel('Filter recipes').fill('ironbark');
+  const card = page.locator('li.card').filter({ has: page.getByTestId('potion-effect').filter({ hasText: /^\+6% armour for 1 h$/ }) });
+  const cardShown = await card.first().waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  record('an Alchemy recipe says what its potion does and for how long', cardShown,
+    cardShown ? await card.first().getByTestId('potion-effect').innerText() : 'no "+6% armour for 1 h" card');
+  if (cardShown) await card.first().getByRole('button', { name: /^Craft/ }).click().catch(() => {});
+  let brewed = brewBefore;
+  for (let i = 0; i < 40 && brewed <= brewBefore; i++) {
+    await page.waitForTimeout(500);
+    brewed = await chestCount(brewId);
+  }
+  record('brewing takes the herbs and puts an Ironbark Brew in the chest', brewed === brewBefore + 1,
+    `brew ${brewBefore} -> ${brewed}, mallow ${mallowBefore + 150} -> ${await chestCount('marsh_mallow')}`);
+  await page.getByLabel('Filter recipes').fill('');
+
+  await go('Auto-Eat');
+  const slot = page.getByTestId('potion-slot-1');
+  await slot.getByTestId('potion-stock-1').first().click({ timeout: 10000 }).catch(() => {});
+  const shelved = await slot.getByTestId('potion-count-1').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  const onShelf = shelved ? (await slot.getByTestId('potion-count-1').innerText()).trim() : '';
+  record('the brew moves from the chest onto the combat shelf', shelved && Number(onShelf) >= 1 && (await chestCount(brewId)) === brewBefore,
+    `shelf ${onShelf || 'empty'}, chest ${await chestCount(brewId)}`);
+
+  // Auto-drink round-trips: on, then off again.
+  const auto = slot.getByTestId('potion-auto-1');
+  const armourBefore = await sheetArmour();
+  await slot.getByTestId('potion-drink-1').click({ timeout: 5000 }).catch(() => {});
+  const timer = await slot.getByTestId('potion-timer-1').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  // Two copies exist (the desktop strip and the phone's event strip); one is shown.
+  const header = await page.locator('[data-testid="potion-timers"]:visible').count().then((n) => n > 0).catch(() => false);
+  record('drinking starts the clock on the shelf and in the header', timer && header,
+    timer ? `${await slot.getByTestId('potion-timer-1').innerText()} left, header ${header ? 'shows it' : 'empty'}` : 'no timer');
+  await page.waitForTimeout(600);
+  const armourAfter = await sheetArmour();
+  record('the drunk potion raises the armour the server reports', armourAfter > armourBefore,
+    `armour ${armourBefore} -> ${armourAfter}`);
+
+  // After the drink, so switching it on cannot drink a second brew at once.
+  if ((await auto.count()) > 0) {
+    await auto.check().catch(() => {});
+    await page.waitForTimeout(800);
+    const on = await auto.isChecked().catch(() => false);
+    await auto.uncheck().catch(() => {});
+    await page.waitForTimeout(800);
+    const off = !(await auto.isChecked().catch(() => true));
+    record('auto-drink switches on and off', on && off, `on ${on}, off ${off}`);
+  } else {
+    record('auto-drink switches on and off (skipped: the shelf is empty after drinking)', true);
+  }
+
+  // Round trip: anything left on the shelf goes back, and the granted herbs
+  // that brewing did not take are taken back.
+  const stillShelved = slot.getByRole('button', { name: 'Unload' });
+  if ((await stillShelved.count()) > 0) await stillShelved.click().catch(() => {});
+  const extraMallow = (await chestCount('marsh_mallow')) - mallowBefore;
+  if (extraMallow > 0) await apiPost('/api/v1/dev/materials/grant', { BaseId: 'marsh_mallow', Quantity: -extraMallow });
+  await apiPost('/api/v1/dev/potions/expire', {});
 }
 
 // --- Workshop commissions (task 83) ------------------------------------------
@@ -3968,10 +4135,10 @@ await go('The Delve');
   const view = await apiGet('/api/v1/quests');
   const steps = view?.Steps ?? [];
   record(
-    "the server lists the quest line: twelve steps, in the owner's order, each with a screen and a target",
-    steps.length === 12
+    "the server lists the quest line: thirteen steps, in the owner's order, each with a screen and a target",
+    steps.length === 13
       && steps.every((st, i) => st.Order === i + 1 && st.Screen && st.GuideTargets.length > 0 && st.Title)
-      && steps.map((st) => st.Id).join(',') === 'clear_chest,auto_sell,fuse,reroll,village,market,inheritance,delve,world_boss,ascension,breed,rebirth',
+      && steps.map((st) => st.Id).join(',') === 'clear_chest,auto_sell,fuse,reroll,village,potion,market,inheritance,delve,world_boss,ascension,breed,rebirth',
     steps.map((st) => `${st.Id}:${st.State}`).join(' '),
   );
   record(
@@ -4032,7 +4199,7 @@ await go('The Delve');
     const toggle = page.getByTestId('quest-all-toggle');
     if ((await toggle.count()) > 0) await toggle.click();
     const rows = await page.locator('[data-testid^="quest-step-"]').count();
-    record('the quest panel lists every step, skipped ones included', rows === 12, `${rows} rows`);
+    record('the quest panel lists every step, skipped ones included', rows === 13, `${rows} rows`);
 
     // "Show me" goes to the screen and lights the control - when a step is open.
     const open = steps.find((st) => st.State === 'available');
@@ -6215,7 +6382,7 @@ if (want('new-player')) {
       const text = (await panel.count()) > 0 ? ((await panel.innerText()).replace(/\s+/g, ' ').trim()) : '';
       record(
         'a new account sees the quest line on Home, waiting behind the first steps',
-        /Quest line/.test(text) && /0 of 12 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
+        /Quest line/.test(text) && /0 of 13 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
         text.slice(0, 90) || 'no quest panel',
       );
       const token = await fresh.evaluate(() => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'));

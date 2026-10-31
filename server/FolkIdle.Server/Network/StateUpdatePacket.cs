@@ -618,6 +618,21 @@ namespace FolkIdle.Server.Network
         public int ActiveDefensivePotionId;
         public int DefensivePotionDurationMs;
 
+        // Modul: the potions' third slot and the shelves (2026-10-31, +21
+        // bytes; see NetworkPacketLayoutGuard). The shelf counts move on the
+        // tick (a drink, an auto-drink), so they are stream state like the
+        // larder's Food fields, not a REST poll. ushort, as the larder: ids run
+        // to ~470 and a shelf holds at most 999.
+        public int ActiveGatheringPotionId;
+        public int GatheringPotionDurationMs;
+        public ushort PotionShelf1_ItemId;
+        public ushort PotionShelf1_Count;
+        public ushort PotionShelf2_ItemId;
+        public ushort PotionShelf2_Count;
+        public ushort PotionShelf3_ItemId;
+        public ushort PotionShelf3_Count;
+        public byte PotionAutoDrinkMask;
+
         public long WorldBossMaxHp;
         public uint WorldBossCurrentHp;
         public byte ActiveEventType;

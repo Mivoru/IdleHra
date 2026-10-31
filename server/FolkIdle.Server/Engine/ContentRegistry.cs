@@ -511,6 +511,19 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 346, Weight = 10 },  // index 104: glacier_halibut - Frozen Peaks (Fishing, rare)
             new LootTableEntry { ItemId = 370, Weight = 90 },  // index 105: void_ray - Shadow Citadel (Fishing, common)
             new LootTableEntry { ItemId = 371, Weight = 10 },  // index 106: spectral_lanternfish - Shadow Citadel (Fishing, rare)
+            // --- Herbalism (2026-10-30, HERBS_POTIONS_ASCENSION.md 1.2) ---
+            // The same 90/10 pair as every other node. Herbs are not food:
+            // the larder's raw-fish set reads the FISHING band only.
+            new LootTableEntry { ItemId = 442, Weight = 90 },  // index 107: yarrow - Sunlit Plains (Herbalism, common)
+            new LootTableEntry { ItemId = 443, Weight = 10 },  // index 108: golden_chamomile - Sunlit Plains (Herbalism, rare)
+            new LootTableEntry { ItemId = 444, Weight = 90 },  // index 109: marsh_mallow - Whispering Woods (Herbalism, common)
+            new LootTableEntry { ItemId = 445, Weight = 10 },  // index 110: wisp_moss - Whispering Woods (Herbalism, rare)
+            new LootTableEntry { ItemId = 446, Weight = 90 },  // index 111: thyme - Scorched Wasteland (Herbalism, common)
+            new LootTableEntry { ItemId = 447, Weight = 10 },  // index 112: dragons_blood_sage - Scorched Wasteland (Herbalism, rare)
+            new LootTableEntry { ItemId = 448, Weight = 90 },  // index 113: sea_kale - Frozen Peaks (Herbalism, common)
+            new LootTableEntry { ItemId = 449, Weight = 10 },  // index 114: frost_lichen - Frozen Peaks (Herbalism, rare)
+            new LootTableEntry { ItemId = 450, Weight = 90 },  // index 115: mugwort - Shadow Citadel (Herbalism, common)
+            new LootTableEntry { ItemId = 451, Weight = 10 },  // index 116: fern_flower - Shadow Citadel (Herbalism, rare)
         };
 
         // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
@@ -565,6 +578,11 @@ namespace FolkIdle.Server.Engine
             { 3003, (101, 2) }, // Scorched Wasteland
             { 3004, (103, 2) }, // Frozen Peaks
             { 3005, (105, 2) }, // Shadow Citadel
+            { 4001, (107, 2) }, // Sunlit Plains
+            { 4002, (109, 2) }, // Whispering Woods
+            { 4003, (111, 2) }, // Scorched Wasteland
+            { 4004, (113, 2) }, // Frozen Peaks
+            { 4005, (115, 2) }, // Shadow Citadel
 
             // Modul: Full-Stack Expansion, Part 2 - monster loot tables
             // for the 25 new regional monsters (monster ids 91-115). The
@@ -694,7 +712,35 @@ namespace FolkIdle.Server.Engine
             new RecipeDefinition { ResultItemId = 435, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 46575, Mat2Id = 369, Mat2Count = 23287, CraftingTimeMs = 25000 }, // voidbark_pickaxe_tool
             new RecipeDefinition { ResultItemId = 436, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 364, Mat1Count = 23287, Mat2Id = 368, Mat2Count = 11644, CraftingTimeMs = 25000 }, // ebon_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 437, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 46575, Mat2Id = 369, Mat2Count = 23287, CraftingTimeMs = 25000 }, // voidbark_fishing_rod_tool
-        
+
+            // Modul: ALCHEMY IS POTIONS, brewed from herbs (2026-10-31,
+            // HERBS_POTIONS_ASCENSION.md 1.2a). APPENDED, never inserted: a
+            // crafting activity id is CraftingBand + this table's index, so a
+            // row added in the middle would reassign every job in progress.
+            //
+            // Price (owner): about ten minutes of picking buys an hour of
+            // effect - 150 of the region's common herb, or 100 common + 15 of
+            // its rare herb for the strong one (R1: rare herbs brew the strong
+            // potion). Measured: region 5 by hand at mastery 25 is ~980 common
+            // and ~110 rare herbs an hour. Levels follow the tool ladder's
+            // region bands (1/20/40/60/80).
+            new RecipeDefinition { ResultItemId = 452, ProfessionType = 5, RequiredLevel = 1, Mat1Id = 442, Mat1Count = 150, CraftingTimeMs = 5000 },                                  // hunt_elixir (Yarrow)
+            new RecipeDefinition { ResultItemId = 453, ProfessionType = 5, RequiredLevel = 1, Mat1Id = 442, Mat1Count = 100, Mat2Id = 443, Mat2Count = 15, CraftingTimeMs = 5000 },    // strong_hunt_elixir (+ Golden Chamomile)
+            new RecipeDefinition { ResultItemId = 454, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 150, CraftingTimeMs = 10000 },                                // ironbark_brew (Marsh Mallow)
+            new RecipeDefinition { ResultItemId = 455, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 100, Mat2Id = 445, Mat2Count = 15, CraftingTimeMs = 10000 },  // strong_ironbark_brew (+ Wisp Moss)
+            new RecipeDefinition { ResultItemId = 456, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 150, CraftingTimeMs = 10000 },                                // gatherers_draught (Marsh Mallow)
+            new RecipeDefinition { ResultItemId = 457, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 444, Mat1Count = 100, Mat2Id = 445, Mat2Count = 15, CraftingTimeMs = 10000 },  // strong_gatherers_draught (+ Wisp Moss)
+            new RecipeDefinition { ResultItemId = 458, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 150, CraftingTimeMs = 15000 },                                // swiftroot_tea (Thyme)
+            new RecipeDefinition { ResultItemId = 459, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 100, Mat2Id = 447, Mat2Count = 15, CraftingTimeMs = 15000 },  // strong_swiftroot_tea (+ Dragon's Blood Sage)
+            new RecipeDefinition { ResultItemId = 460, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 150, CraftingTimeMs = 15000 },                                // goldmoss_tonic (Thyme)
+            new RecipeDefinition { ResultItemId = 461, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 446, Mat1Count = 100, Mat2Id = 447, Mat2Count = 15, CraftingTimeMs = 15000 },  // strong_goldmoss_tonic (+ Dragon's Blood Sage)
+            new RecipeDefinition { ResultItemId = 462, ProfessionType = 5, RequiredLevel = 60, Mat1Id = 448, Mat1Count = 150, CraftingTimeMs = 20000 },                                // fortune_draught (Sea Kale)
+            new RecipeDefinition { ResultItemId = 463, ProfessionType = 5, RequiredLevel = 60, Mat1Id = 448, Mat1Count = 100, Mat2Id = 449, Mat2Count = 15, CraftingTimeMs = 20000 },  // strong_fortune_draught (+ Frost Lichen)
+            new RecipeDefinition { ResultItemId = 464, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 150, CraftingTimeMs = 25000 },                                // kupala_night (Mugwort)
+            new RecipeDefinition { ResultItemId = 465, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 100, Mat2Id = 451, Mat2Count = 15, CraftingTimeMs = 25000 },  // strong_kupala_night (+ Fern Flower)
+            new RecipeDefinition { ResultItemId = 466, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 150, CraftingTimeMs = 25000 },                                // bossbane_philtre (Mugwort)
+            new RecipeDefinition { ResultItemId = 467, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 450, Mat1Count = 100, Mat2Id = 451, Mat2Count = 15, CraftingTimeMs = 25000 },  // strong_bossbane_philtre (+ Fern Flower)
+
         };
         public static ReadOnlySpan<RecipeDefinition> Recipes => _recipes;
 

@@ -359,6 +359,34 @@ namespace FolkIdle.Server.Engine
         public int ActiveDefensivePotionId;
         public int DefensivePotionDurationMs;
 
+        // Modul: THE POTION SHELF AND THE THIRD SLOT (herbs and potions,
+        // 2026-10-31). "Offensive" is the REWARDS slot (Hunt, Fortune,
+        // Goldmoss), "defensive" the COMBAT slot (Ironbark, Swiftroot,
+        // Boss-bane) - the old names stay because the columns and the wire do.
+        // Gathering (Gatherer's Draught, Kupala Night) is new. Each slot has a
+        // shelf stocked from the chest like the larder, so drinking is a
+        // decrement here on the tick; auto-drink refills a slot from its shelf
+        // the tick its potion runs out (bit N of PotionAutoDrinkMask = slot N).
+        public int ActiveGatheringPotionId;
+        public int GatheringPotionDurationMs;
+        public int PotionShelf1_ItemId;
+        public int PotionShelf1_Count;
+        public int PotionShelf2_ItemId;
+        public int PotionShelf2_Count;
+        public int PotionShelf3_ItemId;
+        public int PotionShelf3_Count;
+        public byte PotionAutoDrinkMask;
+
+        // Absolute expiry of each slot, epoch seconds, as loaded - read only by
+        // the offline projection, which has to know when inside the absence each
+        // potion ran out (the countdowns above are already "from now" by then).
+        public long OffensivePotionExpiresEpoch;
+        public long DefensivePotionExpiresEpoch;
+        public long GatheringPotionExpiresEpoch;
+        public int OffensivePotionLoadedId;
+        public int DefensivePotionLoadedId;
+        public int GatheringPotionLoadedId;
+
         // Modul: Deferred Part 5 Implementation, Part 2. Active food buff
         // (HP regeneration over time) - same unmanaged int id + ms
         // countdown idiom as the potion pair above; see ConsumableEngine.

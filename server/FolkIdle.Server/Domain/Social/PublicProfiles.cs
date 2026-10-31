@@ -448,6 +448,7 @@ namespace FolkIdle.Server.Domain.Social
             if (activityId >= ActivityIdBands.WoodcuttingBand && activityId < ActivityIdBands.WoodcuttingBand + ActivityIdBands.BandSize) return "Woodcutting";
             if (activityId >= ActivityIdBands.MiningBand && activityId < ActivityIdBands.MiningBand + ActivityIdBands.BandSize) return "Mining";
             if (activityId >= ActivityIdBands.FishingBand && activityId < ActivityIdBands.FishingBand + ActivityIdBands.BandSize) return "Fishing";
+            if (activityId >= ActivityIdBands.HerbalismBand && activityId < ActivityIdBands.HerbalismBand + ActivityIdBands.BandSize) return "Herbalism";
             if (activityId >= ActivityIdBands.CraftingBand && activityId < ActivityIdBands.CraftingBand + ActivityIdBands.BandSize) return "Crafting";
             return "Idle";
         }

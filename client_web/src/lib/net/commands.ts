@@ -1808,3 +1808,49 @@ export function purchaseLegacyUnlock(unlockId: number): CommandOutcome {
  * = 2 + 5 * 2. serverMirrors.test.ts compares it to the server source.
  */
 export const MAX_FORGE_LEVEL = 12;
+
+// ---------------------------------------------------------------------------
+// Potion shelves (herbs and potions, 2026-10-31)
+// ---------------------------------------------------------------------------
+
+// Modul: three shelves, one per potion slot (0 rewards, 1 combat, 2
+// gathering), on TargetSlotIndex - see PotionShelfTickCoordinator. The shelf
+// is the potion's inventory once stocked: drinking takes from it on the tick,
+// so nothing here can drink a potion that is still in the chest. The old
+// ConsumeConsumableAsset path set the buff and took nothing; potions never use
+// it.
+
+/** Moves `quantity` of a potion from the chest onto its shelf. */
+export function stockPotionShelf(slot: number, potionItemId: number, quantity: number): CommandOutcome {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 2) return refuse('Pick a shelf.');
+  if (!Number.isInteger(potionItemId) || potionItemId <= 0) return refuse('Pick a potion.');
+  if (!Number.isInteger(quantity) || quantity <= 0) return refuse('Pick how many.');
+  connection.send({
+    Command: CommandType.StockPotionShelf,
+    TargetSlotIndex: slot,
+    ConsumableItemId: potionItemId,
+    DepositQuantity: quantity,
+  });
+  return OK;
+}
+
+/** Takes the whole shelf back to the chest. */
+export function unloadPotionShelf(slot: number): CommandOutcome {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 2) return refuse('Pick a shelf.');
+  connection.send({ Command: CommandType.StockPotionShelf, TargetSlotIndex: slot, DepositQuantity: 0 });
+  return OK;
+}
+
+/** Drinks the shelf's next potion; a running one in that slot is replaced. */
+export function drinkPotion(slot: number): CommandOutcome {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 2) return refuse('Pick a shelf.');
+  connection.send({ Command: CommandType.DrinkPotion, TargetSlotIndex: slot });
+  return OK;
+}
+
+/** Auto-drink: the next potion the tick the running one ends. */
+export function setPotionAutoDrink(slot: number, on: boolean): CommandOutcome {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 2) return refuse('Pick a shelf.');
+  connection.send({ Command: CommandType.SetPotionAutoDrink, TargetSlotIndex: slot, IsBuy: on ? 1 : 0 });
+  return OK;
+}

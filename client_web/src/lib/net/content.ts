@@ -91,6 +91,24 @@ export const RAW_FISH_BASE_IDS: readonly string[] = [
   'spectral_lanternfish',
 ];
 
+/**
+ * The ten herbs, common then rare per region - ContentRegistry's herbalism
+ * rows 107-116, in the same order as RAW_FISH_BASE_IDS (gatheringAndCrafting
+ * .test.ts reads the server's rows). Herbs are NOT food: they brew potions.
+ */
+export const HERB_BASE_IDS: readonly string[] = [
+  'yarrow',
+  'golden_chamomile',
+  'marsh_mallow',
+  'wisp_moss',
+  'thyme',
+  'dragons_blood_sage',
+  'sea_kale',
+  'frost_lichen',
+  'mugwort',
+  'fern_flower',
+];
+
 export function isFood(baseItemId: string): boolean {
   return baseItemId.includes('_food') || RAW_FISH_BASE_IDS.includes(baseItemId);
 }
@@ -126,12 +144,14 @@ export function fishHealPercent(baseItemId: string, regionTier: number): number 
  * these too - the two answer different questions (larder stocking versus
  * on-demand use) and the overlap is intentional.
  */
-export type ConsumableKind = 'food' | 'offensive' | 'defensive';
+export type ConsumableKind = 'food' | 'offensive' | 'defensive' | 'gathering';
 
 export function consumableKind(baseItemId: string): ConsumableKind | null {
   if (!baseItemId.includes('_consumable')) return null;
   if (baseItemId.includes('_offensive_potion')) return 'offensive';
   if (baseItemId.includes('_defensive_potion')) return 'defensive';
+  // The potions' third slot (2026-10-31): Gatherer's Draught and Kupala Night.
+  if (baseItemId.includes('_gathering_potion')) return 'gathering';
   if (baseItemId.includes('_food')) return 'food';
   return null;
 }
@@ -253,7 +273,7 @@ const STRUCTURAL_SUFFIXES: readonly RegExp[] = [
   /_(?:melee|ranged|range|blunt|magic|structural)_weapon_slot_base$/,
   /_unique_regional_boss_material$/,
   /_ultimate_mythic_upgrade_material$/,
-  /_(?:offensive|defensive)_potion_consumable$/,
+  /_(?:offensive|defensive|gathering)_potion_consumable$/,
   /_guaranteed_currency_payout$/,
   /_rare_crafting_ingredient$/,
   /_raw_cooking_ingredient$/,

@@ -233,6 +233,17 @@ namespace FolkIdle.Server.Models
         // see ConsumableEngine's own doc comment).
         public long ActiveOffensivePotionExpiresEpoch { get; set; }
         public long ActiveDefensivePotionExpiresEpoch { get; set; }
+        // The potions' third slot and the shelf (2026-10-31) - see
+        // TickStatePayload.ActiveGatheringPotionId.
+        public int ActiveGatheringPotionId { get; set; }
+        public long ActiveGatheringPotionExpiresEpoch { get; set; }
+        public int PotionShelf1ItemId { get; set; }
+        public int PotionShelf1Count { get; set; }
+        public int PotionShelf2ItemId { get; set; }
+        public int PotionShelf2Count { get; set; }
+        public int PotionShelf3ItemId { get; set; }
+        public int PotionShelf3Count { get; set; }
+        public byte PotionAutoDrinkMask { get; set; }
         public int ActiveFoodId { get; set; }
         public long ActiveFoodExpiresEpoch { get; set; }
 

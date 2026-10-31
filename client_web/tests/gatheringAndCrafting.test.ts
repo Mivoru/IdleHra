@@ -17,17 +17,17 @@ describe('what a gathering node yields (task 101)', () => {
   // "index N: <base id> - <Place> (<Profession>, common|rare)" and the
   // segment table maps node N001-N005 to rows 77-106 in that order. Read both
   // and compare every node.
-  it('matches the server loot table for all fifteen nodes', () => {
+  it('matches the server loot table for all twenty nodes', () => {
     const source = readFileSync(join(serverRoot, 'Engine', 'ContentRegistry.cs'), 'utf8');
     const rows = new Map<number, string>();
-    for (const m of source.matchAll(/index (\d+): ([a-z_]+) - [A-Za-z ]+ \((Woodcutting|Mining|Fishing), (common|rare)\)/g)) {
+    for (const m of source.matchAll(/index (\d+): ([a-z_]+) - [A-Za-z ]+ \((Woodcutting|Mining|Fishing|Herbalism), (common|rare)\)/g)) {
       rows.set(Number(m[1]), m[2]);
     }
     const segments = new Map<number, number>();
-    for (const m of source.matchAll(/\{ ([123]00[1-5]), \((\d+), 2\) \}/g)) {
+    for (const m of source.matchAll(/\{ ([1234]00[1-5]), \((\d+), 2\) \}/g)) {
       segments.set(Number(m[1]), Number(m[2]));
     }
-    expect(segments.size).toBe(15);
+    expect(segments.size).toBe(20);
 
     for (const [node, first] of segments) {
       expect(nodeYieldBaseId(node), `node ${node} common`).toBe(rows.get(first));

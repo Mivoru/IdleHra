@@ -980,6 +980,8 @@
             <li><strong>Woodcutting</strong> — logs, for the village, tools and the guild depot.</li>
             <li><strong>Mining</strong> — ore, for the same. One common and one rare ore per region.</li>
             <li><strong>Fishing</strong> — the ten fish, which go straight into the larder uncooked.</li>
+            <li><strong>Herbalism</strong> — one common and one rare herb per region, picked by hand: there is
+              no herb tool, so mastery is what makes it faster. Herbs are not food; they are for potions.</li>
           </ul>
           <p class="dim tiny">
             Each has its own mastery track, levelled by working its nodes.

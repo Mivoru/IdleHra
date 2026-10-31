@@ -17,6 +17,7 @@
   import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
   import Bar from '../lib/ui/Bar.svelte';
   import { affordableUnits as unitsFor, recipeGroup, toolEffect, firstStepLine } from '../lib/ui/craftingCards';
+  import { potionInfo } from '../lib/ui/potions';
 
   const client = useQueryClient();
   const recipes = createQuery(() => ({ queryKey: queryKeys.recipes, queryFn: fetchRecipes }));
@@ -170,13 +171,16 @@
 {#snippet card(recipe: CraftingRecipe)}
   {@const group = recipeGroup(recipe, playerLevel)}
   {@const tool = toolEffect(recipe.ResultBaseItemId)}
+  {@const potion = potionInfo(recipe.ResultBaseItemId)}
   {@const working = workers.find((w) => w.activity === activityIdFor(recipe))}
   <li class="card" data-group={group}>
     <ItemIcon baseItemId={recipe.ResultBaseItemId} name={prettifyBaseId(recipe.ResultBaseItemId)} size="md" />
     <div class="body">
       <strong class="name">{prettifyBaseId(recipe.ResultBaseItemId)}</strong>
       <span class="dim tiny effect">
-        {#if tool}{tool.slot} &middot; {tool.effect}{:else}{craftingProfessionName(recipe.ProfessionType)}{/if}
+        <!-- Modul: a potion says what it does and for how long - the name alone
+             ("Strong Swiftroot Tea") told nobody whether it was worth brewing. -->
+        {#if tool}{tool.slot} &middot; {tool.effect}{:else if potion}<span data-testid="potion-effect">{potion.summary}</span>{:else}{craftingProfessionName(recipe.ProfessionType)}{/if}
       </span>
       <div class="mats">
         {#each [[recipe.Mat1Id, recipe.Mat1BaseItemId, recipe.Mat1CurrentStock, recipe.Mat1Count], [recipe.Mat2Id, recipe.Mat2BaseItemId, recipe.Mat2CurrentStock, recipe.Mat2Count]] as [id, base, have, need]}

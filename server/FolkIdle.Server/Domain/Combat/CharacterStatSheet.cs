@@ -185,7 +185,7 @@ namespace FolkIdle.Server.Domain.Combat
             });
 
             var gathering = new StatSheetSection { Title = "Gathering" };
-            for (int profession = 0; profession <= 2; profession++)
+            for (int profession = 0; profession <= 3; profession++)
             {
                 AddGatheringRows(gathering, ref payload, profession);
             }
@@ -199,7 +199,7 @@ namespace FolkIdle.Server.Domain.Combat
             return new StatSheetResponse { Slot = slot, Sections = { offence, defence, rewards, gathering } };
         }
 
-        private static readonly string[] ProfessionNames = { "Woodcutting", "Mining", "Fishing" };
+        private static readonly string[] ProfessionNames = { "Woodcutting", "Mining", "Fishing", "Herbalism" };
 
         private static void AddGatheringRows(StatSheetSection section, ref TickStatePayload payload, int profession)
         {
@@ -208,7 +208,7 @@ namespace FolkIdle.Server.Domain.Combat
             var row = new StatSheetRow
             {
                 Key = $"gather_speed_{profession}", Label = $"{name} speed", Value = terms.TotalPct, Unit = "pct",
-                Note = $"Tool +{GatheringToolEngine.GetToolSpeedBonusPct(terms.ToolTier)}%, mastery {terms.MasteryLevel} +{GatheringToolEngine.GetMasterySpeedBonusPct(terms.MasteryLevel)}%"
+                Note = (profession == 3 ? "By hand, no tool" : $"Tool +{GatheringToolEngine.GetToolSpeedBonusPct(terms.ToolTier)}%") + $", mastery {terms.MasteryLevel} +{GatheringToolEngine.GetMasterySpeedBonusPct(terms.MasteryLevel)}%"
                     + (terms.VillageLevel > 0 ? $", village +{terms.VillageLevel * GatheringToolEngine.VillageYieldBonusPctPerLevel}%" : string.Empty)
                     + (terms.ExtraPct != 0 ? $", then x{(100 + Math.Max(GatheringToolEngine.MinExtraSpeedPct, terms.ExtraPct)) / 100.0:0.00} from the tool's affix, tree, bloodline, traits and pet" : string.Empty)
                     + ". A harvest never takes under 0.2 s.",
