@@ -23,7 +23,10 @@ namespace FolkIdle.Server.Domain.Combat
         int MealsEaten,
         IReadOnlyList<DungeonEvent> Events,
         DungeonKind Kind = DungeonKind.Equipment,
-        IReadOnlyList<int>? WaveMonsterIds = null);
+        IReadOnlyList<int>? WaveMonsterIds = null,
+        int PartySize = 1,
+        int Dodged = 0,
+        int Missed = 0);
 
     /// <summary>One of the boss's abilities as it stands at a stage, for the lobby.</summary>
     public readonly record struct DungeonAbilityView(string Id, string Name, int FromStage, string Line, bool Active);
@@ -61,9 +64,9 @@ namespace FolkIdle.Server.Domain.Combat
         public const int Waves = 5;
         public const int MealCap = 5;
         public const double WaveStrength = 0.4;
-        private const int TickMs = 100;
-        private const int MaxTicks = 30 * 60 * 1000 / TickMs; // half an hour of fight time
-        private const int MaxEvents = 80;
+        internal const int TickMs = 100;
+        internal const int MaxTicks = 30 * 60 * 1000 / TickMs; // half an hour of fight time
+        internal const int MaxEvents = 400;
 
         /// <summary>
         /// Stage 10 is Malakor at Ascension 10 with attack times this and health
@@ -148,159 +151,18 @@ namespace FolkIdle.Server.Domain.Combat
         /// register). <paramref name="foodItemId"/> and
         /// <paramref name="foodInLarder"/> are the larder's best food and how
         /// many of it there are; the run eats at most <see cref="MealCap"/>.
+        /// No dodges: the whole run at once, as the calibration and the sweep use it.
         /// </summary>
         public static DungeonRunResult Run(TickStatePayload payload, int stage, int foodItemId, int foodInLarder)
             => Run(payload, DungeonKind.Equipment, stage, foodItemId, foodInLarder);
 
         public static DungeonRunResult Run(TickStatePayload payload, DungeonKind kind, int stage, int foodItemId, int foodInLarder)
         {
-            stage = Math.Clamp(stage, 1, StageCount);
-            DungeonBoss rules = DungeonBoss.For(kind);
-            CombatStats stats = SimulationEngine.LiveCombatStats(in payload);
-            long maxMilliHp = Math.Max(1000L, SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats));
-            // The tick's own attack (aptitudes, inheritance, the lineage's scale) -
-            // computed here, not read from the cache, so a payload loaded from the
-            // database (the calibration harness) gets the same number as a live one.
-            long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(ref payload, in stats, SimulationEngine.LineageOf(in payload).DamageScalePerLevelPct);
-
-            MonsterDefinition boss = ContentRegistry.Monsters[BossMonsterIdFor(stage) - 1];
-            var (bossMilliHp, bossAttack, enrage) = BossStrength(stage);
-
-            // Modul: THE OFFLINE PROJECTION'S SWING, which is parity-tested against
-            // the live tick: crit and double hit, Crushing Blow, Know Your Prey,
-            // the codex, set fire and burn, Riposte. The first cut used the plain
-            // CombatDamageModel swing the boss-wall benchmark uses for reference
-            // gear, and measured on the owner's character it dealt about a
-            // twentieth of the live damage - the reference model has no skill
-            // tree and no codex, which a real character's damage mostly is.
-            var swing = HuntingProjection.PlayerSwing.For(in payload, in stats, in boss, rawMilliAttack);
-            double bossHitFactor = rules.PlayerHitFactor(stage, in swing);
-            int playerIntervalMs = Math.Max(TickMs, SimulationEngine.LiveAttackIntervalMs(in payload, in stats));
-            int bossIntervalMs = boss.AttackIntervalMs > 0 ? boss.AttackIntervalMs : 2000;
-
-            int healPerBite = foodItemId > 0 && foodInLarder > 0 ? FoodRegistry.GetHealMilliHp(foodItemId, maxMilliHp) : 0;
-            int mealsAvailable = Math.Min(MealCap, Math.Max(0, foodInLarder));
-            int thresholdPct = payload.AutoEatThreshold > 0 ? payload.AutoEatThreshold : Shared.AutoEatDefaults.ThresholdPct;
-            double eatBelow = maxMilliHp * (thresholdPct / 100.0);
-
-            var events = new List<DungeonEvent>();
-            var f = new DungeonFightState { Stage = stage, PlayerMax = maxMilliHp, PlayerHp = maxMilliHp };
-            int tick = 0, meals = 0, eatCooldown = 0, wavesCleared = 0, bossHpLeftPct = 100;
-            void Note(string kindOfEvent, string text, int value = 0)
-            {
-                if (events.Count >= MaxEvents) return;
-                events.Add(new DungeonEvent(tick * TickMs / 1000.0, kindOfEvent, text, value,
-                    Pct(f.PlayerHp, f.PlayerMax), Pct(f.Enemy, f.EnemyMax), Pct(f.Shield, f.EnemyMax)));
-            }
-            f.Note = (_, text, v) => Note("ability", text, v);
-
-            // Six fights: five waves at WaveStrength, then the boss.
-            for (int fight = 0; fight <= Waves; fight++)
-            {
-                bool isBoss = fight == Waves;
-                f.EnemyMax = isBoss ? bossMilliHp : bossMilliHp * WaveStrength;
-                f.Enemy = f.EnemyMax;
-                f.Shield = 0;
-                f.EnemySwings = 0;
-                f.BurnPerTick = 0;
-                f.BurnUntil = 0;
-                f.BossState = null;
-                f.Now = 0;
-                double enemyHit = BossGearBenchmark.ExpectedBossMilliDamagePerSwing(in stats, in boss, isBoss ? bossAttack : (long)(bossAttack * WaveStrength));
-                double playerHit = swing.Mean * (isBoss ? bossHitFactor : 1.0);
-                double healPerSwing = swing.ExpectedHeal(maxMilliHp / 100) * (isBoss ? bossHitFactor : 1.0);
-                if (isBoss) rules.Begin(f);
-                Note(isBoss ? "boss" : "wave", isBoss ? rules.Intro : $"Wave {fight + 1} of {Waves}.", fight + 1);
-
-                int playerAcc = 0;
-                double enemyAcc = 0;
-                int fightStart = tick;
-
-                while (true)
-                {
-                    tick++;
-                    if (tick > MaxTicks)
-                    {
-                        Note("timeout", "The fight drags on past half an hour - the run is lost.");
-                        return Finish(false);
-                    }
-                    f.Now = (tick - fightStart) * TickMs / 1000.0;
-                    if (isBoss) rules.OnTime(f);
-
-                    playerAcc += TickMs;
-                    if (playerAcc >= playerIntervalMs)
-                    {
-                        playerAcc -= playerIntervalMs;
-                        double dealt = isBoss ? rules.ModifyDealt(f, playerHit) : playerHit;
-                        if (f.Shield > 0)
-                        {
-                            f.Shield -= dealt;
-                            if (f.Shield <= 0)
-                            {
-                                f.Shield = 0;
-                                Note("ability", "The shield shatters.");
-                            }
-                        }
-                        else
-                        {
-                            f.Enemy -= dealt;
-                        }
-                        if (healPerSwing > 0) f.PlayerHp = Math.Min(maxMilliHp, f.PlayerHp + healPerSwing * (dealt / Math.Max(1.0, playerHit)));
-                        if (isBoss) rules.AfterPlayerSwing(f);
-                    }
-
-                    if (f.Enemy <= 0 && !(isBoss && rules.Survives(f))) break;
-
-                    enemyAcc += TickMs;
-                    double interval = bossIntervalMs * (isBoss ? rules.EnemyIntervalFactor(f) : 1.0);
-                    if (enemyAcc >= interval)
-                    {
-                        enemyAcc -= interval;
-                        f.EnemySwings++;
-                        bool enraged = isBoss && enrage && f.Enemy * 100.0 < f.EnemyMax * AscensionModifiers.EnrageBelowPct;
-                        double hit = (enraged ? enemyHit * AscensionModifiers.EnrageAttackPct / 100.0 : enemyHit) * (isBoss ? rules.EnemyHitFactor(f) : 1.0);
-                        f.PlayerHp -= hit;
-                        if (isBoss) rules.AfterEnemySwing(f, hit);
-                    }
-                    if (f.BurnPerTick > 0 && f.Now < f.BurnUntil) f.PlayerHp -= f.BurnPerTick;
-
-                    if (f.PlayerHp <= 0)
-                    {
-                        f.PlayerHp = 0;
-                        bossHpLeftPct = isBoss ? Math.Max(1, (int)Math.Ceiling(f.Enemy * 100 / f.EnemyMax)) : 100;
-                        Note("defeat", isBoss
-                            ? $"Defeated by {rules.BossName} at {bossHpLeftPct}% of the boss's health."
-                            : $"Defeated in wave {fight + 1}.");
-                        return Finish(false);
-                    }
-
-                    if (eatCooldown > 0) eatCooldown--;
-                    else if (f.PlayerHp <= eatBelow && healPerBite > 0 && meals < mealsAvailable && (!isBoss || rules.CanEat(f)))
-                    {
-                        f.PlayerHp = Math.Min(maxMilliHp, f.PlayerHp + healPerBite);
-                        meals++;
-                        eatCooldown = SimulationEngine.AutoEatCooldownTicks;
-                        Note("meal", meals == mealsAvailable ? "The last meal of the run." : $"A meal ({meals} of {mealsAvailable}).", meals);
-                    }
-                }
-
-                f.Enemy = 0;
-                if (!isBoss)
-                {
-                    wavesCleared++;
-                    int left = (int)Math.Ceiling(f.PlayerHp * 100 / maxMilliHp);
-                    Note("cleared", $"Wave {fight + 1} cleared, {left}% health left.", left);
-                }
-            }
-
-            Note("victory", rules.Fall);
-            bossHpLeftPct = 0;
-            return Finish(true);
-
-            DungeonRunResult Finish(bool won) => new(won, stage, wavesCleared, wavesCleared >= Waves, won ? 0 : bossHpLeftPct,
-                tick * TickMs / 1000.0, meals, events, kind, WaveMonsterIdsFor(stage));
+            var runner = new DungeonRunner(payload, kind, stage, foodItemId, foodInLarder, new[] { 0 }, challenges: false);
+            runner.Advance();
+            return runner.Result!;
         }
 
-        private static int Pct(double part, double whole) => whole <= 0 ? 0 : Math.Clamp((int)Math.Ceiling(part * 100 / whole), 0, 100);
+        internal static int Pct(double part, double whole) => whole <= 0 ? 0 : Math.Clamp((int)Math.Ceiling(part * 100 / whole), 0, 100);
     }
 }

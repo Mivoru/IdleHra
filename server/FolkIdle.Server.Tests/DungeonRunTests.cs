@@ -163,5 +163,43 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(DungeonEngine.XpFor(1, 120_000, won: true), logged.Single(l => l.EventTypeHash == DungeonEngine.TestGrantXp).PayloadMetric);
             Assert.Equal(DungeonEngine.FirstClearDiamonds(1), logged.Single(l => l.EventTypeHash == DungeonEngine.TestGrantDiamonds).PayloadMetric);
         }
+
+        [Fact]
+        public async Task ALiveRunTakesItsTicketAtTheStartAndASweepNeedsABeatenStage()
+        {
+            const long playerId = 950_420_005L;
+            var now = new DateTime(2026, 10, 31, 12, 0, 0, DateTimeKind.Utc);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+            byte mask = Strong(playerId).DefeatedRegionBossMask;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var sweep = await DungeonEngine.RunAsync(db, playerId, DungeonKind.Gold, 1, Strong(playerId), 0, 0, default, now, new Random(1), sweep: true);
+                Assert.Equal(DungeonEngine.RunOutcome.Locked, sweep.Outcome);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var start = await DungeonEngine.StartLiveAsync(db, playerId, DungeonKind.Gold, 1, mask, now, freeRun: false);
+                Assert.Equal(DungeonEngine.RunOutcome.Ok, start.Outcome);
+                Assert.Equal(DungeonEngine.TicketCap - 1, start.TicketsLeft);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var finish = await DungeonEngine.FinishLiveAsync(db, playerId, DungeonKind.Gold, 1, won: true, new DungeonEngine.Income(0, 3_000_000), now, new Random(1), freeRun: false);
+                Assert.Equal(DungeonEngine.GoldFor(1, 3_000_000, won: true), finish.Reward!.Gold);
+                Assert.Equal(DungeonEngine.FirstClearDiamonds(1), finish.Reward.Diamonds);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var sweep = await DungeonEngine.RunAsync(db, playerId, DungeonKind.Gold, 1, Strong(playerId), 0, 0, new DungeonEngine.Income(0, 3_000_000), now, new Random(1), sweep: true);
+                Assert.Equal(DungeonEngine.RunOutcome.Ok, sweep.Outcome);
+                Assert.True(sweep.Result!.Won);
+                Assert.Equal(0, sweep.Reward!.Diamonds);
+                Assert.Equal(DungeonEngine.TicketCap - 2, sweep.TicketsLeft);
+            }
+        }
     }
 }

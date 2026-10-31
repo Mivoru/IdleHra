@@ -1,18 +1,31 @@
 <script lang="ts">
-  // Modul: THE RUN, PLAYED BACK AS A FIGHT (owner, 2026-10-31: "not a text
-  // log"). The server has already decided everything; its events carry both
-  // bars in percent at every step, so the scene animates the bars BETWEEN
-  // events from those numbers and never infers health from text or from a
-  // difference (the combat feed rule). The enemy shakes when its bar drops,
-  // the champion when theirs does. Banners name what happened. 1x, 2x and
-  // Skip change only how fast the answer is shown - the outcome was fixed
-  // before the first frame.
+  // Modul: THE RUN, PLAYED AS A FIGHT (owner, 2026-10-31: "not a text log",
+  // and "not wholly passive"). The server simulates the run in segments: each
+  // ends at a telegraph, where the scene asks the server for the swipes,
+  // takes them by touch, arrow keys or WASD, and sends them back to be JUDGED
+  // there - the client never says "I dodged". A clean dodge brings two bonus
+  // cards to choose from; a miss lands a heavy blow and a penalty. Every event
+  // carries both bars in percent, so the bars animate from server numbers and
+  // health is never inferred (the combat feed rule). 1x, 2x and Skip change
+  // only how fast a segment is shown.
   import { onDestroy } from 'svelte';
   import { useQueryClient } from '@tanstack/svelte-query';
-  import type { DungeonRunAnswer, DungeonInfo, DungeonEvent } from '../net/dungeon';
+  import {
+    answerTelegraph,
+    dungeonKeys,
+    pickPerk,
+    showTelegraph,
+    type DungeonRunAnswer,
+    type DungeonInfo,
+    type DungeonEvent,
+    type DungeonPerk,
+    type DungeonReward,
+    type DungeonRunResult,
+  } from '../net/dungeon';
+  import { invalidateOwnedItems } from '../net/queryClient';
   import { prettifyBaseId } from '../net/content';
   import { requestScreen } from '../stores/navigation';
-  import { playerState } from '../stores/game';
+  import { playerState, pushLocalNotice } from '../stores/game';
   import { play } from './audio';
   import { formatNumber } from './format';
   import { motionMs } from './motion';
@@ -23,10 +36,11 @@
   interface Props {
     answer: DungeonRunAnswer;
     dungeon: DungeonInfo;
+    stage: number;
     onclose: () => void;
   }
-  let { answer, dungeon, onclose }: Props = $props();
-  useQueryClient();
+  let { answer, dungeon, stage, onclose }: Props = $props();
+  const client = useQueryClient();
 
   const BOSS_ART: Record<DungeonInfo['Key'], string> = {
     Xp: '/dungeon/boss-koschei.webp',
@@ -39,15 +53,32 @@
     Equipment: '/dungeon/gate-equipment.webp',
   };
   const TONE: Record<DungeonInfo['Key'], string> = { Xp: 'xp', Gold: 'gold', Equipment: 'equipment' };
+  const ARROW: Record<string, string> = { Up: '↑', Down: '↓', Left: '←', Right: '→' };
 
-  const result = $derived(answer.Result!);
-  const events = $derived(result.Events);
+  // The live run: what has been played and what the server still holds.
+  // svelte-ignore state_referenced_locally
+  const runId = answer.RunId ?? '';
+  // svelte-ignore state_referenced_locally
+  let events = $state<DungeonEvent[]>([...(answer.Events ?? answer.Result?.Events ?? [])]);
+  // svelte-ignore state_referenced_locally
+  let paused = $state(answer.Paused ?? false);
+  // svelte-ignore state_referenced_locally
+  let result = $state<DungeonRunResult | null>(answer.Result ?? null);
+  // svelte-ignore state_referenced_locally
+  let reward = $state<DungeonReward | null>(answer.Reward ?? null);
+  // svelte-ignore state_referenced_locally
+  let offer = $state<DungeonPerk[] | null>(answer.Offer ?? null);
+  // svelte-ignore state_referenced_locally
+  const partySize = answer.PartySize ?? answer.Result?.PartySize ?? 1;
+  let busy = false;
+
   const total = $derived(events.length > 0 ? events[events.length - 1].AtSeconds : 0);
   const selfId = $derived(Number($playerState?.PlayerId ?? 0));
 
-  // Fight seconds per real second at 1x: a run of any length plays in about
-  // fifteen seconds, never slower than real time.
-  const baseRate = $derived(Math.max(1, total / 15));
+  // Fight seconds per real second at 1x, set per segment: a segment plays in
+  // about four seconds, never slower than real time.
+  let segStart = 0;
+  let baseRate = $state(Math.max(1, total / 4));
   let speed = $state(1);
   let simT = $state(0);
   let index = $state(0); // events[0..index) have been reached
@@ -64,9 +95,19 @@
   let fight = $state(0); // 0-4 waves, 5 the boss
   let wavesCleared = $state(0);
   let showGate = $state(true);
+  /** Bonuses and penalties taken so far, as chips. */
+  let taken = $state<{ name: string; penalty: boolean }[]>([]);
+
+  // The telegraph on screen: the swipes asked for, how many are in, the clock.
+  let telegraph = $state<{ dirs: string[]; windowMs: number; startedAt: number } | null>(null);
+  let entered = $state<string[]>([]);
+  let wrong = $state(false);
+  let timeLeft = $state(1);
 
   const isBoss = $derived(fight >= 5);
-  const waveMonster = $derived(result.WaveMonsterIds?.[Math.min(fight, 4)] ?? 0);
+  // svelte-ignore state_referenced_locally
+  const waveFaces: number[] = answer.WaveMonsterIds ?? answer.Result?.WaveMonsterIds ?? [];
+  const waveMonster = $derived(waveFaces[Math.min(fight, 4)] ?? 0);
 
   function showBanner(text: string, kind: string, holdMs = 1500) {
     banner = { text, kind, key: ++bannerKey };
@@ -103,9 +144,23 @@
       case 'meal':
         showBanner(e.Value === 5 ? 'Last meal' : `Meal ${e.Value}`, 'meal', 1000);
         break;
-      case 'victory':
-      case 'defeat':
-      case 'timeout':
+      case 'dodged':
+        showBanner('Dodged!', 'dodged', 1100);
+        break;
+      case 'missed':
+        selfHit++;
+        showBanner('The blow lands!', 'missed', 1100);
+        play('playerDied');
+        break;
+      case 'perk':
+        taken = [...taken, { name: e.Text, penalty: false }];
+        showBanner(`+ ${e.Text}`, 'perk', 1200);
+        break;
+      case 'penalty':
+        taken = [...taken, { name: e.Text, penalty: true }];
+        showBanner(e.Text, 'penalty', 1400);
+        break;
+      default:
         break;
     }
   }
@@ -134,7 +189,7 @@
   }
 
   function finish() {
-    if (finished) return;
+    if (finished || !result) return;
     finished = true;
     const last = events[events.length - 1];
     if (last) {
@@ -142,6 +197,126 @@
       selfHp = last.PlayerHpPct;
     }
     play(result.Won ? 'chestOpenLegendary' : 'playerDied');
+    client.invalidateQueries({ queryKey: dungeonKeys.view });
+    if (reward?.PieceId || reward?.ChestId) invalidateOwnedItems(client);
+  }
+
+  /** The segment is played out: finish, or open the pause the server is holding. */
+  function segmentEnd() {
+    if (result) {
+      finish();
+      return;
+    }
+    if (offer || telegraph || busy || !paused) return;
+    void openTelegraph();
+  }
+
+  async function openTelegraph() {
+    busy = true;
+    try {
+      const t = await showTelegraph(runId);
+      if (!t || t.Outcome !== 'Ok') {
+        pushLocalNotice('The run was lost on the way - start another.', 'error');
+        onclose();
+        return;
+      }
+      entered = [];
+      wrong = false;
+      timeLeft = 1;
+      telegraph = { dirs: t.Dirs, windowMs: t.WindowMs, startedAt: performance.now() };
+      play('notification');
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** One swipe or key. A wrong one ends the telegraph at once. */
+  function input(dir: string) {
+    if (!telegraph || busy) return;
+    const want = telegraph.dirs[entered.length];
+    entered = [...entered, dir];
+    if (dir !== want) {
+      wrong = true;
+      void sendAnswer();
+    } else if (entered.length === telegraph.dirs.length) {
+      void sendAnswer();
+    }
+  }
+
+  async function sendAnswer() {
+    if (!telegraph || busy) return;
+    busy = true;
+    const dirs = entered;
+    try {
+      const reply = await answerTelegraph(runId, dirs);
+      telegraph = null;
+      if (!reply || reply.Outcome !== 'Ok') {
+        pushLocalNotice('The run was lost on the way - start another.', 'error');
+        onclose();
+        return;
+      }
+      take(reply);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function choose(p: DungeonPerk) {
+    if (busy) return;
+    busy = true;
+    try {
+      const reply = await pickPerk(runId, p.Id);
+      if (!reply || reply.Outcome !== 'Ok') {
+        pushLocalNotice(reply?.Reason || 'That bonus could not be taken.', 'error');
+        return;
+      }
+      offer = null;
+      take(reply);
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** A new segment from the server: queue its events and its pause. */
+  function take(reply: DungeonRunAnswer) {
+    const fresh = reply.Events ?? [];
+    segStart = total;
+    events = [...events, ...fresh];
+    const end = fresh.length > 0 ? fresh[fresh.length - 1].AtSeconds : segStart;
+    baseRate = Math.max(1, (end - segStart) / 4);
+    paused = reply.Paused ?? false;
+    offer = reply.Offer ?? null;
+    if (reply.Result) result = reply.Result;
+    if (reply.Reward) reward = reply.Reward;
+    // A dodge's own event ("Dodged!") is in this segment; show it now, the cards over it.
+    if (offer) {
+      while (index < events.length) reach(events[index++]);
+      barsAt(simT = total);
+    }
+  }
+
+  // Swipes: a pointer that travels 30px is a swipe in its main direction.
+  let swipeFrom: { x: number; y: number } | null = null;
+  function down(e: PointerEvent) {
+    if (!telegraph) return;
+    swipeFrom = { x: e.clientX, y: e.clientY };
+  }
+  function up(e: PointerEvent) {
+    if (!telegraph || !swipeFrom) return;
+    const dx = e.clientX - swipeFrom.x;
+    const dy = e.clientY - swipeFrom.y;
+    swipeFrom = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+    input(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'Right' : 'Left') : dy > 0 ? 'Down' : 'Up');
+  }
+  const KEYS: Record<string, string> = {
+    ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+    w: 'Up', s: 'Down', a: 'Left', d: 'Right', W: 'Up', S: 'Down', A: 'Left', D: 'Right',
+  };
+  function key(e: KeyboardEvent) {
+    if (!telegraph || !KEYS[e.key]) return;
+    e.preventDefault();
+    input(KEYS[e.key]);
   }
 
   let raf = 0;
@@ -150,7 +325,12 @@
     raf = requestAnimationFrame(frame);
     const dt = lastFrame ? Math.min(100, now - lastFrame) / 1000 : 0;
     lastFrame = now;
-    if (finished || showGate) return;
+    if (telegraph) {
+      timeLeft = Math.max(0, 1 - (now - telegraph.startedAt) / Math.max(1, telegraph.windowMs));
+      if (timeLeft <= 0 && !busy) void sendAnswer();
+      return;
+    }
+    if (finished || showGate || offer) return;
     if (now < pausedUntil) return;
     simT = Math.min(total, simT + dt * baseRate * speed);
     while (index < events.length && events[index].AtSeconds <= simT) {
@@ -159,53 +339,62 @@
       if (now < pausedUntil) break;
     }
     barsAt(simT);
-    if (index >= events.length && simT >= total) finish();
+    if (index >= events.length && simT >= total) segmentEnd();
   }
 
+  /** Skip plays the current segment out at once - up to the next dodge, or the end. */
   function skip() {
     for (; index < events.length; index++) {
       const e = events[index];
       if (e.Kind === 'cleared') wavesCleared += 1;
       if (e.Kind === 'wave' || e.Kind === 'boss') fight = e.Kind === 'boss' ? 5 : e.Value - 1;
+      if (e.Kind === 'perk' || e.Kind === 'penalty') taken = [...taken, { name: e.Text, penalty: e.Kind === 'penalty' }];
     }
     simT = total;
+    barsAt(simT);
     introBoss = false;
     banner = null;
     showGate = false;
-    finish();
+    segmentEnd();
   }
 
   // The gate opens first: its own painting, split into two doors.
   setTimeout(() => (showGate = false), motionMs(2400) || 0);
   raf = requestAnimationFrame(frame);
   onDestroy(() => cancelAnimationFrame(raf));
-
-  const reward = $derived(answer.Reward);
 </script>
+
+<svelte:window onkeydown={key} />
 
 <section class="panel run" data-testid="dungeon-run" data-tone={TONE[dungeon.Key]}>
   <header class="run-head">
-    <h2>{dungeon.Name} &middot; stage {result.Stage}</h2>
+    <h2>{dungeon.Name} &middot; stage {stage}</h2>
     {#if !finished}
       <div class="speed" role="group" aria-label="Playback speed">
         <button class:on={speed === 1} onclick={() => (speed = 1)}>1x</button>
         <button class:on={speed === 2} onclick={() => (speed = 2)}>2x</button>
-        <button onclick={skip} data-testid="dungeon-skip">Skip</button>
+        <button onclick={skip} data-testid="dungeon-skip" disabled={!!telegraph || !!offer}>Skip</button>
       </div>
     {/if}
   </header>
 
-  <div class="scene" style="--scene-bg: url('{GATE_ART[dungeon.Key]}')">
+  <div class="scene" class:tg={!!telegraph} style="--scene-bg: url('{GATE_ART[dungeon.Key]}')" onpointerdown={down} onpointerup={up} role="presentation">
     <ol class="pips" aria-label="Progress">
       {#each [0, 1, 2, 3, 4] as w (w)}
         <li class:done={w < wavesCleared} class:now={fight === w && !finished}></li>
       {/each}
-      <li class="skull" class:now={isBoss && !finished} class:done={finished && result.Won}>&#9760;</li>
+      <li class="skull" class:now={isBoss && !finished} class:done={finished && result?.Won}>&#9760;</li>
     </ol>
+
+    {#if taken.length > 0}
+      <ul class="taken" aria-label="Bonuses and penalties this run" data-testid="dungeon-taken">
+        {#each taken as t, i (i)}<li class:bad={t.penalty}>{t.name}</li>{/each}
+      </ul>
+    {/if}
 
     <div class="enemy" class:boss={isBoss}>
       {#key enemyHit}
-        <span class="shake" class:dead={finished && result.Won && isBoss}>
+        <span class="shake" class:dead={finished && result?.Won && isBoss}>
           {#if isBoss}
             <img class="boss-art" src={BOSS_ART[dungeon.Key]} alt={dungeon.Boss} />
           {:else if waveMonster > 0}
@@ -224,10 +413,11 @@
       {#key selfHit}
         <span class="self-face" class:hurt={selfHit > 0}>
           {#if selfId > 0}<PlayerAvatar playerId={selfId} size="md" />{/if}
+          {#if partySize > 1}<span class="party-count" title="Champions in the party">&times;{partySize}</span>{/if}
         </span>
       {/key}
       <div class="self-bar">
-        <span class="who">You</span>
+        <span class="who">{partySize > 1 ? `Your party of ${partySize}` : 'You'}</span>
         <Bar value={selfHp} max={100} color="var(--good, #4caf50)" label={`${Math.ceil(selfHp)}%`} />
       </div>
     </div>
@@ -246,6 +436,43 @@
       </div>
     {/if}
 
+    {#if telegraph}
+      <!-- The telegraph: swipe the arrows in order (touch), or use the arrow
+           keys / WASD; the pad is there for a mouse. -->
+      <div class="telegraph" class:wrong data-testid="dungeon-telegraph" data-dirs={telegraph.dirs.join(',')}>
+        <strong class="tg-title">{isBoss ? `${dungeon.Boss} strikes!` : 'Dodge!'}</strong>
+        <ol class="arrows">
+          {#each telegraph.dirs as d, i (i)}
+            <li class:hit={i < entered.length && entered[i] === d} class:miss={i < entered.length && entered[i] !== d} class:next={i === entered.length}>
+              {ARROW[d]}
+            </li>
+          {/each}
+        </ol>
+        <div class="clock"><i style="width: {timeLeft * 100}%"></i></div>
+        <p class="tg-hint">Swipe in this order &middot; arrow keys or WASD</p>
+        <div class="pad">
+          {#each ['Up', 'Left', 'Down', 'Right'] as d (d)}
+            <button class="pad-{d.toLowerCase()}" aria-label="Swipe {d}" data-testid="dungeon-pad-{d.toLowerCase()}" onclick={() => input(d)}>{ARROW[d]}</button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if offer}
+      <div class="offer" data-testid="dungeon-offer">
+        <strong class="tg-title">Clean dodge! Choose a blessing</strong>
+        <div class="cards">
+          {#each offer as p (p.Id)}
+            <button class="card" data-testid="dungeon-perk" data-perk={p.Id} onclick={() => choose(p)}>
+              <strong>{p.Name}</strong>
+              <span>{p.Line}</span>
+            </button>
+          {/each}
+        </div>
+        <p class="tg-hint">It lasts until the end of this run.</p>
+      </div>
+    {/if}
+
     {#if showGate}
       <!-- Modul: the gate opens in CSS from the gate's own painting, split
            into two doors. It replaced a webm clip (owner, 2026-10-31): a
@@ -260,21 +487,24 @@
       </div>
     {/if}
 
-    {#if finished}
+    {#if finished && result}
       <div class="verdict" class:won={result.Won}>{result.Won ? 'Victory' : 'Defeat'}</div>
     {/if}
   </div>
 
-  {#if finished}
+  {#if finished && result}
     <div class="result" class:won={result.Won} data-testid="dungeon-result" data-piece-id={reward?.PieceId ?? 0}>
       <strong>{result.Won ? 'Victory' : 'Defeat'}</strong>
       <span class="dim small">
-        {result.Won
+        {result.Won && result.Seconds === 0
+          ? 'Swept: a stage you have beaten, paid without the fight'
+          : result.Won
           ? `${dungeon.Boss} falls after ${result.Seconds.toFixed(0)} s of fighting`
           : result.ReachedBoss
             ? `${dungeon.Boss} had ${result.BossHpLeftPct}% left`
             : `You fell in wave ${result.WavesCleared + 1}`}
         &middot; {result.MealsEaten} meal{result.MealsEaten === 1 ? '' : 's'} eaten
+        {#if result.Dodged + result.Missed > 0}&middot; dodged {result.Dodged} of {result.Dodged + result.Missed}{/if}
       </span>
       {#if reward}
         <ul class="reward">
@@ -646,5 +876,208 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .shake, .self-face.hurt, .banner, .intro, .intro img, .verdict { animation: none; }
+  }
+  /* While a telegraph is up a swipe is an answer, not a scroll. */
+  .scene.tg {
+    touch-action: none;
+  }
+  .taken {
+    position: absolute;
+    top: 2.1rem;
+    left: 0.4rem;
+    right: 0.4rem;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+  }
+  .taken li {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: rgb(20 60 40 / 0.85);
+    color: #bff5d8;
+    border: 1px solid #4fd1a5;
+  }
+  .taken li.bad {
+    background: rgb(70 20 20 / 0.85);
+    color: #ffc9c9;
+    border-color: var(--danger);
+  }
+  .party-count {
+    position: absolute;
+    right: -6px;
+    bottom: -4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    background: var(--tone);
+    color: #111;
+    border-radius: 999px;
+    padding: 0 0.3rem;
+  }
+  .self-face {
+    position: relative;
+  }
+  .banner[data-kind='dodged'],
+  .banner[data-kind='perk'] {
+    background: rgb(20 80 50 / 0.9);
+    border-color: #4fd1a5;
+  }
+  .banner[data-kind='missed'],
+  .banner[data-kind='penalty'] {
+    background: rgb(100 20 20 / 0.92);
+    border-color: var(--danger);
+  }
+  .telegraph,
+  .offer {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.85));
+    color: #fff;
+    text-align: center;
+  }
+  .telegraph.wrong {
+    background: radial-gradient(ellipse at center, rgb(90 0 0 / 0.6), rgb(0 0 0 / 0.9));
+  }
+  .tg-title {
+    font-size: 1.15rem;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 6px #000;
+  }
+  .tg-hint {
+    margin: 0;
+    font-size: 0.7rem;
+    opacity: 0.8;
+  }
+  .arrows {
+    display: flex;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .arrows li {
+    width: 3rem;
+    height: 3rem;
+    display: grid;
+    place-items: center;
+    font-size: 1.9rem;
+    font-weight: 900;
+    border-radius: 10px;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    background: rgb(255 255 255 / 0.08);
+  }
+  .arrows li.next {
+    border-color: var(--tone);
+    box-shadow: 0 0 14px var(--tone);
+    animation: pulse 0.6s ease-in-out infinite alternate;
+  }
+  .arrows li.hit {
+    border-color: #4fd1a5;
+    background: rgb(79 209 165 / 0.35);
+  }
+  .arrows li.miss {
+    border-color: var(--danger);
+    background: rgb(220 60 60 / 0.45);
+  }
+  @keyframes pulse {
+    to {
+      transform: scale(1.08);
+    }
+  }
+  .clock {
+    width: min(16rem, 80%);
+    height: 6px;
+    border-radius: 3px;
+    background: rgb(255 255 255 / 0.15);
+    overflow: hidden;
+  }
+  .clock i {
+    display: block;
+    height: 100%;
+    background: var(--tone);
+  }
+  .pad {
+    display: grid;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(2, 44px);
+    gap: 4px;
+  }
+  .pad button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 1.2rem;
+  }
+  .pad-up {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .pad-left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .pad-down {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .pad-right {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 10rem));
+    gap: 0.6rem;
+    width: 100%;
+    justify-content: center;
+  }
+  .card {
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    min-height: 8rem;
+    padding: 0.7rem 0.6rem;
+    border: 2px solid var(--tone);
+    border-radius: 10px;
+    background: linear-gradient(to bottom, rgb(40 30 20 / 0.95), rgb(15 10 5 / 0.95));
+    color: #fff;
+    text-align: left;
+    white-space: normal;
+    animation: card-in 0.3s ease-out both;
+  }
+  .card:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+  .card strong {
+    font-size: 0.95rem;
+    color: var(--tone);
+  }
+  .card span {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+  .card:hover,
+  .card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 0 16px var(--tone);
+  }
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
   }
 </style>

@@ -1769,6 +1769,46 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
   record('the lobby has three gates with fifteen stages and four abilities each', kinds === 'Xp,Gold,Equipment'
     && view.Dungeons.every((d) => d.Stages.length === 15 && d.Stages[10].Abilities.filter((a) => a.Active).length === 4), kinds || 'no answer');
 
+  // Plays a live run to its end the way a player does: Skip to the next
+  // telegraph, swipe what it shows (arrow keys, or a wrong key when told to
+  // miss), take the first blessing offered. Returns what it saw.
+  const KEY_FOR = { Up: 'ArrowUp', Down: 'ArrowDown', Left: 'ArrowLeft', Right: 'ArrowRight' };
+  const WRONG_FOR = { Up: 'ArrowDown', Down: 'ArrowUp', Left: 'ArrowRight', Right: 'ArrowLeft' };
+  async function playRun({ missFirst = false } = {}) {
+    const seen = { telegraphs: 0, offers: 0, perk: '', missed: false };
+    for (let i = 0; i < 120; i++) {
+      if (await page.getByTestId('dungeon-result').isVisible().catch(() => false)) break;
+      const tg = page.getByTestId('dungeon-telegraph');
+      if (await tg.isVisible().catch(() => false)) {
+        const dirs = ((await tg.getAttribute('data-dirs').catch(() => '')) || '').split(',').filter(Boolean);
+        seen.telegraphs++;
+        if (missFirst && !seen.missed) {
+          seen.missed = true;
+          await page.keyboard.press(WRONG_FOR[dirs[0]] ?? 'ArrowUp');
+        } else {
+          for (const d of dirs) {
+            await page.keyboard.press(KEY_FOR[d]);
+            await page.waitForTimeout(120);
+          }
+        }
+        await tg.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+        continue;
+      }
+      const offer = page.getByTestId('dungeon-perk').first();
+      if (await offer.isVisible().catch(() => false)) {
+        seen.offers++;
+        if (!seen.perk) seen.perk = (await offer.locator('strong').innerText().catch(() => '')).trim();
+        await offer.click().catch(() => {});
+        await page.getByTestId('dungeon-offer').waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+        continue;
+      }
+      const skipBtn = page.getByTestId('dungeon-skip');
+      if (await skipBtn.isEnabled().catch(() => false)) await skipBtn.click().catch(() => {});
+      await page.waitForTimeout(250);
+    }
+    return seen;
+  }
+
   if (view?.Open) {
     const before = Object.fromEntries(view.Dungeons.map((d) => [d.Key, d.Tickets]));
     await apiPost('/api/v1/dev/dungeon/tickets', { Tickets: 4 });
@@ -1784,7 +1824,11 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
     await page.getByTestId('dungeon-enter').click({ timeout: 10000 }).catch(() => {});
     const run = page.getByTestId('dungeon-run');
     await run.waitFor({ timeout: 15000 }).catch(() => {});
-    await page.getByTestId('dungeon-skip').click().catch(() => {});
+    const goldRun = await playRun();
+    record('a run stops at telegraphs and a correct swipe is judged a dodge', goldRun.telegraphs >= 1 && goldRun.offers >= 1,
+      `${goldRun.telegraphs} telegraph(s), ${goldRun.offers} offer(s)`);
+    const takenText = await page.getByTestId('dungeon-taken').innerText().catch(() => '');
+    record('a chosen blessing stays on the run', goldRun.perk !== '' && takenText.includes(goldRun.perk), `${goldRun.perk} | ${takenText.replace(/\s+/g, ' ')}`);
     const result = page.getByTestId('dungeon-result');
     const finished = await result.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
     const resultText = finished ? (await result.innerText()).replace(/\s+/g, ' ') : '';
@@ -1795,6 +1839,22 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
     record('a Gold run pays gold', /gold/.test(resultText), resultText.slice(0, 160));
     await page.getByRole('button', { name: 'Back to the gates' }).click().catch(() => {});
 
+    // A beaten stage can be swept: paid as won for a ticket, no fight.
+    await page.getByTestId('dungeon-gate-gold').click().catch(() => {});
+    const sweepBtn = page.getByTestId('dungeon-sweep');
+    if (/Victory/.test(resultText) && (await sweepBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      await sweepBtn.click().catch(() => {});
+      const swept = page.getByTestId('dungeon-result');
+      const sweptDone = await swept.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+      const sweptText = sweptDone ? (await swept.innerText()).replace(/\s+/g, ' ') : '';
+      const afterSweep = await apiGet('/api/v1/dungeon').catch(() => null);
+      const goldLeft = afterSweep?.Dungeons?.find((d) => d.Key === 'Gold')?.Tickets;
+      record('a sweep pays a beaten stage for a ticket', /Victory/.test(sweptText) && /gold/.test(sweptText) && goldLeft === 2, `${goldLeft} left | ${sweptText.slice(0, 100)}`);
+      await page.getByRole('button', { name: 'Back to the gates' }).click().catch(() => {});
+    } else {
+      record('a sweep pays a beaten stage for a ticket (skipped: the Gold run was lost)', true);
+    }
+
     // The Equipment gate pays a piece and a chest; bin and open them after.
     await page.getByTestId('dungeon-gate-equipment').click().catch(() => {});
     for (let i = 0; i < 15; i++) {
@@ -1804,7 +1864,9 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
     }
     await page.getByTestId('dungeon-enter').click({ timeout: 10000 }).catch(() => {});
     await page.getByTestId('dungeon-run').waitFor({ timeout: 15000 }).catch(() => {});
-    await page.getByTestId('dungeon-skip').click().catch(() => {});
+    const eqRun = await playRun({ missFirst: true });
+    const eqTaken = await page.locator('[data-testid="dungeon-taken"] li.bad').count().catch(() => 0);
+    record('a missed telegraph leaves a curse on the run', eqRun.missed && eqTaken >= 1, `${eqTaken} curse(s)`);
     const eq = page.getByTestId('dungeon-result');
     const eqDone = await eq.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
     const eqText = eqDone ? (await eq.innerText()).replace(/\s+/g, ' ') : '';

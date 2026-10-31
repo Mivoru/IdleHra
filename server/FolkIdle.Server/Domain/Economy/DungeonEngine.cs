@@ -78,6 +78,15 @@ namespace FolkIdle.Server.Domain.Economy
             return byKind;
         }
 
+        /// <summary>
+        /// How many champions a dungeon takes (slice 4, owner 2026-10-31: the
+        /// roster grows to three): a second after stage 6 of THAT dungeon is
+        /// beaten, a third after stage 11.
+        /// </summary>
+        public static int PartySlotsOpen(int bestStage) => 1 + (bestStage >= 6 ? 1 : 0) + (bestStage >= 11 ? 1 : 0);
+
+        public static int PartyUnlockStage(int slot) => slot switch { 1 => 6, 2 => 11, _ => 0 };
+
         public static bool IsOpen(byte defeatedRegionBossMask)
             => BossFirstClearRules.IsDefeated(defeatedRegionBossMask, RaceUnlockRegistry.GetRegionBossMonsterId(OpensAtRegionBoss));
 
@@ -142,39 +151,96 @@ namespace FolkIdle.Server.Domain.Economy
 
         /// <summary>
         /// Takes a ticket, runs the stage for <paramref name="snapshot"/> and
-        /// writes the reward, all in one transaction. An XP reward is returned,
-        /// not applied: the caller hands it to the tick.
+        /// writes the reward, all in one transaction - the whole run at once, no
+        /// dodges (tests; a <paramref name="sweep"/> pays a cleared stage as won
+        /// without fighting it). An XP reward is returned, not applied: the
+        /// caller hands it to the tick.
         /// </summary>
         public static async Task<(RunOutcome Outcome, string? Reason, DungeonRunResult? Result, RunReward? Reward, int TicketsLeft)> RunAsync(
             FolkIdleDbContext db, long playerId, DungeonKind kind, int stage, TickStatePayload snapshot, int foodItemId, int foodCount,
-            Income income, DateTime utcNow, Random rng, bool freeRun = false)
+            Income income, DateTime utcNow, Random rng, bool freeRun = false, bool sweep = false)
         {
             await using var tx = await db.Database.BeginTransactionAsync();
-            var player = await db.PlayerRecords
-                .FromSqlInterpolated($"SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {playerId} FOR UPDATE")
-                .SingleOrDefaultAsync();
+            var player = await LockPlayerAsync(db, playerId);
             if (player == null) return (RunOutcome.PlayerNotFound, null, null, null, 0);
 
             var row = (await LoadAsync(db, playerId, utcNow))[kind];
-            string? locked = StageLockedReason(stage, snapshot.DefeatedRegionBossMask, row.BestStage);
-            if (locked != null)
+            var refused = Refusal(row, stage, snapshot.DefeatedRegionBossMask, freeRun, sweep);
+            if (refused != null)
             {
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
-                return (RunOutcome.Locked, locked, null, null, row.Tickets);
-            }
-            if (row.Tickets <= 0 && !freeRun)
-            {
-                await db.SaveChangesAsync();
-                await tx.CommitAsync();
-                return (RunOutcome.NoTickets, "No tickets left today - two more at midnight UTC.", null, null, 0);
+                return (refused.Value.Outcome, refused.Value.Reason, null, null, row.Tickets);
             }
 
-            var result = DungeonSimulator.Run(snapshot, kind, stage, foodItemId, foodCount);
+            var result = sweep ? SweepResult(kind, stage) : DungeonSimulator.Run(snapshot, kind, stage, foodItemId, foodCount);
             if (!freeRun) row.Tickets--;
+            var reward = await PayAsync(db, player, row, kind, stage, result.Won, income, utcNow, rng, freeRun);
 
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return (RunOutcome.Ok, null, result, reward, row.Tickets);
+        }
+
+        /// <summary>
+        /// A live run's first half: checks the stage and takes the ticket, in
+        /// its own transaction. The fight then runs on DungeonLiveRuns, and
+        /// <see cref="FinishLiveAsync"/> pays it. A run abandoned halfway has
+        /// still spent its ticket - starting is the commitment.
+        /// </summary>
+        public static async Task<(RunOutcome Outcome, string? Reason, int TicketsLeft)> StartLiveAsync(
+            FolkIdleDbContext db, long playerId, DungeonKind kind, int stage, byte bossMask, DateTime utcNow, bool freeRun)
+        {
+            await using var tx = await db.Database.BeginTransactionAsync();
+            var player = await LockPlayerAsync(db, playerId);
+            if (player == null) return (RunOutcome.PlayerNotFound, null, 0);
+            var row = (await LoadAsync(db, playerId, utcNow))[kind];
+            var refused = Refusal(row, stage, bossMask, freeRun, sweep: false);
+            if (refused == null && !freeRun) row.Tickets--;
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return refused == null ? (RunOutcome.Ok, null, row.Tickets) : (refused.Value.Outcome, refused.Value.Reason, row.Tickets);
+        }
+
+        /// <summary>A live run's second half: the first clear, the best stage and the reward.</summary>
+        public static async Task<(RunReward? Reward, int TicketsLeft)> FinishLiveAsync(
+            FolkIdleDbContext db, long playerId, DungeonKind kind, int stage, bool won, Income income, DateTime utcNow, Random rng, bool freeRun)
+        {
+            await using var tx = await db.Database.BeginTransactionAsync();
+            var player = await LockPlayerAsync(db, playerId);
+            if (player == null) return (null, 0);
+            var row = (await LoadAsync(db, playerId, utcNow))[kind];
+            var reward = await PayAsync(db, player, row, kind, stage, won, income, utcNow, rng, freeRun);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return (reward, row.Tickets);
+        }
+
+        private static Task<PlayerRecord?> LockPlayerAsync(FolkIdleDbContext db, long playerId)
+            => db.PlayerRecords
+                .FromSqlInterpolated($"SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {playerId} FOR UPDATE")
+                .SingleOrDefaultAsync();
+
+        private static (RunOutcome Outcome, string Reason)? Refusal(DungeonProgress row, int stage, byte bossMask, bool freeRun, bool sweep)
+        {
+            string? locked = StageLockedReason(stage, bossMask, row.BestStage);
+            if (locked != null) return (RunOutcome.Locked, locked);
+            if (sweep && stage > row.BestStage) return (RunOutcome.Locked, "Only a stage you have beaten can be swept.");
+            if (row.Tickets <= 0 && !freeRun) return (RunOutcome.NoTickets, "No tickets left today - two more at midnight UTC.");
+            return null;
+        }
+
+        /// <summary>A swept stage: won, nothing fought, nothing eaten.</summary>
+        private static DungeonRunResult SweepResult(DungeonKind kind, int stage)
+            => new(true, stage, DungeonSimulator.Waves, true, 0, 0, 0,
+                new[] { new DungeonEvent(0, "victory", "Swept - a stage you have beaten, paid without the fight.", 0, 100, 0, 0) },
+                kind, DungeonSimulator.WaveMonsterIdsFor(stage));
+
+        private static async Task<RunReward?> PayAsync(FolkIdleDbContext db, PlayerRecord player, DungeonProgress row, DungeonKind kind, int stage,
+            bool won, Income income, DateTime utcNow, Random rng, bool freeRun)
+        {
             int diamonds = 0;
-            if (result.Won)
+            if (won)
             {
                 int bit = 1 << stage;
                 if ((row.FirstClearMask & bit) == 0)
@@ -189,16 +255,12 @@ namespace FolkIdle.Server.Domain.Economy
             RunReward? reward = kind switch
             {
                 DungeonKind.Xp => new RunReward(0, string.Empty, string.Empty, 0, string.Empty, diamonds,
-                    Xp: XpFor(stage, income.HourlyXp, result.Won)),
-                DungeonKind.Gold => await PayGoldAsync(db, playerId, GoldFor(stage, income.HourlyGold, result.Won), diamonds),
-                _ => await PayEquipmentAsync(db, playerId, stage, result.Won, diamonds, utcNow, rng),
+                    Xp: XpFor(stage, income.HourlyXp, won)),
+                DungeonKind.Gold => await PayGoldAsync(db, player.Id, GoldFor(stage, income.HourlyGold, won), diamonds),
+                _ => await PayEquipmentAsync(db, player.Id, stage, won, diamonds, utcNow, rng),
             };
-
             if (freeRun) RecordTestGrant(db, player.PlayerGuid, utcNow, reward);
-
-            await db.SaveChangesAsync();
-            await tx.CommitAsync();
-            return (RunOutcome.Ok, null, result, reward, row.Tickets);
+            return reward;
         }
 
         // Modul: ADMIN TEST RUNS (owner, 2026-10-31: "give me unlimited

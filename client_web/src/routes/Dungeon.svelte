@@ -46,24 +46,35 @@
     selected = d.Kind;
   }
 
+  // The party (slice 4): the roster slots this dungeon has opened, all on by
+  // default; the main character always goes.
+  let benched = $state<Record<number, boolean>>({});
+  const party = $derived(
+    (data?.Roster ?? [])
+      .filter((r) => r.Slot === 0 || (dungeon !== null && r.Slot < dungeon.PartySlots && !benched[r.Slot]))
+      .map((r) => r.Slot),
+  );
+
   let running = $state(false);
   let answer = $state<DungeonRunAnswer | null>(null);
   let runOf = $state<DungeonInfo | null>(null);
+  let runStage = $state(1);
 
-  async function enter() {
+  async function enter(sweep = false) {
     if (!dungeon || !stage || running) return;
     running = true;
     answer = null;
     try {
-      const reply = await runDungeon(dungeon.Kind, stage.Stage);
+      const reply = await runDungeon(dungeon.Kind, stage.Stage, party.length > 0 ? party : [0], sweep);
       if (!reply) return;
-      if (reply.Outcome !== 'Ok' || !reply.Result) {
+      if (reply.Outcome !== 'Ok' || (!reply.RunId && !reply.Result)) {
         pushLocalNotice(reply.Reason || 'The run could not start.', 'error');
         client.invalidateQueries({ queryKey: dungeonKeys.view });
         return;
       }
       play('delveDoor');
       runOf = dungeon;
+      runStage = stage.Stage;
       answer = reply;
       client.invalidateQueries({ queryKey: dungeonKeys.view });
       if (reply.Reward?.PieceId || reply.Reward?.ChestId) invalidateOwnedItems(client);
@@ -77,8 +88,8 @@
 </script>
 
 <div class="wrap">
-  {#if answer?.Result && runOf}
-    <DungeonRun {answer} dungeon={runOf} onclose={() => (answer = null)} />
+  {#if answer && runOf}
+    <DungeonRun {answer} dungeon={runOf} stage={runStage} onclose={() => (answer = null)} />
   {:else}
   <section class="panel lobby" data-testid="dungeon">
     <header>
@@ -119,11 +130,11 @@
               </span>
             </button>
             <div class="stage-field" aria-label="{d.Name} stage">
-              <button class="arrow" aria-label="Lower stage" disabled={at <= 1} onclick={() => step(d, -1)}>&lsaquo;</button>
               <button class="stage-num" data-testid="dungeon-stage-{d.Key.toLowerCase()}" data-band={d.Stages[at - 1]?.Band}
                 aria-label="Stage {at}" onclick={() => (selected = d.Kind)}>
-                <strong>{at}</strong>
+                <span class="tiny dim">Stage</span><strong>{at}</strong>
               </button>
+              <button class="arrow" aria-label="Lower stage" disabled={at <= 1} onclick={() => step(d, -1)}>&lsaquo;</button>
               <button class="arrow" aria-label="Higher stage" disabled={at >= highestOpen(d)} onclick={() => step(d, 1)}>&rsaquo;</button>
             </div>
           </div>
@@ -145,11 +156,39 @@
               </li>
             {/each}
           </ul>
+          <h3>Party</h3>
+          <ul class="party" data-testid="dungeon-party">
+            {#each [0, 1, 2] as slot (slot)}
+              {@const member = data.Roster.find((r) => r.Slot === slot)}
+              {@const open = slot < dungeon.PartySlots}
+              <li>
+                {#if slot === 0}
+                  <span class="seat on">Champion 1 <em>always goes</em></span>
+                {:else if !open}
+                  <span class="seat locked">Champion {slot + 1} <em>beat stage {slot === 1 ? 6 : 11} here</em></span>
+                {:else if !member}
+                  <span class="seat locked">Champion {slot + 1} <em>no character in slot {slot + 1}</em></span>
+                {:else}
+                  <button class="seat" class:on={!benched[slot]} aria-pressed={!benched[slot]} data-testid="dungeon-seat-{slot}"
+                    onclick={() => (benched[slot] = !benched[slot])}>Champion {slot + 1} <em>{benched[slot] ? 'stays home' : 'goes'}</em></button>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+          <p class="dim tiny how">
+            Dodge the telegraphed blows by swiping (arrow keys or WASD on a computer). A clean dodge lets you choose one of
+            two blessings; a miss hurts and leaves a curse. Both last until the run ends.
+          </p>
+          {#if stage.Cleared}
+            <button class="sweep" data-testid="dungeon-sweep" disabled={running || (dungeon.Tickets <= 0 && !data.FreeRuns)} onclick={() => enter(true)}>
+              Sweep stage {stage.Stage}: paid as won, no fight{data.FreeRuns ? '' : ' (1 ticket)'}
+            </button>
+          {/if}
           <button
             class="primary enter"
             data-testid="dungeon-enter"
             disabled={running || (dungeon.Tickets <= 0 && !data.FreeRuns) || stage.LockedReason !== ''}
-            onclick={enter}
+            onclick={() => enter()}
           >{running ? 'Entering...' : data.FreeRuns ? `Enter stage ${stage.Stage} (admin test, free)` : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
         </div>
       {/if}
@@ -280,7 +319,9 @@
 
   .stage-field {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    /* The number on top across both arrows: three columns at a phone's width
+       left the number 24px, and "10" broke into two lines. */
+    grid-template-columns: 1fr 1fr;
     align-items: stretch;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -294,11 +335,14 @@
     padding: 0;
   }
   .stage-num {
+    grid-column: 1 / -1;
     border: 0;
+    border-bottom: 1px solid var(--border);
     border-radius: 0;
-    padding: 0;
+    padding: 0.2rem 0;
     display: grid;
     place-items: center;
+    white-space: nowrap;
     line-height: 1;
     min-height: 44px;
     min-width: 0;
@@ -333,8 +377,48 @@
   .abilities li.inactive {
     opacity: 0.6;
   }
-  .enter {
+  .enter,
+  .sweep {
     width: 100%;
     min-height: 44px;
+  }
+  .sweep {
+    margin-bottom: 0.4rem;
+  }
+  .how {
+    margin: 0 0 0.6rem;
+  }
+  .party {
+    list-style: none;
+    margin: 0 0 0.4rem;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+  .seat {
+    display: grid;
+    gap: 0.1rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+  }
+  .seat em {
+    font-style: normal;
+    font-weight: 400;
+    font-size: 0.65rem;
+    opacity: 0.8;
+  }
+  .seat.on {
+    border-color: var(--tone);
+    box-shadow: inset 0 0 0 1px var(--tone);
+  }
+  .seat.locked {
+    opacity: 0.55;
   }
 </style>
