@@ -1513,6 +1513,18 @@ export interface DeedsSnapshot {
   LifetimeDiamondsPaidNow?: number;
   /** Task 57: deeds nobody is told about - "???" and a category until done. */
   Hidden?: HiddenDeedEntry[];
+  /** Achievements PR 1: the unfinished goals nearest done (DeedCloseness), nearest first. */
+  Closest?: DeedGoal[];
+}
+
+export interface DeedGoal {
+  /** 'deed' (a chapter deed) or 'lifetime' (a lifetime tier). */
+  Kind: 'deed' | 'lifetime';
+  Id: string;
+  Title: string;
+  Screen: string;
+  Current: number;
+  Target: number;
 }
 
 export interface LifetimeTier {

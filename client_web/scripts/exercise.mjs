@@ -5726,9 +5726,20 @@ await go('Progress');
   // automatically - and nothing on Progress offers a claim any more (a claim
   // used to pay three of the four a second time).
   const lifetimeRows = await page.locator('[data-testid="deeds-lifetime"] li').count();
-  const claimButtons = await page.getByRole('button', { name: /^Claim/ }).count();
+  // Achievements PR 1: the only claims on Progress are the quest line's, in
+  // its Getting started chapter - the lifetime tiers still pay themselves.
+  const claimButtons = await page.locator('[data-testid="deeds-lifetime"]').getByRole('button', { name: /^Claim/ }).count();
   record('the Book has a Lifetime chapter of four named achievements', lifetimeRows === 4, `${lifetimeRows} rows`);
-  record('Progress offers no claim button', claimButtons === 0, `${claimButtons} claim button(s)`);
+  record('the Lifetime chapter offers no claim button', claimButtons === 0, `${claimButtons} claim button(s)`);
+  const started = page.locator('[data-testid="deeds-getting-started"]');
+  const startedTally = await started.locator('.tally').innerText().catch(() => '');
+  const quests = await apiGet('/api/v1/quests').catch(() => null);
+  record("the quest line is the Book's Getting started chapter", !!quests && startedTally.trim() === `${quests.Claimed} / ${quests.Total}`,
+    `tally "${startedTally.trim()}", quests ${quests?.Claimed}/${quests?.Total}`);
+  const snapshot = await apiGet('/api/v1/deeds/snapshot').catch(() => null);
+  const closestShown = await page.locator('[data-testid="deeds-closest"] li').count();
+  record('Closest to done lists what the server ranked', closestShown === (snapshot?.Closest?.length ?? -1),
+    `${closestShown} shown, ${snapshot?.Closest?.length} ranked: ${(snapshot?.Closest ?? []).map((g) => g.Title).join(', ')}`);
   const hiddenText = await page.locator('[data-testid="deeds-hidden"]').first().innerText().catch(() => '');
   record(
     'hidden deeds are listed by category, unnamed until done',

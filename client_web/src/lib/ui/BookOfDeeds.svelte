@@ -23,6 +23,11 @@
   import { bossChallengeKeys, fetchBossChallenges } from '../net/cosmetics';
   import { requestScreen } from '../stores/navigation';
   import Skeleton from './Skeleton.svelte';
+  import { useQueryClient } from '@tanstack/svelte-query';
+  import { fetchQuests, questKeys, type QuestStep } from '../net/quests';
+  import { showMe } from '../stores/questSpotlight';
+  import { questLineFinished } from './questLine';
+  import { claimQuestStep } from './questClaim';
 
   const book = createQuery(() => ({
     // Refetched when the snapshot's logic epoch moves, so a deed finished
@@ -32,6 +37,27 @@
     queryFn: fetchDeeds,
     staleTime: 20_000,
   }));
+
+  // Modul: THE QUEST LINE IS THE BOOK'S FIRST CHAPTER (owner A1, 2026-10-31).
+  // The Book, the quest line and the lifetime achievements answered "what do I
+  // do next" separately; the Book is the one list of goals now, and "Getting
+  // started" is the quest line itself - same steps, same claim, same query as
+  // the Home panel, which stays as the pointer to the next step.
+  const client = useQueryClient();
+  const quests = createQuery(() => ({ queryKey: questKeys.all, queryFn: fetchQuests }));
+  const questLine = $derived(quests.data ?? null);
+  const startedFinished = $derived(questLineFinished(questLine));
+  let openStarted = $state(false);
+  let claimingStep = $state('');
+  async function claimStep(step: QuestStep) {
+    if (claimingStep) return;
+    claimingStep = step.Id;
+    try {
+      await claimQuestStep(client, step.Id);
+    } finally {
+      claimingStep = '';
+    }
+  }
 
   const data = $derived(book.data);
   const chapters = $derived(data?.Chapters ?? []);
@@ -135,6 +161,78 @@
   {:else if book.isError}
     <p class="warn-line">The Book could not be read.</p>
   {:else}
+    <!-- Achievements PR 1: the goals nearest done, the server's ranking. -->
+    {#if (data?.Closest ?? []).length > 0}
+      <div class="chapter closest" data-testid="deeds-closest">
+        <div class="chead">
+          <strong>Closest to done</strong>
+          <span class="dim tiny">The goals you are nearest to finishing</span>
+        </div>
+        <ol>
+          {#each data?.Closest ?? [] as goal (goal.Id)}
+            <li>
+              <div class="text">
+                <strong>{goal.Title}</strong>
+                <div class="meter" role="img" aria-label={`${goal.Current} of ${goal.Target}`}>
+                  <span style={`width: ${(goal.Current / goal.Target) * 100}%`}></span>
+                </div>
+                <span class="count dim tiny">{formatNumber(goal.Current)} / {formatNumber(goal.Target)}</span>
+              </div>
+              {#if goal.Kind === 'deed'}
+                <button class="go" onclick={() => requestScreen(goal.Screen)}>Go</button>
+              {/if}
+            </li>
+          {/each}
+        </ol>
+      </div>
+    {/if}
+
+    {#if questLine}
+      <div class="chapter" data-testid="deeds-getting-started">
+        <div class="chead">
+          <strong>Getting started</strong>
+          <span class="dim tiny">The quest line - each step pays gold and materials</span>
+          <span class="tally" class:complete={startedFinished}>{questLine.Claimed} / {questLine.Total}</span>
+          {#if startedFinished}
+            <button class="fold" aria-expanded={openStarted} onclick={() => (openStarted = !openStarted)}>
+              {openStarted ? 'Hide steps' : 'Show steps'}
+            </button>
+          {/if}
+        </div>
+        {#if !startedFinished || openStarted}
+          <ol>
+            {#each questLine.Steps as step (step.Id)}
+              <li class:done={step.State === 'claimed'} class:next={step.Claimable}>
+                <span class="mark" aria-hidden="true">
+                  {#if step.State === 'claimed'}
+                    <svg class="tick" viewBox="0 0 12 12">
+                      <path d="M2 6.5 L4.8 9.2 L10 3.4" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  {/if}
+                </span>
+                <div class="text">
+                  <strong>{step.Title}</strong>
+                  {#if step.State === 'available'}
+                    <p class="body">{step.Explanation}</p>
+                  {:else if step.State === 'locked'}
+                    <p class="body dim">Locked: {step.UnlockHint}</p>
+                  {/if}
+                </div>
+                {#if step.Claimable}
+                  <button class="go" data-testid="deeds-quest-claim" disabled={claimingStep !== ''} onclick={() => claimStep(step)}>Claim</button>
+                {:else if step.State === 'available'}
+                  <button class="go" onclick={() => showMe(step)}>Show me</button>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+        {/if}
+      </div>
+    {:else if quests.isError}
+      <p class="warn-line">The quest line could not be read.</p>
+    {/if}
+
     {#each chapters as chapter (chapter.Index)}
       <div class="chapter" class:locked={!chapter.IsOpen}>
         <div class="chead">
