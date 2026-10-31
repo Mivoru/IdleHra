@@ -57,9 +57,11 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(bare.FlatPhysicalArmor, notAPotion.FlatPhysicalArmor);
 
             Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("ironbark_brew_defensive_potion_consumable", out var ironbark));
-            var brewed = StatsCalculator.Calculate(0, 0, 10, 0, activeDefensivePotionId: ironbark.Id);
-            Assert.Equal(bare.DodgeChancePct, brewed.DodgeChancePct, 3);
-            Assert.True(brewed.FlatPhysicalArmor > bare.FlatPhysicalArmor);
+            // Enough armour that 6% of it survives the integer truncation.
+            var sturdy = StatsCalculator.Calculate(0, 0, 1000, 0);
+            var brewed = StatsCalculator.Calculate(0, 0, 1000, 0, activeDefensivePotionId: ironbark.Id);
+            Assert.Equal(sturdy.DodgeChancePct, brewed.DodgeChancePct, 3);
+            Assert.True(brewed.FlatPhysicalArmor > sturdy.FlatPhysicalArmor);
         }
     }
 }

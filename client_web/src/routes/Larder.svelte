@@ -10,6 +10,7 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { contentQuery } from '../lib/net/registry.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
+  import PotionShelf from '../lib/ui/PotionShelf.svelte';
 
   // Modul: MATERIALS ONLY - this screen reads Stacks and nothing else, and was
   // downloading the whole equipment list to count fish. See fetchMaterials.
@@ -332,6 +333,8 @@
       <p class="dim">Waiting for the first state snapshot...</p>
     {/if}
   </section>
+
+  <PotionShelf />
 </div>
 
 <style>

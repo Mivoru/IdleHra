@@ -43,6 +43,12 @@ namespace FolkIdle.Server.Domain.Shared
     /// same stat - see PotionMeasurementTests, which prints the comparison
     /// and runs the boss-wall scan with each combat potion active. Units are
     /// whole percent unless the row says tenths.
+    ///
+    /// Modul: IRONBARK IS SMALL ON PURPOSE (measured 2026-10-31). Armour is
+    /// sustain, and sustain decides a boss wall: at +15% the set two quality
+    /// tiers under the region 2 and 3 requirements won. The edges were +8%
+    /// (normal) and +11% (strong); 6/9 sits a point under each. The damage
+    /// potions (Swiftroot, Boss-bane) cut a kill 11-20% and hold every wall.
     /// </remarks>
     public static class PotionRegistry
     {
@@ -54,7 +60,7 @@ namespace FolkIdle.Server.Domain.Shared
             ("hunt_elixir",       PotionKind.Hunt,      PotionSlot.Rewards,   HourMs,     20, 30), // % XP
             ("fortune_draught",   PotionKind.Fortune,   PotionSlot.Rewards,   HourMs,     20, 30), // loot luck points
             ("goldmoss_tonic",    PotionKind.Goldmoss,  PotionSlot.Rewards,   HourMs,     20, 30), // % gold
-            ("ironbark_brew",     PotionKind.Ironbark,  PotionSlot.Combat,    HourMs,     15, 25), // % armour
+            ("ironbark_brew",     PotionKind.Ironbark,  PotionSlot.Combat,    HourMs,      6,  9), // % armour - capped by the wall scan, see remarks
             ("swiftroot_tea",     PotionKind.Swiftroot, PotionSlot.Combat,    HourMs,     10, 15), // attack speed points
             ("bossbane_philtre",  PotionKind.Bossbane,  PotionSlot.Combat,    HourMs,     15, 25), // % damage to bosses
             ("gatherers_draught", PotionKind.Gatherer,  PotionSlot.Gathering, 2 * HourMs, 25, 40), // % gathering speed

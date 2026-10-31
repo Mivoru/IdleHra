@@ -23,17 +23,17 @@ namespace FolkIdle.Server.Tests
         public QuestLineRulesTests(ITestOutputHelper o) => _o = o;
 
         [Fact]
-        public void TheStepsAreTheOwnersTwelveInTheOwnersOrder()
+        public void TheStepsAreTheOwnersThirteenInTheOwnersOrder()
         {
             var ids = QuestLineRegistry.Steps.OrderBy(s => s.Order).Select(s => s.Id).ToArray();
             Assert.Equal(new[]
             {
                 QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
-                QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Market,
+                QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Potion, QuestLineRegistry.Market,
                 QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
                 QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Breed, QuestLineRegistry.Rebirth,
             }, ids);
-            Assert.Equal(Enumerable.Range(1, 12), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
+            Assert.Equal(Enumerable.Range(1, 13), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
             Assert.Equal(ids.Length, ids.Distinct().Count());
             // The StepId column is varchar(32).
             Assert.All(ids, id => Assert.InRange(id.Length, 1, 32));
@@ -256,8 +256,8 @@ namespace FolkIdle.Server.Tests
             long id = await CreatePlayerAsync(level: 1);
             var view = await ViewAsync(id);
 
-            Assert.Equal(12, view.Total);
-            Assert.Equal(Enumerable.Range(1, 12), view.Steps.Select(s => s.Order));
+            Assert.Equal(13, view.Total);
+            Assert.Equal(Enumerable.Range(1, 13), view.Steps.Select(s => s.Order));
             Assert.All(view.Steps, s => Assert.Equal("locked", s.State));
             Assert.All(view.Steps, s => Assert.False(string.IsNullOrEmpty(s.UnlockHint)));
             Assert.All(view.Steps, s => Assert.False(s.Claimable));
@@ -275,6 +275,8 @@ namespace FolkIdle.Server.Tests
                 p.RebirthCount = 1;
                 p.PremiumDiamonds = 100;
                 p.AutoSalvageBelowTier = 3;
+                p.PotionShelf2ItemId = 454;
+                p.PotionShelf2Count = 1;
             });
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -293,14 +295,14 @@ namespace FolkIdle.Server.Tests
             foreach (var step in new[]
             {
                 QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
-                QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Market,
+                QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Potion, QuestLineRegistry.Market,
                 QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
                 QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Breed, QuestLineRegistry.Rebirth,
             })
             {
                 Assert.Equal("done", StateOf(view, step));
             }
-            Assert.Equal(12, view.Done);
+            Assert.Equal(13, view.Done);
             Assert.All(view.Steps, s => Assert.True(s.Claimable));
         }
 

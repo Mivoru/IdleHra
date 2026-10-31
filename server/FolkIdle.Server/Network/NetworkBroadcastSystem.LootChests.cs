@@ -1,10 +1,12 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FolkIdle.Server.Network
@@ -125,6 +127,34 @@ namespace FolkIdle.Server.Network
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             long id = await LootChestEngine.GrantAsync(db, playerId, (LootChestTier)Math.Clamp(tier, 1, 4), region, LootChestSource.Dev, DateTime.UtcNow);
             await WriteJsonAsync(context, new { Id = id });
+        }
+
+        // POST /api/v1/dev/materials/grant {BaseId, Quantity}. Dev only, like
+        // every /dev/ route; answers with the stack after the change.
+        private async Task HandleDevMaterialGrant(HttpListenerContext context, long playerId)
+        {
+            string baseId = string.Empty;
+            long quantity = 0;
+            try
+            {
+                string body = await ReadBodyAsync(context);
+                using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                if (parsed.RootElement.TryGetProperty("BaseId", out var b)) baseId = b.GetString() ?? string.Empty;
+                if (parsed.RootElement.TryGetProperty("Quantity", out var q) && q.TryGetInt64(out long qv)) quantity = qv;
+            }
+            catch (JsonException) { }
+            if (!ContentRegistry.TryGetItemDefinitionByBaseId(baseId, out _) || quantity == 0)
+            {
+                context.Response.StatusCode = 400;
+                return;
+            }
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            long have = await db.CommodityRecords.Where(c => c.PlayerId == playerId && c.ItemId == baseId).Select(c => c.Quantity).FirstOrDefaultAsync();
+            long delta = Math.Max(quantity, -have);
+            long after = delta == 0 ? have : await CommodityLedger.AddAsync(db, playerId, baseId, delta);
+            await WriteJsonAsync(context, new { Quantity = after });
         }
     }
 }

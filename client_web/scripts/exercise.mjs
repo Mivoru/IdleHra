@@ -1621,6 +1621,124 @@ await go('Auto-Eat');
     /Load all|\+ Add food/.test(text) ? 'food offered' : 'panel shown',
   );
 }
+// Modul: the larder round-trip (2026-10-31). The slot used to be read from
+// the saved row and written back as an absolute count, so food eaten since
+// the last save came back. Proved by what changes: "-" takes the amount back
+// to the chest from the LIVE slot, "+" puts it back, and both end equal.
+{
+  const row = page.locator('ul.slots li').filter({ has: page.locator('.count') }).first();
+  const countOf = async () => Number((await row.locator('.count').innerText().catch(() => '')).replace(/[^\d]/g, ''));
+  const has = (await row.count()) > 0;
+  if (has) {
+    const before = await countOf();
+    await row.getByRole('button', { name: /Take .* back to the chest/ }).click().catch(() => {});
+    let mid = before;
+    for (let i = 0; i < 20 && mid === before; i++) { await page.waitForTimeout(250); mid = await countOf(); }
+    await row.getByRole('button', { name: /Add .* more/ }).click().catch(() => {});
+    let after = mid;
+    for (let i = 0; i < 20 && after === mid; i++) { await page.waitForTimeout(250); after = await countOf(); }
+    record('a larder slot gives food back to the chest and takes it again', mid < before && after > mid && after <= before,
+      `${before} -> ${mid} -> ${after}`);
+  } else {
+    record('a larder slot gives food back to the chest and takes it again (skipped: no stocked slot)', true);
+  }
+}
+
+// --- potions: brewed, shelved, drunk (herbs and potions, 2026-10-31) --------
+// Modul: proved by what CHANGED: 150 Marsh Mallow leave the chest for one
+// Ironbark Brew, the brew moves onto the combat shelf, drinking it empties the
+// shelf, starts a clock in the header and raises the armour the server's own
+// stat sheet reports. The herbs come from a dev grant (an hour of picking is
+// not a test), and what is left is taken back, so the chest round-trips. The
+// running brew is ended by a dev route, so the fixture ends as it started.
+}
+if (want('potions')) {
+{
+  const sheetArmour = async () => {
+    const sheet = await apiGet('/api/v1/character/stats?slot=0').catch(() => null);
+    return sheet?.Sections?.flatMap((s) => s.Rows).find((r) => r.Key === 'armour')?.Value ?? 0;
+  };
+  const chestCount = async (baseId) => {
+    const mats = await apiGet('/api/v1/player/materials').catch(() => null);
+    return (mats?.Stacks ?? []).find((s) => s.ItemId === baseId)?.Quantity ?? 0;
+  };
+  const brewId = 'ironbark_brew_defensive_potion_consumable';
+
+  // Start from an empty combat shelf: a run stopped halfway leaves a brew on it.
+  await go('Auto-Eat');
+  const leftover = page.getByTestId('potion-slot-1').getByRole('button', { name: 'Unload' });
+  if ((await leftover.count()) > 0) {
+    await leftover.click();
+    await page.waitForTimeout(1500);
+  }
+
+  // A potion left running by an earlier run would already be in the armour
+  // measured below - end it first (dev route), and again at the end.
+  await apiPost('/api/v1/dev/potions/expire', {});
+  await page.waitForTimeout(800);
+  const mallowBefore = await chestCount('marsh_mallow');
+  const brewBefore = await chestCount(brewId);
+  await apiPost('/api/v1/dev/materials/grant', { BaseId: 'marsh_mallow', Quantity: 150 });
+
+  await go('Crafting');
+  await page.getByLabel('Filter recipes').fill('ironbark');
+  const card = page.locator('li.card').filter({ has: page.getByTestId('potion-effect').filter({ hasText: /^\+6% armour for 1 h$/ }) });
+  const cardShown = await card.first().waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  record('an Alchemy recipe says what its potion does and for how long', cardShown,
+    cardShown ? await card.first().getByTestId('potion-effect').innerText() : 'no "+6% armour for 1 h" card');
+  if (cardShown) await card.first().getByRole('button', { name: /^Craft/ }).click().catch(() => {});
+  let brewed = brewBefore;
+  for (let i = 0; i < 40 && brewed <= brewBefore; i++) {
+    await page.waitForTimeout(500);
+    brewed = await chestCount(brewId);
+  }
+  record('brewing takes the herbs and puts an Ironbark Brew in the chest', brewed === brewBefore + 1,
+    `brew ${brewBefore} -> ${brewed}, mallow ${mallowBefore + 150} -> ${await chestCount('marsh_mallow')}`);
+  await page.getByLabel('Filter recipes').fill('');
+
+  await go('Auto-Eat');
+  const slot = page.getByTestId('potion-slot-1');
+  await slot.getByTestId('potion-stock-1').first().click({ timeout: 10000 }).catch(() => {});
+  const shelved = await slot.getByTestId('potion-count-1').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  const onShelf = shelved ? (await slot.getByTestId('potion-count-1').innerText()).trim() : '';
+  record('the brew moves from the chest onto the combat shelf', shelved && Number(onShelf) >= 1 && (await chestCount(brewId)) === brewBefore,
+    `shelf ${onShelf || 'empty'}, chest ${await chestCount(brewId)}`);
+
+  // Auto-drink round-trips: on, then off again.
+  const auto = slot.getByTestId('potion-auto-1');
+  const armourBefore = await sheetArmour();
+  await slot.getByTestId('potion-drink-1').click({ timeout: 5000 }).catch(() => {});
+  const timer = await slot.getByTestId('potion-timer-1').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  // Two copies exist (the desktop strip and the phone's event strip); one is shown.
+  const header = await page.locator('[data-testid="potion-timers"]:visible').count().then((n) => n > 0).catch(() => false);
+  record('drinking starts the clock on the shelf and in the header', timer && header,
+    timer ? `${await slot.getByTestId('potion-timer-1').innerText()} left, header ${header ? 'shows it' : 'empty'}` : 'no timer');
+  await page.waitForTimeout(600);
+  const armourAfter = await sheetArmour();
+  record('the drunk potion raises the armour the server reports', armourAfter > armourBefore,
+    `armour ${armourBefore} -> ${armourAfter}`);
+
+  // After the drink, so switching it on cannot drink a second brew at once.
+  if ((await auto.count()) > 0) {
+    await auto.check().catch(() => {});
+    await page.waitForTimeout(800);
+    const on = await auto.isChecked().catch(() => false);
+    await auto.uncheck().catch(() => {});
+    await page.waitForTimeout(800);
+    const off = !(await auto.isChecked().catch(() => true));
+    record('auto-drink switches on and off', on && off, `on ${on}, off ${off}`);
+  } else {
+    record('auto-drink switches on and off (skipped: the shelf is empty after drinking)', true);
+  }
+
+  // Round trip: anything left on the shelf goes back, and the granted herbs
+  // that brewing did not take are taken back.
+  const stillShelved = slot.getByRole('button', { name: 'Unload' });
+  if ((await stillShelved.count()) > 0) await stillShelved.click().catch(() => {});
+  const extraMallow = (await chestCount('marsh_mallow')) - mallowBefore;
+  if (extraMallow > 0) await apiPost('/api/v1/dev/materials/grant', { BaseId: 'marsh_mallow', Quantity: -extraMallow });
+  await apiPost('/api/v1/dev/potions/expire', {});
+}
 
 // --- Workshop commissions (task 83) ------------------------------------------
 // Modul: THIS RUNS BEFORE "crafting as a job". That step puts a character to

@@ -170,6 +170,63 @@ the new ring affixes) and measured before shipping, the way the affixes were.
   same stat (War nodes, pets, affixes), and the wall scan run with every
   combat potion active before it ships.
 
+**Steps 3-5 built (2026-10-31, same branch):**
+- **Shelves and effects (step 3+4).** Three slots - rewards (Hunt, Fortune,
+  Goldmoss), combat (Ironbark, Swiftroot, Boss-bane), gathering (Gatherer's,
+  Kupala) - each with a shelf on the payload (`PotionShelf{1,2,3}`), stocked
+  from the chest by `StockPotionShelf` (83), drunk by `DrinkPotion` (84),
+  auto-drink by `SetPotionAutoDrink` (85). Stocking takes the potions in a
+  serializable transaction and hands the tick a DELTA, never an absolute
+  count, so a drink between the read and the write cannot be undone.
+- **The larder had exactly that race, fixed in the same PR.** LarderEngine
+  read the slot from the PlayerRecords row (as old as the last checkpoint)
+  and sent the tick an ABSOLUTE count: food eaten since the checkpoint came
+  back on every restock, and an unload credited it to the chest as well - a
+  repeatable duplication. The tick now reads the live slot, unloads on the
+  payload and credits exactly what left it; stocking hands back "+N"
+  (`LarderTickCoordinator`, pinned by
+  `Test_Larder_FoodEatenSinceTheLastSaveIsNeitherRestoredNorReturned`).
+  The legacy generic potion stats are gone; `PotionRegistry` holds one table.
+  `ConsumeConsumableAsset` no longer sets a potion buff (it took nothing).
+- **Offline (H2).** `OfflinePotionPlan` cuts the absence at every expiry and
+  where auto-drink empties a shelf; each stretch is projected with exactly the
+  potions running in it, then `Settle` takes what auto-drink drank over the
+  real absence. Pinned by `PotionShelfTests` (a Goldmoss running the whole
+  window pays the live per-kill gold for every kill; one that ran out halfway
+  pays only its stretch).
+- **UI.** A Potions panel on Auto-Eat (shelve, drink, auto-drink, unload),
+  the running potions with their clocks under the header (desktop: a strip
+  under the purse, because the header has only 50-60 px free at 1280-1366 px;
+  phone: beside the event chip), and every Alchemy recipe says what it brews
+  ("+6% armour for 1 h"). The client's table is a mirror of PotionRegistry,
+  compared row by row in `tests/potions.test.ts`.
+- **Measured magnitudes (step 2 of the owner's list).** `PotionMeasurementTests`
+  runs the wall projection with every combat potion active. Damage potions
+  hold every wall: at each requirement Boss-bane cuts the kill 13-20% and
+  Swiftroot 11-20%, and the set two tiers under the requirement still loses.
+  **Armour does not:** Ironbark at +15% let quality 6 beat the region 2 and 3
+  bosses and quality 2 beat region 1 - armour is sustain, and sustain is what
+  decides a wall (the same reason the rare-fish heal was dropped). Swept:
+  normal +8% is the edge for region 2-3, strong +11% breaks region 2, +10%
+  holds. **Shipped: Ironbark 6% / 9%**, one point under each edge. The
+  reward potions (+20%/+30% XP, gold, loot luck points) are about 2-3x a
+  permanent pet (5-12%) for one hour bought with ten or twenty minutes of
+  picking; gathering potions +25%/+40% speed and +5.0%/+8.0% rare find for
+  two hours. These are the working numbers, kept: nothing they touch is a
+  wall, and they are cheap to retune once production shows use.
+- **Sources (step 5).** Every loot chest carries herbs of its region at half
+  its log/ore minutes (900 herbs an hour, the owner's price), so a Bronze
+  chest brews about one potion. Quest line step 6 "Brew and drink a potion"
+  (level 5), latched the first time a potion is running or shelved.
+- **Correction: potion achievements move to the Book of Deeds PR.** Adding a
+  deed to an existing chapter would re-open chapters players have already
+  sealed (a Seal pays +2 skill points every season), and the old tiered
+  achievements are being replaced by the one registry next. The "potions
+  drunk" lifetime deed is built there, with its own counter.
+- **Exercise:** brew from a dev grant (`POST /api/v1/dev/materials/grant`),
+  shelve, drink, the clock in both places, the armour on the server's stat
+  sheet rises (977 -> 1035), auto-drink round-trips, herbs taken back.
+
 ### 1.3 Decisions
 
 - **H1.** Build herbalism + potions as described? Recommendation: yes, as its

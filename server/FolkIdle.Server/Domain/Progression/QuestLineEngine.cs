@@ -87,6 +87,8 @@ namespace FolkIdle.Server.Domain.Progression
                     p.CurrentLevel, p.PremiumDiamonds, p.ForgeFusionsCompleted, p.AffixRerollsPerformed,
                     p.DelveDeepestFloor, p.RebirthCount, p.GuildId,
                     p.AutoSalvageBelowTier, p.AutoSalvageRegionTiers,
+                    p.PotionShelf1Count, p.PotionShelf2Count, p.PotionShelf3Count,
+                    p.ActiveOffensivePotionExpiresEpoch, p.ActiveDefensivePotionExpiresEpoch, p.ActiveGatheringPotionExpiresEpoch,
                 })
                 .SingleOrDefaultAsync();
             if (player == null) return null;
@@ -167,6 +169,10 @@ namespace FolkIdle.Server.Domain.Progression
                 RebirthCount = player.RebirthCount,
                 GoldFromChestSales = chestSales,
                 AutoSellRuleSet = player.AutoSalvageBelowTier > 0 || player.AutoSalvageRegionTiers != 0,
+                PotionRunningOrShelved = player.PotionShelf1Count > 0 || player.PotionShelf2Count > 0 || player.PotionShelf3Count > 0
+                    || player.ActiveOffensivePotionExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    || player.ActiveDefensivePotionExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    || player.ActiveGatheringPotionExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             };
         }
 

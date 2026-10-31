@@ -11614,7 +11614,8 @@ namespace FolkIdle.Server.Tests
         // Modul: larder. The write side of the auto-eat system, which did not
         // exist: four server systems read the food slots and nothing assigned
         // them, so every larder was permanently empty and combat stopped the
-        // first time the character was hurt.
+        // first time the character was hurt. Since 2026-10-31 the slot is the
+        // tick's: the engine only moves food between the chest and a delta.
         [Fact]
         public async Task Test_Larder_StockingMovesFoodFromTheBackpackIntoTheSlotAndUnloadingReturnsIt()
         {
@@ -11632,47 +11633,61 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
+            async Task<long> Chest()
+            {
+                await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+                return await verify.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == foodBaseId)
+                    .Select(c => c.Quantity).SingleAsync();
+            }
+
             var larderEngine = new LarderEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-            await larderEngine.ExecuteStockFoodSlotAsync(testPlayerId, slotIndex: 1, foodItemId: foodItemId, quantity: stockedQuantity);
+            Assert.True(await larderEngine.TakeFoodFromChestAsync(testPlayerId, foodItemId, stockedQuantity));
+            Assert.Equal(50L - stockedQuantity, await Chest());
 
-            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-                Assert.Equal(foodItemId, player.LarderSlot2ItemId);
-                Assert.Equal(stockedQuantity, player.LarderSlot2Count);
-                // Slot 2 was targeted; the other two must be untouched.
-                Assert.Equal(0, player.LarderSlot1Count);
-                Assert.Equal(0, player.LarderSlot3Count);
+            // The tick adds the delta to slot 2; the other two stay untouched.
+            var payload = new TickStatePayload { PlayerId = testPlayerId };
+            Assert.True(LarderTickCoordinator.Apply(ref payload,
+                new LarderSlotUpdateNotification { PlayerId = testPlayerId, SlotIndex = 1, ItemId = foodItemId, Added = stockedQuantity }));
+            Assert.Equal(foodItemId, payload.Food2_ItemId);
+            Assert.Equal(stockedQuantity, payload.Food2_Count);
+            Assert.Equal(0, payload.Food1_Count);
+            Assert.Equal(0, payload.Food3_Count);
 
-                long backpack = await verify.CommodityRecords.AsNoTracking()
-                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == foodBaseId)
-                    .Select(c => c.Quantity).SingleAsync();
-                Assert.Equal(50L - stockedQuantity, backpack);
-            }
+            // Unloading empties the live slot and the chest gets it all back.
+            var (backId, back) = LarderTickCoordinator.TakeFromSlot(ref payload, 1, 0);
+            await larderEngine.ReturnFoodToChestAsync(testPlayerId, backId, back);
+            Assert.Equal(0, payload.Food2_ItemId);
+            Assert.Equal(0, payload.Food2_Count);
+            Assert.Equal(50L, await Chest());
+        }
 
-            // The tick thread learns about it through the queue, never by
-            // touching the payload from the dispatch thread.
-            Assert.True(_fixture.PlayerRegistry.LarderSlotUpdateQueue.TryDequeue(out var notification));
-            Assert.Equal(testPlayerId, notification.PlayerId);
-            Assert.Equal(1, notification.SlotIndex);
-            Assert.Equal(foodItemId, notification.ItemId);
-            Assert.Equal(stockedQuantity, notification.Count);
+        // Modul: larder. THE RACE (2026-10-31). The slot was read from the
+        // PlayerRecords row, which can be a checkpoint behind the live slot:
+        // food eaten since then came back on a restock, and an unload credited
+        // it to the chest too. The live slot is what counts now.
+        [Fact]
+        public void Test_Larder_FoodEatenSinceTheLastSaveIsNeitherRestoredNorReturned()
+        {
+            int foodItemId = FoodRegistry.FirstRawFishOfTier(1);
+            // The row said 100 at the last checkpoint; 97 have been eaten since.
+            var payload = new TickStatePayload { Food1_ItemId = foodItemId, Food1_Count = 3 };
 
-            // Quantity 0 unloads. The food must come back rather than be
-            // destroyed - the player paid materials and cooking time for it.
-            await larderEngine.ExecuteStockFoodSlotAsync(testPlayerId, slotIndex: 1, foodItemId: 0, quantity: 0);
+            Assert.True(LarderTickCoordinator.Apply(ref payload,
+                new LarderSlotUpdateNotification { SlotIndex = 0, ItemId = foodItemId, Added = 10 }));
+            Assert.Equal(13, payload.Food1_Count);
 
-            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-                Assert.Equal(0, player.LarderSlot2ItemId);
-                Assert.Equal(0, player.LarderSlot2Count);
+            var (_, back) = LarderTickCoordinator.TakeFromSlot(ref payload, 0, 0);
+            Assert.Equal(13, back);
+            Assert.Equal(0, payload.Food1_Count);
 
-                long backpack = await verify.CommodityRecords.AsNoTracking()
-                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == foodBaseId)
-                    .Select(c => c.Quantity).SingleAsync();
-                Assert.Equal(50L, backpack);
-            }
+            // A stocking that lands after the slot was given another food does
+            // not mix two foods in one slot - it goes back to the chest.
+            payload.Food1_ItemId = FoodRegistry.FirstRawFishOfTier(2);
+            payload.Food1_Count = 5;
+            Assert.False(LarderTickCoordinator.Apply(ref payload,
+                new LarderSlotUpdateNotification { SlotIndex = 0, ItemId = foodItemId, Added = 10 }));
+            Assert.Equal(5, payload.Food1_Count);
         }
 
         // Modul: larder. Stocking food the player does not hold must refuse
@@ -11690,12 +11705,8 @@ namespace FolkIdle.Server.Tests
             }
 
             var larderEngine = new LarderEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-            await larderEngine.ExecuteStockFoodSlotAsync(testPlayerId, slotIndex: 0, foodItemId: foodItemId, quantity: 5);
-
-            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-            Assert.Equal(0, player.LarderSlot1ItemId);
-            Assert.Equal(0, player.LarderSlot1Count);
+            Assert.False(await larderEngine.TakeFoodFromChestAsync(testPlayerId, foodItemId, 5));
+            Assert.False(_fixture.PlayerRegistry.LarderSlotUpdateQueue.TryPeek(out var queued) && queued.PlayerId == testPlayerId);
         }
 
         // Modul: larder. Two bugs in one place. AlchemyCompendium classified

@@ -34,6 +34,13 @@ namespace FolkIdle.Server.Domain.Shared
 
         internal static readonly ConcurrentQueue<ShelfDelta> Deltas = new();
 
+        /// <summary>
+        /// Dev only (POST /api/v1/dev/potions/expire): players whose running
+        /// potions end on the next tick, so exercise.mjs can measure a drink
+        /// from a clean slate and leave the fixture as it found it.
+        /// </summary>
+        internal static readonly ConcurrentQueue<long> DevExpireRequests = new();
+
         /// <summary>The most one shelf holds - the larder's slot capacity, for one rule.</summary>
         public const int ShelfCapacity = LarderLimits.SlotCapacity;
 
@@ -126,6 +133,7 @@ namespace FolkIdle.Server.Domain.Shared
             // tick would the moment a running potion ended.
             if (cmd.IsBuy != 0 && ConsumableEngine.Duration(ref payload, slot) <= 0) ConsumableEngine.TryDrinkFromShelf(ref payload, slot);
             payload.IsDirty = true;
+            ctx.PlayerRegistry.EnqueueCommandResult(payload.PlayerId, (byte)CommandResultCode.Success);
         }
 
         /// <summary>
@@ -138,6 +146,18 @@ namespace FolkIdle.Server.Domain.Shared
             Action<string, long, Func<Task>> safeDispatch,
             IDbContextFactory<FolkIdleDbContext> factory)
         {
+            while (DevExpireRequests.TryDequeue(out long expirePlayerId))
+            {
+                ref var expiring = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, expirePlayerId);
+                if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref expiring)) continue;
+                for (int slot = 0; slot < PotionSlot.Count; slot++)
+                {
+                    ConsumableEngine.ActiveId(ref expiring, slot) = 0;
+                    ConsumableEngine.Duration(ref expiring, slot) = 0;
+                }
+                expiring.IsDirty = true;
+            }
+
             while (Deltas.TryDequeue(out var delta))
             {
                 ref var payload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, delta.PlayerId);

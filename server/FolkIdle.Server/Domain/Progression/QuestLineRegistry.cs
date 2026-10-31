@@ -48,6 +48,11 @@ namespace FolkIdle.Server.Domain.Progression
         public int RebirthCount { get; init; }
         public long GoldFromChestSales { get; init; }
         public bool AutoSellRuleSet { get; init; }
+        /// <summary>
+        /// A potion is running or waiting on a shelf. Momentary, not durable -
+        /// the engine's latch makes it a fact the first time it is seen.
+        /// </summary>
+        public bool PotionRunningOrShelved { get; init; }
     }
 
     public readonly record struct QuestReward(int Region, long Gold, string MaterialLog, string MaterialOre, int MaterialQuantity);
@@ -115,6 +120,8 @@ namespace FolkIdle.Server.Domain.Progression
         public const string WorldBoss = "world_boss";
         public const string Ascension = "ascension";
         public const string Rebirth = "rebirth";
+        public const string Potion = "potion";
+        public const int PotionOpenLevel = 5;
 
         public const int ForgeOpenLevel = 5;
         public const int MarketOpenLevel = 10;
@@ -173,31 +180,39 @@ namespace FolkIdle.Server.Domain.Progression
                 ForgeOpen,
                 f => f.AnyVillageBuildingStarted || f.GoldSpentOnVillage > 0),
 
-            new(Market, 6, "List an item on the market",
+            // Herbs and potions (step 5, 2026-10-31): the herbs a newcomer picks
+            // have a use, and the shelf is a screen nobody finds alone.
+            new(Potion, 6, "Brew and drink a potion",
+                "Pick herbs on the Gathering screen, brew a potion at Alchemy in Crafting, then put it on a shelf on Auto-Eat and drink it. A potion runs for an hour, online and offline.",
+                "larder", new[] { "potion-drink", "potion-stock" }, $"Reach level {PotionOpenLevel}",
+                f => f.Level >= PotionOpenLevel,
+                f => f.PotionRunningOrShelved),
+
+            new(Market, 7, "List an item on the market",
                 "The market is player to player. List a piece you will not wear instead of salvaging it - the mailbox pays you when it sells. Trading needs a guild.",
                 "market", new[] { "market-list" }, $"Reach level {MarketOpenLevel} and join a guild",
                 f => f.Level >= MarketOpenLevel && f.InGuild,
                 f => f.HasOpenOrSoldListing),
 
-            new(Inheritance, 7, "Buy an inheritance level",
+            new(Inheritance, 8, "Buy an inheritance level",
                 "Inheritance is permanent: diamonds buy a bonus that survives every rebirth. Diamonds come from the Delve.",
                 "inheritance", new[] { "inheritance-buy" }, "Hold enough diamonds for the cheapest level",
                 f => f.Diamonds >= CheapestInheritanceLevel,
                 f => f.InheritanceLevelsBought > 0),
 
-            new(Delve, 8, "Enter the Delve",
+            new(Delve, 9, "Enter the Delve",
                 "The Delve turns gold into diamonds, if your nerve holds. Pay the entry fee, then pick a door on each floor.",
                 "delve", new[] { "delve-start" }, "Hold one entry fee in gold",
                 f => f.Gold >= DelveRegistry.EntryFeeForRegion(f.HighestUnlockedRegion),
                 f => f.GoldSpentOnDelve > 0 || f.DelveDeepestFloor > 0),
 
-            new(WorldBoss, 9, "Strike the world boss",
+            new(WorldBoss, 10, "Strike the world boss",
                 "One strike a day on the shared boss. Everybody's damage is added up, and the board pays out weekly by damage.",
                 "worldboss", new[] { "worldboss-strike" }, $"Reach level {WorldBossOpenLevel}",
                 f => f.Level >= WorldBossOpenLevel,
                 f => f.HasWorldBossAttemptRow),
 
-            new(Ascension, 10, "Clear a boss Ascension step",
+            new(Ascension, 11, "Clear a boss Ascension step",
                 "Every region boss can be fought again, stronger, at ten steps. Each first clear pays a title. Cosmetics only.",
                 "combat", new[] { "ascension-start", "ascension" }, "Defeat the first region's boss",
                 f => f.HighestUnlockedRegion >= 2,
@@ -205,7 +220,7 @@ namespace FolkIdle.Server.Domain.Progression
 
             // Second to last on purpose: the child is what the rebirth after it
             // carries. Open again after a rebirth (the level is 1 by then).
-            new(Breed, 11, "Breed an heir",
+            new(Breed, 12, "Breed an heir",
                 "A rebirth takes your level and gear - your bloodline is what stays. Marry a villager on the Breeding screen: " +
                 "the child inherits the four aptitudes, a bonus to damage, gathering, health and luck that grows over the rebirths. " +
                 "Field the child from the Hall of Ancestors to raise it, and mark it Keep so it carries.",
@@ -213,7 +228,7 @@ namespace FolkIdle.Server.Domain.Progression
                 f => f.BreedingGroundsLevel >= 1 && (f.Level >= BloodlineNearLevel || f.RebirthCount > 0),
                 f => f.GoldSpentOnBreeding > 0),
 
-            new(Rebirth, 12, "Take a Rebirth",
+            new(Rebirth, 13, "Take a Rebirth",
                 "A rebirth starts a new life at level 1 but keeps what is permanent. One taken from level 50 or above also adds Renown.",
                 "rebirth", new[] { "rebirth-start", "rebirth" }, $"Reach level {RebirthRules.RenownLevel}",
                 f => f.Level >= RebirthRules.RenownLevel,

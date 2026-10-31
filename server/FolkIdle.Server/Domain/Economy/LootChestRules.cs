@@ -73,6 +73,24 @@ namespace FolkIdle.Server.Domain.Economy
         /// <summary>Share of a material line that is the region's rare log/ore, as the Workshop quotes it.</summary>
         private const double RareShare = 0.1;
 
+        /// <summary>
+        /// Herbs and potions (step 5, 2026-10-31): every chest carries herbs of
+        /// its region, half as many minutes as its log/ore line. Priced at the
+        /// owner's rate - 150 herbs is about ten minutes of picking - so a
+        /// Bronze chest's ten minutes brew one potion, an Ancient's ninety
+        /// about nine. The rare herb is the same tenth as the rare log and ore.
+        /// </summary>
+        public const int HerbsPerHourOfPicking = 900;
+
+        public static int HerbMinutesFor(in TierTable t) => t.MaterialMinutes / 2;
+
+        /// <summary>The region's herb pair (items 442-451, common then rare).</summary>
+        public static (string Common, string Rare) HerbsOf(int region)
+        {
+            int r = Math.Clamp(region, WorkshopCommissionRules.FirstRegion, WorkshopCommissionRules.LastRegion);
+            return (ContentRegistry.GetItemBaseId(442 + 2 * (r - 1)), ContentRegistry.GetItemBaseId(443 + 2 * (r - 1)));
+        }
+
         public static TierTable TableFor(LootChestTier tier) => Tables[Math.Clamp((int)tier, 1, 4)];
 
         /// <summary>
@@ -84,6 +102,7 @@ namespace FolkIdle.Server.Domain.Economy
             var t = TableFor(tier);
             var lines = new List<string> { $"Materials of the region: always ({t.MaterialMinutes} min of gathering)" };
             if (t.TopRegionMaterialMinutes > 0) lines.Add($"Materials of your highest region: always ({t.TopRegionMaterialMinutes} min)");
+            lines.Add($"Herbs of the region: always ({HerbMinutesFor(in t)} min of picking)");
             lines.Add($"Gold: always ({t.GoldMinutes} min of your income)");
             lines.Add($"Equipment: {t.EquipmentPermille / 10.0:0.#}%, {RarityTier.GetName(t.EquipmentRarityFloor)} or better");
             if (t.DiamondPermille > 0) lines.Add($"Diamonds: {t.DiamondPermille / 10.0:0.#}%, {t.DiamondsMin}-{t.DiamondsMax}");
@@ -100,6 +119,7 @@ namespace FolkIdle.Server.Domain.Economy
             var materials = new List<(string, long)>();
             AddMaterials(materials, region, t.MaterialMinutes);
             if (t.TopRegionMaterialMinutes > 0) AddMaterials(materials, top, t.TopRegionMaterialMinutes);
+            AddHerbs(materials, region, HerbMinutesFor(in t));
 
             long gold = (long)Math.Round(Math.Max(0.0, goldPerMinute) * t.GoldMinutes);
             bool equipment = rng.Next(1000) < t.EquipmentPermille;
@@ -126,6 +146,15 @@ namespace FolkIdle.Server.Domain.Economy
             Merge(into, mats.Ore, (long)Math.Round(ore * (1.0 - RareShare)));
             Merge(into, mats.RareLog, Math.Max(1L, (long)Math.Round(wood * RareShare)));
             Merge(into, mats.RareOre, Math.Max(1L, (long)Math.Round(ore * RareShare)));
+        }
+
+        private static void AddHerbs(List<(string, long)> into, int region, int minutes)
+        {
+            if (minutes <= 0) return;
+            var (common, rare) = HerbsOf(region);
+            double herbs = HerbsPerHourOfPicking * (minutes / 60.0);
+            Merge(into, common, (long)Math.Round(herbs * (1.0 - RareShare)));
+            Merge(into, rare, Math.Max(1L, (long)Math.Round(herbs * RareShare)));
         }
 
         private static void Merge(List<(string ItemId, long Quantity)> into, string item, long quantity)

@@ -13,6 +13,7 @@
   import MailBadge from './lib/ui/MailBadge.svelte';
   import EventBanner from './lib/ui/EventBanner.svelte';
   import EventChip from './lib/ui/EventChip.svelte';
+  import PotionTimers from './lib/ui/PotionTimers.svelte';
   import { applyEventTheme } from './lib/ui/eventTheme';
   import { applySection } from './lib/ui/sections';
   import { eventThemeKey } from './lib/net/seasonalEvent';
@@ -1033,7 +1034,14 @@
     </header>
 
     <!-- A phone's event row (see .event-strip): empty, and hidden, out of season. -->
-    <div class="event-strip"><EventChip onOpen={() => goTo('event')} active={screen === 'event'} labelled sheet /></div>
+    <div class="event-strip"><EventChip onOpen={() => goTo('event')} active={screen === 'event'} labelled sheet /><PotionTimers onOpen={() => goTo('larder')} /></div>
+
+    <!-- Modul: RUNNING POTIONS UNDER THE HEADER, NOT IN IT (2026-10-31). Measured:
+         the desktop header has 50-60 px free at 1280-1366 px (and none at
+         1024), so a potion chip in it pushed Sign out onto a second row. This
+         strip exists only while a potion runs (:empty), right-aligned under the
+         purse. A phone shows the same chip in its event strip above. -->
+    <div class="potion-strip"><PotionTimers onOpen={() => goTo('larder')} /></div>
 
     <!-- Modul: offline/reconnect UI. This was a one-line banner that printed
          "reconnecting (attempt 4)" and nothing else - proportionate to a
@@ -1258,6 +1266,20 @@
     display: none;
   }
 
+  .potion-strip {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 1rem;
+  }
+
+  .potion-strip:empty {
+    display: none;
+  }
+
+  .potion-strip :global(.potion-timers) {
+    min-height: 2rem;
+  }
+
   header {
     position: sticky;
     top: var(--sa-top);
@@ -1449,6 +1471,10 @@
        purse as it was and the event gets the strip under it. */
     .wallet-event {
       display: none;
+    }
+
+    .potion-strip {
+      display: none !important;
     }
 
     /* Modul: A PILL, NOT A BAR (owner, 2026-10-28). The chip used the More

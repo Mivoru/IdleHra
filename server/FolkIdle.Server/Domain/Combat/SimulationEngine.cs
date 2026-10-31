@@ -1213,10 +1213,10 @@ namespace FolkIdle.Server.Domain.Combat
                     SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
                 }
 
-                // Modul: larder. LarderEngine has already committed the slot to
-                // PlayerRecords; this is the hand-off that makes it live for the
-                // running session, so restocking mid-fight takes effect on the
-                // next tick rather than at the next login.
+                // Modul: larder. LarderEngine has taken the food from the chest;
+                // this adds it to the live slot (a delta - see
+                // LarderTickCoordinator), so restocking mid-fight takes effect
+                // on the next tick, and the checkpoint persists it.
                 //
                 // (The crafting drain that used to sit here, with its own
                 // "Modul: crafting as an assignable job" comment, moved to
@@ -1228,7 +1228,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // under the Warehouse cap (see ProcessPassiveVillageTick).
                 VillageTickCoordinator.DrainProductionGrants(_safeDispatch, _contextFactory);
 
-                LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
+                LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers, _safeDispatch, _larderEngine);
                 PotionShelfTickCoordinator.DrainDeltas(_activePlayers, _safeDispatch, _contextFactory);
 
                 // Task 88: rebirths asked for over REST - suspend, flush, and

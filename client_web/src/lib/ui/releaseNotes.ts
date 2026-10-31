@@ -35,6 +35,31 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.47.0',
+    date: '2026-10-31',
+    headline: 'Herbs and potions.',
+    sections: [
+      {
+        title: 'Herbalism',
+        items: [
+          'Herbalism is back on the Gathering screen: every region has a common herb and a rare one. Herbs are picked by hand, with no tool - your Herbalism mastery is what makes you faster.',
+          'Green Thumb on the Hearth tree works again.',
+          'Loot chests now carry herbs of their region too.',
+        ],
+      },
+      {
+        title: 'Potions',
+        items: [
+          "Brew sixteen potions at Alchemy on the Crafting screen: Elixir of the Hunt, Draught of Fortune, Goldmoss Tonic, Ironbark Brew, Swiftroot Tea, Boss-bane Philtre, Gatherer's Draught and Kupala Night, each in a normal and a strong version. Every recipe says what the potion does and for how long.",
+          'Put potions on a shelf on the Auto-Eat screen and drink them there. One potion runs in each of three slots - rewards, combat and gathering - and it works offline exactly as online.',
+          'Turn on auto-drink and the next potion on the shelf is drunk the moment the last one runs out, also while you are away.',
+          'Running potions and their time left show under the header. Tap them to open the shelves.',
+          'A new quest line step teaches the whole thing: pick, brew, shelve, drink.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.46.0',
     date: '2026-10-31',
     headline: 'Quieter, clearer sounds.',

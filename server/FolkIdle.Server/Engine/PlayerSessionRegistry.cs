@@ -206,7 +206,9 @@ namespace FolkIdle.Server.Engine
         // 1-based Food1/Food2/Food3 payload fields.
         public int SlotIndex;
         public int ItemId;
-        public int Count;
+        // How many were taken from the chest for this slot - a DELTA the tick
+        // adds, never an absolute count (see LarderTickCoordinator).
+        public int Added;
     }
 
     public struct CommandResultNotification

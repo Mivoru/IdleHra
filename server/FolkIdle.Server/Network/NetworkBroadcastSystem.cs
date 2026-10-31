@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -12577,6 +12577,24 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/dev/item/payload" && context.Request.HttpMethod == "POST")
                 {
                     await HandleDevItemPayload(context, playerId);
+                    return;
+                }
+
+                // Herbs and potions: put a stack of one material in the caller's
+                // chest (or take it back with a negative quantity), so
+                // exercise.mjs can brew a potion without an hour of picking and
+                // round-trip what it granted. Never below zero.
+                if (requestPath == "/api/v1/dev/materials/grant" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevMaterialGrant(context, playerId);
+                    return;
+                }
+
+                // ...and end the caller's running potions on the next tick.
+                if (requestPath == "/api/v1/dev/potions/expire" && context.Request.HttpMethod == "POST")
+                {
+                    Domain.Shared.PotionShelfTickCoordinator.DevExpireRequests.Enqueue(playerId);
+                    await WriteJsonAsync(context, new { Queued = true });
                     return;
                 }
 
