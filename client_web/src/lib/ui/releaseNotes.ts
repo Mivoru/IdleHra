@@ -35,6 +35,29 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.48.0',
+    date: '2026-10-31',
+    headline: 'One Book of goals, and diamonds that go further.',
+    sections: [
+      {
+        title: 'Book of Deeds',
+        items: [
+          'The quest line is now the first chapter of the Book of Deeds, "Getting started" - claim its rewards there or on Home.',
+          'The Book opens with "Closest to done": the goals you are nearest to finishing, across every chapter and achievement.',
+          'A new achievement, Alchemist, counts the potions you drink.',
+        ],
+      },
+      {
+        title: 'Diamonds',
+        items: [
+          'Achievements pay 5, 15, 40 or 100 diamonds a tier. The big ones are split into more steps, so you are paid along the way. Tiers you already reached stay paid.',
+          'The Delve pays up to 80 diamonds a week, up from 60.',
+          "Inheritance has ten levels of +4% instead of twenty of +2%, and costs far less: a whole bonus is about 3,300 diamonds instead of 19,800. Your levels were converted, rounded up - nobody's bonus went down.",
+        ],
+      },
+    ],
+  },
+  {
     version: '1.47.0',
     date: '2026-10-31',
     headline: 'Herbs and potions.',
