@@ -17,7 +17,6 @@ namespace FolkIdle.Server.Domain.Economy
         public required int Stage { get; init; }
         public required DungeonRunner Runner { get; init; }
         public required DungeonEngine.Income Income { get; init; }
-        public required bool FreeRun { get; init; }
         public required int FoodSlot { get; init; }
         public required int FoodItemId { get; init; }
         public Random Rng { get; } = new();

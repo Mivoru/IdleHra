@@ -36,11 +36,11 @@ namespace FolkIdle.Server.Network
                 .ToArray();
         }
 
-        // Modul: chests pay dungeon tickets only to someone who can see the
-        // dungeons - while they are admin-only, a ticket for a gate nobody can
-        // open would be a reward line that means nothing.
-        private async Task<bool> ChestsPayDungeonTicketsAsync(FolkIdleDbContext db, long playerId)
-            => MaySeeDungeon(await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId));
+        // Modul: chests pay dungeon tickets to everyone since the dungeons
+        // opened (2026-10-31). A player who has not beaten the region 2 boss
+        // yet keeps them (up to DungeonEngine.BonusTicketCap) for the day the
+        // gates open - chests come late enough that this is rare.
+        private static Task<bool> ChestsPayDungeonTicketsAsync(FolkIdleDbContext db, long playerId) => Task.FromResult(true);
 
         private async Task HandleLootChestView(HttpListenerContext context)
         {

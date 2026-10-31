@@ -18,22 +18,10 @@ namespace FolkIdle.Server.Network
         // The three dungeons (CHESTS_DUNGEONS_DIAMONDS.md 2.6a, 2.8). REST, like
         // the Delve and the loot chests: a run is one request that the server
         // decides and writes; nothing is added to StateUpdatePacket.
-        // Modul: HIDDEN FROM PLAYERS (owner, 2026-10-31: "far from how I want it
-        // to look"). Only the admin accounts may open or run it; everyone else
-        // gets a closed lobby and a refused run, so a remembered screen or an
-        // old client cannot spend a ticket. The code, tables and tickets stay;
-        // delete this gate when the rework lands.
-        private const string DungeonClosedReason = "The dungeon is closed while it is being rebuilt.";
-
-        // The admins, and anyone where the dev tools are on (the local stack,
-        // where exercise.mjs runs the whole flow on the dev fixture).
-        private bool MaySeeDungeon(PlayerRecord? player) => IsAdmin(player) || DevToolsEnabled();
-
-        // Modul: an admin in production runs the dungeon without spending
-        // tickets, while the owner tests it (2026-10-31). Not where dev tools
-        // are on: exercise.mjs signs in as the admin fixture and asserts that
-        // a run takes a ticket from its own gate only.
-        private bool FreeDungeonRuns(PlayerRecord? player) => IsAdmin(player) && !DevToolsEnabled();
+        // Modul: OPEN TO EVERYONE since 2026-10-31 (owner: "when the dungeon
+        // is finished, give it to everyone"). It was admin-only while it was
+        // rebuilt; the region 2 boss is the only gate now, and the admin test
+        // runs (no ticket) were removed with the gate.
 
         // Modul: DEV ONLY - region bosses counted as beaten for the dungeons,
         // in memory and never written. The dev fixture has not beaten the
@@ -78,11 +66,6 @@ namespace FolkIdle.Server.Network
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
                 if (player == null) { context.Response.StatusCode = 404; return; }
-                if (!MaySeeDungeon(player))
-                {
-                    await WriteJsonAsync(context, new { Open = false, LockedReason = DungeonClosedReason, Dungeons = Array.Empty<object>() });
-                    return;
-                }
                 var stale = DungeonLiveRuns.Current(playerId);
                 if (stale != null && DateTime.UtcNow - stale.TouchedUtc > DungeonLiveRuns.AbandonAfter) await SettleAbandonedAsync(stale);
 
@@ -97,7 +80,6 @@ namespace FolkIdle.Server.Network
                     Open = open,
                     LockedReason = open ? string.Empty : DungeonEngine.StageLockedReason(1, mask, 0) ?? string.Empty,
                     Online = snapshot != null,
-                    FreeRuns = FreeDungeonRuns(player),
                     // The roster's champions, for the party picker: who stands in
                     // each slot and from which stage a dungeon takes them.
                     Roster = snapshot == null ? Array.Empty<object>() : Enumerable.Range(0, 3)
@@ -187,19 +169,6 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                bool freeRun;
-                using (var gateScope = _serviceProvider.CreateScope())
-                {
-                    var gateDb = gateScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                    var gatePlayer = await gateDb.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
-                    if (!MaySeeDungeon(gatePlayer))
-                    {
-                        await WriteJsonAsync(context, new { Outcome = "Locked", Reason = DungeonClosedReason });
-                        return;
-                    }
-                    freeRun = FreeDungeonRuns(gatePlayer);
-                }
-
                 // A run still open is played out with its telegraphs missed and paid first.
                 var previous = DungeonLiveRuns.Current(playerId);
                 if (previous != null) await SettleAbandonedAsync(previous);
@@ -225,7 +194,7 @@ namespace FolkIdle.Server.Network
                 if (sweep)
                 {
                     var (sOutcome, sReason, sResult, sReward, sTickets) = await DungeonEngine.RunAsync(
-                        db, playerId, kind, stage, payload, food.ItemId, food.Count, income, DateTime.UtcNow, Random.Shared, freeRun, sweep: true);
+                        db, playerId, kind, stage, payload, food.ItemId, food.Count, income, DateTime.UtcNow, Random.Shared, sweep: true);
                     if (sResult != null) await AfterDungeonRunAsync(db, playerId, sResult, sReward, food.SlotIndex, food.ItemId);
                     await WriteJsonAsync(context, new { Outcome = sOutcome.ToString(), Reason = sReason ?? string.Empty, Finished = true, Result = sResult, Reward = sReward, Tickets = sTickets });
                     return;
@@ -238,7 +207,7 @@ namespace FolkIdle.Server.Network
                 party = party.Where(slot => slot < open && SlotHoldsCharacter(in payload, slot)).ToList();
                 db.ChangeTracker.Clear();
 
-                var (outcome, reason, tickets) = await DungeonEngine.StartLiveAsync(db, playerId, kind, stage, payload.DefeatedRegionBossMask, DateTime.UtcNow, freeRun);
+                var (outcome, reason, tickets) = await DungeonEngine.StartLiveAsync(db, playerId, kind, stage, payload.DefeatedRegionBossMask, DateTime.UtcNow);
                 if (outcome != DungeonEngine.RunOutcome.Ok)
                 {
                     await WriteJsonAsync(context, new { Outcome = outcome.ToString(), Reason = reason ?? string.Empty, Tickets = tickets });
@@ -253,7 +222,6 @@ namespace FolkIdle.Server.Network
                     Stage = stage,
                     Runner = new DungeonRunner(payload, kind, stage, food.ItemId, food.Count, party, challenges: true),
                     Income = income,
-                    FreeRun = freeRun,
                     FoodSlot = food.SlotIndex,
                     FoodItemId = food.ItemId,
                 };
@@ -410,7 +378,7 @@ namespace FolkIdle.Server.Network
             if (pay)
             {
                 DungeonLiveRuns.Remove(run);
-                var (paid, t) = await DungeonEngine.FinishLiveAsync(db, run.PlayerId, run.Kind, run.Stage, runner.Result!.Won, run.Income, DateTime.UtcNow, Random.Shared, run.FreeRun);
+                var (paid, t) = await DungeonEngine.FinishLiveAsync(db, run.PlayerId, run.Kind, run.Stage, runner.Result!.Won, run.Income, DateTime.UtcNow, Random.Shared);
                 reward = paid;
                 left = t;
                 await AfterDungeonRunAsync(db, run.PlayerId, runner.Result, reward, run.FoodSlot, run.FoodItemId);

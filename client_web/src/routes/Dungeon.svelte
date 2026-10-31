@@ -187,16 +187,16 @@
             two blessings; a miss hurts and leaves a curse. Both last until the run ends.
           </p>
           {#if stage.Cleared}
-            <button class="sweep" data-testid="dungeon-sweep" disabled={running || (dungeon.Tickets <= 0 && !data.FreeRuns)} onclick={() => enter(true)}>
-              Sweep stage {stage.Stage}: paid as won, no fight{data.FreeRuns ? '' : ' (1 ticket)'}
+            <button class="sweep" data-testid="dungeon-sweep" disabled={running || dungeon.Tickets <= 0} onclick={() => enter(true)}>
+              Sweep stage {stage.Stage}: paid as won, no fight (1 ticket)
             </button>
           {/if}
           <button
             class="primary enter"
             data-testid="dungeon-enter"
-            disabled={running || (dungeon.Tickets <= 0 && !data.FreeRuns) || stage.LockedReason !== ''}
+            disabled={running || dungeon.Tickets <= 0 || stage.LockedReason !== ''}
             onclick={() => enter()}
-          >{running ? 'Entering...' : data.FreeRuns ? `Enter stage ${stage.Stage} (admin test, free)` : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
+          >{running ? 'Entering...' : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
         </div>
       {/if}
     {/if}

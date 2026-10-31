@@ -45,8 +45,6 @@ export interface DungeonView {
   Online: boolean;
   TicketCap: number;
   TicketsPerDay: number;
-  /** An admin testing in production: runs spend no ticket. */
-  FreeRuns?: boolean;
   Waves: number;
   MealCap: number;
   /** The roster slots holding a character, and the stage that opens each for a dungeon. */

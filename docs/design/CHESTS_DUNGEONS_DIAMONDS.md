@@ -377,7 +377,7 @@ mortar blurring aside, a hex sigil over the champion's weapon.
 
 ### 2.7 Built: the equipment dungeon (2026-10-31, autonomous run)
 
-> **Superseded by the rework in 2.8.** **Hidden from players since client 1.49.1 (owner, 2026-10-31: "far from how
+> **Superseded by the rework in 2.8, which opened to every player in client 1.50.0.** Hidden from players from client 1.49.1 (owner, 2026-10-31: "far from how
 > I want it to look").** `NetworkBroadcastSystem.Dungeon.cs` answers every
 > account except the admin ones with a closed lobby (no stages) and refuses a
 > run with `Outcome: "Locked"`; `Game.svelte` shows the menu entry only to an
@@ -522,7 +522,7 @@ Decisions, all approved the same day:
   meal banners, the boss intro card, 1x / 2x / Skip, the verdict and the
   reward). Gate and boss art: `tools/assets/gemini.json`
   (`dungeon_gate_*`, `dungeon_boss_*`), in `client_web/public/dungeon/`.
-- Still admin-only in production. The server also opens it where its dev
+- Admin-only in production until client 1.50.0 (see "Opened" below). The server also opened it where its dev
   tools are on and a dev build shows the menu entry, so `exercise.mjs` runs
   the whole flow on the dev fixture; `/api/v1/dev/dungeon/unlock` counts the
   region bosses as beaten in memory only, for the fixture.
@@ -620,6 +620,15 @@ wearing nothing).** Highest stage cleared, best region-5 fish:
   | Baba Yaga (Equipment) | 9, 23% | 9, 23% | 9, 13% | **10**, 11 at 74% | 9, 37% | 9, 12% |
 
   Every build stays within one stage, the best build differs by boss (sustain against Baba Yaga, Storm and risky against Koschei), and the ceiling stays where it was (none 9, missed 8). The owner cleared Koschei 10 by hand on 1.0.1506.
+
+**Opened to every player (client 1.50.0, owner 2026-10-31: "if the dungeon is finished, give it to everyone and reset my rewards"):**
+
+- The admin gate (`MaySeeDungeon`, `MENU_HIDDEN_PLAYERS`) and the admin test runs (`FreeDungeonRuns`, the `0xD06E000x` reward log) are gone. The region 2 boss is the only gate; `exercise.mjs` checks the lobby says so and a run is refused before it.
+- A live run takes its ticket in `FinishLiveAsync`, not at the start: runs live in memory, so a deploy mid-run used to lose the run and the ticket. A new run or a sweep settles the open one first, so it cannot be dodged.
+- Chests pay dungeon tickets to every account.
+- The boss mechanics proposed as "point 3" already existed (each boss has four abilities, 2.6a); the schools measurement shows they already favour different builds, so nothing new was added there.
+- Calibration for the first stages: in the production copy only three accounts have beaten the region 2 boss (levels 99-113), and all three clear stages 1-5 of every gate; the level-40 dev fixture wins stage 1 in `exercise.mjs`.
+- The owner's admin test runs were reset afterwards (backup first): their logged XP, gold, diamonds, piece and chest taken back, the first-clear diamonds of the runs before the log, and the owner's `DungeonProgress` rows deleted.
 
 **Not calibrated yet:** a party of geared champions (no production account has one).
 

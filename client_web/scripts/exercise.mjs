@@ -1749,14 +1749,14 @@ if (want('potions')) {
 // of) - so this passes on every run, not once.
 }
 if (want('dungeon')) {
-// Modul: hidden from players while it is rebuilt (owner, 2026-10-31). The
-// server answers a non-admin with a closed lobby and no dungeons, so for the
-// fixture this proves the gate holds - a run is refused - and stops there.
-const gateView = await apiGet('/api/v1/dungeon').catch(() => null);
-if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 0) {
+// Open to everyone since 2026-10-31; before the region 2 boss the lobby says why
+// and a run is refused - the fixture has not beaten it, so that is checked first.
+{
+  const gateView = await apiGet('/api/v1/dungeon').catch(() => null);
   const refused = await apiPost('/api/v1/dungeon/run', { Kind: 1, Stage: 1 }).catch(() => null);
-  record('the hidden dungeon refuses a run to a non-admin', refused?.Outcome === 'Locked', refused ? refused.Outcome : 'no answer');
-} else {
+  record('before the region 2 boss the dungeon says why and refuses a run',
+    gateView?.Open === false && (gateView?.LockedReason ?? '') !== '' && refused?.Outcome === 'Locked',
+    `${gateView?.LockedReason ?? 'no view'} | ${refused?.Outcome ?? 'no answer'}`);
   // The fixture has not beaten the region 2 boss; open the dungeons for it in
   // the server's memory only (cleared at the end of this step).
   await apiPost('/api/v1/dev/dungeon/unlock', { Regions: 2 }).catch(() => {});
