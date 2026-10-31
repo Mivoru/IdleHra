@@ -1229,6 +1229,7 @@ namespace FolkIdle.Server.Domain.Combat
                 VillageTickCoordinator.DrainProductionGrants(_safeDispatch, _contextFactory);
 
                 LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers, _safeDispatch, _larderEngine);
+                DungeonTickCoordinator.DrainXpGrants(_playerRegistry, _activePlayers);
                 PotionShelfTickCoordinator.DrainDeltas(_activePlayers, _safeDispatch, _contextFactory);
 
                 // Task 88: rebirths asked for over REST - suspend, flush, and
@@ -2935,7 +2936,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static void ApplyBulkExperience(ref TickStatePayload payload, long xpGain, int activeRaceId = 0)
+        internal static void ApplyBulkExperience(ref TickStatePayload payload, long xpGain, int activeRaceId = 0)
         {
             if (xpGain <= 0)
             {

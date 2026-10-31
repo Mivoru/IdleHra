@@ -45,6 +45,14 @@ green". Every own decision is written in the design doc it belongs to
   owner's request (it is far from how it should look): non-admin accounts get
   a closed lobby and a refused run, the menu entry shows only to admins. See
   `CHESTS_DUNGEONS_DIAMONDS.md` 2.7 for how to lift it.
+- **Dungeon rework, slices 1-2** (owner's direction 2026-10-31, still
+  admin-only): three gates (XP / Gold / Equipment) with a stage field each,
+  Koschei and Zmey with their four abilities, per-gate tickets in the new
+  `DungeonProgress` table (additive migration `AddDungeonProgress`), XP and
+  gold paid as minutes of the champion's own income, and the run played back
+  as a scene with painted gate and boss art. Plan and the next slices (swipe
+  dodges + run-long bonuses on a server-side run session, sweep, roster up to
+  three): `CHESTS_DUNGEONS_DIAMONDS.md` 2.8.
 
 **Open, in order:**
 1. **thorns_pct parity** (still `retired: true`). Lead found, not proven: with
@@ -55,10 +63,10 @@ green". Every own decision is written in the design doc it belongs to
    thorns. Un-retire only when both parity suites pass with it rollable.
 2. **Inheritance milestones** at levels 5 and 10 (option B's extra effects) -
    twelve new mechanics, each needing a parity row; not built.
-3. **Dungeon rework first** (owner: the look is wrong - get the owner's picture
-   of it before building more), then the next slices: the XP (Koschei) and Gold (Zmey) dungeons,
-   tickets from chests, stage-15 titles, run art and sounds
-   (`LOOT_DUNGEON_VISUALS.md`). The dev fixture has not beaten the region 2
+3. **Dungeon rework** - slices 1-2 built (2.8). Next: the owner looks at
+   slices 1-2 (admin account), then slice 3 (dodges, bonuses, run session,
+   sweep), 4 (roster), 5 (art and sound), tickets from chests, stage-15
+   titles, and the calibration of Koschei and Zmey on the production copy. The dev fixture has not beaten the region 2
    boss, so `exercise`'s dungeon section sees the locked lobby on the real
    gate (it was verified 20/20 with the gate lowered locally).
 4. **Phase 2b (simulator) and phase 5 (affix families)** - not started. 2b is a

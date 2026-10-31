@@ -117,18 +117,21 @@ namespace FolkIdle.Server.Tests
             // clears, with the best fish of region 5 in the larder - the target
             // is stage 10 for the maxed profile, with effort.
             int bestFish = FoodRegistry.FirstRawFishOfTier(5);
+            // All three dungeons (2026-10-31 rework): each boss's abilities ask
+            // for a different build, so each reports its own highest stage.
+            foreach (var kind in Domain.Combat.DungeonBoss.All)
             foreach (var (name, profile) in new[] { ("real", real), ("maxed", maxed) })
             {
-                var line = new System.Text.StringBuilder($"dungeon {name,-6}:");
+                var line = new System.Text.StringBuilder($"dungeon {kind,-9} {name,-6}:");
                 int highest = 0;
                 for (int stage = 1; stage <= Domain.Combat.DungeonSimulator.StageCount; stage++)
                 {
-                    var run = Domain.Combat.DungeonSimulator.Run(profile, stage, bestFish, 9999);
+                    var run = Domain.Combat.DungeonSimulator.Run(profile, kind, stage, bestFish, 9999);
                     line.Append(run.Won ? $" {stage}={run.Seconds:F0}s/{run.MealsEaten}m" : $" {stage}=X({run.WavesCleared}w,{run.BossHpLeftPct}%,{run.MealsEaten}m,{run.Events[^1].Kind})");
                     if (run.Won) highest = stage;
                 }
                 _output.WriteLine(line.ToString());
-                _output.WriteLine($"dungeon {name,-6}: highest stage cleared {highest}");
+                _output.WriteLine($"dungeon {kind,-9} {name,-6}: highest stage cleared {highest}");
             }
 
             // The band scale the maxed profile beats stage 10 at, with every meal

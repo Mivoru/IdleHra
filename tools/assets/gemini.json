@@ -828,6 +828,42 @@
       "model": "gemini-3.1-flash-image",
       "key": "pure green (#00FF00)",
       "prompt": "Boss-bane Philtre: a sharp crystal flask of violet potion with a small skull stopper. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle."
+    },
+    {
+      "id": "dungeon_gate_xp",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "2:3",
+      "prompt": "A tall gate into Koschei the Deathless's tower: a pointed arch of black stone and old bone, carved with ribs and skulls, shelves of ancient books and hanging iron cages glimpsed inside, a cold green soul-light glowing from deep within, thin green mist spilling over the threshold, a rusted iron crown hanging over the keystone. The gate stands in the centre of the frame, seen straight on from a little below, so it reads as a doorway the viewer is about to walk through; a dark, quiet border around it so a title and a button can sit over the top and bottom of the image. No characters, no text."
+    },
+    {
+      "id": "dungeon_gate_gold",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "2:3",
+      "prompt": "A tall gate into Zmey Gorynych's hoard: a rough mountain cave mouth framed by timber mine supports and a broken ore cart, heaps of gold coins and goblets glinting inside, warm orange lantern light and fire glow from within, three long dragon-scale scratches gouged into the rock above the entrance, smoke curling from the dark. The gate stands in the centre of the frame, seen straight on from a little below, so it reads as a doorway the viewer is about to walk through; a dark, quiet border around it so a title and a button can sit over the top and bottom of the image. No characters, no text."
+    },
+    {
+      "id": "dungeon_gate_equipment",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "2:3",
+      "prompt": "A tall gate into Baba Yaga's hut: a crooked gateway in a fence of bones topped with glowing skull-lanterns, a dark birch forest around it, the hut on chicken legs visible through the gate in misty violet light, a wooden mortar and pestle leaning by the gatepost, violet mist on the ground. The gate stands in the centre of the frame, seen straight on from a little below, so it reads as a doorway the viewer is about to walk through; a dark, quiet border around it so a title and a button can sit over the top and bottom of the image. No characters, no text."
+    },
+    {
+      "id": "dungeon_boss_koschei",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "prompt": "Koschei the Deathless, a tall gaunt skeletal sorcerer-king of Slavic folklore, grey parchment skin stretched over bone, a rusted iron crown, a tattered black cloak, a long bone staff, a single steel needle glinting on a chain at his chest, cold green soul-fire burning in his eye sockets, his lair a tower of bone shelves and cages in green light. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of their lair fading to near-black at the edges so the figure reads clearly on a small screen. No text."
+    },
+    {
+      "id": "dungeon_boss_zmey",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "prompt": "Zmey Gorynych, a three-headed green dragon of Slavic folklore coiled on a heap of gold, the three heads each with its own temper - the left one angry and roaring, the middle one sly and grinning, the right one sleepy and half-lidded - smoke curling from the nostrils, gold-tinged scales, warm orange cave light. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of their lair fading to near-black at the edges so the figure reads clearly on a small screen. No text."
+    },
+    {
+      "id": "dungeon_boss_babayaga",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "prompt": "Baba Yaga, the ancient witch of Slavic folklore, flying in a great wooden mortar and steering with a pestle, a birch broom tucked behind her, a long hooked nose, iron teeth bared in a grin, wild grey hair under a ragged headscarf, a necklace of tiny skulls, misty violet forest light with glowing skull-lanterns behind her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of their lair fading to near-black at the edges so the figure reads clearly on a small screen. No text."
     }
   ]
 }

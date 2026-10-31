@@ -1,4 +1,4 @@
-// The equipment dungeon's REST surface (CHESTS_DUNGEONS_DIAMONDS.md 2.6a).
+// The three dungeons' REST surface (CHESTS_DUNGEONS_DIAMONDS.md 2.6a, 2.8).
 // The server decides every blow and every reward; this only asks and shows.
 import { authedGet, authedPost } from './auth';
 
@@ -21,18 +21,32 @@ export interface DungeonStage {
   Abilities: DungeonAbility[];
 }
 
+/** Server DungeonKind - the number is stored and sent, never reorder. */
+export type DungeonKind = 0 | 1 | 2;
+export const DUNGEON_EQUIPMENT: DungeonKind = 0;
+export const DUNGEON_XP: DungeonKind = 1;
+export const DUNGEON_GOLD: DungeonKind = 2;
+
+export interface DungeonInfo {
+  Kind: DungeonKind;
+  Key: 'Equipment' | 'Xp' | 'Gold';
+  Name: string;
+  Boss: string;
+  Tickets: number;
+  BestStage: number;
+  Stages: DungeonStage[];
+}
+
 export interface DungeonView {
   Open: boolean;
   LockedReason: string;
   Online: boolean;
-  Tickets: number;
   TicketCap: number;
   TicketsPerDay: number;
-  BestStage: number;
-  Boss: string;
   Waves: number;
   MealCap: number;
-  Stages: DungeonStage[];
+  /** XP, Gold, Equipment - the server's order, which is the gates' order. */
+  Dungeons: DungeonInfo[];
 }
 
 export interface DungeonEvent {
@@ -40,6 +54,10 @@ export interface DungeonEvent {
   Kind: 'wave' | 'boss' | 'cleared' | 'ability' | 'meal' | 'defeat' | 'victory' | 'timeout';
   Text: string;
   Value: number;
+  /** Both bars right after the event, in percent. */
+  PlayerHpPct: number;
+  EnemyHpPct: number;
+  ShieldPct: number;
 }
 
 export interface DungeonRunResult {
@@ -51,6 +69,9 @@ export interface DungeonRunResult {
   Seconds: number;
   MealsEaten: number;
   Events: DungeonEvent[];
+  Kind: DungeonKind;
+  /** Whose face each of the five waves wears (the server picks them). */
+  WaveMonsterIds: number[];
 }
 
 export interface DungeonReward {
@@ -60,6 +81,8 @@ export interface DungeonReward {
   ChestId: number;
   Chest: string;
   Diamonds: number;
+  Xp: number;
+  Gold: number;
 }
 
 export interface DungeonRunAnswer {
@@ -76,6 +99,6 @@ export function fetchDungeon(): Promise<DungeonView> {
   return authedGet<DungeonView>('/api/v1/dungeon');
 }
 
-export function runDungeon(stage: number): Promise<DungeonRunAnswer | null> {
-  return authedPost<DungeonRunAnswer>('/api/v1/dungeon/run', { Stage: stage });
+export function runDungeon(kind: DungeonKind, stage: number): Promise<DungeonRunAnswer | null> {
+  return authedPost<DungeonRunAnswer>('/api/v1/dungeon/run', { Kind: kind, Stage: stage });
 }

@@ -245,6 +245,9 @@ namespace FolkIdle.Server.Models
         public int PotionShelf3Count { get; set; }
         public byte PotionAutoDrinkMask { get; set; }
 
+        // NO LONGER READ (2026-10-31 rework): the dungeons live in DungeonProgress,
+        // one row per dungeon; AddDungeonProgress copied these into Kind 0 rows.
+        // Drop them once production has run on that table for a while.
         // The equipment dungeon (2026-10-31): free tickets (2 a day, at most 4 -
         // a new row starts at 0 with day 0, so its first read tops it to 4;
         // topped up on read - DungeonEngine), the UTC day they were last topped

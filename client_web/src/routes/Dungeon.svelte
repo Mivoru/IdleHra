@@ -1,71 +1,72 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { fetchDungeon, runDungeon, dungeonKeys, type DungeonRunAnswer, type DungeonEvent } from '../lib/net/dungeon';
+  import { fetchDungeon, runDungeon, dungeonKeys, type DungeonRunAnswer, type DungeonInfo, type DungeonKind } from '../lib/net/dungeon';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
-  import { prettifyBaseId } from '../lib/net/content';
   import { pushLocalNotice } from '../lib/stores/game';
   import { requestScreen } from '../lib/stores/navigation';
   import { play } from '../lib/ui/audio';
   import QueryError from '../lib/ui/QueryError.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import DungeonRun from '../lib/ui/DungeonRun.svelte';
 
-  // Modul: THE EQUIPMENT DUNGEON (owner D1-D6, 2026-10-31). A run is a
-  // decision (which stage) and a result, not a reflex test: the server
-  // simulates five waves and Baba Yaga with the live character and answers
-  // with what happened, which this plays back line by line. The client never
-  // says who won - it only shows the server's answer.
+  // Modul: THREE GATES (owner, 2026-10-31). XP, Gold and Equipment side by
+  // side, each with its own stage field under it; a stage opens when the one
+  // before it is beaten. The server decides every blow and every reward - this
+  // only asks which gate and which stage, then plays the answer back.
   const client = useQueryClient();
   const view = createQuery(() => ({ queryKey: dungeonKeys.view, queryFn: fetchDungeon }));
   const data = $derived(view.data ?? null);
 
-  let chosen = $state(1);
+  // Art and colour per gate, by the server's stable key.
+  const GATE: Record<DungeonInfo['Key'], { art: string; tone: string; pays: string }> = {
+    Xp: { art: '/dungeon/gate-xp.webp', tone: 'xp', pays: 'Experience' },
+    Gold: { art: '/dungeon/gate-gold.webp', tone: 'gold', pays: 'Gold' },
+    Equipment: { art: '/dungeon/gate-equipment.webp', tone: 'equipment', pays: 'Gear and a chest' },
+  };
+
+  /** The highest stage the player may enter in a dungeon. */
+  function highestOpen(d: DungeonInfo): number {
+    const open = d.Stages.filter((s) => s.LockedReason === '').map((s) => s.Stage);
+    return open.length > 0 ? Math.max(...open) : 1;
+  }
+
+  // The chosen stage per gate, starting on the highest open one.
+  let stageOf = $state<Record<number, number>>({});
   $effect(() => {
-    // Start on the highest stage the player may enter.
-    if (data && chosen === 1) {
-      const open = data.Stages.filter((s) => s.LockedReason === '').map((s) => s.Stage);
-      if (open.length > 0) chosen = Math.max(...open);
-    }
+    if (!data) return;
+    for (const d of data.Dungeons) if (stageOf[d.Kind] === undefined) stageOf[d.Kind] = highestOpen(d);
   });
-  const stage = $derived(data?.Stages.find((s) => s.Stage === chosen) ?? null);
+  let selected = $state<DungeonKind>(1);
+  const dungeon = $derived(data?.Dungeons.find((d) => d.Kind === selected) ?? null);
+  const stage = $derived(dungeon?.Stages.find((s) => s.Stage === (stageOf[selected] ?? 1)) ?? null);
+
+  function step(d: DungeonInfo, by: number) {
+    const next = Math.min(highestOpen(d), Math.max(1, (stageOf[d.Kind] ?? 1) + by));
+    stageOf[d.Kind] = next;
+    selected = d.Kind;
+  }
 
   let running = $state(false);
   let answer = $state<DungeonRunAnswer | null>(null);
-  let shown = $state<DungeonEvent[]>([]);
-  let playback: ReturnType<typeof setInterval> | null = null;
-  const done = $derived(answer?.Result != null && shown.length === answer.Result.Events.length);
-
-  function stopPlayback() {
-    if (playback) clearInterval(playback);
-    playback = null;
-  }
+  let runOf = $state<DungeonInfo | null>(null);
 
   async function enter() {
-    if (!stage || running) return;
+    if (!dungeon || !stage || running) return;
     running = true;
-    stopPlayback();
-    shown = [];
     answer = null;
     try {
-      const reply = await runDungeon(stage.Stage);
+      const reply = await runDungeon(dungeon.Kind, stage.Stage);
       if (!reply) return;
       if (reply.Outcome !== 'Ok' || !reply.Result) {
         pushLocalNotice(reply.Reason || 'The run could not start.', 'error');
         client.invalidateQueries({ queryKey: dungeonKeys.view });
         return;
       }
+      play('delveDoor');
+      runOf = dungeon;
       answer = reply;
-      const events = reply.Result.Events;
-      // Playback: a line every 350 ms, so a run reads like a fight, not a log.
-      playback = setInterval(() => {
-        if (shown.length >= events.length) {
-          stopPlayback();
-          play(reply.Result!.Won ? 'chestOpenLegendary' : 'error');
-          return;
-        }
-        shown = [...shown, events[shown.length]];
-      }, 350);
       client.invalidateQueries({ queryKey: dungeonKeys.view });
-      if (reply.Reward) invalidateOwnedItems(client);
+      if (reply.Reward?.PieceId || reply.Reward?.ChestId) invalidateOwnedItems(client);
     } catch (e) {
       const status = (e as { status?: number }).status;
       pushLocalNotice(status === 409 ? 'Your character is not online - reconnect and try again.' : 'The run could not start. Nothing was spent.', 'error');
@@ -73,64 +74,69 @@
       running = false;
     }
   }
-
-  function skip() {
-    if (!answer?.Result) return;
-    stopPlayback();
-    shown = answer.Result.Events;
-  }
-
-  $effect(() => () => stopPlayback());
 </script>
 
 <div class="wrap">
+  {#if answer?.Result && runOf}
+    <DungeonRun {answer} dungeon={runOf} onclose={() => (answer = null)} />
+  {:else}
   <section class="panel lobby" data-testid="dungeon">
     <header>
-      <div>
-        <h2>The Equipment Dungeon</h2>
-        <p class="dim small">
-          Five waves and Baba Yaga, one after another - your health carries from fight to fight, and the
-          larder gives at most {data?.MealCap ?? 5} meals a run. Win and she drops a piece of gear and a
-          loot chest.
-        </p>
-      </div>
-      {#if data}
-        <span class="tickets" data-testid="dungeon-tickets" title="{data.TicketsPerDay} a day, at most {data.TicketCap}">
-          {data.Tickets} / {data.TicketCap} tickets
-        </span>
-      {/if}
+      <h2>Dungeons</h2>
+      <p class="dim small">
+        Five waves and a boss, one after another. Your health carries from fight to fight and the larder gives at most
+        {data?.MealCap ?? 5} meals a run. {data ? `${data.TicketsPerDay} tickets a day for each gate, at most ${data.TicketCap}.` : ''}
+      </p>
     </header>
 
     {#if view.isError && !data}
-      <QueryError query={view} what="the dungeon" />
+      <QueryError query={view} what="the dungeons" />
     {:else if !data}
       <Skeleton rows={4} />
     {:else if !data.Open}
       <p class="locked" data-testid="dungeon-locked">{data.LockedReason}</p>
       <button onclick={() => requestScreen('combat')}>Go fight</button>
     {:else}
-      <div class="stages" role="radiogroup" aria-label="Stage">
-        {#each data.Stages as s (s.Stage)}
-          <button
-            role="radio"
-            aria-checked={chosen === s.Stage}
-            class="stage"
-            class:on={chosen === s.Stage}
-            class:cleared={s.Cleared}
-            data-band={s.Band}
-            data-testid="dungeon-stage-{s.Stage}"
-            disabled={s.LockedReason !== ''}
-            title={s.LockedReason || `${s.Band} band`}
-            onclick={() => (chosen = s.Stage)}
-          >{s.Stage}</button>
+      <p class="pick dim tiny">Pick a gate, then its stage underneath.</p>
+      <div class="gates" role="radiogroup" aria-label="Dungeon">
+        {#each data.Dungeons as d (d.Kind)}
+          {@const g = GATE[d.Key]}
+          {@const at = stageOf[d.Kind] ?? 1}
+          <div class="gate-col" data-tone={g.tone}>
+            <button
+              class="gate"
+              class:on={selected === d.Kind}
+              role="radio"
+              aria-checked={selected === d.Kind}
+              data-testid="dungeon-gate-{d.Key.toLowerCase()}"
+              style="background-image: url({g.art})"
+              onclick={() => (selected = d.Kind)}
+            >
+              <span class="gate-name">{d.Name}</span>
+              <span class="gate-pays">{g.pays}</span>
+              <span class="gate-tickets" title="{d.Tickets} of {data.TicketCap} tickets" data-testid="dungeon-tickets-{d.Key.toLowerCase()}">
+                {#each Array(data.TicketCap) as _, i (i)}<i class:full={i < d.Tickets}></i>{/each}
+              </span>
+            </button>
+            <div class="stage-field" aria-label="{d.Name} stage">
+              <button class="arrow" aria-label="Lower stage" disabled={at <= 1} onclick={() => step(d, -1)}>&lsaquo;</button>
+              <button class="stage-num" data-testid="dungeon-stage-{d.Key.toLowerCase()}" data-band={d.Stages[at - 1]?.Band}
+                aria-label="Stage {at}" onclick={() => (selected = d.Kind)}>
+                <strong>{at}</strong>
+              </button>
+              <button class="arrow" aria-label="Higher stage" disabled={at >= highestOpen(d)} onclick={() => step(d, 1)}>&rsaquo;</button>
+            </div>
+          </div>
         {/each}
       </div>
 
-      {#if stage}
-        <div class="detail">
-          <p class="band dim tiny">{stage.Band} band &middot; stage {stage.Stage}{stage.Cleared ? ' · cleared' : ''}</p>
+      {#if dungeon && stage}
+        <div class="detail" data-tone={GATE[dungeon.Key].tone}>
+          <p class="band dim tiny">
+            {dungeon.Name} &middot; {stage.Band} band &middot; stage {stage.Stage}{stage.Cleared ? ' · cleared' : ''} &middot; best {dungeon.BestStage}
+          </p>
           <p class="small">{stage.Reward}{stage.FirstClearPaid ? ' (first clear already paid)' : ''}</p>
-          <h3>{data.Boss} at this stage</h3>
+          <h3>{dungeon.Boss} at this stage</h3>
           <ul class="abilities">
             {#each stage.Abilities as a (a.Id)}
               <li class:inactive={!a.Active}>
@@ -142,48 +148,13 @@
           <button
             class="primary enter"
             data-testid="dungeon-enter"
-            disabled={running || data.Tickets <= 0 || stage.LockedReason !== ''}
+            disabled={running || dungeon.Tickets <= 0 || stage.LockedReason !== ''}
             onclick={enter}
-          >{running ? 'Fighting...' : data.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
+          >{running ? 'Entering...' : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
         </div>
       {/if}
     {/if}
   </section>
-
-  {#if answer?.Result}
-    {@const r = answer.Result}
-    <section class="panel run" data-testid="dungeon-run">
-      <h2>Stage {r.Stage}</h2>
-      <ol class="feed">
-        {#each shown as e, i (i)}
-          <li data-kind={e.Kind}><span class="t dim">{e.AtSeconds.toFixed(0)}s</span> {e.Text}</li>
-        {/each}
-      </ol>
-      {#if !done}
-        <button class="quiet" onclick={skip}>Skip to the end</button>
-      {:else}
-        <div class="result" class:won={r.Won} data-testid="dungeon-result" data-piece-id={answer.Reward?.PieceId ?? 0}>
-          <strong>{r.Won ? 'Victory' : 'Defeat'}</strong>
-          <span class="dim small">
-            {r.Won ? `Baba Yaga falls after ${r.Seconds.toFixed(0)} s` : r.ReachedBoss ? `Baba Yaga had ${r.BossHpLeftPct}% left` : `Fell in wave ${r.WavesCleared + 1}`}
-            &middot; {r.MealsEaten} meal{r.MealsEaten === 1 ? '' : 's'} eaten
-          </span>
-          {#if answer.Reward}
-            <ul class="reward">
-              {#if answer.Reward.PieceBaseId}<li>{answer.Reward.PieceRarity} {prettifyBaseId(answer.Reward.PieceBaseId)}</li>{/if}
-              {#if answer.Reward.Chest}<li>A {answer.Reward.Chest} loot chest</li>{/if}
-              {#if answer.Reward.Diamonds > 0}<li>+{answer.Reward.Diamonds} diamonds for the first clear</li>{/if}
-            </ul>
-            <div class="acts">
-              {#if answer.Reward.PieceId}<button onclick={() => requestScreen('chest')}>See the piece</button>{/if}
-              {#if answer.Reward.ChestId}<button onclick={() => requestScreen('chest')}>Open the chest</button>{/if}
-            </div>
-          {:else if !r.Won}
-            <p class="dim small">Nothing this time - a lost run pays a Bronze chest one time in four.</p>
-          {/if}
-        </div>
-      {/if}
-    </section>
   {/if}
 </div>
 
@@ -192,17 +163,11 @@
     padding: 1rem;
     display: grid;
     gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-    align-items: start;
-  }
-  header {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    align-items: flex-start;
+    max-width: 60rem;
+    margin: 0 auto;
   }
   h2 {
-    margin: 0 0 0.4rem;
+    margin: 0 0 0.3rem;
     font-size: 1.1rem;
   }
   h3 {
@@ -214,47 +179,144 @@
     margin: 0 0 0.6rem;
   }
   .tiny {
-    font-size: 0.72rem;
-  }
-  .tickets {
-    flex-shrink: 0;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 0.2rem 0.6rem;
-    font-size: 0.8rem;
+    font-size: 0.68rem;
   }
   .locked {
     font-weight: 600;
   }
-  .stages {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(2.75rem, 1fr));
-    gap: 0.35rem;
-    margin: 0.4rem 0 0.8rem;
+  .pick {
+    margin: 0.4rem 0 0;
   }
-  .stage {
-    min-height: 44px;
+
+  /* Tones: one colour per gate, matching its art. */
+  [data-tone='xp'] {
+    --tone: #4fd1a5;
+  }
+  [data-tone='gold'] {
+    --tone: #f0a640;
+  }
+  [data-tone='equipment'] {
+    --tone: #b685f0;
+  }
+
+  .gates {
+    display: grid;
+    /* Three equal gates; on a wide screen they stop at a size that still
+       reads as a doorway rather than a poster. */
+    grid-template-columns: repeat(3, minmax(0, 14rem));
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 0.6rem 0 0.8rem;
+  }
+  .gate-col {
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+  .gate {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    width: 100%;
+    padding: 0;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    text-align: center;
+    color: #fff;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .gate::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.7), transparent 30%, transparent 62%, rgb(0 0 0 / 0.85));
+    pointer-events: none;
+  }
+  .gate > * {
+    position: relative;
+  }
+  .gate.on {
+    border-color: var(--tone);
+    box-shadow: 0 0 18px -2px var(--tone);
+    transform: translateY(-2px);
+  }
+  .gate:not(.on) {
+    filter: saturate(0.7) brightness(0.85);
+  }
+  .gate-name {
+    padding: 0.45rem 0.3rem 0;
+    font-weight: 800;
+    font-size: clamp(0.72rem, 2.6vw, 0.95rem);
+    line-height: 1.15;
+    text-shadow: 0 1px 3px #000;
+  }
+  .gate-pays {
+    grid-row: 3;
+    font-size: clamp(0.62rem, 2.2vw, 0.78rem);
+    color: var(--tone);
     font-weight: 700;
+    text-shadow: 0 1px 3px #000;
+  }
+  .gate-tickets {
+    grid-row: 4;
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    padding: 0.25rem 0 0.45rem;
+  }
+  .gate-tickets i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--tone);
+  }
+  .gate-tickets i.full {
+    background: var(--tone);
+  }
+
+  .stage-field {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .stage-field .arrow {
+    min-height: 44px;
+    border: 0;
+    border-radius: 0;
+    font-size: 1.3rem;
+    padding: 0;
+  }
+  .stage-num {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+    min-height: 44px;
+    min-width: 0;
+  }
+  .stage-num strong {
+    font-size: 1.15rem;
     font-variant-numeric: tabular-nums;
   }
-  .stage[data-band='Ascension'] {
-    border-color: var(--brass);
+  .stage-num[data-band='Ascension'] strong {
+    color: var(--accent);
   }
-  .stage[data-band='Beyond'] {
-    border-color: var(--danger, #b3261e);
+  .stage-num[data-band='Beyond'] strong {
+    color: var(--danger);
   }
-  .stage:disabled {
-    opacity: 0.45;
-  }
-  .stage.cleared::after {
-    content: ' ✓';
-    font-weight: 400;
-  }
-  .stage.on {
-    background: var(--accent);
-    color: var(--bg-panel);
+
+  .detail {
+    border-top: 2px solid var(--tone);
+    padding-top: 0.6rem;
   }
   .abilities {
     list-style: none;
@@ -273,54 +335,6 @@
   }
   .enter {
     width: 100%;
-  }
-  .feed {
-    list-style: none;
-    margin: 0 0 0.6rem;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
-    font-size: 0.82rem;
-    max-height: 22rem;
-    overflow-y: auto;
-  }
-  .feed li[data-kind='ability'] {
-    color: var(--accent);
-  }
-  .feed li[data-kind='defeat'],
-  .feed li[data-kind='timeout'] {
-    color: var(--danger, #b3261e);
-    font-weight: 700;
-  }
-  .feed li[data-kind='victory'],
-  .feed li[data-kind='boss'] {
-    font-weight: 700;
-  }
-  .t {
-    display: inline-block;
-    min-width: 2.5rem;
-    font-variant-numeric: tabular-nums;
-  }
-  .result {
-    display: grid;
-    gap: 0.35rem;
-    border-top: 1px solid var(--border);
-    padding-top: 0.6rem;
-  }
-  .result strong {
-    font-size: 1.1rem;
-  }
-  .result.won strong {
-    color: var(--accent);
-  }
-  .reward {
-    margin: 0;
-    padding-left: 1.1rem;
-    font-size: 0.85rem;
-  }
-  .acts {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    min-height: 44px;
   }
 </style>

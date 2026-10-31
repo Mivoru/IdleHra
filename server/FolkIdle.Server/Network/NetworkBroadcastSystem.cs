@@ -12605,6 +12605,11 @@ namespace FolkIdle.Server.Network
                     await HandleDevDungeonTickets(context, playerId);
                     return;
                 }
+                if (requestPath == "/api/v1/dev/dungeon/unlock" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevDungeonUnlock(context, playerId);
+                    return;
+                }
 
                 // ...and end the caller's running potions on the next tick.
                 if (requestPath == "/api/v1/dev/potions/expire" && context.Request.HttpMethod == "POST")
