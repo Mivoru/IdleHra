@@ -598,6 +598,29 @@ wearing nothing).** Highest stage cleared, best region-5 fish:
   stage-10 boss's body), max health and gear worn, and warns when a champion
   without full gear goes.
 
+**Third pass - schools (owner, 2026-10-31: "the player should think about the build during the run"; the owner left the design to us):**
+
+- Every bonus belongs to one of four schools. Two cards of a school unlock its set bonus, three unlock the second one:
+
+  | School | Cards | 2 cards | 3 cards |
+  |---|---|---|---|
+  | Berserk | Fury, Keen Eye, Brutality | Executioner: +50% damage below 30% enemy health | Frenzy: +30% speed below half health |
+  | Guardian | Iron Skin, Vigour, Bastion (+15% HP, 10% less taken) | Last Stand: the first lethal blow leaves 30% health | Unshakable: a miss lands half and brings no curse |
+  | Blood | Leech, Second Wind, Feast (meals +50%) | Bloodbath: each wave cleared heals 30% | Sanguine: swing healing doubled |
+  | Storm | Swiftness, Evasion (1 swing in 5 misses, exact), Quickstep (+25% time per swipe) | Flow: each clean dodge heals 20% | Eye of the Storm: +30% speed |
+
+- Risky cards, once a run each, count for their school: Glass Cannon (+60% damage, -30% HP), Bulwark (40% less taken, -25% speed), Bloodlust (+4% leech, no more meals), Reckless (+40% speed, 25% more taken). About one offer in four (`RiskyOfferPct` 25) makes its second card a risky one.
+- The offer: the first shows two schools; later ones hold one card of the school the player leads and one of another, so each pick is "finish the build or turn". A card that would complete a set says so on the card.
+- Measured on the owner's account (median of five seeds, all dodged, solo; boss health left at the first lost stage):
+
+  | Dungeon | greedy (old order) | Berserk | Guardian | Blood | Storm | Risky first |
+  |---|---|---|---|---|---|---|
+  | Koschei (XP) | 9, 10 at 38% | 9, 41% | 9, 31% | 9, 18% | 9, 13% | 9, 3% |
+  | Zmey (Gold) | 10 | 10 | 10 | 10 | 10 | 10 |
+  | Baba Yaga (Equipment) | 9, 23% | 9, 23% | 9, 13% | **10**, 11 at 74% | 9, 37% | 9, 12% |
+
+  Every build stays within one stage, the best build differs by boss (sustain against Baba Yaga, Storm and risky against Koschei), and the ceiling stays where it was (none 9, missed 8). The owner cleared Koschei 10 by hand on 1.0.1506.
+
 **Not calibrated yet:** a party of geared champions (no production account has one).
 
 ### 2.6 Decisions for the owner

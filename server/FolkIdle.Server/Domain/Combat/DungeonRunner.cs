@@ -65,6 +65,8 @@ namespace FolkIdle.Server.Domain.Combat
         private int _tick, _meals, _eatCooldown, _wavesCleared, _bossHpLeftPct = 100, _fightStart, _emitted;
         private double _enemyAcc;
         private int _appliedMaxHpPct;
+        private int _evadeAcc;
+        private bool _lastStandUsed;
 
         public DungeonMods Mods { get; } = new();
         public DungeonRunResult? Result { get; private set; }
@@ -175,6 +177,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (!Paused) return;
             Dodged++;
             Note("dodged", "Dodged!");
+            if (Mods.Sets.Contains(DungeonPerks.Flow)) _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + _f.PlayerMax * 0.2);
         }
 
         /// <summary>A bonus the player chose, then the fight goes on.</summary>
@@ -183,6 +186,8 @@ namespace FolkIdle.Server.Domain.Combat
             if (!DungeonPerks.Apply(Mods, perkId)) return false;
             ApplyImmediate(perkId);
             Note("perk", DungeonPerks.View(perkId).Name);
+            // A set bonus is a chip of its own, so the build reads at a glance.
+            foreach (var set in DungeonPerks.UnlockSets(Mods)) Note("perk", $"{set.Name} ({set.School} set)");
             Paused = false;
             return true;
         }
@@ -200,10 +205,11 @@ namespace FolkIdle.Server.Domain.Combat
             if (!Paused) return null;
             Missed++;
             bool boss = _fight >= DungeonSimulator.Waves;
-            double blow = _party.Sum(m => (boss ? m.BossHit : m.WaveHit) * MissBlowHits) * TakenFactor();
+            bool unshakable = Mods.Sets.Contains(DungeonPerks.Unshakable);
+            double blow = _party.Sum(m => (boss ? m.BossHit : m.WaveHit) * MissBlowHits) * TakenFactor() * (unshakable ? 0.5 : 1.0);
             _f.PlayerHp = Math.Max(1, _f.PlayerHp - blow);
             Note("missed", "The blow lands!");
-            var penalty = DungeonPerks.RollPenalty(Mods, rng);
+            var penalty = unshakable ? null : DungeonPerks.RollPenalty(Mods, rng);
             if (penalty != null)
             {
                 DungeonPerks.Apply(Mods, penalty.Id);
@@ -223,7 +229,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (_appliedMaxHpPct != Mods.MaxHpPct)
             {
                 double before = _f.PlayerMax;
-                _f.PlayerMax = _baseMaxMilliHp * (1 + Mods.MaxHpPct / 100.0);
+                _f.PlayerMax = _baseMaxMilliHp * Math.Max(0.2, 1 + Mods.MaxHpPct / 100.0);
                 if (_f.PlayerMax > before) _f.PlayerHp += _f.PlayerMax - before;
                 _f.PlayerHp = Math.Min(_f.PlayerHp, _f.PlayerMax);
                 _appliedMaxHpPct = Mods.MaxHpPct;
@@ -333,6 +339,9 @@ namespace FolkIdle.Server.Domain.Combat
             if (isBoss) _rules.OnTime(_f);
 
             double speed = Math.Max(0.2, 1 + Mods.SpeedPct / 100.0);
+            if (Mods.Sets.Contains(DungeonPerks.Frenzy) && _f.PlayerHp < _f.PlayerMax * 0.5) speed += 0.3;
+            bool executioner = Mods.Sets.Contains(DungeonPerks.Executioner);
+            double leechScale = Mods.Sets.Contains(DungeonPerks.Sanguine) ? 2.0 : 1.0;
             foreach (var m in _party)
             {
                 m.Acc += DungeonSimulator.TickMs;
@@ -340,6 +349,7 @@ namespace FolkIdle.Server.Domain.Combat
                 if (m.Acc < interval) continue;
                 m.Acc -= (int)Math.Round(interval);
                 double factor = ModFactor(m);
+                if (executioner && _f.Enemy < _f.EnemyMax * 0.3) factor *= 1.5;
                 double playerHit = m.Swing.Mean * (isBoss ? m.BossHitFactor : 1.0) * factor;
                 double healPerSwing = m.Swing.ExpectedHeal(m.MaxMilliHp / 100) * (isBoss ? m.BossHitFactor : 1.0);
                 double dealt = isBoss ? _rules.ModifyDealt(_f, playerHit) : playerHit;
@@ -356,8 +366,8 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     _f.Enemy -= dealt;
                 }
-                if (healPerSwing > 0) _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + healPerSwing * (dealt / Math.Max(1.0, playerHit)));
-                if (Mods.LeechTenths > 0) _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + _f.PlayerMax * Mods.LeechTenths / 1000.0 / _party.Length);
+                if (healPerSwing > 0) _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + healPerSwing * leechScale * (dealt / Math.Max(1.0, playerHit)));
+                if (Mods.LeechTenths > 0) _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + leechScale * _f.PlayerMax * Mods.LeechTenths / 1000.0 / _party.Length);
                 if (isBoss) _rules.AfterPlayerSwing(_f);
             }
 
@@ -378,11 +388,20 @@ namespace FolkIdle.Server.Domain.Combat
                 double enemyHit = isBoss ? target.BossHit : target.WaveHit;
                 bool enraged = isBoss && _enrage && _f.Enemy * 100.0 < _f.EnemyMax * AscensionModifiers.EnrageBelowPct;
                 double hit = (enraged ? enemyHit * AscensionModifiers.EnrageAttackPct / 100.0 : enemyHit) * (isBoss ? _rules.EnemyHitFactor(_f) : 1.0) * TakenFactor();
+                // Evasion is exact, not luck: every 100 points accumulated is one swing that misses.
+                _evadeAcc += Mods.EvadePct;
+                if (_evadeAcc >= 100) { _evadeAcc -= 100; hit = 0; }
                 _f.PlayerHp -= hit;
                 if (isBoss) _rules.AfterEnemySwing(_f, hit);
             }
             if (_f.BurnPerTick > 0 && _f.Now < _f.BurnUntil) _f.PlayerHp -= _f.BurnPerTick;
 
+            if (_f.PlayerHp <= 0 && Mods.Sets.Contains(DungeonPerks.LastStand) && !_lastStandUsed)
+            {
+                _lastStandUsed = true;
+                _f.PlayerHp = _f.PlayerMax * 0.3;
+                Note("ability", "Last Stand - the party will not fall yet!");
+            }
             if (_f.PlayerHp <= 0)
             {
                 _f.PlayerHp = 0;
@@ -394,12 +413,12 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
-            int mealsAvailable = Math.Min(DungeonSimulator.MealCap + Mods.ExtraMeals, Math.Max(0, _foodInLarder));
+            int mealsAvailable = Mods.NoMeals ? _meals : Math.Min(DungeonSimulator.MealCap + Mods.ExtraMeals, Math.Max(0, _foodInLarder));
             if (_eatCooldown > 0) _eatCooldown--;
             else if (_f.PlayerHp <= _f.PlayerMax * (_thresholdPct / 100.0) && _foodItemId > 0 && _meals < mealsAvailable && (!isBoss || _rules.CanEat(_f)))
             {
                 // A bite heals what it heals one champion, for each champion in the pool.
-                double bite = FoodRegistry.GetHealMilliHp(_foodItemId, (long)(_f.PlayerMax / _party.Length)) * (double)_party.Length;
+                double bite = FoodRegistry.GetHealMilliHp(_foodItemId, (long)(_f.PlayerMax / _party.Length)) * (double)_party.Length * (1 + Mods.FeastPct / 100.0);
                 _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + bite);
                 _meals++;
                 _eatCooldown = SimulationEngine.AutoEatCooldownTicks;
@@ -418,6 +437,7 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
             _wavesCleared++;
+            if (Mods.Sets.Contains(DungeonPerks.Bloodbath)) _f.PlayerHp = Math.Min(_f.PlayerMax, _f.PlayerHp + _f.PlayerMax * 0.3);
             int left = (int)Math.Ceiling(_f.PlayerHp * 100 / _f.PlayerMax);
             Note("cleared", $"Wave {_fight + 1} cleared, {left}% health left.", left);
             _fight++;

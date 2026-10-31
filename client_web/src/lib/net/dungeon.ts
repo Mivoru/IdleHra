@@ -113,6 +113,18 @@ export interface DungeonPerk {
   Name: string;
   Line: string;
   Penalty: boolean;
+  /** Berserk, Guardian, Blood or Storm; empty for a penalty. */
+  School?: string;
+  /** Strong, with a price; once a run. */
+  Risky?: boolean;
+  /** The set bonus this card would complete ("Name: what it does"), empty when none. */
+  Unlocks?: string;
+}
+
+/** Cards of one school taken this run. */
+export interface DungeonSchoolCount {
+  School: string;
+  Cards: number;
 }
 
 /**
@@ -132,6 +144,7 @@ export interface DungeonRunAnswer {
   Tickets: number | null;
   PartySize?: number;
   WaveMonsterIds?: number[];
+  Schools?: DungeonSchoolCount[];
 }
 
 export interface DungeonTelegraph {

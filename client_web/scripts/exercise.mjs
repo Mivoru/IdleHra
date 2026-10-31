@@ -1775,7 +1775,7 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
   const KEY_FOR = { Up: 'ArrowUp', Down: 'ArrowDown', Left: 'ArrowLeft', Right: 'ArrowRight' };
   const WRONG_FOR = { Up: 'ArrowDown', Down: 'ArrowUp', Left: 'ArrowRight', Right: 'ArrowLeft' };
   async function playRun({ missFirst = false } = {}) {
-    const seen = { telegraphs: 0, offers: 0, perk: '', missed: false };
+    const seen = { telegraphs: 0, offers: 0, perk: '', missed: false, schooled: 0, unlocks: 0 };
     for (let i = 0; i < 120; i++) {
       if (await page.getByTestId('dungeon-result').isVisible().catch(() => false)) break;
       const tg = page.getByTestId('dungeon-telegraph');
@@ -1797,6 +1797,10 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
       const offer = page.getByTestId('dungeon-perk').first();
       if (await offer.isVisible().catch(() => false)) {
         seen.offers++;
+        const cards = page.getByTestId('dungeon-perk');
+        for (let c = 0; c < (await cards.count().catch(() => 0)); c++)
+          if (await cards.nth(c).getAttribute('data-school').catch(() => '')) seen.schooled++;
+        seen.unlocks += await page.getByTestId('dungeon-unlocks').count().catch(() => 0);
         if (!seen.perk) seen.perk = (await offer.locator('strong').innerText().catch(() => '')).trim();
         await offer.click().catch(() => {});
         await page.getByTestId('dungeon-offer').waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
@@ -1829,6 +1833,11 @@ if (gateView && gateView.Open === false && (gateView.Dungeons?.length ?? 0) === 
       `${goldRun.telegraphs} telegraph(s), ${goldRun.offers} offer(s)`);
     const takenText = await page.getByTestId('dungeon-taken').innerText().catch(() => '');
     record('a chosen blessing stays on the run', goldRun.perk !== '' && takenText.includes(goldRun.perk), `${goldRun.perk} | ${takenText.replace(/\s+/g, ' ')}`);
+    // Schools (2026-10-31): every card names its school, and taking the first
+    // card each time follows the leading school, so the second pick completes a set.
+    record('blessing cards name their school and a set bonus', goldRun.schooled >= 2 && goldRun.unlocks >= 1,
+      `${goldRun.schooled} card(s) with a school, ${goldRun.unlocks} set hint(s)`);
+    record('two cards of one school unlock its set', goldRun.offers < 2 || takenText.includes(' set)'), takenText.replace(/\s+/g, ' '));
     const result = page.getByTestId('dungeon-result');
     const finished = await result.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
     const resultText = finished ? (await result.innerText()).replace(/\s+/g, ' ') : '';
