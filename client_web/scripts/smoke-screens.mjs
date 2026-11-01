@@ -12,13 +12,26 @@
 // Signs in as a GUEST, deliberately: this is the post-deploy check the deploy
 // skill points at production, and a guest owns nothing that a navigation pass
 // could spend. Use exercise.mjs when the question is whether a feature works.
-import { SCREENS, assertMatchesNav, go, open, signInAsGuest } from './screens.mjs';
+//
+// It reuses ONE guest (SMOKE_DEVICE_ID) so a deploy does not add an account to
+// production. `--fresh-guest` signs in as a brand-new one instead, for when the
+// question is what a new player meets.
+import { SCREENS, SMOKE_DEVICE_ID, assertMatchesNav, go, open, signInAsGuest } from './screens.mjs';
 
-const OUT = process.argv[2] ?? 'screens';
+const args = process.argv.slice(2);
+const fresh = args.includes('--fresh-guest');
+const OUT = args.find((a) => !a.startsWith('--')) ?? 'screens';
 const { browser, page, errors } = await open({ width: 1440, height: 900 });
 
-const { guided } = await signInAsGuest(page);
-console.log(guided ? 'ok   the new guest met the guided first step' : 'note: the new guest met no guided step');
+const { guided } = await signInAsGuest(page, { deviceId: SMOKE_DEVICE_ID, fresh });
+if (fresh) {
+  console.log(guided ? 'ok   the new guest met the guided first step' : 'note: the new guest met no guided step');
+} else {
+  // The reused guest skipped the tutorial on its first run, so meeting no
+  // guided step is expected; meeting one means the account was new (first run,
+  // or the box lost it).
+  console.log(`ok   signed in as the reused smoke guest (${SMOKE_DEVICE_ID})${guided ? ', new this run' : ''}`);
+}
 
 // Modul: the list is checked against the nav rather than trusted. Renaming a
 // destination used to leave this file asking for a button that no longer

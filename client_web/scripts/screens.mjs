@@ -243,11 +243,37 @@ export async function dismissAppPromo(page) {
 }
 
 /**
- * Signs in as a throwaway guest. This is the one to use against PRODUCTION:
- * a guest owns nothing, so nothing a checker does can spend a real player's
- * items. It is useless for anything that needs possessions.
+ * The device id every post-deploy smoke run signs in with, so production keeps
+ * ONE smoke guest instead of gaining a new one per deploy.
+ *
+ * Modul: SMOKE GUESTS DROWNED THE PLAYER COUNT (2026-11-01). Every
+ * `smoke:screens` run against production provisioned a brand-new guest, so the
+ * box held 66 level-1, zero-XP, nameless accounts (ids 163-228, one per deploy)
+ * and "69 active this week" was really 3 players. Any measurement over active
+ * players read mostly this script. The id is a plain string: the server takes
+ * any device id up to 128 characters. Pass `{ fresh: true }` (smoke:screens
+ * `--fresh-guest`) when the question is what a brand-new account meets.
  */
-export async function signInAsGuest(page) {
+export const SMOKE_DEVICE_ID = process.env.FOLKIDLE_SMOKE_DEVICE_ID || 'e2e-smoke-guest-v1';
+
+/**
+ * Signs in as a guest. This is the one to use against PRODUCTION: a guest owns
+ * nothing, so nothing a checker does can spend a real player's items. It is
+ * useless for anything that needs possessions.
+ *
+ * `deviceId` reuses one guest account across runs; omit it (or pass
+ * `fresh: true`) for a brand-new account each time.
+ */
+export async function signInAsGuest(page, { deviceId = null, fresh = false } = {}) {
+  if (deviceId && !fresh) {
+    // Before any page script runs, so auth.ts's deviceId() finds it instead of
+    // minting a random UUID.
+    await page.addInitScript((id) => {
+      try {
+        localStorage.setItem('folkidle.deviceId', id);
+      } catch {}
+    }, deviceId);
+  }
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await dismissAppPromo(page);
   await page.getByRole('button', { name: 'Play now', exact: true }).click();
