@@ -12,6 +12,20 @@ namespace FolkIdle.Server.Tests
     {
         private const long Interval = 100;
 
+        [Theory]
+        [InlineData("10", true, 10)]
+        [InlineData(" 4 ", true, 4)]
+        [InlineData("10", false, 1)]   // production / no dev tools: always 1x
+        [InlineData(null, true, 1)]
+        [InlineData("fast", true, 1)]
+        [InlineData("0", true, 1)]
+        [InlineData("-3", true, 1)]
+        [InlineData("500", true, TickPacer.MaxTickSpeed)]
+        public void TheDevTickSpeedIsHonouredOnlyWithDevTools(string? flag, bool devTools, int expected)
+        {
+            Assert.Equal(expected, TickPacer.ResolveTickSpeed(flag, devTools));
+        }
+
         [Fact]
         public void AFastTickSleepsUntilTheNextOneIsDue()
         {
