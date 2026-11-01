@@ -19,6 +19,8 @@ dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj
 
 # 2. The bots (another terminal); --speed must match FOLKIDLE_TICK_SPEED
 dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --bots 3 --hours 24 --speed 10
+# or a mix of personas
+dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix optimal:2,casual:2,idle:2 --hours 72 --speed 10
 ```
 
 `--hours` is GAME time. At `--speed 10`, 24 game hours take 2.4 wall hours.
@@ -28,6 +30,23 @@ Results go to `bot-runs/<timestamp>/` (or `--out DIR`):
   `boss_r1_defeated`, `first_death`, `end`) with game hours, level, gold, deaths.
 - `events.log`: every decision the bot made, with game time. Read it when a
   milestone never arrives.
+- `summary.md`: per persona, the median game hours to each milestone and how
+  many of its bots reached it, plus the level each bot ended on.
+
+## Personas
+
+| Persona | Attention |
+|---|---|
+| `optimal` | Plays without pause |
+| `casual` | Checks in every 8 game hours for 20 minutes |
+| `idle` | Checks in every 24 game hours for 20 minutes |
+
+All three make the same decisions while checked in. Between check-ins a bot
+stays CONNECTED and sends nothing. It does not log out, because offline
+catch-up runs on the wall clock and would earn only a tenth of the time at x10.
+Online progress is what offline catch-up was built to match (#120). The bot
+applies the offline cap itself: once a gap passes the snapshot's
+`OfflineCapSeconds`, it stops its activity until the next check-in.
 
 ## The tick multiplier
 
@@ -64,5 +83,5 @@ measures the game as it is presented:
 It sends at most one WebSocket command every 1.2-3.0 s with random jitter,
 because of `ValidateCommand`'s 100 ms rule and the macro detector.
 
-Not yet done: other personas (casual, idle-only), crafting, cooking, the
-village, the forge, the dungeons, rebirth.
+Not yet done: crafting, cooking, the village, the forge, the dungeons, rebirth,
+and fishing anywhere but region 1's node.

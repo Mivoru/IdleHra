@@ -55,12 +55,17 @@ namespace FolkIdle.Bots
         private long _pendingActivity;
         private DateTime _pendingActivityAt;
 
-        public BotBrain(BotClient client, MilestoneLog log, int seed, string name)
+        private readonly Persona _persona;
+        private bool _wasCheckedIn = true;
+        private bool _cappedThisGap;
+
+        public BotBrain(BotClient client, MilestoneLog log, int seed, string name, Persona persona)
         {
             _client = client;
             _log = log;
             _rng = new Random(seed);
             _name = name;
+            _persona = persona;
         }
 
         public async Task RunAsync(DateTime stopAtUtc, CancellationToken token)
@@ -72,8 +77,38 @@ namespace FolkIdle.Bots
                     _log.Observe(_name, state);
                     try
                     {
-                        await RestChoresAsync(state, token);
-                        await OneCommandAsync(state, token);
+                        double gameHours = _log.GameHours;
+                        bool checkedIn = _persona.IsCheckedIn(gameHours);
+                        if (checkedIn != _wasCheckedIn)
+                        {
+                            _wasCheckedIn = checkedIn;
+                            _cappedThisGap = false;
+                            _log.Event(_name, checkedIn ? $"check-in (level {state.CurrentLevel})" : "away");
+                            if (checkedIn)
+                            {
+                                // Fresh eyes: everything is looked at again.
+                                _inventoryAt = _projectionAt = _questsAt = DateTime.MinValue;
+                                _skillTreeTriedAtPoints = -1;
+                            }
+                        }
+
+                        if (checkedIn)
+                        {
+                            await RestChoresAsync(state, token);
+                            await OneCommandAsync(state, token);
+                        }
+                        else if (!_cappedThisGap && state.OfflineCapSeconds > 0
+                                 && _persona.HoursAway(gameHours) * 3600 > state.OfflineCapSeconds)
+                        {
+                            // The offline cap: a session away this long would earn nothing more.
+                            _cappedThisGap = true;
+                            if (state.ActiveActivityId != 0 && state.Slot1_CharacterId != Guid.Empty)
+                            {
+                                await _client.SendCommandAsync(new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = 0, TargetGuid = state.Slot1_CharacterId }, token);
+                                _log.Event(_name, $"offline cap reached ({state.OfflineCapSeconds / 3600.0:0.#} h): activity stopped until the next check-in");
+                                _log.Count(_name, "offline_caps_hit");
+                            }
+                        }
                     }
                     catch (HttpRequestException ex)
                     {
