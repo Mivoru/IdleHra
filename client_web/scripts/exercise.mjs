@@ -1764,6 +1764,13 @@ if (want('dungeon')) {
   const lobby = page.getByTestId('dungeon');
   const shown = await lobby.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
   record('the Dungeon screen shows its lobby', shown);
+  // Each gate's tickets carry their own picture, and it must actually load:
+  // naturalWidth stays 0 for a missing file, which renders as nothing at all.
+  await page.waitForTimeout(500);
+  const ticketArt = await page.locator('.gate-tickets img.ticket-icon').evaluateAll((imgs) =>
+    imgs.map((i) => `${i.getAttribute('src')}:${i.complete && i.naturalWidth > 0 ? 'ok' : 'missing'}`));
+  record('each gate shows its own loaded ticket picture', ticketArt.length === 3
+    && new Set(ticketArt).size === 3 && ticketArt.every((t) => t.endsWith(':ok')), ticketArt.join(' ') || 'none');
   const view = await apiGet('/api/v1/dungeon').catch(() => null);
   const kinds = (view?.Dungeons ?? []).map((d) => d.Key).join(',');
   record('the lobby has three gates with fifteen stages and four abilities each', kinds === 'Xp,Gold,Equipment'

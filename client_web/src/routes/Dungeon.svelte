@@ -9,6 +9,7 @@
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import DungeonRun from '../lib/ui/DungeonRun.svelte';
   import { formatNumber } from '../lib/ui/format';
+  import { TICKET_ICON } from '../lib/ui/dungeonTickets';
 
   // Modul: THREE GATES (owner, 2026-10-31). XP, Gold and Equipment side by
   // side, each with its own stage field under it; a stage opens when the one
@@ -127,6 +128,7 @@
               <span class="gate-name">{d.Name}</span>
               <span class="gate-pays">{g.pays}</span>
               <span class="gate-tickets" title="{d.Tickets} of {data.TicketCap} tickets" data-testid="dungeon-tickets-{d.Key.toLowerCase()}">
+                <img class="ticket-icon" src={TICKET_ICON[d.Key]} alt="" width="28" height="28" />
                 {#each Array(Math.max(data.TicketCap, d.Tickets)) as _, i (i)}<i class:full={i < d.Tickets}></i>{/each}
                 <b class="ticket-count">{d.Tickets}/{data.TicketCap}</b>
               </span>
@@ -188,6 +190,7 @@
           </p>
           {#if stage.Cleared}
             <button class="sweep" data-testid="dungeon-sweep" disabled={running || dungeon.Tickets <= 0} onclick={() => enter(true)}>
+              <img class="btn-ticket" src={TICKET_ICON[dungeon.Key]} alt="" width="20" height="20" />
               Sweep stage {stage.Stage}: paid as won, no fight (1 ticket)
             </button>
           {/if}
@@ -196,7 +199,7 @@
             data-testid="dungeon-enter"
             disabled={running || dungeon.Tickets <= 0 || stage.LockedReason !== ''}
             onclick={() => enter()}
-          >{running ? 'Entering...' : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
+          ><img class="btn-ticket" src={TICKET_ICON[dungeon.Key]} alt="" width="20" height="20" />{running ? 'Entering...' : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>
         </div>
       {/if}
     {/if}
@@ -327,6 +330,20 @@
   }
   .gate-tickets i.full {
     background: var(--tone);
+  }
+  .ticket-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 3px;
+    /* Modul: the bronze token is dark art on a dark gate; a light halo and a
+       little brightness keep all three readable at thumb size. */
+    filter: brightness(1.3) drop-shadow(0 0 3px rgba(255, 240, 210, 0.45));
+  }
+  .btn-ticket {
+    width: 20px;
+    height: 20px;
+    vertical-align: -5px;
+    margin-right: 6px;
   }
   .ticket-count {
     margin-left: 4px;

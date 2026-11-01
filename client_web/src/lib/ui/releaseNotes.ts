@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.51.1',
+    date: '2026-11-01',
+    sections: [
+      {
+        title: 'Dungeons',
+        items: [
+          "Every gate's tickets have their own picture: Koschei's sealed scroll, Zmey's bronze token and Baba Yaga's smith key. They show on the gate, on the Enter and Sweep buttons, and when a chest gives you a ticket.",
+        ],
+      },
+    ],
+  },
+  {
     version: '1.51.0',
     date: '2026-11-01',
     headline: 'Inheritance milestones: levels 5 and 10 of every bonus now add an extra effect.',
