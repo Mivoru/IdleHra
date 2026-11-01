@@ -30,6 +30,8 @@ namespace FolkIdle.Bots
         private readonly DateTime _startUtc = DateTime.UtcNow;
         private readonly int _speed;
         private readonly Dictionary<string, BotProgress> _progress = new();
+        private readonly string _directory;
+        private readonly List<(string Bot, string Milestone, double Hours, int Level)> _rows = new();
 
         private sealed class BotProgress
         {
@@ -46,6 +48,7 @@ namespace FolkIdle.Bots
         public MilestoneLog(string directory, int speed)
         {
             Directory.CreateDirectory(directory);
+            _directory = directory;
             _speed = Math.Max(1, speed);
             _csv = new StreamWriter(Path.Combine(directory, "milestones.csv")) { AutoFlush = true };
             _events = new StreamWriter(Path.Combine(directory, "events.log")) { AutoFlush = true };
@@ -128,6 +131,7 @@ namespace FolkIdle.Bots
                 WallMinutes.ToString("0.0", CultureInfo.InvariantCulture),
                 s.CurrentLevel, s.HighestUnlockedRegion, s.Gold, p.Deaths);
             _csv.WriteLine(line);
+            _rows.Add((bot, milestone, GameHours, s.CurrentLevel));
             Console.WriteLine($"{GameHours,8:0.00}h  {bot,-10} {milestone} (level {s.CurrentLevel}, region {s.HighestUnlockedRegion}, deaths {p.Deaths})");
             EventLocked(bot, $"MILESTONE {milestone}");
         }
@@ -146,6 +150,53 @@ namespace FolkIdle.Bots
                     EventLocked(bot, $"total deaths: {p.Deaths}");
                 }
                 Console.WriteLine($"          {bot,-10} state frames/s {fps:0.0} (healthy: ~1)");
+            }
+        }
+
+        /// <summary>The persona a bot name belongs to: "casual2" -> "casual".</summary>
+        private static string PersonaOf(string bot) => bot.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+
+        /// <summary>
+        /// summary.md: for each persona, the MEDIAN game hours to each milestone
+        /// and how many of its bots reached it. A median rather than a mean
+        /// because one bot that stalls (a refused fight, a bad drop streak)
+        /// should show as "2 of 3 reached it", not drag the number.
+        /// </summary>
+        public void WriteSummary()
+        {
+            lock (_lock)
+            {
+                var personas = _rows.Select(r => PersonaOf(r.Bot)).Distinct().OrderBy(x => x).ToList();
+                var botsPer = personas.ToDictionary(p => p, p => _rows.Where(r => PersonaOf(r.Bot) == p).Select(r => r.Bot).Distinct().Count());
+                var milestones = _rows.Where(r => r.Milestone is not ("start" or "end"))
+                    .GroupBy(r => r.Milestone).OrderBy(g => g.Min(r => r.Hours)).Select(g => g.Key).ToList();
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"# Bot run summary ({GameHours:0.#} game hours, speed x{_speed})");
+                sb.AppendLine();
+                sb.AppendLine("Median game hours to each milestone; (n/m) = bots of that persona that reached it.");
+                sb.AppendLine();
+                sb.AppendLine("| milestone | " + string.Join(" | ", personas) + " |");
+                sb.AppendLine("|---|" + string.Concat(personas.Select(_ => "---|")));
+                foreach (string m in milestones)
+                {
+                    var cells = personas.Select(p =>
+                    {
+                        var hours = _rows.Where(r => r.Milestone == m && PersonaOf(r.Bot) == p).Select(r => r.Hours).OrderBy(h => h).ToList();
+                        if (hours.Count == 0) return "-";
+                        double median = hours.Count % 2 == 1 ? hours[hours.Count / 2] : (hours[hours.Count / 2 - 1] + hours[hours.Count / 2]) / 2;
+                        return $"{median.ToString("0.00", CultureInfo.InvariantCulture)} h ({hours.Count}/{botsPer[p]})";
+                    });
+                    sb.AppendLine($"| {m} | " + string.Join(" | ", cells) + " |");
+                }
+                var endLevels = personas.Select(p =>
+                {
+                    var levels = _rows.Where(r => r.Milestone == "end" && PersonaOf(r.Bot) == p).Select(r => r.Level).OrderBy(l => l).ToList();
+                    return levels.Count == 0 ? "-" : string.Join(", ", levels);
+                });
+                sb.AppendLine("| level at end | " + string.Join(" | ", endLevels) + " |");
+                File.WriteAllText(Path.Combine(_directory, "summary.md"), sb.ToString());
+                Console.WriteLine(sb.ToString());
             }
         }
 

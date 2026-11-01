@@ -35,7 +35,8 @@ namespace FolkIdle.Bots
 
             string outDir = o.Out ?? Path.Combine("bot-runs", DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
             using var log = new MilestoneLog(outDir, o.Speed);
-            Console.WriteLine($"FolkIdle bots: {o.Bots} x optimal, {o.Hours} game hours at speed x{o.Speed} (~{o.Hours * 60.0 / o.Speed:0} wall minutes) -> {Path.GetFullPath(outDir)}");
+            var roster = o.Roster();
+            Console.WriteLine($"FolkIdle bots: {string.Join(", ", roster.GroupBy(p => p.Name).Select(g => $"{g.Count()} x {g.Key}"))}, {o.Hours} game hours at speed x{o.Speed} (~{o.Hours * 60.0 / o.Speed:0} wall minutes) -> {Path.GetFullPath(outDir)}");
             Console.WriteLine("The server must run with FOLKIDLE_DEV_TOOLS=1 and FOLKIDLE_TICK_SPEED matching --speed.");
 
             using var cts = new CancellationTokenSource();
@@ -43,14 +44,15 @@ namespace FolkIdle.Bots
             DateTime stopAt = DateTime.UtcNow.AddHours(o.Hours / o.Speed);
             string runId = DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
 
-            var tasks = Enumerable.Range(1, o.Bots).Select(async i =>
+            var tasks = roster.Select(async (persona, index) =>
             {
-                string name = $"optimal{i}";
+                int i = index + 1;
+                string name = $"{persona.Name}{i}";
                 await using var client = new BotClient(o.Server, $"{o.Prefix}-{runId}-{i}");
                 try
                 {
                     await client.ConnectAsync(cts.Token);
-                    var brain = new BotBrain(client, log, seed: i * 7919, name);
+                    var brain = new BotBrain(client, log, seed: i * 7919, name, persona);
                     await brain.RunAsync(stopAt, cts.Token);
                 }
                 catch (OperationCanceledException) { }
@@ -63,6 +65,7 @@ namespace FolkIdle.Bots
             }).ToArray();
 
             await Task.WhenAll(tasks);
+            log.WriteSummary();
             Console.WriteLine($"Done. {Path.GetFullPath(Path.Combine(outDir, "milestones.csv"))}");
             return 0;
         }
@@ -88,6 +91,22 @@ namespace FolkIdle.Bots
             public string? Out;
             public string Prefix = "bot";
             public bool AllowRemote;
+            /// <summary>--mix optimal:2,casual:1,idle:1; without it, --bots N optimal bots.</summary>
+            public string? Mix;
+
+            public List<Persona> Roster()
+            {
+                if (string.IsNullOrWhiteSpace(Mix)) return Enumerable.Repeat(Persona.Optimal, Bots).ToList();
+                var roster = new List<Persona>();
+                foreach (string part in Mix.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    string[] kv = part.Split(':');
+                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, casual, idle)");
+                    int count = kv.Length > 1 ? int.Parse(kv[1], CultureInfo.InvariantCulture) : 1;
+                    roster.AddRange(Enumerable.Repeat(persona, Math.Clamp(count, 1, 50)));
+                }
+                return roster;
+            }
 
             public static Options? Parse(string[] args)
             {
@@ -104,9 +123,10 @@ namespace FolkIdle.Bots
                         case "--out": o.Out = next(); break;
                         case "--prefix": o.Prefix = next(); break;
                         case "--allow-remote": o.AllowRemote = true; break;
+                        case "--mix": o.Mix = next(); break;
                         default:
                             Console.Error.WriteLine($"unknown argument {args[i]}");
-                            Console.Error.WriteLine("usage: --bots N --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID]");
+                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID]");
                             return null;
                     }
                 }
