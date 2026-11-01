@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.53.0',
+    date: '2026-11-02',
+    headline: 'The chest can now clear Legendary and Mythic gear in bulk.',
+    sections: [
+      {
+        title: 'Chest',
+        items: [
+          'Bulk sell and the auto-sell rules now reach up to Mythic, not just Epic. Once your gear outgrows a region, its Legendary and Mythic pieces no longer have to be sold one by one.',
+          'Relic and above are still never sold in bulk. Worn pieces are always skipped, and so is anything you lock - lock a piece to keep it out of every sweep.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.52.1',
     date: '2026-11-01',
     headline: 'A new character starts with forty fish instead of ten.',
