@@ -264,7 +264,7 @@
   // Modul: THE CEILING COMES FROM THE SERVER, and this was a hardcoded 6.
   //
   // The server refuses anything above VillageChestEngine.MaxSweepableQualityTier
-  // - Legendary and above is never clearable in bulk, because there is no undo
+  // - Relic and above is never clearable in bulk (Epic until 2026-11-01), because there is no undo
   // and those are the drops the whole loop is for. A constant here would be a
   // second copy of that rule, and two copies of one truth is this codebase's
   // dominant bug class: raise the server's cap and this dropdown silently keeps
@@ -953,8 +953,8 @@
         {/if}
 
         <p class="dim tiny">
-          Legendary and above is never cleared this way - use the per-item
-          menu for those. An auto-sell rule below stops the junk arriving in the
+          Relic and above is never cleared this way - use the per-item
+          menu for those. Lock a piece to keep it out of every sweep. An auto-sell rule below stops the junk arriving in the
           first place.
         </p>
       </div>
@@ -1011,7 +1011,7 @@
           </button>
         </div>
         <p class="dim tiny">
-          A region rule can only sell more there, never less. Legendary and above
+          A region rule can only sell more there, never less. Relic and above
           is never sold automatically.
         </p>
       </div>

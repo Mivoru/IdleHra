@@ -386,15 +386,18 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>
         /// The highest rarity a player may point the bulk tools or auto-salvage
-        /// at. Legendary (7) and above is never sweepable in bulk and never
-        /// auto-salvaged: those are the drops the whole loop is for, and a
-        /// mis-set threshold that ate them would be unrecoverable.
+        /// at: Mythic (8). Relic (9) and above is never sweepable in bulk and
+        /// never auto-salvaged - the rarest drops, where a mis-set threshold
+        /// would be unrecoverable.
         ///
-        /// Six still drains almost everything - Normal through Epic is over
-        /// 99% of all drops by weight (see the client's RARITY_DROP_SHARE,
-        /// which publishes the same table CombatLootEngine rolls against).
+        /// Modul: EPIC (6) UNTIL 2026-11-01, MYTHIC SINCE (owner request). The
+        /// owner's chest filled with Legendary and Mythic pieces that no rule
+        /// could clear, because once gear outgrows a region its Legendaries are
+        /// clutter too. The protections that make a wider sweep safe are the
+        /// per-piece lock (IsAffixLocked, skipped by every sweep) and worn gear
+        /// (never removed); the threshold stays the player's own choice.
         /// </summary>
-        public const int MaxSweepableQualityTier = 6;
+        public const int MaxSweepableQualityTier = 8;
 
         public readonly struct BulkRemovalOutcome
         {

@@ -257,15 +257,15 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void TheSweepCeilingKeepsLegendaryAndAboveOutOfReach()
+        public void TheSweepCeilingKeepsRelicAndAboveOutOfReach()
         {
             // Modul: the number itself is the guarantee, so it is pinned here
             // rather than left to be read off a constant nobody revisits.
-            // Legendary is tier 7; anything at or above it must never be
-            // clearable in bulk or auto-salvaged, because those are the drops
-            // the whole loop exists to produce and there is no undo.
-            Assert.True(VillageChestEngine.MaxSweepableQualityTier < 7,
-                "the bulk sweep must never be able to reach Legendary (tier 7) or above");
+            // Relic is tier 9; anything at or above it must never be clearable
+            // in bulk or auto-salvaged, because there is no undo. (Epic was the
+            // ceiling until 2026-11-01; the owner raised it to Mythic.)
+            Assert.True(VillageChestEngine.MaxSweepableQualityTier < 9,
+                "the bulk sweep must never be able to reach Relic (tier 9) or above");
         }
 
         [Fact]
