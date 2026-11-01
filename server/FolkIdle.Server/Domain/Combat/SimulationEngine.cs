@@ -1008,7 +1008,7 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 Console.WriteLine($"[SimulationEngine] DEV tick speed x{tickSpeed} (FOLKIDLE_TICK_SPEED) - ticks AND GameClock run {tickSpeed}x the wall clock.");
             }
-            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000 / tickSpeed);
+            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000 / tickSpeed, TickPacer.MaxCatchUpTicks * tickSpeed);
             // Modul: THE BROADCAST STAYS ON WALL TIME. Every broadcast issues a
             // fresh anti-cheat challenge, and every answer spends a token from
             // the session's wall-clock bucket. Broadcasting every 10 TICKS at

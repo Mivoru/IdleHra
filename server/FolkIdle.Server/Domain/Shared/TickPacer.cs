@@ -60,10 +60,22 @@ namespace FolkIdle.Server.Domain.Shared
         private long _nextDue;
         private bool _anchored;
 
-        public TickPacer(long interval)
+        private readonly int _maxCatchUp;
+
+        public TickPacer(long interval) : this(interval, MaxCatchUpTicks) { }
+
+        /// <summary>
+        /// Modul: THE CATCH-UP CAP IS A WALL-TIME BOUND (2026-11-01). Five ticks
+        /// is half a second of stall at 1x but 25 ms at the bots' 20x, barely
+        /// more than one Windows timer slice (15.6 ms), and less than one at any
+        /// higher speed - so a sleep would drop ticks. The engine passes
+        /// MaxCatchUpTicks x speed, which keeps the same half-second bound.
+        /// </summary>
+        public TickPacer(long interval, int maxCatchUp)
         {
             if (interval <= 0) throw new ArgumentOutOfRangeException(nameof(interval));
             _interval = interval;
+            _maxCatchUp = Math.Max(1, maxCatchUp);
         }
 
         /// <summary>Ticks that were owed and never run, because the debt exceeded the cap.</summary>
@@ -98,9 +110,9 @@ namespace FolkIdle.Server.Domain.Shared
             // The tick due at _nextDue is owed, plus one per whole interval
             // past it.
             long owed = lag / _interval + 1;
-            if (owed > MaxCatchUpTicks)
+            if (owed > _maxCatchUp)
             {
-                long dropped = owed - MaxCatchUpTicks;
+                long dropped = owed - _maxCatchUp;
                 TicksDropped += dropped;
                 _nextDue += dropped * _interval;
             }
