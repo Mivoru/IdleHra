@@ -104,6 +104,7 @@ namespace FolkIdle.Server.Network
                         o.Roll.Diamonds,
                         Piece = o.Piece,
                         o.DungeonTicket,
+                        o.Upgraded,
                     }).ToArray(),
                     Chests = await ShelfAsync(db, playerId),
                 });

@@ -5257,6 +5257,10 @@ await go('Inheritance');
       /does not touch/i.test(text),
   );
 
+  // The milestones at levels 5 and 10: two lines on every stat's card.
+  const milestoneLines = await page.locator('[data-testid="inheritance-milestones"] li').count();
+  record('inheritance shows two milestones on each of the six stats', milestoneLines === 12, `${milestoneLines} lines`);
+
   const buyButtons = page.getByRole('button', { name: /^Buy \+/ });
   const buyable = await buyButtons.count();
   record('inheritance offers a purchase per uncapped stat', buyable > 0, `${buyable} buyable`);

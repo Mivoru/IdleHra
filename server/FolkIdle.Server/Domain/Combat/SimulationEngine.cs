@@ -3853,6 +3853,10 @@ namespace FolkIdle.Server.Domain.Combat
             int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
             CombatStats stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
             ApplyTreeStats(ref stats, in payload);
+            // The inheritance milestones' combat half (crit chance, crit damage,
+            // armour): here, so the live tick, the away projection, the dungeon
+            // and the stats sheet all fight with them.
+            InheritanceMilestones.ApplyCombatStats(ref stats, in payload);
             return stats;
         }
 
@@ -5557,9 +5561,11 @@ namespace FolkIdle.Server.Domain.Combat
                 // made food nearly free for three regions and unaffordable in
                 // the fifth. effectiveMaxHp is already milli-HP here, which is
                 // the unit the registry expects.
-                int heal1 = FoodRegistry.GetHealMilliHp(payload.Food1_ItemId, (long)effectiveMaxHp);
-                int heal2 = FoodRegistry.GetHealMilliHp(payload.Food2_ItemId, (long)effectiveMaxHp);
-                int heal3 = FoodRegistry.GetHealMilliHp(payload.Food3_ItemId, (long)effectiveMaxHp);
+                // The Max health 5 milestone's bigger bite, read by the away
+                // projection through the same function.
+                int heal1 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food1_ItemId, (long)effectiveMaxHp);
+                int heal2 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food2_ItemId, (long)effectiveMaxHp);
+                int heal3 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food3_ItemId, (long)effectiveMaxHp);
 
                 if (payload.Food1_Count > 0 && heal1 > highestHeal) { bestFoodIndex = 1; highestHeal = heal1; }
                 if (payload.Food2_Count > 0 && heal2 > highestHeal) { bestFoodIndex = 2; highestHeal = heal2; }
@@ -6210,7 +6216,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // The character's pet (PetRegistry).
                 + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10
                 // Gatherer's Draught, the gathering potion slot (any profession).
-                + PotionRegistry.MagnitudeOf(payload.ActiveGatheringPotionId, PotionKind.Gatherer);
+                + PotionRegistry.MagnitudeOf(payload.ActiveGatheringPotionId, PotionKind.Gatherer)
+                // The Gathering 5 inheritance milestone.
+                + InheritanceMilestones.GatherSpeedBonusPct(in payload);
             return new GatherSpeedTerms(masteryLevel, toolTier, villageProductionLevel, extraPct);
         }
 
@@ -6360,11 +6368,13 @@ namespace FolkIdle.Server.Domain.Combat
                 // which lifts low-weight (rare) entries far more than common
                 // ones - in the same tenths-of-a-percent units. Before
                 // 2026-10-29 the affix was summed, stored and read by nothing.
-                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct
+                // The Gathering 10 inheritance milestone doubles the whole
+                // rare-favouring bonus.
+                LuckWeightBonus = InheritanceMilestones.RareFindWeight(in payload, GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct
                     + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f
                     + hearth.RareFindTenthsPctFor(gatheringNode.ProfessionType) / 10f
                     // Kupala Night, in the same tenths as the Hearth's rare find.
-                    + PotionRegistry.MagnitudeOf(payload.ActiveGatheringPotionId, PotionKind.Kupala) / 10f),
+                    + PotionRegistry.MagnitudeOf(payload.ActiveGatheringPotionId, PotionKind.Kupala) / 10f)),
             };
         }
 

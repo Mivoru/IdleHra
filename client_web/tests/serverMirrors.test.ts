@@ -953,4 +953,22 @@ describe('inheritance mirrors InheritanceRegistry', () => {
     expect(cmd.INHERITANCE_COST_BASE).toBe(Number(src.match(/CostBase = ([\d.]+);/)?.[1]));
     expect(cmd.INHERITANCE_COST_GROWTH).toBe(Number(src.match(/CostGrowth = ([\d.]+);/)?.[1]));
   });
+
+  it('describes every milestone as InheritanceMilestones does, at its levels', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, '..', '..', 'server', 'FolkIdle.Server', 'Engine', 'InheritanceMilestones.cs'), 'utf8');
+    const cmd = await import('../src/lib/net/commands');
+    expect(cmd.INHERITANCE_MILESTONE_LEVELS[0]).toBe(Number(src.match(/FirstLevel = (\d+);/)?.[1]));
+    expect(cmd.INHERITANCE_MILESTONE_LEVELS[1]).toBe(Number(src.match(/SecondLevel = (\d+);/)?.[1]));
+    const names = ['StatDamage', 'StatMaxHp', 'StatXpGain', 'StatGoldGain', 'StatGatheringYield', 'StatLootLuck'];
+    for (const stat of cmd.INHERITANCE_STATS) {
+      stat.milestones.forEach((line, i) => {
+        const key = `(InheritanceRegistry.${names[stat.id]}, ${i === 0 ? 'false' : 'true'}) => "${line}",`;
+        expect(src, key).toContain(key);
+      });
+    }
+  });
 });

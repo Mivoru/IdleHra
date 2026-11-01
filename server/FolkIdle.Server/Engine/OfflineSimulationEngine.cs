@@ -1017,7 +1017,8 @@ namespace FolkIdle.Server.Engine
                 totalGold += paidKills * CombatGoldReward.PerKill(in payload, in monster, setup.Stats.GoldAcquisitionMultiplierPct) * payNumerator / payDenominator;
 
                 int levelBefore = payload.CurrentLevel;
-                ApplyCombatXp(ref payload, xpPerKill * paidKills * payNumerator / payDenominator);
+                // The Experience 5 inheritance milestone: away XP only.
+                ApplyCombatXp(ref payload, InheritanceMilestones.AwayXp(in payload, xpPerKill * paidKills * payNumerator / payDenominator));
                 if (payload.CurrentLevel != levelBefore && remainingTicks > 0)
                 {
                     // A bigger bar (and, for a lineage, a harder swing) from here on.

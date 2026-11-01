@@ -35,6 +35,32 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.51.0',
+    date: '2026-11-01',
+    headline: 'Inheritance milestones: levels 5 and 10 of every bonus now add an extra effect.',
+    sections: [
+      {
+        title: 'Inheritance milestones',
+        items: [
+          'Damage: +5% critical chance at level 5, +25% critical damage at level 10.',
+          'Max health: food heals 15% more at level 5, +10% armour at level 10.',
+          "Experience: +5% XP while away at level 5, +25% XP from Koschei's gate at level 10.",
+          "Gold: +25% gold from Zmey's gate at level 5, +20 Delve diamonds a week at level 10.",
+          'Gathering yield: +10% gathering speed at level 5, rare finds twice as likely at level 10.',
+          'Loot luck: +5% chance a drop is one rarity higher at level 5, a 10% chance a loot chest opens one tier higher at level 10.',
+          'If you already own those levels, the effects are active now. The Inheritance screen shows which ones you have.',
+        ],
+      },
+      {
+        title: 'Thorns',
+        items: [
+          'Thorns can roll on chest armour again, at 1-4% (it reflects part of every hit you take). Thorns you already have are unchanged.',
+          'The region 2 and 3 bosses hit about half a percent softer on their first clear, to make room for it.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.50.0',
     date: '2026-10-31',
     headline: 'The Dungeons open: three gates, a fight you can see, and dodges that build your run.',

@@ -936,9 +936,11 @@ whose progress counts fusions) are left out rather than shown wrong.
   not every tap.
 - **Inheritance Option B** (I1): ten levels of +4% at 100 x 1.25^level.
   Owned levels convert to ceil(old / 2) - never less bonus (old 11 = 22%
-  becomes 6 = 24%), no refund needed. **The milestone effects at levels 5
-  and 10 are NOT built yet** - twelve new mechanics, each needing parity;
-  they are their own PR.
+  becomes 6 = 24%), no refund needed. The milestone effects at levels 5
+  and 10 were built on 2026-11-01 (`InheritanceMilestones`, client 1.51.0):
+  damage crit chance / crit damage, health food heal / armour, XP away XP /
+  Koschei gate XP, gold Zmey gate gold / +20 Delve diamonds a week,
+  gathering speed / rare finds doubled, loot luck elevation / chest upgrade.
 - **The one model** (`DiamondReworkTests.TheEconomyModel_Report`): 100 free
   diamonds a week (Delve 80 + Deep 20). First level 100 (1 week); one stat
   to level 5: 820 (8.2 weeks); one stat to 10: 3,323 (33 weeks); all six:

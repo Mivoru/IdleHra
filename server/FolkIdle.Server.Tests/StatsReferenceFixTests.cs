@@ -74,7 +74,9 @@ namespace FolkIdle.Server.Tests
             var bareProjection = OfflineSimulationEngine.CalculateGatheringProjection(ref bare, node, 8 * 3600, new Random(11));
             var boughtProjection = OfflineSimulationEngine.CalculateGatheringProjection(ref bought, node, 8 * 3600, new Random(11));
 
-            Assert.Equal(bareProjection.Actions, boughtProjection.Actions);
+            // The Gathering 5 milestone's speed (InheritanceMilestones) adds
+            // harvests too, so the bought side does at least as many.
+            Assert.True(boughtProjection.Actions >= bareProjection.Actions);
             Assert.True(bareProjection.Drops > 0);
             // +40 points on a 100-point base: 1.4x the rolls. 1.25 leaves room
             // for the binomial draw over thousands of harvests.

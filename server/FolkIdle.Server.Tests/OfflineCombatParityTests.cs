@@ -200,6 +200,10 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "food buff + ward r3 hungry", 3, true, RegularOf(3), 0, 5 };
             // A Warrior levelling through the hour: the bar and the swing grow.
             yield return new object[] { "levelling warrior r1", 1, false, ContentRegistry.FirstCanonicalMonsterId + 1, 20_000, 6 };
+            // The inheritance milestones' combat half: crit chance and damage,
+            // armour and the bigger bite (InheritanceMilestones).
+            yield return new object[] { "inheritance milestones r3 fed", 3, true, RegularOf(3), 20_000, 7 };
+            yield return new object[] { "inheritance milestones r5 fed", 5, true, RegularOf(5), 20_000, 7 };
         }
 
         private static TickStatePayload Build(int region, bool geared, int monsterId, int food, int variant)
@@ -244,6 +248,14 @@ namespace FolkIdle.Server.Tests
             {
                 payload.SelectedLineageId = 1;
                 payload.CurrentLevel = 2;
+            }
+            else if (variant == 7)
+            {
+                payload.Inherit_Damage = 10;
+                payload.Inherit_MaxHp = 10;
+                // Below the away-XP milestone: that one pays offline only, on purpose.
+                payload.Inherit_XpGain = 4;
+                payload.Inherit_GoldGain = 10;
             }
             var stats = SimulationEngine.LiveCombatStats(in payload);
             payload.PlayerHp = (int)SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats);

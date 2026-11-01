@@ -97,7 +97,16 @@ namespace FolkIdle.Server.Domain.Combat
         // Modul: 2026-10-30, roadmap 3.6 - crushing_blow_pct (gloves) entered the
         // benchmark's pools; measured, the windows moved by under a step (region 2
         // 1.860-1.883, region 3 3.134-3.205), so the shipped values stand.
-        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.87f, 3.17f, 5.13f, 7.15f };
+        // Modul: 2026-11-01, thorns_pct rolled at half size (1-4.2% on the
+        // chest). The benchmark chest takes it and the windows moved:
+        //
+        //   region   1            2            3            4            5
+        //   before   2.112-2.828  1.861-1.884  3.138-3.21   4.54-6.118   6.256-8.777
+        //   after    2.112-2.828  1.851-1.87   3.122-3.178  4.502-5.976  6.203-7.937
+        //
+        // 1.87 and 3.17 sat on the new upper edges, so regions 2 and 3 move to
+        // the centres (1.86, 3.15): first-clear boss attack about 0.5% lower.
+        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.86f, 3.15f, 5.13f, 7.15f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at
