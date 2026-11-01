@@ -34,7 +34,7 @@ Balance cannot be measured with players at n=3.
   deleted with the owner's yes, after backup `folkidle-20261101T161642Z.dump`.
   13 accounts remain.
 
-**Playtest bots** (#277, #278, #280, #282) stand in for the missing players:
+**Playtest bots** (#277, #278, #280, #282, #284) stand in for the missing players:
 `server/FolkIdle.Bots` (see its README). Headless guests play over the web
 client's own WebSocket + REST surface, on a dev server sped up with
 `FOLKIDLE_TICK_SPEED` (dev tools only, max 20, `TickPacer.ResolveTickSpeed`).
@@ -58,9 +58,16 @@ per milestone).
   monster: a 3.9 s kill, about 874 fish/h). #282 makes the bot scout one fight.
   Whether the game itself should open a region's fishing when the previous
   region's boss falls is measured next, as an owner decision.
-- **Not compressed:** anything on `DateTime.UtcNow` (daily tickets, midnight
-  refills, offline catch-up). Step 3 of the bot plan, a clock abstraction over
-  about 135 sites, is open and optional (XL).
+- **GameClock (#284):** 149 of 224 `UtcNow` sites read a game clock that runs
+  at the tick multiplier. That covers offline, daily keys, expiries, village,
+  events, mail and market. It is the wall clock at speed 1, so production is
+  unchanged. Casual and idle bots now really log out. A fast clock writes
+  future timestamps, so bot runs use a throwaway `folkidle_bots` DB
+  (`new-bot-db.ps1`).
+- **Full write-up:** `docs/architecture/PLAYTEST_BOTS_REPORT.md`. It covers
+  all three runs, x10 against x20 (they agree), the x100 estimate (not run, at
+  the owner's request), the bot's mistakes and missing systems, and the next
+  steps.
 
 **GDPR purge never worked** (#281): it deleted from "PasswordResetTokens"
 while the table is `password_reset_tokens`, so every erasure request rolled
