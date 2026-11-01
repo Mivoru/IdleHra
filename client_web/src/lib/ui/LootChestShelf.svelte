@@ -17,6 +17,7 @@
   import ItemIcon from './ItemIcon.svelte';
   import { rarityColor } from './rarity';
   import { isRareMaterial } from './wikiData';
+  import { ticketIconForName } from './dungeonTickets';
   import Modal from './Modal.svelte';
   import { play } from './audio';
   import { invalidateOwnedItems } from '../net/queryClient';
@@ -132,7 +133,7 @@
           {#if totalGold > 0}<li class="gold" data-kind="gold">{formatGold(totalGold)}</li>{/if}
           {#if totalDiamonds > 0}<li class="diamonds" data-kind="diamonds">{formatNumber(totalDiamonds)} diamonds</li>{/if}
           {#if upgraded > 0}<li class="diamonds" data-kind="upgraded">Inheritance: {upgraded === 1 ? 'a chest' : `${upgraded} chests`} opened one tier higher</li>{/if}
-          {#each tickets as t, i (i)}<li data-kind="ticket">A dungeon ticket for {t}</li>{/each}
+          {#each tickets as t, i (i)}<li data-kind="ticket">{#if ticketIconForName(t)}<img class="ticket" src={ticketIconForName(t)} alt="" width="24" height="24" />{/if}A dungeon ticket for {t}</li>{/each}
           {#each materials as [item, qty]}
             <li class="mat" class:rare={isRareMaterial(item)} data-kind={isRareMaterial(item) ? 'rare-material' : 'material'}>
               <ItemIcon baseItemId={item} name={prettifyBaseId(item)} size="sm" />
@@ -175,6 +176,7 @@
   .reveal li { display: inline-flex; align-items: center; gap: 8px; }
   .reveal .gold { color: var(--gold); font-weight: 600; }
   .reveal .diamonds { color: var(--diamond); font-weight: 600; }
+  .reveal img.ticket { width: 24px; height: 24px; }
   .reveal .mat { color: var(--text-dim, #cfc6b8); }
   .reveal .mat.rare { color: var(--rarity-4); font-weight: 600; }
   .reveal .piece { color: var(--line); font-weight: 700; }
