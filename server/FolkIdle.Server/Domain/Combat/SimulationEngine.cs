@@ -1001,14 +1001,14 @@ namespace FolkIdle.Server.Domain.Combat
             Stopwatch stopwatch = new Stopwatch();
             // Modul: the dev-only bot multiplier (TickPacer.ResolveTickSpeed) shortens
             // the WALL interval only; each tick is still TickIntervalMs of game time.
-            int tickSpeed = TickPacer.ResolveTickSpeed(
-                Environment.GetEnvironmentVariable("FOLKIDLE_TICK_SPEED"),
-                FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled());
+            // Set once at startup (Program.cs) so the game clock and the
+            // tick can never run at different speeds.
+            int tickSpeed = GameClock.Speed;
             if (tickSpeed > 1)
             {
-                Console.WriteLine($"[SimulationEngine] DEV tick speed x{tickSpeed} (FOLKIDLE_TICK_SPEED) - game time runs {tickSpeed}x the wall clock.");
+                Console.WriteLine($"[SimulationEngine] DEV tick speed x{tickSpeed} (FOLKIDLE_TICK_SPEED) - ticks AND GameClock run {tickSpeed}x the wall clock.");
             }
-            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000 / tickSpeed);
+            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000 / tickSpeed, TickPacer.MaxCatchUpTicks * tickSpeed);
             // Modul: THE BROADCAST STAYS ON WALL TIME. Every broadcast issues a
             // fresh anti-cheat challenge, and every answer spends a token from
             // the session's wall-clock bucket. Broadcasting every 10 TICKS at
@@ -1597,7 +1597,7 @@ namespace FolkIdle.Server.Domain.Combat
                             await _checkpointManager.WaitForPendingFlushesAsync(tId);
                             var payload = await _checkpointManager.LoadPlayerState(tId);
 
-                            long currentUnixTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                            long currentUnixTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                             if (!ClientCommandValidator.ValidateLoginTime(ref payload, currentUnixTimestamp))
                             {
                                 _playerRegistry.UnregisterPlayer(tId);
@@ -1988,7 +1988,7 @@ namespace FolkIdle.Server.Domain.Combat
                         // flush-and-remove path CLAUDE.md records as broken by
                         // the epoch gate once already, and removing a player
                         // is SimulationEngine's job, not a coordinator's.
-                        currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        currentPayload.LastLogoutTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
                         // Modul: task 88. A rebirth in flight has already
                         // flushed everything this payload holds, and is about
@@ -2705,7 +2705,7 @@ namespace FolkIdle.Server.Domain.Combat
         // The calendar's view of the seasonal event, for the chip and the theme.
         private static void WriteSeasonalEvent(ref StateUpdatePacket packet)
         {
-            var (current, phase) = Domain.Progression.SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+            var (current, phase) = Domain.Progression.SeasonalEventRegistry.Current(GameClock.UtcNowOffset);
             packet.SeasonalEventId = (byte)(current?.Id ?? 0);
             packet.SeasonalEventPhase = (byte)phase;
         }
@@ -2964,7 +2964,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             // Modul 13.4.3: -20% character XP generation while an early
             // mentorship termination penalty is active (see MentorshipEngine).
-            if (payload.XpPenaltyExpiresEpoch > System.DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            if (payload.XpPenaltyExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds())
             {
                 xpGain = (long)(xpGain * 0.8);
             }
@@ -3305,7 +3305,7 @@ namespace FolkIdle.Server.Domain.Combat
                 });
 
                 await context.SaveChangesAsync();
-                await DropRecord.WriteAsync(context, playerId, chronicleTally, DateTime.UtcNow);
+                await DropRecord.WriteAsync(context, playerId, chronicleTally, GameClock.UtcNow);
                 await transaction.CommitAsync();
                 return true;
             }
@@ -3350,7 +3350,7 @@ namespace FolkIdle.Server.Domain.Combat
             int localXpMultiplier = GlobalEngineState.GlobalXpMultiplier;
             int localDropMultiplier = GlobalEngineState.GlobalDropMultiplier;
 
-            long now = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
             // Task 85: the automation notes (6, 7) are exempt for the same
             // reason - a rule acted and the player should get to see that.
@@ -5772,7 +5772,7 @@ namespace FolkIdle.Server.Domain.Combat
                     seasonalReturn = payload.SeasonalBossReturnActivityId;
                     if (!SeasonalBossRegistry.IsCleared(payload.SeasonalBossClearedMask, wonTier.Tier))
                     {
-                        long nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        long nowSeconds = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                         var (seasonalEvent, _) = Domain.Progression.SeasonalEventRegistry.Current(nowSeconds);
                         if (seasonalEvent != null)
                         {
@@ -5960,7 +5960,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // daily cap. Bosses count like any kill - the cap is the bound.
                 Domain.Progression.SeasonalEventEarning.Roll(
                     ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, paidKills,
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Random.Shared);
+                    GameClock.UtcNowOffset.ToUnixTimeSeconds(), Random.Shared);
 
                 // A monster pet: a chance on every kill, no event needed.
                 Domain.Progression.PetRegistry.RollMonsterPets(payload.PlayerId, paidKills, Random.Shared);
@@ -6077,7 +6077,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 Domain.Progression.SeasonalEventEarning.Roll(
                     ref payload, Domain.Progression.SeasonalEventEarning.Source.Gather, paidHarvests,
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Random.Shared);
+                    GameClock.UtcNowOffset.ToUnixTimeSeconds(), Random.Shared);
 
                 // Loot roll
                 var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);

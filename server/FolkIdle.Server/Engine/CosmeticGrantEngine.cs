@@ -145,7 +145,7 @@ namespace FolkIdle.Server.Engine
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                     var paid = await Domain.Combat.BossAscensionEngine.RecordClearAsync(
-                        db, clear.PlayerId, clear.Region, clear.Step, DateTime.UtcNow);
+                        db, clear.PlayerId, clear.Region, clear.Step, GameClock.UtcNow);
                     paidThisCycle += paid.Count;
 
                     // Announced only now, after the commit: the client refetches the
@@ -182,7 +182,7 @@ namespace FolkIdle.Server.Engine
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                     var grants = await Domain.Combat.BossChallengeEngine.JudgeKillAsync(
-                        db, kill.PlayerId, kill.Region, kill.Level, kill.AteDuringFight, kill.FightTenths, DateTime.UtcNow);
+                        db, kill.PlayerId, kill.Region, kill.Level, kill.AteDuringFight, kill.FightTenths, GameClock.UtcNow);
                     grantedThisCycle += grants.Count;
 
                     foreach (var grant in grants)
@@ -234,7 +234,7 @@ namespace FolkIdle.Server.Engine
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                    var granted = await CosmeticEngine.GrantLevelChestsAsync(db, playerId, level, Random.Shared, DateTime.UtcNow);
+                    var granted = await CosmeticEngine.GrantLevelChestsAsync(db, playerId, level, Random.Shared, GameClock.UtcNow);
                     grantedThisCycle += granted.Count;
 
                     // The same feed a monster's chest arrives on, so the loot

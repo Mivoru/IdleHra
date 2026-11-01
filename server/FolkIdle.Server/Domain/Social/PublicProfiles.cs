@@ -394,7 +394,7 @@ namespace FolkIdle.Server.Domain.Social
                 })
                 .ToListAsync();
 
-            var now = DateTime.UtcNow;
+            var now = GameClock.UtcNow;
             var buffs = await db.GuildActiveBuffs.AsNoTracking()
                 .Where(b => b.GuildId == guildId && b.ExpiresAt > now)
                 .Select(b => new { b.BuffType, b.Tier, b.ExpiresAt })

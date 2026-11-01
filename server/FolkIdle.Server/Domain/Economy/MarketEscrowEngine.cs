@@ -219,7 +219,7 @@ namespace FolkIdle.Server.Domain.Economy
                     Price = limitPrice,
                     Status = 0,
                     IsQuarantined = isQuarantined,
-                    CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    CreatedAtEpoch = GameClock.UtcNowOffset.ToUnixTimeMilliseconds()
                 };
                 db.MarketOrderRecords.Add(order);
 
@@ -378,7 +378,7 @@ namespace FolkIdle.Server.Domain.Economy
                             IsPending = false,
                             GoldAttachment = 0,
                             AttachedEquipmentId = newEquip.Id,
-                            ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                            ReceivedTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds()
                         };
                         db.MailboxInstances.Add(mail);
                     }
@@ -445,7 +445,7 @@ namespace FolkIdle.Server.Domain.Economy
                     BaseItemId = order.BaseItemId,
                     QualityTier = order.QualityTier,
                     IsQuarantined = order.IsQuarantined,
-                    ExecutionTimestampEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    ExecutionTimestampEpoch = GameClock.UtcNowOffset.ToUnixTimeMilliseconds()
                 };
                 
                 db.HistoricalMarketArchives.Add(archive);

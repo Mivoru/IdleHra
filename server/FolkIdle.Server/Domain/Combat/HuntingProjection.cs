@@ -143,7 +143,7 @@ namespace FolkIdle.Server.Domain.Combat
             int multiplier = SimulationEngine.LiveKillXpMultiplierPct(in payload, globalXpMultiplier);
             if (activeGlobalEventId == 2) multiplier += 15;
             long xp = (long)monster.BaseXpReward * multiplier / 100;
-            if (payload.XpPenaltyExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            if (payload.XpPenaltyExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds())
             {
                 xp = (long)(xp * 0.8f);
             }

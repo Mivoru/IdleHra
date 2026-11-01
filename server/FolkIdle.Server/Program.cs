@@ -258,6 +258,12 @@ if (args.Length > 0 && args[0] == "--validate-content")
 // uncaught InvalidOperationException here is the intended fast-fail/
 // crash-on-boot behavior for malformed or missing content data.
 ContentRegistry.Initialize();
+// Modul: the game clock and the tick multiplier share one gate and one number
+// (TickPacer.ResolveTickSpeed): dev tools on and not Production, else 1x. Set
+// before any engine starts so nothing reads the clock at the old speed.
+FolkIdle.Server.GameClock.Configure(FolkIdle.Server.Domain.Shared.TickPacer.ResolveTickSpeed(
+    Environment.GetEnvironmentVariable("FOLKIDLE_TICK_SPEED"),
+    FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()));
 ActiveSkillEngine.Initialize();
 
 var serviceCollection = new ServiceCollection();

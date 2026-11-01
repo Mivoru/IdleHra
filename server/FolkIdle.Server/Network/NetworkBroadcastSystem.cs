@@ -3148,7 +3148,7 @@ namespace FolkIdle.Server.Network
                 // Milliseconds - ExecutionTimestampEpoch is written with
                 // ToUnixTimeMilliseconds, and comparing it against seconds
                 // would silently place every trade in the future.
-                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                long nowMs = GameClock.UtcNowOffset.ToUnixTimeMilliseconds();
                 const long DayMs = 86_400_000L;
                 long windowStartMs = nowMs - (DayMs * 30L);
 
@@ -3839,7 +3839,7 @@ namespace FolkIdle.Server.Network
                     .Where(p => p.Id == playerId).Select(p => p.LifetimeGoldSpent).FirstOrDefaultAsync();
                 var rows = await db.GoldSpendDaily.AsNoTracking().Where(g => g.PlayerId == playerId).ToListAsync();
 
-                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var today = DateOnly.FromDateTime(GameClock.UtcNow);
                 var response = new GoldLedgerResponse
                 {
                     LifetimeSpent = lifetime,
@@ -6564,7 +6564,7 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var view = await Engine.CollectionLog.BuildAsync(db, playerId, DateTime.UtcNow);
+                var view = await Engine.CollectionLog.BuildAsync(db, playerId, GameClock.UtcNow);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -6593,7 +6593,7 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var view = await Engine.StatSampler.BuildInsightsAsync(db, playerId, DateTime.UtcNow);
+                var view = await Engine.StatSampler.BuildInsightsAsync(db, playerId, GameClock.UtcNow);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -7187,7 +7187,7 @@ namespace FolkIdle.Server.Network
 
                 var response = new BreedingPreviewResponse();
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 var pVec = new GeneticVector(pLineage.GeneticVector);
                 var mVec = new GeneticVector(mLineage.GeneticVector);
@@ -7284,7 +7284,7 @@ namespace FolkIdle.Server.Network
 
                 var response = new BreedingPreviewResponse();
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 var heroVec = new GeneticVector(heroLineage.GeneticVector);
                 var villagerVec = new GeneticVector(newcomer.Genome());
@@ -7953,7 +7953,7 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var rows = await FolkIdle.Server.Domain.Economy.DeepestBoard.TopAsync(db, DateTime.UtcNow);
+                var rows = await FolkIdle.Server.Domain.Economy.DeepestBoard.TopAsync(db, GameClock.UtcNow);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -9655,7 +9655,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                 long todayDateKey = nowEpoch / 86400L;
                 long lastLoginDateKey = player.LastLoginTimestamp / 86400L;
                 bool creditedToday = player.LastLoginTimestamp > 0 && lastLoginDateKey == todayDateKey;
@@ -12684,7 +12684,7 @@ namespace FolkIdle.Server.Network
 
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                    await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, playerId, slug, DateTime.UtcNow);
+                    await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, playerId, slug, GameClock.UtcNow);
                     context.Response.StatusCode = 200;
                     return;
                 }
@@ -12820,7 +12820,7 @@ namespace FolkIdle.Server.Network
                         }
                         FolkIdle.Server.Domain.Progression.SeasonalEventRegistry.ForceLive = eventId.Value;
                     }
-                    var (devEvent, devPhase) = FolkIdle.Server.Domain.Progression.SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+                    var (devEvent, devPhase) = FolkIdle.Server.Domain.Progression.SeasonalEventRegistry.Current(GameClock.UtcNowOffset);
                     if (grant > 0 && devEvent != null)
                     {
                         FolkIdle.Server.Domain.Progression.EventShopEngine.Refunds.Enqueue(
@@ -12929,7 +12929,7 @@ namespace FolkIdle.Server.Network
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            var day = DateOnly.FromDateTime(DateTime.UtcNow);
+            var day = DateOnly.FromDateTime(GameClock.UtcNow);
 
             var spend = await db.GoldSpendDaily.AsNoTracking()
                 .Where(r => r.PlayerId == playerId && r.Day == day)
@@ -13220,7 +13220,7 @@ namespace FolkIdle.Server.Network
                         return;
                     }
 
-                    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    var now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                     // Modul: SEVERAL NAMES, comma-separated (2026-10-09), so a
                     // gift to three testers is one send - and an empty name is
@@ -13337,7 +13337,7 @@ namespace FolkIdle.Server.Network
                 }
 
                 var depotItems = await db.GuildDepotBalances.Where(d => d.GuildId == member.GuildId).ToListAsync();
-                var activeBuffs = await db.GuildActiveBuffs.Where(b => b.GuildId == member.GuildId && b.ExpiresAt > DateTime.UtcNow).ToListAsync();
+                var activeBuffs = await db.GuildActiveBuffs.Where(b => b.GuildId == member.GuildId && b.ExpiresAt > GameClock.UtcNow).ToListAsync();
                 var members = await db.GuildMembers
                     .Where(m => m.GuildId == member.GuildId)
                     .Join(db.PlayerRecords, m => m.PlayerId, p => p.Id, (m, p) => new { m, p })

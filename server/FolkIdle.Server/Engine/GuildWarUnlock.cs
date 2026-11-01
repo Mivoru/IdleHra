@@ -94,7 +94,7 @@ namespace FolkIdle.Server.Engine
             bool unlocked = IsUnlockedBy(recorded, players, guilds);
             if (unlocked && !recorded)
             {
-                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                long nowMs = GameClock.UtcNowOffset.ToUnixTimeMilliseconds();
                 await db.Database.ExecuteSqlInterpolatedAsync(
                     $@"INSERT INTO feature_unlocks (""FeatureKey"", ""UnlockedAtEpochMs"", ""QualifyingPlayersAtUnlock"", ""QualifyingGuildsAtUnlock"")
                        VALUES ({FeatureKey}, {nowMs}, {players}, {guilds})

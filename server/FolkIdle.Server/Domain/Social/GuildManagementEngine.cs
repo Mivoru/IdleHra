@@ -278,7 +278,7 @@ namespace FolkIdle.Server.Domain.Social
                                 GuildId = guildId,
                                 PlayerId = playerId,
                                 ApplicantLevel = profile.CurrentLevel,
-                                CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                                CreatedAtEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds()
                             });
                             await context.SaveChangesAsync();
                         }

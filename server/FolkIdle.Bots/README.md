@@ -11,16 +11,17 @@ unless `--allow-remote` is given.
 ## Run
 
 ```powershell
-# 1. The server, with dev tools and a tick multiplier (stop any running server first)
-$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'
+# 0. A throwaway database (a fast server writes timestamps from the future)
+.\server\FolkIdle.Bots\new-bot-db.ps1
+
+# 1. The server on it, with dev tools and a tick multiplier (stop any running server first)
+$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_bots;Username=postgres;Password=postgres'
 $env:FOLKIDLE_DEV_TOOLS='1'
-$env:FOLKIDLE_TICK_SPEED='10'
+$env:FOLKIDLE_TICK_SPEED='20'
 dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj
 
 # 2. The bots (another terminal); --speed must match FOLKIDLE_TICK_SPEED
-dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --bots 3 --hours 24 --speed 10
-# or a mix of personas
-dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix optimal:2,casual:2,idle:2 --hours 72 --speed 10
+dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix optimal:2,casual:2,idle:2 --hours 72 --speed 20
 ```
 
 `--hours` is GAME time. At `--speed 10`, 24 game hours take 2.4 wall hours.
@@ -42,11 +43,9 @@ Results go to `bot-runs/<timestamp>/` (or `--out DIR`):
 | `idle` | Checks in every 24 game hours for 20 minutes |
 
 All three make the same decisions while checked in. Between check-ins a bot
-stays CONNECTED and sends nothing. It does not log out, because offline
-catch-up runs on the wall clock and would earn only a tenth of the time at x10.
-Online progress is what offline catch-up was built to match (#120). The bot
-applies the offline cap itself: once a gap passes the snapshot's
-`OfflineCapSeconds`, it stops its activity until the next check-in.
+is LOGGED OUT: the server's own offline catch-up and offline cap decide what
+the time away earned, and `events.log` records each login's offline hours,
+XP and gold.
 
 ## The tick multiplier
 
@@ -60,9 +59,24 @@ broadcast and the anti-cheat challenge stay at one per wall second, because
 challenge answers spend a wall-clock token bucket. At x10 a per-tick broadcast
 read as a packet flood and the socket was aborted with no log line.
 
-**Not compressed:** anything on `DateTime.UtcNow`. That covers daily dungeon
-tickets, the midnight refills, the world boss calendar and epoch expiries. A
-run that depends on those measures them at wall speed.
+**The game clock compresses too.** `GameClock` (server root) runs at the
+same multiplier from the moment the server starts. That covers offline
+catch-up, daily keys and midnight refills (dungeon tickets, the world boss
+day, login bonus), potion and buff expiries, village upgrades, seasonal
+events, mail and market ages, and per-day ledgers. At speed 1 it is
+`DateTime.UtcNow`, so production is untouched.
+
+These stay on the wall clock: token lifetimes, rate limits and anti-cheat
+timing, billing, telemetry, chat, retry back-offs, push and e-mail sends, and
+the live dungeon run's swipe windows. The CLIENT also counts down against the
+browser's clock, so countdowns on screen are wrong on a fast server. Bots do
+not read them.
+
+**Use a throwaway database.** The game clock runs ahead of the wall clock and
+writes future timestamps. A server restart re-anchors the clock to the wall,
+and a "future" logout then refuses that login (`ValidateLoginTime`). Recreate
+`folkidle_bots` with `new-bot-db.ps1` before each run and keep the server up
+for the whole run.
 
 ## The "optimal" persona (`BotBrain`)
 

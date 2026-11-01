@@ -213,7 +213,7 @@ namespace FolkIdle.Server.Engine
             bool alwaysNotable = false, bool countPiece = true)
         {
             var tally = new DropTally();
-            DateTime now = DateTime.UtcNow;
+            DateTime now = GameClock.UtcNow;
             if (countPiece) tally.Count(source, regionTier, finalTier);
             if (alwaysNotable || IsNotable(finalTier))
             {

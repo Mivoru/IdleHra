@@ -114,7 +114,7 @@ namespace FolkIdle.Server.Domain.Progression
 
         public static Task<LoginRewardResult> TryGrantLoginRewardAsync(RetryingDbContextOptions retryingDbOptions, Guid accountId)
         {
-            return TryGrantLoginRewardAsync(retryingDbOptions, accountId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            return TryGrantLoginRewardAsync(retryingDbOptions, accountId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
         }
 
         // Modul: the clock is a parameter (test-only, via InternalsVisibleTo)

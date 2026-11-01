@@ -156,7 +156,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 };
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = GameClock.UtcNow;
             long hourly = playerId > 0 ? await GoldRewardScale.HourlyIncomeAsync(db, playerId, utcNow) : 0;
             var ownedCosmetics = (await db.CosmeticItems.AsNoTracking()
                     .Where(c => c.PlayerId == playerId)

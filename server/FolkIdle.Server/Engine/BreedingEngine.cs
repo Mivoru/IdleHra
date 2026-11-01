@@ -145,7 +145,7 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 // Lazily clear a parent's IsBreedingActive flag once its cooldown
                 // has actually elapsed, rather than requiring a separate sweep.
@@ -378,7 +378,7 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 if (hero.IsBreedingActive && hero.BreedingCooldownEndEpoch <= nowEpoch) hero.IsBreedingActive = false;
 

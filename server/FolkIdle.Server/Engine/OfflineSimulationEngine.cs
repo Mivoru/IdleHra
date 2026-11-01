@@ -527,7 +527,7 @@ namespace FolkIdle.Server.Engine
         private static void OfflineEventCurrency(ref TickStatePayload payload, Domain.Progression.SeasonalEventEarning.Source source, long actions, long elapsedSeconds)
         {
             if (actions <= 0 || elapsedSeconds <= 0) return;
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
             var (current, _) = Domain.Progression.SeasonalEventRegistry.Current(now);
             if (current == null) return;
             long windowStart = now - elapsedSeconds;

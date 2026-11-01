@@ -59,7 +59,7 @@ namespace FolkIdle.Server.Domain.Economy
     {
         public bool Enabled { get; init; }
 
-        public Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
+        public Func<DateTime> UtcNow { get; init; } = () => GameClock.UtcNow;
 
         /// <summary>FOLKIDLE_DELVE_DEEP: "on" opens the Deep; anything else, including unset, keeps it shut.</summary>
         public static DelveDeepSettings FromEnvironment(string? flag)

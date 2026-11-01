@@ -286,7 +286,7 @@ namespace FolkIdle.Server.Domain.Economy
                 OrderType = "COSMETIC",
                 BaseItemId = listing.DefinitionId,
                 QualityTier = listing.Rarity,
-                ExecutionTimestampEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                ExecutionTimestampEpoch = GameClock.UtcNowOffset.ToUnixTimeMilliseconds(),
             });
             db.CosmeticListings.Remove(listing);
             await db.SaveChangesAsync();

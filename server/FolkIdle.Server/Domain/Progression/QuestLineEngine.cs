@@ -170,9 +170,9 @@ namespace FolkIdle.Server.Domain.Progression
                 GoldFromChestSales = chestSales,
                 AutoSellRuleSet = player.AutoSalvageBelowTier > 0 || player.AutoSalvageRegionTiers != 0,
                 PotionRunningOrShelved = player.PotionShelf1Count > 0 || player.PotionShelf2Count > 0 || player.PotionShelf3Count > 0
-                    || player.ActiveOffensivePotionExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                    || player.ActiveDefensivePotionExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                    || player.ActiveGatheringPotionExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    || player.ActiveOffensivePotionExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds()
+                    || player.ActiveDefensivePotionExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds()
+                    || player.ActiveGatheringPotionExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds(),
             };
         }
 
@@ -199,7 +199,7 @@ namespace FolkIdle.Server.Domain.Progression
         /// </summary>
         public static async Task NoteFactAsync(FolkIdleDbContext db, long playerId, string stepId)
         {
-            DateTime now = DateTime.UtcNow;
+            DateTime now = GameClock.UtcNow;
             await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO quest_line_claims (""PlayerId"", ""StepId"", ""FactAtUtc"", ""GoldGranted"", ""MaterialQuantity"", ""Region"")
 VALUES ({playerId}, {stepId}, {now}, 0, 0, 0)
@@ -308,7 +308,7 @@ DO UPDATE SET ""FactAtUtc"" = COALESCE(quest_line_claims.""FactAtUtc"", EXCLUDED
             }
 
             var reward = QuestLineRegistry.RewardFor(facts.HighestUnlockedRegion);
-            DateTime now = DateTime.UtcNow;
+            DateTime now = GameClock.UtcNow;
 
             // The guard. See the class remarks: zero rows touched means somebody
             // else claimed between the check above and here.

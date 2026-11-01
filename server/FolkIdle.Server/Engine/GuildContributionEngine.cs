@@ -319,7 +319,7 @@ namespace FolkIdle.Server.Engine
                         GuildId  = guildId,
                         BuffType = buffType,
                         Tier     = tier,
-                        ExpiresAt = DateTime.UtcNow.Add(duration)
+                        ExpiresAt = GameClock.UtcNow.Add(duration)
                     };
                     db.GuildActiveBuffs.Add(activeBuff);
                 }
@@ -328,12 +328,12 @@ namespace FolkIdle.Server.Engine
                     if (tier > activeBuff.Tier)
                     {
                         activeBuff.Tier = tier;
-                        activeBuff.ExpiresAt = DateTime.UtcNow.Add(duration);
+                        activeBuff.ExpiresAt = GameClock.UtcNow.Add(duration);
                     }
                     else if (tier == activeBuff.Tier)
                     {
-                        activeBuff.ExpiresAt = activeBuff.ExpiresAt < DateTime.UtcNow
-                            ? DateTime.UtcNow.Add(duration)
+                        activeBuff.ExpiresAt = activeBuff.ExpiresAt < GameClock.UtcNow
+                            ? GameClock.UtcNow.Add(duration)
                             : activeBuff.ExpiresAt.Add(duration);
                     }
                     else

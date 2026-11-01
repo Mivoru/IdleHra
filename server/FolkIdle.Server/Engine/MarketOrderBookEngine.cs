@@ -36,7 +36,7 @@ namespace FolkIdle.Server.Engine
         // at all, in which case there is genuinely nothing to validate against.
         internal static async Task<double?> CalculateRollingAveragePriceAsync(FolkIdleDbContext db, string baseItemId, int qualityTier)
         {
-            long windowStartEpoch = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
+            long windowStartEpoch = GameClock.UtcNowOffset.AddDays(-7).ToUnixTimeMilliseconds();
 
             var recentPrices = await db.HistoricalMarketArchives
                 .AsNoTracking()
@@ -326,7 +326,7 @@ namespace FolkIdle.Server.Engine
                         Price = price,
                         Status = 0,
                         IsQuarantined = isQuarantined,
-                        CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        CreatedAtEpoch = GameClock.UtcNowOffset.ToUnixTimeMilliseconds()
                     };
                     db.MarketOrderRecords.Add(order);
                 }
@@ -362,7 +362,7 @@ namespace FolkIdle.Server.Engine
                         Price = price,
                         Status = 0,
                         IsQuarantined = isQuarantined,
-                        CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        CreatedAtEpoch = GameClock.UtcNowOffset.ToUnixTimeMilliseconds()
                     };
                     db.MarketOrderRecords.Add(order);
 
@@ -489,7 +489,7 @@ namespace FolkIdle.Server.Engine
                             BaseItemId = sell.BaseItemId,
                             QualityTier = sell.QualityTier,
                             IsQuarantined = sell.IsQuarantined,
-                            ExecutionTimestampEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                            ExecutionTimestampEpoch = GameClock.UtcNowOffset.ToUnixTimeMilliseconds()
                         };
                         
                         db.HistoricalMarketArchives.Add(archive);

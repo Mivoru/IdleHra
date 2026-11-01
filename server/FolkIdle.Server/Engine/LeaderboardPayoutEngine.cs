@@ -83,7 +83,7 @@ namespace FolkIdle.Server.Engine
             {
                 try
                 {
-                    await PayCurrentWeekAsync(DateTime.UtcNow, stoppingToken);
+                    await PayCurrentWeekAsync(GameClock.UtcNow, stoppingToken);
                 }
                 catch (Exception ex)
                 {

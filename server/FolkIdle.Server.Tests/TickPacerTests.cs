@@ -12,6 +12,23 @@ namespace FolkIdle.Server.Tests
     {
         private const long Interval = 100;
 
+        [Fact]
+        public void AScaledCatchUpCapKeepsAWindowsTimerSliceAtX20()
+        {
+            // 5 ms ticks (x20) after a 16 ms Windows sleep owe about three -
+            // fine under the old cap of five - but a 40 ms stall owes eight.
+            // With the cap scaled to 5 x 20 = 100 nothing is dropped.
+            var scaled = new TickPacer(5, TickPacer.MaxCatchUpTicks * 20);
+            scaled.OnTickStarted(0);
+            Assert.Equal(0, scaled.DelayUntilNextTick(40));
+            Assert.Equal(0, scaled.TicksDropped);
+
+            var fixedCap = new TickPacer(5);
+            fixedCap.OnTickStarted(0);
+            fixedCap.DelayUntilNextTick(40);
+            Assert.True(fixedCap.TicksDropped > 0);
+        }
+
         [Theory]
         [InlineData("10", true, 10)]
         [InlineData(" 4 ", true, 4)]

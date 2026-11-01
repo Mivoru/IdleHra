@@ -228,7 +228,7 @@ namespace FolkIdle.Server.Engine
 
             // Modul 13.4.3: -20% character XP generation while an early
             // mentorship termination penalty is active (see MentorshipEngine).
-            if (payload.XpPenaltyExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            if (payload.XpPenaltyExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds())
             {
                 effectiveXp = (int)(effectiveXp * 0.8f);
             }
