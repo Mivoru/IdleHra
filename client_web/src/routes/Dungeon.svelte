@@ -10,6 +10,7 @@
   import DungeonRun from '../lib/ui/DungeonRun.svelte';
   import { formatNumber } from '../lib/ui/format';
   import { TICKET_ICON } from '../lib/ui/dungeonTickets';
+  import { noteDungeonView } from '../lib/stores/dungeonTickets';
 
   // Modul: THREE GATES (owner, 2026-10-31). XP, Gold and Equipment side by
   // side, each with its own stage field under it; a stage opens when the one
@@ -18,6 +19,8 @@
   const client = useQueryClient();
   const view = createQuery(() => ({ queryKey: dungeonKeys.view, queryFn: fetchDungeon }));
   const data = $derived(view.data ?? null);
+  // Every refetch (after a run, a sweep, a new day) keeps the menu's dot honest.
+  $effect(() => noteDungeonView(view.data));
 
   // Art and colour per gate, by the server's stable key.
   const GATE: Record<DungeonInfo['Key'], { art: string; tone: string; pays: string }> = {

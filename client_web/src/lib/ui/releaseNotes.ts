@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.51.2',
+    date: '2026-11-01',
+    sections: [
+      {
+        title: 'Dungeons',
+        items: [
+          "A red dot on Dungeon in the menu tells you when a gate is full of tickets. A full gate cannot hold the next day's tickets, so spend one before midnight UTC.",
+          'A menu group now shows the dot of anything inside it, so you see it without opening the menu.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.51.1',
     date: '2026-11-01',
     sections: [
