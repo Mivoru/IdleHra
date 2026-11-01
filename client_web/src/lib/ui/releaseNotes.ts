@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.52.1',
+    date: '2026-11-01',
+    headline: 'A new character starts with forty fish instead of ten.',
+    sections: [
+      {
+        title: 'Getting started',
+        items: [
+          'The starter fish in the chest went from ten to forty. Ten won a new character one or two fights; forty carry it through its first level before it has to go fishing.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.52.0',
     date: '2026-11-01',
     headline: 'The dungeons have their own sounds, and stage 15 of each gate pays a title.',

@@ -239,6 +239,54 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// THE STARTER KIT, AS A NEW ACCOUNT REALLY HAS IT.
+        ///
+        /// TheFirstMonsterTakesAboutSeventyFiveSeconds stocks a million fish so
+        /// starvation is never what it measures - which also means it cannot
+        /// see the entrance. A brand-new account owns exactly
+        /// StarterEquipmentGrant.StarterFishCount fish, the starter claymore and
+        /// the default auto-eat threshold. The playtest bots (server/FolkIdle.Bots,
+        /// 2026-11-01) watched one with the old ten fish: it killed one or two
+        /// Field Mice, ate them all and could kill nothing until it went
+        /// fishing. The kit is forty fish since then, sized from this test to
+        /// reach level 2 before the first fishing trip; it is still allowed to
+        /// run out - "When they run out, fish for more" is the lesson.
+        /// </summary>
+        [Fact]
+        public void TheStarterKitWinsTheFirstFights()
+        {
+            var payload = FreshPayload(ContentRegistry.FirstCanonicalMonsterId);
+            payload.Food1_ItemId = (ushort)FirstFoodItemId();
+            payload.Food1_Count = (ushort)StarterEquipmentGrant.StarterFishCount;
+            payload.AutoEatThreshold = (byte)FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct;
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId(StarterEquipmentGrant.StarterWeaponBaseId, out var claymore), "the starter weapon is not in the catalogue");
+            payload.CachedAffixTotals.FlatAttack = (int)Math.Round(claymore.FlatAttackPower * RarityTier.PowerMultiplier(1));
+
+            var queue = new ConcurrentQueue<GuildWarPointEvent>();
+            var contexts = new ConcurrentDictionary<long, LiveSessionContext>();
+            int kills = 0;
+            int seconds = 0;
+            for (int tick = 0; tick < 600 * TicksPerSecond && payload.ActiveActivityId != 0; tick++)
+            {
+                long hpBefore = payload.CurrentMonsterHp;
+                SimulationEngine.ProcessSubTick(ref payload, 100, 100, queue, contexts);
+                if (payload.CurrentMonsterHp > hpBefore) kills++;
+                seconds = tick / TicksPerSecond;
+                while (queue.TryDequeue(out _)) { }
+                while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
+                while (CodexEngine.KillEventQueue.TryDequeue(out _)) { }
+            }
+
+            _output.WriteLine($"starter kit vs Field Mouse: level {payload.CurrentLevel}, {kills} kills, fight ended after {seconds} s, {payload.Food1_Count} fish left, XP {payload.CurrentXp}");
+            // Measured 2026-11-01 with this test: about four fish a Field Mouse.
+            // 10 fish = 1-2 kills (hit rolls vary; 93-186 XP, level 1); 20 = 3;
+            // 30 = 5; 40 = 6 kills and level 2; 60 = 9. The floor is FOUR kills,
+            // below the ~6 forty fish buy so hit-roll variance cannot flake it;
+            // fewer means the kit no longer carries a new account anywhere.
+            Assert.True(kills >= 4, $"a new account with its starter kit killed only {kills} Field Mice before the fight ended at {seconds} s - the entrance is closing");
+        }
+
+        /// <summary>
         /// THE ONE THAT MATTERS: playing an hour and banking an hour must be
         /// worth about the same.
         ///

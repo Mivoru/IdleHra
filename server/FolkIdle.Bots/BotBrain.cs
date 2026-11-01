@@ -372,7 +372,7 @@ namespace FolkIdle.Bots
         /// <summary>
         /// Fight, or fish when no fight holds without food and there is no food
         /// left - the loop the larder makes of the game. A new account starts
-        /// with ten fish and, measured 2026-11-01, cannot kill a Field Mouse
+        /// with forty fish (ten until 2026-11-01) and, measured that day, cannot kill a Field Mouse
         /// without food once they are eaten (HuntingProjection: 0 kills before
         /// death), so a bot that never fishes measures nothing past its first
         /// few kills.

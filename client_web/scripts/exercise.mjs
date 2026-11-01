@@ -6613,7 +6613,7 @@ if (want('new-player')) {
     );
 
     // 2. THE GUIDED FIRST MINUTE (owner, 2026-09-28). A new account starts
-    //    with ten fish and a claymore in the chest, and the first two steps
+    //    with forty fish and a claymore in the chest, and the first two steps
     //    are a walk-through: the screen dims, one control is lit, nothing else
     //    can be pressed. Checked the way a player meets it - including that a
     //    press ANYWHERE ELSE really does nothing, because a fence that leaks
@@ -6789,6 +6789,48 @@ if (want('new-player')) {
       } else {
         record('a brand-new account can finish a shield wheel practice run', false, 'no Practice button for the new account');
       }
+    }
+
+    // Modul: THE FIRST FIGHT, ACTUALLY FOUGHT (2026-11-01). Everything above
+    // proves the tutorial POINTS at the fight ("the third step is the fight,
+    // now that it can be won") - nothing pressed Fight. The playtest bots did,
+    // and found the old ten-fish kit won one or two Field Mice before the fish
+    // ran out (ProgressionRateTests.TheStarterKitWinsTheFirstFights pins the
+    // same thing in the engine). This presses Fight the way a new player does
+    // and waits for a kill to land in the codex - so a closed entrance fails
+    // here instead of in front of a new player. Last on purpose: the world boss
+    // and shield wheel checks above want the character free.
+    {
+      await (await navButton(fresh, 'Combat')).click().catch(() => {});
+      await fresh.waitForTimeout(1500);
+      const mouseRow = fresh.locator('li, article, .row, .monster').filter({ hasText: 'Field Mouse' });
+      const fightMouse = (await mouseRow.count()) > 0
+        ? mouseRow.getByRole('button', { name: 'Fight', exact: true }).first()
+        : fresh.getByRole('button', { name: 'Fight', exact: true }).first();
+      await fightMouse.click({ timeout: 8000 }).catch(() => {});
+      // The codex snapshot's own kill counts. Not /codex/regions: its
+      // CurrentKills is the MINIMUM over the region's regulars (each needs
+      // 1,000 for completion), so it reads 0 until every one has been fought.
+      const regionOneKills = () =>
+        fresh.evaluate(async (base) => {
+          const token = sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token');
+          const res = await fetch(`${base}/api/v1/codex/snapshot`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!res.ok) return -1;
+          const rows = await res.json();
+          return Array.isArray(rows) ? rows.reduce((sum, r) => sum + Number(r.Kills ?? 0), 0) : 0;
+        }, API_BASE);
+      const killsBefore = await regionOneKills();
+      let killsAfter = killsBefore;
+      // About 26 s a Field Mouse with the claymore; 90 s is room for the first.
+      for (let waited = 0; waited < 90 && killsAfter <= killsBefore; waited += 5) {
+        await fresh.waitForTimeout(5000);
+        killsAfter = await regionOneKills();
+      }
+      record(
+        'a brand-new account wins its first fight with the starter kit',
+        killsBefore >= 0 && killsAfter > killsBefore,
+        `codex kills ${killsBefore} -> ${killsAfter}`,
+      );
     }
 
     // 3. Survives a reload. Progress is re-derived from the packet rather than

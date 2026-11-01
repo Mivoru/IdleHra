@@ -46,12 +46,19 @@ namespace FolkIdle.Server.Engine
         /// because doing it is how they learn where those two things live.
         /// Both go in the CHEST, not on the character, for exactly that reason.
         ///
-        /// Ten fish, not a larder's worth: enough to win the first fights, few
-        /// enough that "fish, then load the larder" is still the lesson a few
-        /// minutes later.
+        /// Forty fish, not a larder's worth: enough to win the first fights AND
+        /// the first level, few enough that "fish, then load the larder" is
+        /// still the lesson a few minutes later.
+        ///
+        /// Modul: 10 -> 40 (owner, 2026-11-01). Measured with
+        /// ProgressionRateTests.TheStarterKitWinsTheFirstFights at about four
+        /// fish a Field Mouse: ten fish won 1-2 fights (93-186 XP) and the new
+        /// account stayed level 1 until it found out on its own that it had to
+        /// fish - the playtest bots saw the same. Forty win about six and
+        /// reach level 2 before the first fishing trip.
         /// </summary>
         public const string StarterWeaponBaseId = "eq_steel_claymore_melee_weapon_slot_base";
-        public const int StarterFishCount = 10;
+        public const int StarterFishCount = 40;
 
         public static List<EquipmentInstance> Seed(FolkIdleDbContext db, long playerId)
         {

@@ -184,7 +184,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0, player.VillagerRecruitmentsThisSeason);
             Assert.Equal(0L, (await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == me.PlayerId && c.ItemId == "gold")).Quantity);
             // Every material goes; what is left is the starter kit a new
-            // account gets - ten fish, a claymore and three Normal tools.
+            // account gets - forty fish, a claymore and three Normal tools.
             var stacks = await verify.CommodityRecords.AsNoTracking()
                 .Where(c => c.PlayerId == me.PlayerId && c.ItemId != "gold").ToListAsync();
             Assert.DoesNotContain(stacks, c => c.ItemId == "iron_ore");

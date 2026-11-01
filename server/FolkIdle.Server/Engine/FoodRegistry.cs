@@ -257,7 +257,7 @@ namespace FolkIdle.Server.Engine
         // fastest node would feed region 5, and a flat refusal would have made
         // the 30,000 early fish a real player already held worthless overnight.
         //
-        // Region 1 eats no rations: a new player owns ten starter fish and has
+        // Region 1 eats no rations: a new player owns forty starter fish and has
         // not been taught to fish yet, and region 1 is where that happens.
         //
         // Intervals: one fish every 10 s in region 2 down to every 6 s in
