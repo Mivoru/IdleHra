@@ -484,7 +484,16 @@ Decisions, all approved the same day:
 1. The three gates, the stage field, the XP and Gold dungeons. **Built.**
 2. The run played back as a scene. **Built.**
 3. Dodges and bonuses, the server-side run session, sweep. **Built.**
-4. Roster slots 2 and 3. **Built (uncalibrated).**
+4. Roster slots 2 and 3. **Built, calibrated 2026-11-01.**
+   DungeonCalibrationHarness on the 2026-11-01 production copy, the owner's
+   account (level 113; champion 1 and 2 fully geared, champion 3 wearing
+   nothing). Highest stage, no telegraphs / all missed / a school played:
+   alone 9 / 8 / 9-10, champions 1+2 9-10 / 9 / 10-11, all three 9 / 7 /
+   9-10. A geared second champion is worth one or two stages, which is the
+   intended size, so the stage numbers stay. An ungeared champion makes the
+   party WORSE than going alone, because the blows go round the party and
+   hit them through no armour, so the lobby now leaves a champion without
+   full gear at home by default (one tap sends them, and the warning stays).
 5. The remaining art and sound (fight backgrounds, wave monsters, ability
    effects and sounds from LOOT_DUNGEON_VISUALS.md section 8).
 

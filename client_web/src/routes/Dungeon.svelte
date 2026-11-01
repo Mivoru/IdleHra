@@ -51,9 +51,22 @@
     selected = d.Kind;
   }
 
-  // The party (slice 4): the roster slots this dungeon has opened, all on by
-  // default; the main character always goes.
+  // The party (slice 4): the roster slots this dungeon has opened; the main
+  // character always goes.
+  //
+  // Modul: A CHAMPION WITHOUT FULL GEAR STAYS HOME BY DEFAULT (calibration on
+  // the 2026-11-01 production copy, DungeonCalibrationHarness). The enemy's
+  // blows go round the party in turn, so a champion with no armour takes huge
+  // hits out of the shared health bar while adding little damage. The owner's
+  // account: alone highest stage 9-10, with the geared second champion 10-11,
+  // and with the ungeared third as well 9-10 - and 7 instead of 8 when the
+  // dodges are missed, worse than going alone. A fully geared champion goes;
+  // the player can still send anyone with one tap, and the warning below says
+  // what that costs. An explicit choice is never overwritten.
   let benched = $state<Record<number, boolean>>({});
+  $effect(() => {
+    for (const r of data?.Roster ?? []) if (r.Slot > 0 && benched[r.Slot] === undefined) benched[r.Slot] = r.Worn < 8;
+  });
   const party = $derived(
     (data?.Roster ?? [])
       .filter((r) => r.Slot === 0 || (dungeon !== null && r.Slot < dungeon.PartySlots && !benched[r.Slot]))

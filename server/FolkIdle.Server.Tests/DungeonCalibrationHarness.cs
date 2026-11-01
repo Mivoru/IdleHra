@@ -77,9 +77,11 @@ namespace FolkIdle.Server.Tests
             // Highest stage cleared, per dungeon and scenario.
             foreach (var kind in DungeonBoss.All)
             {
-                foreach (var (label, party) in new[] { ("solo", new[] { 0 }), ($"party{slots.Count}", slots.ToArray()) })
+                var scenarios = new System.Collections.Generic.List<(string, int[])> { ("solo", new[] { 0 }) };
+                if (slots.Count == 3) scenarios.Add(("party2", new[] { 0, 1 }));
+                if (slots.Count > 1) scenarios.Add(($"party{slots.Count}", slots.ToArray()));
+                foreach (var (label, party) in scenarios)
                 {
-                    if (label != "solo" && slots.Count == 1) continue;
                     foreach (var mode in Modes)
                     {
                         var line = new System.Text.StringBuilder($"{kind,-9} {label,-6} {mode,-9}:");
