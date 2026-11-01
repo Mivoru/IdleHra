@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
@@ -35,7 +36,8 @@ namespace FolkIdle.Server.Engine
             _ = Task.Run(async () => await ExecuteGdprPurgeAsync(playerId));
         }
 
-        private async Task ExecuteGdprPurgeAsync(long playerId)
+        /// <summary>Runs one purge now. True when the account is gone.</summary>
+        internal async Task<bool> ExecuteGdprPurgeAsync(long playerId)
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             using var scope = _serviceProvider.CreateScope();
@@ -51,7 +53,7 @@ namespace FolkIdle.Server.Engine
                 if (player == null)
                 {
                     await transaction.RollbackAsync(timeout.Token);
-                    return;
+                    return false;
                 }
 
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"VillageResidents\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
@@ -88,7 +90,16 @@ namespace FolkIdle.Server.Engine
                 // there is no reason to leave an hour of somebody's email
                 // address's shadow lying in a table after they asked for it to
                 // be erased.
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PasswordResetTokens\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+                //
+                // Modul: THROUGH THE MODEL, NOT A HAND-WRITTEN TABLE NAME
+                // (2026-11-01). This was raw SQL against "PasswordResetTokens",
+                // but the table is password_reset_tokens ([Table] on the
+                // entity). Every purge threw on that line, the catch below
+                // rolled the whole transaction back and printed one console
+                // line - so no erasure request had ever completed. Found when
+                // the same sequence was run by hand to delete the smoke-test
+                // guests. ExecuteDeleteAsync asks EF for the table name.
+                await db.PasswordResetTokens.Where(t => t.PlayerId == playerId).ExecuteDeleteAsync(timeout.Token);
 
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerRecords\" WHERE \"Id\" = {0}", new object[] { playerId }, timeout.Token);
 
@@ -114,11 +125,13 @@ namespace FolkIdle.Server.Engine
                     Value2 = 1,
                     Timestamp = Environment.TickCount64
                 });
+                return true;
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync(CancellationToken.None);
                 Console.WriteLine($"GDPR purge failed for player {playerId}: {ex.Message}");
+                return false;
             }
         }
     }
