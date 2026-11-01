@@ -21,6 +21,7 @@
   import { MAIN_TABS, MORE_TAB } from './tabs';
   import MailBadge from './MailBadge.svelte';
   import { unopenedChests } from '../stores/cosmeticChests';
+  import { dungeonTicketsFull } from '../stores/dungeonTickets';
   import { isAutomationNote } from './slots';
 
   interface Props {
@@ -65,7 +66,8 @@
 
   // Task 95: the sheet's own wants - skill points to spend - dot the More tab;
   // unclaimed mail rides on it as a count (MailBadge below).
-  const moreAlert = $derived(snap ? Number(snap.AvailableSkillPoints) > 0 : false);
+  // A gate full of tickets dots it too: the Dungeon lives in the sheet.
+  const moreAlert = $derived((snap ? Number(snap.AvailableSkillPoints) > 0 : false) || $dungeonTicketsFull);
 
   function alertFor(key: string): boolean {
     if (key === 'combat') return combatAlert;

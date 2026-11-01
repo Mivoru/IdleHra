@@ -7,6 +7,7 @@
   import { hotkeyTab, MAIN_TABS } from './lib/ui/tabs';
   import { connectionChip } from './lib/ui/connectionMessage';
   import { refreshUnopenedChests, unopenedChests } from './lib/stores/cosmeticChests';
+  import { dungeonTicketsFull, refreshDungeonTickets } from './lib/stores/dungeonTickets';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import Toasts from './lib/ui/Toasts.svelte';
   import AchievementToast from './lib/ui/AchievementToast.svelte';
@@ -639,7 +640,13 @@
       startSession(token);
       // Task 54: the level-chest backfill lands at login; count what waits.
       refreshUnopenedChests();
-      return () => endSession();
+      // A gate at its ticket cap throws the next refill away; see dungeonTickets.ts.
+      refreshDungeonTickets();
+      const ticketTimer = setInterval(refreshDungeonTickets, 10 * 60 * 1000);
+      return () => {
+        clearInterval(ticketTimer);
+        endSession();
+      };
     }
   });
 
@@ -872,6 +879,14 @@
   // Task 95: the Skill Tree lives in the sheet now, so it carries its own dot.
   const skillsWant = $derived(snap ? Number(snap.AvailableSkillPoints) > 0 : false);
 
+  /** The nav entries that wear a dot, and so the group toggles that hold them. */
+  function entryWants(key: string): boolean {
+    if (key === 'character') return characterWants;
+    if (key === 'skills') return skillsWant;
+    if (key === 'dungeon') return $dungeonTicketsFull;
+    return false;
+  }
+
   // Task 95: nothing while connected, one plain word otherwise.
   const phaseChip = $derived(connectionChip($connectionStatus.phase));
 
@@ -920,7 +935,7 @@
         class:tile={inSheet}
         disabled={locked !== null}
         aria-current={entryKeyOf(screen) === item.key ? 'page' : undefined}
-        title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : undefined}
+        title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : item.key === 'dungeon' && $dungeonTicketsFull ? 'A gate is full of tickets - new ones are lost until you spend one' : undefined}
         data-nav={item.key}
         data-label={item.label}
         data-locked={locked ?? undefined}
@@ -936,6 +951,7 @@
         {#if item.key === 'mailbox'}<MailBadge quiet={inSheet} />{/if}
         {#if item.key === 'character' && characterWants}<span class="navdot" aria-hidden="true"></span>{/if}
         {#if item.key === 'skills' && skillsWant}<span class="navdot" aria-hidden="true"></span>{/if}
+        {#if item.key === 'dungeon' && $dungeonTicketsFull}<span class="navdot" aria-hidden="true" data-testid="nav-dungeon-full"></span>{/if}
       </button>
     {/snippet}
 
@@ -977,6 +993,9 @@
               onkeydown={(e) => onToggleKey(e, group.name)}
             >
               {group.name}
+              <!-- A dot inside a closed dropdown is a dot nobody sees, so the
+                   toggle repeats it. -->
+              {#if group.screens.some((it) => !MENU_HIDDEN.has(it.key) && entryWants(it.key))}<span class="navdot" aria-hidden="true"></span>{/if}
               <span class="caret" aria-hidden="true">&#9662;</span>
             </button>
             <div class="group-buttons">

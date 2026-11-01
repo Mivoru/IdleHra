@@ -1769,6 +1769,11 @@ if (want('dungeon')) {
   await page.waitForTimeout(500);
   const ticketArt = await page.locator('.gate-tickets img.ticket-icon').evaluateAll((imgs) =>
     imgs.map((i) => `${i.getAttribute('src')}:${i.complete && i.naturalWidth > 0 ? 'ok' : 'missing'}`));
+  // A gate at its cap throws the next refill away, so the menu dots Dungeon.
+  const fullNow = (view0 => view0 && view0.Dungeons.some((d) => d.Tickets >= view0.TicketCap))(await apiGet('/api/v1/dungeon').catch(() => null));
+  await page.waitForTimeout(300);
+  const navDot = await page.getByTestId('nav-dungeon-full').count();
+  record('the menu dots Dungeon exactly when a gate is full of tickets', (navDot > 0) === Boolean(fullNow), `full ${Boolean(fullNow)}, dots ${navDot}`);
   record('each gate shows its own loaded ticket picture', ticketArt.length === 3
     && new Set(ticketArt).size === 3 && ticketArt.every((t) => t.endsWith(':ok')), ticketArt.join(' ') || 'none');
   const view = await apiGet('/api/v1/dungeon').catch(() => null);
