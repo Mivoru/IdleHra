@@ -72,7 +72,7 @@ measures the game as it is presented:
 | Decision | Source |
 |---|---|
 | Which monster | Combat's "best XP/h" pick (`huntingEstimate.ts` `bestPick`) over the server's `HuntingProjection`; the region boss as soon as its projection says the fight holds |
-| Fishing | When no fight holds without food and the larder is empty: fish region 1's node up to 200 food, then load the larder |
+| Fishing | When no fight holds without food and the larder is empty: fish at the highest node the character has reached (`HighestLocationReached`) up to 200 food, then load the larder |
 | Gear | The loot row's rule (`lootCompare.ts` `isUpgrade`): base ATK + DEF times the rarity multiplier |
 | Larder | Larder's one-press Load: the biggest food stack into its slot or the first empty one |
 | Attributes | Meet the gear requirement of the current region and the next, then put the rest into Might and Vigour at 2:1 |
@@ -83,5 +83,4 @@ measures the game as it is presented:
 It sends at most one WebSocket command every 1.2-3.0 s with random jitter,
 because of `ValidateCommand`'s 100 ms rule and the macro detector.
 
-Not yet done: crafting, cooking, the village, the forge, the dungeons, rebirth,
-and fishing anywhere but region 1's node.
+Not yet done: crafting, the village, the forge, the dungeons, rebirth.
