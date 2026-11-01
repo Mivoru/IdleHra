@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Playtest bots: headless players that log in as guests and play the game
+    over the same WebSocket + REST surface the web client uses. Referencing the
+    server project means the wire types, the JSON codec, the anti-cheat hash and
+    the content registry are the server's own - nothing is mirrored by hand.
+    A dev tool: never point it at production.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\FolkIdle.Server\FolkIdle.Server.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

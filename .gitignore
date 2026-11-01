@@ -76,3 +76,6 @@ ops/oracle/downloads/
 # Skill icon masters (2-3 MB each); only the 256px WebP beside them ships.
 client/Assets/Images/SpritesWeb/SkillIcons/*.jpg
 client/Assets/Images/SpritesWeb/SkillIcons/*.png
+
+# Playtest bot output (server/FolkIdle.Bots)
+bot-runs/

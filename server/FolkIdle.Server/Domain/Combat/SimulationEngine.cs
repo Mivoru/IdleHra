@@ -171,6 +171,8 @@ namespace FolkIdle.Server.Domain.Combat
         private Thread? _engineThread;
         private Thread? _battlePassWorkerThread;
         private int _ticksSinceLastBroadcast = 0;
+        // Ticks between snapshot broadcasts: 10 (1 Hz) times the dev tick speed.
+        private int _ticksPerBroadcast = 10;
         private readonly System.Collections.Concurrent.ConcurrentQueue<TickStatePayload> _readyLogins = new();
 
         private EngineMetricsPayload _metrics;
@@ -997,7 +999,24 @@ namespace FolkIdle.Server.Domain.Combat
         private void EngineLoop()
         {
             Stopwatch stopwatch = new Stopwatch();
-            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000);
+            // Modul: the dev-only bot multiplier (TickPacer.ResolveTickSpeed) shortens
+            // the WALL interval only; each tick is still TickIntervalMs of game time.
+            int tickSpeed = TickPacer.ResolveTickSpeed(
+                Environment.GetEnvironmentVariable("FOLKIDLE_TICK_SPEED"),
+                FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled());
+            if (tickSpeed > 1)
+            {
+                Console.WriteLine($"[SimulationEngine] DEV tick speed x{tickSpeed} (FOLKIDLE_TICK_SPEED) - game time runs {tickSpeed}x the wall clock.");
+            }
+            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000 / tickSpeed);
+            // Modul: THE BROADCAST STAYS ON WALL TIME. Every broadcast issues a
+            // fresh anti-cheat challenge, and every answer spends a token from
+            // the session's wall-clock bucket. Broadcasting every 10 TICKS at
+            // x10 meant ten answers a second, which ValidateNetworkThroughput
+            // read as a flood and aborted the socket about four seconds after
+            // login - with no log line, because a flood abort is silent. One
+            // snapshot a wall second is also all a bot or a screen needs.
+            _ticksPerBroadcast = 10 * tickSpeed;
 
             int benchmarkTickCount = 0;
             long benchmarkStartAllocated = 0;
@@ -2157,7 +2176,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 _ticksSinceLastBroadcast++;
-                if (_ticksSinceLastBroadcast >= 10)
+                if (_ticksSinceLastBroadcast >= _ticksPerBroadcast)
                 {
                     _metrics.ThrottledPacketsDropped = _networkSystem.GetThrottledCounter();
                     _ticksSinceLastBroadcast = 0;

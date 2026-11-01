@@ -20,6 +20,7 @@ from it.
 | `server/FolkIdle.Server/` | The game server. `Domain/` split into `Combat`, `Economy`, `Progression`, `Social`, `Shared`; `Engine/` is still flat. |
 | `server/FolkIdle.Server.Tests/` | xUnit + Testcontainers (a real Postgres 16 per collection). |
 | `server/GameData/*.json` | Content: monsters, items, gathering nodes, skills, balance, localizations. |
+| `server/FolkIdle.Bots/` | Playtest bots: headless guests that play the game on a dev server sped up with `FOLKIDLE_TICK_SPEED`, and write when each milestone was reached. See its README. Dev box only. |
 | `client_web/` | **The client players actually run.** Svelte 5 + Vite, 26 screens in `src/routes/`. |
 | `client/` | Retired Unity project. **Do not write C# here.** Kept only for artwork/audio the web client fetches from the server. |
 | `docs/architecture/` | The real documentation. See below. |

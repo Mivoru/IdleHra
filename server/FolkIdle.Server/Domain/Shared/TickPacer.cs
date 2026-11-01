@@ -30,6 +30,32 @@ namespace FolkIdle.Server.Domain.Shared
     {
         public const int MaxCatchUpTicks = 5;
 
+        /// <summary>The fastest the dev tick multiplier may run.</summary>
+        public const int MaxTickSpeed = 20;
+
+        /// <summary>
+        /// How many ticks the engine runs per <c>TickIntervalMs</c> of wall
+        /// time: <c>FOLKIDLE_TICK_SPEED</c>, honoured only on a dev box.
+        ///
+        /// Modul: BOTS NEED A FAST WORLD, PLAYERS NEVER GET ONE (2026-11-01).
+        /// The playtest bots (server/FolkIdle.Bots) measure how long a new
+        /// player takes to reach each milestone, and at 10 Hz that is weeks of
+        /// wall time. Every tick still advances exactly <c>TickIntervalMs</c> of
+        /// GAME time, so the multiplier compresses wall time without changing
+        /// a single balance number: combat, gathering, XP, ageing and potion
+        /// durations are all counted in ticks. What it does NOT compress is
+        /// everything read off <c>DateTime.UtcNow</c> - daily tickets, the
+        /// midnight refills, epoch expiries - which stay on the real clock.
+        /// Gated on the dev-tools rule, so production (DOTNET_ENVIRONMENT
+        /// Production) runs at 1x whatever its .env says.
+        /// </summary>
+        public static int ResolveTickSpeed(string? flag, bool devToolsEnabled)
+        {
+            if (!devToolsEnabled || string.IsNullOrWhiteSpace(flag)) return 1;
+            if (!int.TryParse(flag.Trim(), out int speed)) return 1;
+            return Math.Clamp(speed, 1, MaxTickSpeed);
+        }
+
         private readonly long _interval;
         private long _nextDue;
         private bool _anchored;
