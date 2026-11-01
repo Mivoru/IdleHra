@@ -32,7 +32,7 @@ namespace FolkIdle.Server.Tests
         [Theory]
         [InlineData(new[] { 0, 0, 0, 0 })]            // too few regions
         [InlineData(new[] { 0, 0, 0, 0, 0, 0 })]      // too many
-        [InlineData(new[] { 0, 0, 7, 0, 0 })]         // above MaxSweepableQualityTier: Legendary+ is never auto-sold
+        [InlineData(new[] { 0, 0, 9, 0, 0 })]         // above MaxSweepableQualityTier: Relic+ is never auto-sold
         [InlineData(new[] { 0, -1, 0, 0, 0 })]
         public void TryPack_RefusesRatherThanClamps(int[] tiers)
         {
@@ -40,7 +40,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void Sanitise_ClampsAHandWrittenRowBelowLegendary()
+        public void Sanitise_ClampsAHandWrittenRowBelowRelic()
         {
             // 15 in region 2's nibble - reachable only by writing the column by hand.
             int handWritten = 15 << 4;
