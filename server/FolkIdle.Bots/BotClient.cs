@@ -184,9 +184,19 @@ namespace FolkIdle.Bots
             return doc.RootElement.Clone();
         }
 
+        /// <summary>
+        /// Modul: PROPERTY NAMES AS WRITTEN, NOT camelCase (2026-11-01).
+        /// PostAsJsonAsync uses the web defaults, which turn "Scenarios" into
+        /// "scenarios" - and the dungeon, Delve and what-if handlers read their
+        /// bodies with exact-case TryGetProperty, so every such POST arrived
+        /// empty and was answered as if nothing had been asked. The web client
+        /// sends PascalCase (rest.ts); so does the bot now.
+        /// </summary>
+        private static readonly JsonSerializerOptions BodyJson = new();
+
         public async Task<(int Status, JsonElement? Body)> PostAsync(string path, object body, CancellationToken token)
         {
-            using var response = await _http.PostAsJsonAsync(path, body, token);
+            using var response = await _http.PostAsJsonAsync(path, body, BodyJson, token);
             string text = await response.Content.ReadAsStringAsync(token);
             if (string.IsNullOrWhiteSpace(text)) return ((int)response.StatusCode, null);
             try

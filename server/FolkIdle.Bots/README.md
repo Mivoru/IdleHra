@@ -17,11 +17,12 @@ unless `--allow-remote` is given.
 # 1. The server on it, with dev tools and a tick multiplier (stop any running server first)
 $env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_bots;Username=postgres;Password=postgres'
 $env:FOLKIDLE_DEV_TOOLS='1'
-$env:FOLKIDLE_TICK_SPEED='20'
+$env:FOLKIDLE_TICK_SPEED='100'
+$env:FOLKIDLE_BOSS_MINIGAME='wheel'   # as production
 dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj
 
 # 2. The bots (another terminal); --speed must match FOLKIDLE_TICK_SPEED
-dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix optimal:2,casual:2,idle:2 --hours 72 --speed 20
+dotnet run --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix optimal:2,casual:2,idle:2 --hours 72 --speed 100
 ```
 
 `--hours` is GAME time. At `--speed 10`, 24 game hours take 2.4 wall hours.
@@ -49,7 +50,7 @@ XP and gold.
 
 ## The tick multiplier
 
-`FOLKIDLE_TICK_SPEED=N` (1-20) makes the engine run N ticks per 100 ms of wall
+`FOLKIDLE_TICK_SPEED=N` (1-100) makes the engine run N ticks per 100 ms of wall
 time. It is honoured only when dev tools are on and `DOTNET_ENVIRONMENT` is not
 `Production` (`TickPacer.ResolveTickSpeed`).
 
@@ -78,23 +79,54 @@ and a "future" logout then refuses that login (`ValidateLoginTime`). Recreate
 `folkidle_bots` with `new-bot-db.ps1` before each run and keep the server up
 for the whole run.
 
-## The "optimal" persona (`BotBrain`)
+## What the bot does (`BotBrain`, one partial file per system)
 
-Each decision copies something a screen already recommends, so the bot
-measures the game as it is presented:
+The same decisions for every persona; only the attention differs.
 
-| Decision | Source |
-|---|---|
-| Which monster | Combat's "best XP/h" pick (`huntingEstimate.ts` `bestPick`) over the server's `HuntingProjection`; the region boss as soon as its projection says the fight holds |
-| Fishing | When no fight holds without food and the larder is empty: fish at the highest node the character has reached (`HighestLocationReached`) up to 200 food, then load the larder |
-| Gear | The loot row's rule (`lootCompare.ts` `isUpgrade`): base ATK + DEF times the rarity multiplier |
-| Larder | Larder's one-press Load: the biggest food stack into its slot or the first empty one |
-| Attributes | Meet the gear requirement of the current region and the next, then put the rest into Might and Vigour at 2:1 |
-| Skill tree | The cheapest open node, lowest row first, through `/skilltree/preview` |
-| Quests | Claims every claimable step |
-| Chest | Auto-sell Common drops, so the backpack never fills |
+| System | Decision | File |
+|---|---|---|
+| Fight | Combat's "best XP/h" pick over the server's `HuntingProjection`; the region boss once its projection holds; one scouting fight in the next location to open its gathering; a monster that killed it twice is left until the next level | `BotBrain.Combat.cs` |
+| Fishing | A trip to the best reachable river when the larder is empty, AND as soon as a better river is reachable than any fish it holds (bot mistake 4.1.1). Target: three game hours of the current fight's food use plus rations, 150-3,000 | `BotBrain.Combat.cs` |
+| Larder | The best food tier first; a better chest food replaces the worst slot; slots hold 9,999 | `BotBrain.Combat.cs` |
+| Attributes | Up to the open region's gear requirement first, then a third of the points at a time wherever the what-if projection scores best | `BotBrain.Build.cs` |
+| Skill tree | War: the open node with the best projected score gain per point, through `/skilltree/preview`; cheapest-lowest-row when nothing gains. Hearth: cheapest first | `BotBrain.Build.cs` |
+| Gear | The three best unworn candidates per slot projected against the worn set; wears the best gain over 1%. Tools by region tier, then rarity | `BotBrain.Build.cs` |
+| Village | The most urgent affordable building (Forge and Town Hall, then Lumberjack/Mine/Workshop, then Warehouse; Inn and Breeding Grounds from level 40); short of a gatherable material, a gathering trip | `BotBrain.Economy.cs` |
+| Crafting | The next better rod, axe, pickaxe; potions (XP elixir, then armour, attack speed, bossbane) from herbs it gathers | `BotBrain.Economy.cs` |
+| Potion shelves | XP elixir on the rewards shelf, the best combat potion on the combat shelf, auto-drink on | `BotBrain.Economy.cs` |
+| Forge | Fuses stacks of three identical spares of the current region up to the Forge level; with spare gold, an auto reroll of the weapon's affixes | `BotBrain.Economy.cs` |
+| Workshop, Great Works | A commission for the weakest slot; logs and ore beyond 1,500 into the monument | `BotBrain.Economy.cs` |
+| Claims | Quest steps, achievements, mail, loot chests | `BotBrain.Economy.cs` |
+| Chest | Sells Common on the way in until the Forge; then only gear two regions back; bulk-sells old regions | `BotBrain.Economy.cs` |
+| World boss | Today's strike: the Auto strike with the shield wheel on, opcode 32 with it off | `BotBrain.Events.cs` |
+| Dungeons | Every ticket: pushes the next stage (telegraphs answered at human speed, one in twelve missed), sweeps the best stage after a loss | `BotBrain.Events.cs` |
+| Delve | A run when the fee is under a fifth of the spare gold; the door with the best odds; banks under 65% | `BotBrain.Events.cs` |
+| Boss Ascension | The next step when the plain boss holds and dies inside a third of the time limit | `BotBrain.Events.cs` |
+| Roster | Benched members into open playable slots; characters 2 and 3 woodcut and mine | `BotBrain.Lineage.cs` |
+| Breeding | Main character x the best villager of the other sex and same race, when the preview says eligible | `BotBrain.Lineage.cs` |
+| Inheritance | Diamonds into the cheapest wanted bonus (XP, damage, health, loot luck, gold, gathering) | `BotBrain.Lineage.cs` |
+| Rebirth | When it raises Renown and the run has stalled 6 game hours, or at level 100 | `BotBrain.Lineage.cs` |
 
-It sends at most one WebSocket command every 1.2-3.0 s with random jitter,
-because of `ValidateCommand`'s 100 ms rule and the macro detector.
+**Decisions by the server's numbers.** Attributes, skill nodes and gear are
+chosen with `POST /api/v1/dev/projection/whatif` (dev tools only): the hunting
+projection on a copy of the live payload with the change applied. The bot
+keeps no copy of the combat formula.
 
-Not yet done: crafting, the village, the forge, the dungeons, rebirth.
+**Pacing.** At most one WebSocket command per pass, 0.4-1.2 s apart with
+random jitter (`ClientInputThrottler`, `ValidateCommand`'s 100 ms rule, the
+macro detector's 0.05 CV floor). Every chore timer counts GAME minutes, so the
+bot's attention per game day is the same at x20 and x100.
+
+## Output
+
+Besides `milestones.csv`, `events.log` and `summary.md`, a run writes
+`timeline.csv` (one row per bot per game hour: level, XP, region, gold,
+diamonds, activity, larder, deaths, Forge, Town Hall, rebirths). `summary.md`
+ends with the speed the server really ran at, from `/metrics`.
+
+## Not done
+
+Market and guilds (a single bot has nobody to trade with), the seasonal event
+shop and boss, playing the shield wheel (the bot takes the Auto strike), the
+Deep below Delve floor 8, and breeding between two of the player's own
+characters.

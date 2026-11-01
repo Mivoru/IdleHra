@@ -27,6 +27,7 @@ namespace FolkIdle.Bots
         private readonly object _lock = new();
         private readonly StreamWriter _csv;
         private readonly StreamWriter _events;
+        private readonly StreamWriter _timeline;
         private readonly DateTime _startUtc = DateTime.UtcNow;
         private readonly int _speed;
         private readonly Dictionary<string, BotProgress> _progress = new();
@@ -42,6 +43,7 @@ namespace FolkIdle.Bots
             public bool DeathSeen;
             public int Deaths;
             public long Gold;
+            public int Rebirths;
             public readonly Dictionary<string, int> Counters = new();
         }
 
@@ -53,6 +55,8 @@ namespace FolkIdle.Bots
             _csv = new StreamWriter(Path.Combine(directory, "milestones.csv")) { AutoFlush = true };
             _events = new StreamWriter(Path.Combine(directory, "events.log")) { AutoFlush = true };
             _csv.WriteLine("bot,milestone,game_hours,wall_minutes,level,region,gold,deaths");
+            _timeline = new StreamWriter(Path.Combine(directory, "timeline.csv")) { AutoFlush = true };
+            _timeline.WriteLine("bot,game_hours,level,xp,region,location,gold,diamonds,activity,larder,deaths,forge,town_hall,rebirths");
         }
 
         public double GameHours => (DateTime.UtcNow - _startUtc).TotalHours * _speed;
@@ -83,9 +87,12 @@ namespace FolkIdle.Bots
                     EventLocked(bot, $"died to monster {s.LastDeathMonsterId} (death {p.Deaths})");
                 }
 
+                // Modul: after a rebirth the level climbs from 1 again, so its
+                // marks are named per life (r1_level_10) rather than logged twice.
+                string life = p.Rebirths == 0 ? "" : $"r{p.Rebirths}_";
                 foreach (int mark in LevelMarks)
                 {
-                    if (p.Level < mark && s.CurrentLevel >= mark) Row(bot, $"level_{mark}", s, p);
+                    if (p.Level < mark && s.CurrentLevel >= mark) Row(bot, $"{life}level_{mark}", s, p);
                 }
                 p.Level = s.CurrentLevel;
 
@@ -102,6 +109,29 @@ namespace FolkIdle.Bots
                         Row(bot, $"boss_r{r}_defeated", s, p);
                 }
                 p.BossMask = s.DefeatedRegionBossMask;
+            }
+        }
+
+        /// <summary>A milestone the bot itself knows about (a rebirth), logged like the observed ones.</summary>
+        public void Milestone(string bot, string milestone, StateUpdatePacket s)
+        {
+            lock (_lock)
+            {
+                if (!_progress.TryGetValue(bot, out var p)) return;
+                if (milestone.StartsWith("rebirth_", StringComparison.Ordinal)) { p.Rebirths++; p.Level = 0; }
+                Row(bot, milestone, s, p);
+            }
+        }
+
+        /// <summary>One row per bot per game hour: where it stands, for curves rather than milestones (report 4.3).</summary>
+        public void Timeline(string bot, StateUpdatePacket s)
+        {
+            lock (_lock)
+            {
+                _progress.TryGetValue(bot, out var p);
+                _timeline.WriteLine(string.Join(",", bot, GameHours.ToString("0.00", CultureInfo.InvariantCulture), s.CurrentLevel, s.CurrentXp,
+                    s.HighestUnlockedRegion, s.HighestLocationReached, s.Gold, s.PremiumCurrencyBalance, s.ActiveActivityId,
+                    s.Food1_Count + s.Food2_Count + s.Food3_Count, p?.Deaths ?? 0, s.ForgeLevel, s.TownHallLevel, p?.Rebirths ?? 0));
             }
         }
 
@@ -162,7 +192,7 @@ namespace FolkIdle.Bots
         /// because one bot that stalls (a refused fight, a bad drop streak)
         /// should show as "2 of 3 reached it", not drag the number.
         /// </summary>
-        public void WriteSummary()
+        public void WriteSummary(string? footer = null)
         {
             lock (_lock)
             {
@@ -195,6 +225,23 @@ namespace FolkIdle.Bots
                     return levels.Count == 0 ? "-" : string.Join(", ", levels);
                 });
                 sb.AppendLine("| level at end | " + string.Join(" | ", endLevels) + " |");
+                // What each bot did, by counter - which systems it actually used.
+                var bots = _progress.Keys.OrderBy(b => b).ToList();
+                var counters = _progress.Values.SelectMany(p => p.Counters.Keys).Distinct().OrderBy(c => c).ToList();
+                if (counters.Count > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("| counter | " + string.Join(" | ", bots) + " |");
+                    sb.AppendLine("|---|" + string.Concat(bots.Select(_ => "---|")));
+                    foreach (string c in counters)
+                        sb.AppendLine($"| {c} | " + string.Join(" | ", bots.Select(b => _progress[b].Counters.GetValueOrDefault(c).ToString(CultureInfo.InvariantCulture))) + " |");
+                    sb.AppendLine("| deaths | " + string.Join(" | ", bots.Select(b => _progress[b].Deaths.ToString(CultureInfo.InvariantCulture))) + " |");
+                }
+                if (footer != null)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine(footer);
+                }
                 File.WriteAllText(Path.Combine(_directory, "summary.md"), sb.ToString());
                 Console.WriteLine(sb.ToString());
             }
@@ -204,6 +251,7 @@ namespace FolkIdle.Bots
         {
             _csv.Dispose();
             _events.Dispose();
+            _timeline.Dispose();
         }
     }
 }

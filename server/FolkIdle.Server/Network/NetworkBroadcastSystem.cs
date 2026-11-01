@@ -4456,7 +4456,12 @@ namespace FolkIdle.Server.Network
                 }
 
                 CombatProjectionResponse body;
-                if (_projectionCache.TryGetValue((playerId, slot), out var cached) && DateTime.UtcNow - cached.At < TimeSpan.FromMinutes(1))
+                // Modul: ONE GAME MINUTE, NOT ONE WALL MINUTE (2026-11-01). At
+                // the bots' tick multiplier a wall minute is up to 100 game
+                // minutes, so a cached answer went on describing a character
+                // several levels behind the live one. GameClock.Speed is 1 in
+                // production, where nothing changes.
+                if (_projectionCache.TryGetValue((playerId, slot), out var cached) && DateTime.UtcNow - cached.At < TimeSpan.FromMinutes(1) / GameClock.Speed)
                 {
                     body = cached.Body;
                 }
@@ -12567,6 +12572,14 @@ namespace FolkIdle.Server.Network
                     var delve = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
                     bool done = await delve.DevPutOutTheLanternAsync(playerId);
                     context.Response.StatusCode = done ? 200 : 409;
+                    return;
+                }
+
+                // The playtest bots' what-if projection - see
+                // NetworkBroadcastSystem.BotWhatIf.cs.
+                if (requestPath == "/api/v1/dev/projection/whatif" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevProjectionWhatIf(context, playerId);
                     return;
                 }
 
