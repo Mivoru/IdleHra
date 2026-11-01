@@ -246,10 +246,11 @@ namespace FolkIdle.Server.Tests
         /// see the entrance. A brand-new account owns exactly
         /// StarterEquipmentGrant.StarterFishCount fish, the starter claymore and
         /// the default auto-eat threshold. The playtest bots (server/FolkIdle.Bots,
-        /// 2026-11-01) watched one: it killed a few Field Mice, ate all ten fish
-        /// and then could kill nothing until it went fishing - which is the
-        /// design ("When they run out, fish for more"). This pins the floor: the
-        /// kit must win the first fights, and it is allowed to run out.
+        /// 2026-11-01) watched one with the old ten fish: it killed one or two
+        /// Field Mice, ate them all and could kill nothing until it went
+        /// fishing. The kit is forty fish since then, sized from this test to
+        /// reach level 2 before the first fishing trip; it is still allowed to
+        /// run out - "When they run out, fish for more" is the lesson.
         /// </summary>
         [Fact]
         public void TheStarterKitWinsTheFirstFights()
@@ -279,9 +280,10 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"starter kit vs Field Mouse: level {payload.CurrentLevel}, {kills} kills, fight ended after {seconds} s, {payload.Food1_Count} fish left, XP {payload.CurrentXp}");
             // Measured 2026-11-01 with this test: about four fish a Field Mouse.
             // 10 fish = 1-2 kills (hit rolls vary; 93-186 XP, level 1); 20 = 3;
-            // 30 = 5; 40 = 6 kills and level 2; 60 = 9. The floor is ONE kill:
-            // zero means the first fight can no longer be won at all.
-            Assert.True(kills >= 1, $"a new account with its starter kit killed only {kills} Field Mice before the fight ended at {seconds} s - the entrance is closed");
+            // 30 = 5; 40 = 6 kills and level 2; 60 = 9. The floor is FOUR kills,
+            // below the ~6 forty fish buy so hit-roll variance cannot flake it;
+            // fewer means the kit no longer carries a new account anywhere.
+            Assert.True(kills >= 4, $"a new account with its starter kit killed only {kills} Field Mice before the fight ended at {seconds} s - the entrance is closing");
         }
 
         /// <summary>

@@ -239,7 +239,7 @@ namespace FolkIdle.Server.Engine
                     // level-1 character is exactly the account that died to the
                     // first monster in the game until the starter weapon existed
                     // (2026-09-28). So the reborn account gets what registration
-                    // gives - the claymore and ten fish in the chest, the three
+                    // gives - the claymore and forty fish in the chest, the three
                     // Normal tools worn - through the same StarterEquipmentGrant
                     // both registration paths call. All worthless on the market,
                     // so a rebirth is not a way to farm them.

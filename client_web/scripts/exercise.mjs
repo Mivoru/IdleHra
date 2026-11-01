@@ -6613,7 +6613,7 @@ if (want('new-player')) {
     );
 
     // 2. THE GUIDED FIRST MINUTE (owner, 2026-09-28). A new account starts
-    //    with ten fish and a claymore in the chest, and the first two steps
+    //    with forty fish and a claymore in the chest, and the first two steps
     //    are a walk-through: the screen dims, one control is lit, nothing else
     //    can be pressed. Checked the way a player meets it - including that a
     //    press ANYWHERE ELSE really does nothing, because a fence that leaks
@@ -6794,8 +6794,8 @@ if (want('new-player')) {
     // Modul: THE FIRST FIGHT, ACTUALLY FOUGHT (2026-11-01). Everything above
     // proves the tutorial POINTS at the fight ("the third step is the fight,
     // now that it can be won") - nothing pressed Fight. The playtest bots did,
-    // and found the starter kit wins one or two Field Mice before its ten fish
-    // run out (ProgressionRateTests.TheStarterKitWinsTheFirstFights pins the
+    // and found the old ten-fish kit won one or two Field Mice before the fish
+    // ran out (ProgressionRateTests.TheStarterKitWinsTheFirstFights pins the
     // same thing in the engine). This presses Fight the way a new player does
     // and waits for a kill to land in the codex - so a closed entrance fails
     // here instead of in front of a new player. Last on purpose: the world boss

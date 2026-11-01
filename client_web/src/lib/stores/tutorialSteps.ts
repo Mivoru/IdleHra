@@ -58,7 +58,7 @@ export type TutorialStepValue = (typeof TutorialStep)[keyof typeof TutorialStep]
  */
 /*
  * Modul: 2026-09-28 - A STARTER KIT, AND THE WEAPON MOVES UP. The owner
- * reversed "no starter weapon": a new account now starts with ten fish and a
+ * reversed "no starter weapon": a new account now starts with forty fish (ten until 2026-11-01) and a
  * Normal claymore in the chest (StarterEquipmentGrant). So the order is
  * larder, weapon, THEN the fight - the fight is winnable once both are done,
  * and wearing the weapon no longer has to wait for a drop. The first two
