@@ -1472,14 +1472,25 @@ export function aptitudeBonusPercent(points: number): number {
  * mirrors. Ids and the cost curve are the server's; this restates only the
  * labels and the shape so the screen can price a level without a round trip.
  */
-export const INHERITANCE_STATS: readonly { id: number; name: string; blurb: string }[] = [
-  { id: 0, name: 'Damage',          blurb: 'Every hit lands harder, in every region.' },
-  { id: 1, name: 'Max health',      blurb: 'A deeper pool before auto-eat has to reach for food.' },
-  { id: 2, name: 'Experience',      blurb: 'Levels arrive sooner, which is the slowest part of a run.' },
-  { id: 3, name: 'Gold',            blurb: 'More from every kill, online and away.' },
-  { id: 4, name: 'Gathering yield', blurb: 'More material from the same swing.' },
-  { id: 5, name: 'Loot luck',       blurb: 'Better rarity on what drops.' },
+// `milestones` are the extra effects at levels 5 and 10, word for word
+// InheritanceMilestones.Describe (serverMirrors.test.ts checks every line).
+export const INHERITANCE_STATS: readonly { id: number; name: string; blurb: string; milestones: readonly [string, string] }[] = [
+  { id: 0, name: 'Damage',          blurb: 'Every hit lands harder, in every region.',
+    milestones: ['+5% critical chance', '+25% critical damage'] },
+  { id: 1, name: 'Max health',      blurb: 'A deeper pool before auto-eat has to reach for food.',
+    milestones: ['Food heals 15% more', '+10% armour'] },
+  { id: 2, name: 'Experience',      blurb: 'Levels arrive sooner, which is the slowest part of a run.',
+    milestones: ['+5% XP while away', "+25% XP from Koschei's gate"] },
+  { id: 3, name: 'Gold',            blurb: 'More from every kill, online and away.',
+    milestones: ["+25% gold from Zmey's gate", '+20 Delve diamonds a week'] },
+  { id: 4, name: 'Gathering yield', blurb: 'More material from the same swing.',
+    milestones: ['+10% gathering speed', 'Rare finds twice as likely'] },
+  { id: 5, name: 'Loot luck',       blurb: 'Better rarity on what drops.',
+    milestones: ['+5% chance a drop is one rarity higher', '10% chance a chest opens one tier higher'] },
 ];
+
+/** InheritanceMilestones.FirstLevel and SecondLevel. */
+export const INHERITANCE_MILESTONE_LEVELS: readonly [number, number] = [5, 10];
 
 /** InheritanceRegistry.MaxLevel and PercentPerLevel. */
 // Option B (2026-10-31): ten levels of +4% at 100 x 1.25^level. Pinned to

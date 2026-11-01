@@ -408,13 +408,13 @@ namespace FolkIdle.Server.Domain.Economy
         /// run - what a run would cost, what the ceiling has left, the sheet the
         /// doors will be resolved against, and the Deep's records.
         /// </summary>
-        private void ApplyPlayerContext(DelveRunView view, PlayerRecord player, int highestRegion, long gold, DateTime utcNow)
+        private void ApplyPlayerContext(DelveRunView view, PlayerRecord player, int highestRegion, long gold, DateTime utcNow, int weeklyCeiling)
         {
             bool thisWeek = player.DelveWeekKey == CurrentWeekKey(utcNow);
             view.HighestRegionReached = highestRegion;
             view.EntryFeeForNextRun = DelveRegistry.EntryFeeForRegion(highestRegion);
             view.CurrentGold = gold;
-            view.WeeklyDiamondCeiling = DelveRegistry.MaxDiamondsPerWeek;
+            view.WeeklyDiamondCeiling = weeklyCeiling;
             view.DiamondsEarnedThisWeek = thisWeek ? player.DelveDiamondsThisWeek : 0;
             view.DeepWeeklyDiamondCeiling = DelveRegistry.MaxDeepDiamondsPerWeek;
             view.DeepDiamondsEarnedThisWeek = thisWeek ? DelveRegistry.DeepDiamondsEarned(player.DelveDeepestThisWeek) : 0;
@@ -481,11 +481,25 @@ namespace FolkIdle.Server.Domain.Economy
                 Math.Min(run.FloorsCleared + 1, DelveRegistry.FloorCount));
         }
 
+        /// <summary>
+        /// This player's weekly diamond ceiling: MaxDiamondsPerWeek, plus the
+        /// Gold 10 inheritance milestone's share. Read from the table, not the
+        /// live payload, because banking runs on a request thread.
+        /// </summary>
+        private static async Task<int> WeeklyCeilingAsync(FolkIdleDbContext db, long playerId)
+        {
+            int goldLevel = await db.PlayerInheritanceStats.AsNoTracking()
+                .Where(r => r.PlayerId == playerId && r.StatId == InheritanceRegistry.StatGoldGain)
+                .Select(r => r.Level)
+                .FirstOrDefaultAsync();
+            return InheritanceMilestones.DelveDiamondCeiling(goldLevel);
+        }
+
         private static void ApplyBankPreview(DelveRunView view, DelveRunRecord run)
         {
             if (run.IsDeep) return;
             int gross = DelveRegistry.DiamondsForBanking(run.FloorsCleared);
-            int remaining = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - view.DiamondsEarnedThisWeek);
+            int remaining = Math.Max(0, view.WeeklyDiamondCeiling - view.DiamondsEarnedThisWeek);
             int granted = Math.Min(gross, remaining);
             view.DiamondsAfterCeiling = granted;
             view.ConsolationGoldIfCapped = ConsolationFor(run.EntryFeePaid, run.FloorsCleared, gross, granted);
@@ -540,7 +554,7 @@ namespace FolkIdle.Server.Domain.Economy
 
             int highestRegion = await HighestRegionReachedAsync(db, playerId);
             long gold = await ReadGoldAsync(db, playerId);
-            ApplyPlayerContext(view, player, highestRegion, gold, Now());
+            ApplyPlayerContext(view, player, highestRegion, gold, Now(), await WeeklyCeilingAsync(db, playerId));
 
             var run = await db.DelveRunRecords.AsNoTracking().SingleOrDefaultAsync(r => r.PlayerId == playerId);
             if (run != null)
@@ -618,7 +632,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 outcome.Result = DelveResult.Ok;
                 outcome.View = new DelveRunView();
-                ApplyPlayerContext(outcome.View, player, highestRegion, goldRow.Quantity, Now());
+                ApplyPlayerContext(outcome.View, player, highestRegion, goldRow.Quantity, Now(), await WeeklyCeilingAsync(db, playerId));
                 ApplyRunToView(outcome.View, run, player);
                 ApplyBankPreview(outcome.View, run);
                 return outcome;
@@ -829,7 +843,7 @@ namespace FolkIdle.Server.Domain.Economy
             RollWeek(player, Now());
 
             int gross = DelveRegistry.DiamondsForBanking(run.FloorsCleared);
-            int remaining = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - player.DelveDiamondsThisWeek);
+            int remaining = Math.Max(0, await WeeklyCeilingAsync(db, playerId) - player.DelveDiamondsThisWeek);
             int granted = Math.Min(gross, remaining);
             long consolation = ConsolationFor(run.EntryFeePaid, run.FloorsCleared, gross, granted);
 
@@ -943,7 +957,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 outcome.View = new DelveRunView();
                 int highestRegion = await HighestRegionReachedAsync(db, playerId);
-                ApplyPlayerContext(outcome.View, player, highestRegion, await ReadGoldAsync(db, playerId), Now());
+                ApplyPlayerContext(outcome.View, player, highestRegion, await ReadGoldAsync(db, playerId), Now(), await WeeklyCeilingAsync(db, playerId));
                 outcome.View.FloorsCleared = floorsCleared;
                 return outcome;
             }

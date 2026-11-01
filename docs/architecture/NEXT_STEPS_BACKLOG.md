@@ -55,15 +55,22 @@ green". Every own decision is written in the design doc it belongs to
   three): `CHESTS_DUNGEONS_DIAMONDS.md` 2.8.
 
 **Open, in order:**
-1. **thorns_pct** (still `retired: true`, parity FIXED 2026-10-31). The cause
-   was the mean-health path: thorns fights left `SwingsToKill`. Thorns are now
-   priced per player swing like Riposte (`HuntingProjection.FightSetup.For`);
-   with the affix rollable all 58 parity rows passed. Still retired for
-   BALANCE: the boss-wall benchmark chest then rolls it and
-   `WallWindowScanTests` breaks for regions 2 and 3. Owner decides: recalibrate
-   those walls, or shrink the affix.
-2. **Inheritance milestones** at levels 5 and 10 (option B's extra effects) -
-   twelve new mechanics, each needing a parity row; not built.
+1. **thorns_pct - ROLLED again (2026-11-01, client 1.51.0)** at half its
+   first size (1-4.2% on the chest, `10, 8` like crushing blow). The parity
+   cause was fixed 2026-10-31 (thorns priced per player swing). At half size
+   the benchmark chest still nudged the region 2 and 3 walls to their window
+   edges, so they moved to the centres: 1.87 -> 1.86, 3.17 -> 3.15
+   (`BossFirstClearRules`, windows recorded there).
+2. **Inheritance milestones - BUILT (2026-11-01, client 1.51.0).**
+   `InheritanceMilestones` holds all twelve; each rides a lever the live tick
+   and the away projection already share (combat stats, the food heal, the
+   gathering speed and rare weight, loot elevation) or pays outside the tick
+   (gate income, the Delve ceiling read from the table, chest opening).
+   Changed from the proposal: Max health 10 is +10% armour (a free hourly
+   Death Ward needed a persisted cooldown in both fight loops) and Loot luck 5
+   is +5% elevation (the same thing as "roll twice", already a lever). Parity
+   rows "inheritance milestones r3/r5 fed"; client text mirrored by
+   serverMirrors.test.ts.
 3. **Dungeon rework** - slices 1-2 built (2.8). Next: the owner looks at
    slices 1-2 (admin account), then slice 3 (dodges, bonuses, run session,
    sweep), 4 (roster), 5 (art and sound), tickets from chests, stage-15

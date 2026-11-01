@@ -12,6 +12,7 @@
     INHERITANCE_STATS,
     INHERITANCE_MAX_LEVEL,
     INHERITANCE_PCT_PER_LEVEL,
+    INHERITANCE_MILESTONE_LEVELS,
     inheritanceUpgradeCost,
     purchaseInheritanceLevel,
   } from '../lib/net/commands';
@@ -98,6 +99,18 @@
             </div>
 
             <p class="blurb dim tiny">{row.blurb}</p>
+
+            <!-- The extra effects at levels 5 and 10: a reason to finish a stat. -->
+            <ul class="milestones" data-testid="inheritance-milestones">
+              {#each row.milestones as line, i (i)}
+                {@const at = INHERITANCE_MILESTONE_LEVELS[i]}
+                <li class:reached={row.level >= at}>
+                  <span class="lvl">Lv {at}</span>
+                  <span>{line}</span>
+                  {#if row.level >= at}<span class="got" aria-label="reached">✓</span>{/if}
+                </li>
+              {/each}
+            </ul>
 
             <Bar
               value={row.level}
@@ -206,6 +219,29 @@
   .of-max { font-weight: 400; font-size: 0.8rem; }
 
   .blurb { margin: 0; }
+
+  .milestones {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+  }
+  .milestones li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    opacity: 0.7;
+  }
+  .milestones li.reached { opacity: 1; color: var(--diamond); }
+  .milestones .lvl {
+    flex: none;
+    min-width: 2.6rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+  }
+  .milestones .got { margin-left: auto; }
 
   .buy { margin-top: 0.15rem; }
   .buy button {

@@ -187,9 +187,12 @@ namespace FolkIdle.Server.Network
                 var food = DungeonEngine.BestFood(payload);
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var income = new DungeonEngine.Income(
+                // Experience 10 and Gold 5 inheritance milestones: the gates pay
+                // minutes of a bigger hourly income.
+                var (gateXp, gateGold) = InheritanceMilestones.DungeonIncome(in payload,
                     kind == DungeonKind.Xp ? DungeonEngine.BestHuntingXpPerHour(in payload, snapshot.Value.GlobalXpMultiplier, snapshot.Value.ActiveGlobalEventId) : 0,
                     kind == DungeonKind.Gold ? await GoldRewardScale.HourlyIncomeAsync(db, playerId, DateTime.UtcNow) : 0);
+                var income = new DungeonEngine.Income(gateXp, gateGold);
 
                 if (sweep)
                 {

@@ -388,7 +388,10 @@ namespace FolkIdle.Server.Engine
         public float RarityBough { get; init; }
 
         /// <summary>The chance, in percent, that a drop comes out one tier above what it rolled.</summary>
-        public float ElevationTotal => StatsElevation + RarityBough;
+        /// <summary>The Loot luck 5 inheritance milestone's elevation, in percent.</summary>
+        public float InheritanceElevation { get; init; }
+
+        public float ElevationTotal => StatsElevation + RarityBough + InheritanceElevation;
 
         public static LootLuckBreakdown From(in TickStatePayload payload, in CombatStats combatStats)
         {
@@ -402,6 +405,7 @@ namespace FolkIdle.Server.Engine
                 FortuneAptitude = BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
                 StatsElevation = combatStats.RarityElevationPct,
                 RarityBough = WarTreeRegistry.Resolve(in payload).RarityElevationTenthsPct / 10f,
+                InheritanceElevation = InheritanceMilestones.ElevationPctFor(payload.Inherit_LootLuck),
             };
         }
     }

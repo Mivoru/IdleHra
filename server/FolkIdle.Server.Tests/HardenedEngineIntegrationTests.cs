@@ -2141,8 +2141,9 @@ namespace FolkIdle.Server.Tests
             Assert.NotNull(affixPayload);
             Assert.Single(affixPayload);
 
-            // A chest has exactly two legal affixes, so the replacement is
-            // necessarily flat_armor. Payload keys now carry an "@rarity"
+            // A chest's legal affixes besides flat_hp are flat_armor and,
+            // since 2026-11-01, thorns_pct, so the replacement is one of those
+            // two. Payload keys now carry an "@rarity"
             // suffix, so compare on the stripped definition id rather than the
             // raw key - the suffix is exactly what StripStackSuffix exists for.
             var rolledIds = new List<string>();
@@ -2152,7 +2153,7 @@ namespace FolkIdle.Server.Tests
                 rolledIds.Add(AffixRegistry.StripStackSuffix(kvp.Key));
             }
             Assert.DoesNotContain("flat_hp", rolledIds);
-            Assert.Contains("flat_armor", rolledIds);
+            Assert.Contains(rolledIds, id => id is "flat_armor" or "thorns_pct");
         }
 
         // Modul: Affix System Unification. An item whose BaseItemId carries no

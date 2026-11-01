@@ -2922,6 +2922,8 @@ export interface OpenedLootChest {
   Piece: { InstanceId: number; BaseItemId: string; QualityTier: number; RarityName: string } | null;
   /** The dungeon a ticket fell for, or empty. */
   DungeonTicket?: string;
+  /** The Loot luck 10 inheritance milestone opened it one tier higher (Tier is the tier it paid as). */
+  Upgraded?: boolean;
 }
 
 export interface LootChestOpenResult {
