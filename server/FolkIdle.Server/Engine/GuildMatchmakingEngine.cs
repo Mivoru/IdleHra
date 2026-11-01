@@ -61,7 +61,7 @@ namespace FolkIdle.Server.Engine
             {
                 try
                 {
-                    DateTime now = DateTime.UtcNow;
+                    DateTime now = GameClock.UtcNow;
                     if (now.DayOfWeek == DayOfWeek.Sunday && now.Hour == 23 && now.Minute == 30)
                     {
                         await ExecutePairingCycleAsync(stoppingToken);

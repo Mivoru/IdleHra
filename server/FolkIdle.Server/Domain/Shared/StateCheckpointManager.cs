@@ -104,7 +104,7 @@ namespace FolkIdle.Server.Domain.Shared
                         GoldAttachment = SplitBrainCompensationGold,
                         IsClaimed = false,
                         IsPending = false,
-                        ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                        ReceivedTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds()
                     });
                     await bgDb.SaveChangesAsync();
                 }
@@ -707,7 +707,7 @@ namespace FolkIdle.Server.Domain.Shared
                         // payload's copy is a read-through cache and writing it
                         // back here would let a stale register overwrite a fresh
                         // equip that landed between two checkpoints.
-                        long consumableFlushEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        long consumableFlushEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
@@ -753,7 +753,7 @@ namespace FolkIdle.Server.Domain.Shared
                         // Redis frame: a frame is a cache, not a checkpoint.
                         await FolkIdle.Server.Domain.Economy.GoldHighWater.RecordAsync(
                             dbContext, state.PlayerId, state.CurrentGold,
-                            FolkIdle.Server.Domain.Economy.GoldHighWater.Today(DateTime.UtcNow));
+                            FolkIdle.Server.Domain.Economy.GoldHighWater.Today(GameClock.UtcNow));
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
                         await QuestEngine.UpsertDailyQuestProgressAsync(dbContext, state);
@@ -1051,7 +1051,7 @@ namespace FolkIdle.Server.Domain.Shared
             // otherwise yesterday's strike would grey the button today. The
             // 300-second session is gone, and its wire field with it (task 36).
             if (bossAttemptRow != null
-                && bossAttemptRow.AttemptDateKey == FolkIdle.Server.Engine.WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
+                && bossAttemptRow.AttemptDateKey == FolkIdle.Server.Engine.WorldBossCalendar.DayKey(GameClock.UtcNowOffset.ToUnixTimeSeconds()))
             {
                 worldBossAttemptCount = (byte)Math.Clamp(bossAttemptRow.AttemptCount, 0, byte.MaxValue);
             }
@@ -1131,7 +1131,7 @@ namespace FolkIdle.Server.Domain.Shared
             // offline before hydrating the login payload, so a returning
             // player never sees a stale CurrentLevel or a queue slot that is
             // actually already free.
-            await VillageManagementEngine.ResolveMaturedUpgradesAsync(dbContext, playerId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            await VillageManagementEngine.ResolveMaturedUpgradesAsync(dbContext, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
             var villageRows = await dbContext.VillageInfrastructures
                 .AsNoTracking()
@@ -1233,11 +1233,11 @@ namespace FolkIdle.Server.Domain.Shared
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlayerId == playerId);
 
-            long currentUnixTs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long currentUnixTs = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
             (float codexYieldMultiplier, float codexDamageMultiplier) = await CodexEngine.CalculateActiveMultipliersAsync(playerId, dbContext);
 
-            long questLoadEpochSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long questLoadEpochSeconds = GameClock.UtcNowOffset.ToUnixTimeSeconds();
             var dailyQuests = await QuestEngine.EnsureAndLoadDailyQuestsAsync(dbContext, playerId, questLoadEpochSeconds);
             await dbContext.SaveChangesAsync();
 
@@ -1278,7 +1278,7 @@ namespace FolkIdle.Server.Domain.Shared
             // this session, and the next login settles the same elapsed time.
             try
             {
-                await VillageArrivalEngine.SettleAsync(dbContext, player, innLevel, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                await VillageArrivalEngine.SettleAsync(dbContext, player, innLevel, GameClock.UtcNowOffset.ToUnixTimeSeconds());
             }
             catch (Exception ex)
             {
@@ -1300,7 +1300,7 @@ namespace FolkIdle.Server.Domain.Shared
             {
                 await FolkIdle.Server.Domain.Economy.GoldHighWater.RecordAsync(
                     dbContext, playerId, loadedGold,
-                    FolkIdle.Server.Domain.Economy.GoldHighWater.Today(DateTime.UtcNow));
+                    FolkIdle.Server.Domain.Economy.GoldHighWater.Today(GameClock.UtcNow));
             }
             catch (Exception ex)
             {
@@ -2093,7 +2093,7 @@ namespace FolkIdle.Server.Domain.Shared
                         // payload's copy is a read-through cache and writing it
                         // back here would let a stale register overwrite a fresh
                         // equip that landed between two checkpoints.
-                        long consumableFlushEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        long consumableFlushEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;

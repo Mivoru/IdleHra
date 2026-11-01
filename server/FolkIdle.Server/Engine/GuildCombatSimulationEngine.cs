@@ -101,7 +101,7 @@ namespace FolkIdle.Server.Engine
                 db.GuildWarCombatHistory.Add(new GuildWarCombatHistory
                 {
                     MatchId = match.MatchId,
-                    ExecutionTick = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    ExecutionTick = GameClock.UtcNowOffset.ToUnixTimeSeconds(),
                     DamageDelta = delta
                 });
 

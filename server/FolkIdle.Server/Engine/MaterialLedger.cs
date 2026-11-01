@@ -57,7 +57,7 @@ namespace FolkIdle.Server.Engine
             }
             if (merged.Count == 0) return;
 
-            var day = DateOnly.FromDateTime(DateTime.UtcNow);
+            var day = DateOnly.FromDateTime(GameClock.UtcNow);
             short dir = (short)direction;
             string[] ids = merged.Keys.ToArray();
             long[] quantities = merged.Values.ToArray();

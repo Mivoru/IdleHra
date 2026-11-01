@@ -142,7 +142,7 @@ namespace FolkIdle.Server.Engine
         {
             if (amount <= 0) return;
 
-            var day = DateOnly.FromDateTime(DateTime.UtcNow);
+            var day = DateOnly.FromDateTime(GameClock.UtcNow);
             short cat = (short)category;
 
             await db.Database.ExecuteSqlInterpolatedAsync($@"
@@ -164,7 +164,7 @@ DO UPDATE SET ""Amount"" = gold_spend_daily.""Amount"" + EXCLUDED.""Amount""");
         {
             if (amount <= 0) return;
 
-            var day = DateOnly.FromDateTime(DateTime.UtcNow);
+            var day = DateOnly.FromDateTime(GameClock.UtcNow);
             short src = (short)source;
 
             await db.Database.ExecuteSqlInterpolatedAsync($@"

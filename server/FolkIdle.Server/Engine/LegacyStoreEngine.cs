@@ -220,7 +220,7 @@ namespace FolkIdle.Server.Engine
                 return activeEra.EraId;
             }
 
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
             var created = new SeasonalEraRecord
             {
                 EndTimestamp = now + (90L * 24L * 60L * 60L),

@@ -426,7 +426,7 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            var now = DateTime.UtcNow;
+            var now = GameClock.UtcNow;
 
             // Modul: guild war resolution catch-up, 2026-08-01.
             //
@@ -445,7 +445,7 @@ namespace FolkIdle.Server.Engine
             // creation timestamp, so a match older than one full cycle is
             // resolvable whenever the loop next runs - which makes a missed
             // window self-healing instead of terminal.
-            int overdueCutoffEpoch = (int)DateTimeOffset.UtcNow.AddSeconds(-MatchCycleSeconds).ToUnixTimeSeconds();
+            int overdueCutoffEpoch = (int)GameClock.UtcNowOffset.AddSeconds(-MatchCycleSeconds).ToUnixTimeSeconds();
             bool hasOverdueMatch;
 
             using (var probeScope = _serviceProvider.CreateScope())
@@ -584,7 +584,7 @@ namespace FolkIdle.Server.Engine
                         {
                             GuildA_Id = gA.Id,
                             GuildB_Id = bestMatch.Id,
-                            MatchEpoch = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            MatchEpoch = (int)GameClock.UtcNowOffset.ToUnixTimeSeconds(),
                             IsActive = true
                         };
                         dbContext.GuildWarMatches.Add(newMatch);

@@ -57,7 +57,7 @@ namespace FolkIdle.Server.Engine
         /// <summary>Loads every unexpired buff. Called once at start-up; the table holds at most a few rows per guild.</summary>
         public static async Task LoadAllAsync(FolkIdle.Server.Models.FolkIdleDbContext db)
         {
-            DateTime now = DateTime.UtcNow;
+            DateTime now = GameClock.UtcNow;
             var active = await db.GuildActiveBuffs.Where(b => b.ExpiresAt > now).ToListAsync();
             foreach (var b in active) Apply(b.GuildId, b.BuffType, b.Tier, b.ExpiresAt);
         }
@@ -68,7 +68,7 @@ namespace FolkIdle.Server.Engine
             if (guildId <= 0) return 0;
             if (_activeBuffs.TryGetValue(guildId, out var buffs)
                 && buffs.TryGetValue(buffType, out var buff)
-                && buff.ExpiresAt > DateTime.UtcNow)
+                && buff.ExpiresAt > GameClock.UtcNow)
             {
                 return buff.Tier;
             }

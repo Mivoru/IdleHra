@@ -38,7 +38,7 @@ namespace FolkIdle.Server.Domain.Progression
             try
             {
                 await using var db = await factory.CreateDbContextAsync();
-                result = await BuyCoreAsync(db, playerId, item, DateTime.UtcNow);
+                result = await BuyCoreAsync(db, playerId, item, GameClock.UtcNow);
             }
             catch (Exception ex)
             {

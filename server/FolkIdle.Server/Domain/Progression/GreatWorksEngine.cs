@@ -73,7 +73,7 @@ namespace FolkIdle.Server.Domain.Progression
             try
             {
                 await using var db = await factory.CreateDbContextAsync();
-                (result, packed) = await DepositCoreAsync(db, playerId, region, materialKind, requested, DateTime.UtcNow);
+                (result, packed) = await DepositCoreAsync(db, playerId, region, materialKind, requested, GameClock.UtcNow);
                 if (result != CommandResultCode.GreatWorkDeposited && result != CommandResultCode.GreatWorkStageBuilt)
                 {
                     registry.EnqueueCommandResult(playerId, (byte)result);
@@ -290,7 +290,7 @@ namespace FolkIdle.Server.Domain.Progression
             {
                 await db.Database.ExecuteSqlRawAsync(
                     "INSERT INTO great_works_progress (\"PlayerId\", \"Region\", \"Stage\", \"Progress\", \"UpdatedAtUtc\") VALUES ({0}, {1}, {2}, {3}, {4})",
-                    playerId, (short)region, (short)stage, progress, DateTime.UtcNow);
+                    playerId, (short)region, (short)stage, progress, GameClock.UtcNow);
             }
 
             string item = GreatWorksRegistry.MaterialFor(region, materialKind);

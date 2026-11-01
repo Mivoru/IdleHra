@@ -100,7 +100,7 @@ namespace FolkIdle.Server.Engine
                         var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                         using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
                         
-                        long threshold = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 604800;
+                        long threshold = GameClock.UtcNowOffset.ToUnixTimeSeconds() - 604800;
                         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"MailboxInstances\" WHERE \"ReceivedTimestamp\" < {threshold}");
                         
                         await transaction.CommitAsync();
@@ -221,7 +221,7 @@ namespace FolkIdle.Server.Engine
                             }
                             if (FolkIdle.Server.Domain.Progression.TitleRegistry.Find(mail.TitleAttachment) != null)
                             {
-                                await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, mail.PlayerId, mail.TitleAttachment!, DateTime.UtcNow);
+                                await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, mail.PlayerId, mail.TitleAttachment!, GameClock.UtcNow);
                                 player.ActiveTitleSlug = mail.TitleAttachment;
                             }
                             diamondBalance = mail.DiamondAttachment > 0 ? player.PremiumDiamonds : null;

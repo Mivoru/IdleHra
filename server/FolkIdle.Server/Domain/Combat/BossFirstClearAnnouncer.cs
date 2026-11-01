@@ -108,7 +108,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // an expiring key would hand the title out again next week.
                 return await redis.GetDatabase().StringSetAsync(
                     $"worldfirst:boss:{monsterId}",
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    GameClock.UtcNowOffset.ToUnixTimeSeconds(),
                     expiry: null,
                     when: When.NotExists);
             }

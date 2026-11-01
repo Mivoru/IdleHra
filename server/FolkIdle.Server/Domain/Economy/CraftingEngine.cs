@@ -358,7 +358,7 @@ namespace FolkIdle.Server.Domain.Economy
                 int craftedTier = rare ? RarityTier.Normal + 1 : RarityTier.Normal;
                 int affixCount = Math.Min(AffixRegistry.MaxAffixCount, RarityTier.GetAffixCount(craftedTier) + (rare ? 1 : 0));
                 for (int i = 0; i < quantityProduced; i++) craftTally.Count(DropSource.Craft, regionTier, craftedTier);
-                await DropRecord.WriteAsync(context, playerId, craftTally, DateTime.UtcNow);
+                await DropRecord.WriteAsync(context, playerId, craftTally, GameClock.UtcNow);
 
                 for (int i = 0; i < quantityProduced; i++)
                 {

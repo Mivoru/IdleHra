@@ -409,7 +409,7 @@ namespace FolkIdle.Server.Domain.Progression
                     .FirstOrDefaultAsync();
 
                 (string? refusal, long goldSpent) = await VillageArrivalEngine.RecruitAsync(
-                    db, player, innLevel, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    db, player, innLevel, GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
                 if (refusal != null)
                 {
@@ -475,7 +475,7 @@ namespace FolkIdle.Server.Domain.Progression
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 // Modul 16: lazily apply any upgrade that already matured
                 // before deciding whether the (single, village-wide) upgrade
@@ -839,7 +839,7 @@ namespace FolkIdle.Server.Domain.Progression
 
         private static async Task<InfrastructureUpdateNotification> BuildInfrastructureNotificationAsync(FolkIdleDbContext db, long playerId)
         {
-            await ResolveMaturedUpgradesAsync(db, playerId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            await ResolveMaturedUpgradesAsync(db, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
             var levels = await db.VillageInfrastructures
                 .AsNoTracking()

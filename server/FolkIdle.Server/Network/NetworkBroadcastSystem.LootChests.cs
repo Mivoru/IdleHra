@@ -89,7 +89,7 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 bool tickets = await ChestsPayDungeonTicketsAsync(db, playerId);
-                var opened = await LootChestEngine.OpenAsync(db, playerId, (LootChestTier)tier, count, DateTime.UtcNow, Random.Shared, tickets);
+                var opened = await LootChestEngine.OpenAsync(db, playerId, (LootChestTier)tier, count, GameClock.UtcNow, Random.Shared, tickets);
                 db.ChangeTracker.Clear();
 
                 await WriteJsonAsync(context, new
@@ -135,7 +135,7 @@ namespace FolkIdle.Server.Network
 
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            long id = await LootChestEngine.GrantAsync(db, playerId, (LootChestTier)Math.Clamp(tier, 1, 4), region, LootChestSource.Dev, DateTime.UtcNow);
+            long id = await LootChestEngine.GrantAsync(db, playerId, (LootChestTier)Math.Clamp(tier, 1, 4), region, LootChestSource.Dev, GameClock.UtcNow);
             await WriteJsonAsync(context, new { Id = id });
         }
 

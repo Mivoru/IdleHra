@@ -753,7 +753,7 @@ namespace FolkIdle.Server.Engine
         private static void NoteOdds(in CombatLootDropRequest request)
         {
             _lastOdds[request.PlayerId] = new LootOddsSnapshot(
-                request.LootLuckPct, request.RarityElevationPct, request.HasGoldenFleece, DateTime.UtcNow);
+                request.LootLuckPct, request.RarityElevationPct, request.HasGoldenFleece, GameClock.UtcNow);
         }
 
         public static bool TryGetLastOdds(long playerId, out LootOddsSnapshot odds) => _lastOdds.TryGetValue(playerId, out odds);
@@ -1341,13 +1341,13 @@ namespace FolkIdle.Server.Engine
 
                 List<long>? chestIds = rolledChests.Count > 0
                     ? await Domain.Progression.CosmeticEngine.InsertChestsAsync(
-                        dbContext, playerId, rolledChests, Domain.Progression.CosmeticSource.Kill, DateTime.UtcNow)
+                        dbContext, playerId, rolledChests, Domain.Progression.CosmeticSource.Kill, GameClock.UtcNow)
                     : null;
 
                 // Modul: THE DROP RECORD (task 26) - one upsert for the whole
                 // request, however many kills it carried, inside the same
                 // transaction as the drops it counts.
-                await DropRecord.WriteAsync(dbContext, playerId, _dropTally, DateTime.UtcNow);
+                await DropRecord.WriteAsync(dbContext, playerId, _dropTally, GameClock.UtcNow);
                 await transaction.CommitAsync();
 
                 // Task 85: what now sits in the chest, for the auto-fuse rule.
@@ -1433,7 +1433,7 @@ namespace FolkIdle.Server.Engine
                     try
                     {
                         await Domain.Progression.PersonalRecords.RecordBestDropAsync(
-                            dbContext, playerId, _requestBestTier, _requestBestBaseId, DateTime.UtcNow);
+                            dbContext, playerId, _requestBestTier, _requestBestBaseId, GameClock.UtcNow);
                         _recordedBestTier[playerId] = _requestBestTier;
                     }
                     catch (Exception recordEx)
@@ -1448,7 +1448,7 @@ namespace FolkIdle.Server.Engine
                 {
                     try
                     {
-                        await CollectionLog.RecordAsync(dbContext, playerId, _requestCollection, DateTime.UtcNow);
+                        await CollectionLog.RecordAsync(dbContext, playerId, _requestCollection, GameClock.UtcNow);
                         foreach (var (baseId, t) in _requestCollection) _recordedCollection[(playerId, baseId)] = t;
                     }
                     catch (Exception collectionEx)
@@ -1502,7 +1502,7 @@ namespace FolkIdle.Server.Engine
                     try
                     {
                         await Domain.Progression.CosmeticEngine.InsertChestsAsync(
-                            dbContext, playerId, rolledChests, Domain.Progression.CosmeticSource.Kill, DateTime.UtcNow);
+                            dbContext, playerId, rolledChests, Domain.Progression.CosmeticSource.Kill, GameClock.UtcNow);
                     }
                     catch (Exception chestEx)
                     {
@@ -1802,7 +1802,7 @@ namespace FolkIdle.Server.Engine
                 tally.Count(source, monsterRegion, tier);
                 if (DropRecord.IsNotable(tier))
                 {
-                    tally.Notable(playerId, source, instance, baseItemId, rolledTier, tier, lootLuckPct, DateTime.UtcNow);
+                    tally.Notable(playerId, source, instance, baseItemId, rolledTier, tier, lootLuckPct, GameClock.UtcNow);
                 }
             }
 

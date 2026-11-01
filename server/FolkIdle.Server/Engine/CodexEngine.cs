@@ -322,7 +322,7 @@ namespace FolkIdle.Server.Engine
                         // trophy's reason - once ever, never a lost grant.
                         Domain.Economy.LootChestEngine.Stage(dbContext, key.PlayerId,
                             Domain.Economy.LootChestEngine.BossFirstClearChest(trophyRegion), trophyRegion,
-                            Domain.Economy.LootChestSource.BossFirstClear, DateTime.UtcNow);
+                            Domain.Economy.LootChestSource.BossFirstClear, GameClock.UtcNow);
                     }
 
                     if (codexEntries.TryGetValue(key, out var entry))
@@ -387,7 +387,7 @@ namespace FolkIdle.Server.Engine
                         {
                             PlayerId = touchedPlayerId,
                             RegionId = region,
-                            CompletedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                            CompletedAtEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds()
                         });
 
                         newRegionFlagsByPlayer.TryGetValue(touchedPlayerId, out int existingFlags);
@@ -403,7 +403,7 @@ namespace FolkIdle.Server.Engine
                 // cross-race pairs.
                 if (newlyUnlockedRaces.Count > 0)
                 {
-                    long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    long unlockEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                     var unlockPlayerIds = newlyUnlockedRaces.Select(u => u.PlayerId).Distinct().ToList();
                     var alreadyUnlocked = await dbContext.PlayerRaceUnlocks

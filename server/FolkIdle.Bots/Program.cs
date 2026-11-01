@@ -48,11 +48,15 @@ namespace FolkIdle.Bots
             {
                 int i = index + 1;
                 string name = $"{persona.Name}{i}";
-                await using var client = new BotClient(o.Server, $"{o.Prefix}-{runId}-{i}");
+                string deviceId = $"{o.Prefix}-{runId}-{i}";
+                var brain = new BotBrain(async t =>
+                {
+                    var client = new BotClient(o.Server, deviceId);
+                    await client.ConnectAsync(t);
+                    return client;
+                }, log, seed: i * 7919, name, persona);
                 try
                 {
-                    await client.ConnectAsync(cts.Token);
-                    var brain = new BotBrain(client, log, seed: i * 7919, name, persona);
                     await brain.RunAsync(stopAt, cts.Token);
                 }
                 catch (OperationCanceledException) { }
@@ -61,7 +65,7 @@ namespace FolkIdle.Bots
                     Console.Error.WriteLine($"[{name}] stopped: {ex.GetType().Name}: {ex.Message}");
                     log.Event(name, $"stopped: {ex.Message}");
                 }
-                if (client.TryGetState(out var last)) log.Summary(name, last, client.StateFrames);
+                if (brain.LastState is { } last) log.Summary(name, last, brain.StateFrames);
             }).ToArray();
 
             await Task.WhenAll(tasks);

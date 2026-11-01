@@ -154,7 +154,7 @@ namespace FolkIdle.Server.Engine
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
             var snapshot = await db.WorldBossSnapshots.FindAsync((long)ActiveBossInstanceId);
             if (snapshot == null)
@@ -263,7 +263,7 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                 bool changed = RegrowArmourIfNewDay(snapshot, now);
                 changed |= await WorldBossLedger.UpgradeLegacyEncounterAsync(db, snapshot);
                 changed |= await WorldBossLedger.RevealIfDueAsync(db, snapshot, now);
@@ -303,7 +303,7 @@ namespace FolkIdle.Server.Engine
                     await transaction.RollbackAsync();
                     return;
                 }
-                long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                 snapshot.RevealEpoch = now;
                 await WorldBossLedger.RevealIfDueAsync(db, snapshot, now);
                 await db.SaveChangesAsync();
@@ -321,8 +321,8 @@ namespace FolkIdle.Server.Engine
         // caller's transaction, with the snapshot row locked.
         internal static async Task<WeekPayout> PayEncounterRewardsAsync(FolkIdleDbContext db, WorldBossSnapshot snapshot)
         {
-            await WorldBossLedger.RevealIfDueAsync(db, snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-            return await WorldBossLedger.PayWeekAsync(db, snapshot, DateTime.UtcNow, Random.Shared);
+            await WorldBossLedger.RevealIfDueAsync(db, snapshot, GameClock.UtcNowOffset.ToUnixTimeSeconds());
+            return await WorldBossLedger.PayWeekAsync(db, snapshot, GameClock.UtcNow, Random.Shared);
         }
 
         // Modul: A WINDOW A DEVELOPER CAN OPEN ON ANY DAY (task 25).
@@ -360,7 +360,7 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public async Task OpenManualWindowAsync(long durationSeconds, long? nowEpoch = null)
         {
-            long now = nowEpoch ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = nowEpoch ?? GameClock.UtcNowOffset.ToUnixTimeSeconds();
             long end = now + ClampManualWindowSeconds(durationSeconds);
             Interlocked.Exchange(ref _manualWindowEndEpoch, end);
             await EnsureSnapshotAsync();
@@ -419,7 +419,7 @@ namespace FolkIdle.Server.Engine
                 snapshot.HpRevealed = 0;
                 snapshot.HpFactor = 0;
                 snapshot.DefeatedAtEpoch = 0;
-                snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                snapshot.LastActiveTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 // Modul: a fresh set of armour, and a fresh secret.
                 //
@@ -429,7 +429,7 @@ namespace FolkIdle.Server.Engine
                 // have a shelf life of about a day.
                 snapshot.BrokenPlateMask = 0;
                 snapshot.WeakPlateRevealed = 0;
-                snapshot.ArmourDayKey = WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                snapshot.ArmourDayKey = WorldBossCalendar.DayKey(GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
                 // Modul: A CRYPTOGRAPHIC DRAW (task 36 spec section 4). A
                 // predictable seed is a precomputable secret. In wheel mode this
@@ -568,13 +568,13 @@ namespace FolkIdle.Server.Engine
                 // never reused. The reveal is caught up here too, so the first
                 // strike after Wednesday midnight never lands on a hidden boss.
                 await WorldBossLedger.UpgradeLegacyEncounterAsync(db, snapshot);
-                await WorldBossLedger.RevealIfDueAsync(db, snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                await WorldBossLedger.RevealIfDueAsync(db, snapshot, GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
                 var attempt = await db.PlayerWorldBossAttempts
                     .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)bossId)
                     .SingleOrDefaultAsync();
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                 long today = WorldBossCalendar.DayKey(nowEpoch);
 
                 if (attempt == null)
@@ -641,10 +641,10 @@ namespace FolkIdle.Server.Engine
 
                 long scaledDamage = (long)Math.Min(uint.MaxValue, serverComputedDamage * plateMultiplier);
                 long appliedDamage = StrikeCredit(scaledDamage);
-                snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                snapshot.LastActiveTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 attempt.AttemptCount++;
-                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, null, await LevelOfAsync(db, playerId), DateTime.UtcNow);
+                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, null, await LevelOfAsync(db, playerId), GameClock.UtcNow);
                 // Modul: the quest line's "strike the world boss" step. The
                 // attempt rows are DELETED when the boss dies, so they cannot be
                 // the evidence; the act is latched here, in the strike's own
@@ -728,7 +728,7 @@ namespace FolkIdle.Server.Engine
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            long today = WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            long today = WorldBossCalendar.DayKey(GameClock.UtcNowOffset.ToUnixTimeSeconds());
             var row = await db.PlayerWorldBossAttempts.AsNoTracking()
                 .Where(a => a.PlayerId == playerId && a.BossInstanceId == ActiveBossInstanceId)
                 .Select(a => new { a.AttemptCount, a.AttemptDateKey })
@@ -809,13 +809,13 @@ namespace FolkIdle.Server.Engine
 
                 // A fallen boss is still struck - see the same note in ExecuteAttackCoreAsync.
                 await WorldBossLedger.UpgradeLegacyEncounterAsync(db, snapshot);
-                await WorldBossLedger.RevealIfDueAsync(db, snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                await WorldBossLedger.RevealIfDueAsync(db, snapshot, GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
                 var attempt = await db.PlayerWorldBossAttempts
                     .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)ActiveBossInstanceId)
                     .SingleOrDefaultAsync();
 
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                 long today = WorldBossCalendar.DayKey(nowEpoch);
                 if (attempt == null)
                 {
@@ -871,7 +871,7 @@ namespace FolkIdle.Server.Engine
                 // The skill score of a strike the player PLAYED - an auto-strike
                 // is not a choice to play badly, so the detector never sees it.
                 double? skill = order.IsPlayed ? WorldBossStrikeRules.Score(order.Landings) : null;
-                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, skill, await LevelOfAsync(db, playerId), DateTime.UtcNow);
+                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, skill, await LevelOfAsync(db, playerId), GameClock.UtcNow);
                 // Modul: the quest line's "strike the world boss" step. The
                 // attempt rows are DELETED when the boss dies, so they cannot be
                 // the evidence; the act is latched here, in the strike's own

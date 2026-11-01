@@ -290,7 +290,7 @@ namespace FolkIdle.Server.Engine
             string lastSyncKey = "leaderboard:guild:weekly_last_sync";
             var lastSyncVal = await dbRedis.StringGetAsync(lastSyncKey);
             
-            DateTime now = DateTime.UtcNow;
+            DateTime now = GameClock.UtcNow;
             
             // Sync happens on Monday (as 0). Wait, DayOfWeek.Monday is 1. Let's do Sunday midnight or Monday midnight.
             // A simple approach: we store the week number. "2026-W32"

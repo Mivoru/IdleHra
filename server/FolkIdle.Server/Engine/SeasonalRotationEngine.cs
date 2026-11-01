@@ -72,7 +72,7 @@ namespace FolkIdle.Server.Engine
 
         internal async Task ExecuteEraCheckAsync(CancellationToken stoppingToken)
         {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();

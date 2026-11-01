@@ -265,8 +265,8 @@ namespace FolkIdle.Server.Engine
                     int countAfter = player.RebirthCount + 1;
                     if (RebirthRules.IsFinalRewardedRebirth(countAfter))
                     {
-                        await Domain.Progression.TitleEngine.GrantAsync(db, playerId, Domain.Progression.TitleRegistry.RebirthTitleSlug, DateTime.UtcNow);
-                        await Domain.Progression.PetEngine.GrantAsync(db, playerId, Domain.Progression.PetRegistry.PhoenixId, DateTime.UtcNow);
+                        await Domain.Progression.TitleEngine.GrantAsync(db, playerId, Domain.Progression.TitleRegistry.RebirthTitleSlug, GameClock.UtcNow);
+                        await Domain.Progression.PetEngine.GrantAsync(db, playerId, Domain.Progression.PetRegistry.PhoenixId, GameClock.UtcNow);
                     }
                     // The milestone avatars (3, 5, 7, 10). Cosmetics survive the
                     // reset; granted once, so a replay cannot add a second.
@@ -283,7 +283,7 @@ namespace FolkIdle.Server.Engine
                             DefinitionId = milestone.AvatarId,
                             Rarity = (byte)(def?.Rarity ?? Domain.Progression.CosmeticRegistry.Epic),
                             Source = (byte)Domain.Progression.CosmeticSource.Rebirth,
-                            AcquiredAtUtc = DateTime.UtcNow,
+                            AcquiredAtUtc = GameClock.UtcNow,
                             IsListed = false,
                         });
                         await db.SaveChangesAsync(cancellationToken);
@@ -408,7 +408,7 @@ namespace FolkIdle.Server.Engine
 
             var created = new SeasonalEraRecord
             {
-                EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 90L * 24L * 60L * 60L,
+                EndTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds() + 90L * 24L * 60L * 60L,
                 IsActive = true,
                 IsRolloverPaused = true,
             };

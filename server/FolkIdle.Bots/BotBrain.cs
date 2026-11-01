@@ -38,7 +38,8 @@ namespace FolkIdle.Bots
         private static readonly TimeSpan ProjectionRefresh = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan QuestRefresh = TimeSpan.FromSeconds(60);
 
-        private readonly BotClient _client;
+        private BotClient _client = null!;
+        private readonly Func<CancellationToken, Task<BotClient>> _connect;
         private readonly MilestoneLog _log;
         private readonly Random _rng;
         private readonly string _name;
@@ -56,68 +57,91 @@ namespace FolkIdle.Bots
         private DateTime _pendingActivityAt;
 
         private readonly Persona _persona;
-        private bool _wasCheckedIn = true;
-        private bool _cappedThisGap;
 
-        public BotBrain(BotClient client, MilestoneLog log, int seed, string name, Persona persona)
+        /// <summary>The last snapshot seen, for the summary after the bot has logged out.</summary>
+        public StateUpdatePacket? LastState { get; private set; }
+        public long StateFrames { get; private set; }
+
+        public BotBrain(Func<CancellationToken, Task<BotClient>> connect, MilestoneLog log, int seed, string name, Persona persona)
         {
-            _client = client;
+            _connect = connect;
             _log = log;
             _rng = new Random(seed);
             _name = name;
             _persona = persona;
         }
 
+        /// <summary>
+        /// Modul: A REAL LOGOUT BETWEEN CHECK-INS (2026-11-01). Casual and idle
+        /// bots disconnect when their check-in ends and log in again at the
+        /// next one, so the server's own offline catch-up and offline cap decide
+        /// what the time away earned - the path every real player who closes
+        /// the tab takes. This needed the game clock: offline time is measured
+        /// from LastLogoutTimestamp, which is GameClock time, so at x20 an
+        /// eight-game-hour gap is 24 wall minutes rather than eight hours.
+        /// </summary>
         public async Task RunAsync(DateTime stopAtUtc, CancellationToken token)
         {
-            while (!token.IsCancellationRequested && DateTime.UtcNow < stopAtUtc && _client.IsOpen)
+            _client = await _connect(token);
+            bool connected = true;
+            while (!token.IsCancellationRequested && DateTime.UtcNow < stopAtUtc)
             {
-                if (_client.TryGetState(out var state))
+                bool checkedIn = _persona.IsCheckedIn(_log.GameHours);
+                if (!checkedIn && connected)
                 {
+                    if (_client.TryGetState(out var last)) Remember(last);
+                    StateFrames += _client.StateFrames;
+                    await _client.DisposeAsync();
+                    connected = false;
+                    _log.Event(_name, $"logged out (level {LastState?.CurrentLevel})");
+                }
+                else if (checkedIn && !connected)
+                {
+                    _client = await _connect(token);
+                    connected = true;
+                    // Fresh eyes: everything is looked at again.
+                    _inventoryAt = _projectionAt = _questsAt = DateTime.MinValue;
+                    _skillTreeTriedAtPoints = -1;
+                    _pendingActivity = 0;
+                    await Task.Delay(2000, token); // the login snapshot carries the offline summary
+                    if (_client.TryGetState(out var back))
+                    {
+                        _log.Event(_name, $"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}");
+                        _log.Count(_name, "logins");
+                        if (back.OfflineCapSeconds > 0 && back.OfflineElapsedSeconds >= back.OfflineCapSeconds) _log.Count(_name, "offline_caps_hit");
+                    }
+                }
+
+                if (connected && !_client.IsOpen)
+                {
+                    _log.Event(_name, "socket lost; reconnecting");
+                    _client = await _connect(token);
+                }
+
+                if (connected && _client.TryGetState(out var state))
+                {
+                    Remember(state);
                     _log.Observe(_name, state);
                     try
                     {
-                        double gameHours = _log.GameHours;
-                        bool checkedIn = _persona.IsCheckedIn(gameHours);
-                        if (checkedIn != _wasCheckedIn)
-                        {
-                            _wasCheckedIn = checkedIn;
-                            _cappedThisGap = false;
-                            _log.Event(_name, checkedIn ? $"check-in (level {state.CurrentLevel})" : "away");
-                            if (checkedIn)
-                            {
-                                // Fresh eyes: everything is looked at again.
-                                _inventoryAt = _projectionAt = _questsAt = DateTime.MinValue;
-                                _skillTreeTriedAtPoints = -1;
-                            }
-                        }
-
-                        if (checkedIn)
-                        {
-                            await RestChoresAsync(state, token);
-                            await OneCommandAsync(state, token);
-                        }
-                        else if (!_cappedThisGap && state.OfflineCapSeconds > 0
-                                 && _persona.HoursAway(gameHours) * 3600 > state.OfflineCapSeconds)
-                        {
-                            // The offline cap: a session away this long would earn nothing more.
-                            _cappedThisGap = true;
-                            if (state.ActiveActivityId != 0 && state.Slot1_CharacterId != Guid.Empty)
-                            {
-                                await _client.SendCommandAsync(new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = 0, TargetGuid = state.Slot1_CharacterId }, token);
-                                _log.Event(_name, $"offline cap reached ({state.OfflineCapSeconds / 3600.0:0.#} h): activity stopped until the next check-in");
-                                _log.Count(_name, "offline_caps_hit");
-                            }
-                        }
+                        await RestChoresAsync(state, token);
+                        await OneCommandAsync(state, token);
                     }
                     catch (HttpRequestException ex)
                     {
                         Console.WriteLine($"[{_name}] REST failed: {ex.Message}");
                     }
                 }
-                await Task.Delay(_rng.Next(CommandSpacingMinMs, CommandSpacingMaxMs), token);
+                await Task.Delay(connected ? _rng.Next(CommandSpacingMinMs, CommandSpacingMaxMs) : 1000, token);
+            }
+            if (connected)
+            {
+                StateFrames += _client.StateFrames;
+                await _client.DisposeAsync();
             }
         }
+
+        private void Remember(StateUpdatePacket state) => LastState = state;
 
         // ------------------------------------------------------------------
         // REST: what a player does on screens without a WebSocket command

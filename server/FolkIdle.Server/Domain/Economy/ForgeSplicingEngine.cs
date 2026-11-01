@@ -695,7 +695,7 @@ namespace FolkIdle.Server.Domain.Economy
             // the anvil changed - what the single fusion writes per fusion,
             // minus the rows for pieces a later step consumed. One write.
             var tally = new DropTally();
-            DateTime now = DateTime.UtcNow;
+            DateTime now = GameClock.UtcNow;
             int bestTier = 0;
             foreach (var row in rows)
             {

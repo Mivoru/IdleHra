@@ -40,7 +40,7 @@ namespace FolkIdle.Server.Domain.Combat
             try
             {
                 await using var db = await factory.CreateDbContextAsync();
-                bool paid = await SaveClearCoreAsync(db, note, DateTime.UtcNow);
+                bool paid = await SaveClearCoreAsync(db, note, GameClock.UtcNow);
                 if (paid) registry.EnqueueCommandResult(note.PlayerId, (byte)CommandResultCode.SeasonalBossCleared);
             }
             catch (Exception ex)
@@ -77,7 +77,7 @@ namespace FolkIdle.Server.Domain.Combat
                 TitleAttachment = tier.TitleSlug,
                 SenderName = SenderName,
                 MessageText = MessageFor(tier.Tier),
-                ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ReceivedTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds(),
             });
             await db.SaveChangesAsync();
 

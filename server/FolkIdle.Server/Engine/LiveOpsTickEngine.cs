@@ -43,7 +43,7 @@ namespace FolkIdle.Server.Engine
             _playerRegistry = playerRegistry;
             _worldBossEngine = worldBossEngine;
             _pushNotificationTriggerEngine = pushNotificationTriggerEngine;
-            _clock = clock ?? (() => DateTimeOffset.UtcNow);
+            _clock = clock ?? (() => GameClock.UtcNowOffset);
         }
 
         public void StartCron()
@@ -134,7 +134,7 @@ namespace FolkIdle.Server.Engine
                 // open date is itself dynamic (month-dependent), unlike the
                 // daily reset below, which has a fixed, predictable next
                 // occurrence.
-                long alertEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long alertEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
                 long[] onlinePlayerIdsForBossAlert = _playerRegistry.GetOnlinePlayerIds();
                 for (int i = 0; i < onlinePlayerIdsForBossAlert.Length && _pushNotificationTriggerEngine != null; i++)
                 {
@@ -165,7 +165,7 @@ namespace FolkIdle.Server.Engine
         // just records "today" as the baseline).
         private async Task EvaluateDailyResetAsync()
         {
-            long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
             long currentDateKey = QuestEngine.GetUtcDateKey(nowEpoch);
 
             if (_lastSeenUtcDateKey < 0)
@@ -206,7 +206,7 @@ namespace FolkIdle.Server.Engine
 
         private async Task UpdateActiveEventRotationAsync()
         {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
             long phaseIndex = (now % WeeklyRotationSeconds) / PhaseDurationSeconds;
             byte eventType = (byte)(phaseIndex + 1L);
             uint modifierMask = 1u << (int)phaseIndex;

@@ -69,7 +69,7 @@ namespace FolkIdle.Server.Network
                 var stale = DungeonLiveRuns.Current(playerId);
                 if (stale != null && DateTime.UtcNow - stale.TouchedUtc > DungeonLiveRuns.AbandonAfter) await SettleAbandonedAsync(stale);
 
-                var rows = await DungeonEngine.LoadAsync(db, playerId, DateTime.UtcNow);
+                var rows = await DungeonEngine.LoadAsync(db, playerId, GameClock.UtcNow);
                 await db.SaveChangesAsync();
 
                 var snapshot = await MainCharacterSnapshotAsync(playerId);
@@ -191,13 +191,13 @@ namespace FolkIdle.Server.Network
                 // minutes of a bigger hourly income.
                 var (gateXp, gateGold) = InheritanceMilestones.DungeonIncome(in payload,
                     kind == DungeonKind.Xp ? DungeonEngine.BestHuntingXpPerHour(in payload, snapshot.Value.GlobalXpMultiplier, snapshot.Value.ActiveGlobalEventId) : 0,
-                    kind == DungeonKind.Gold ? await GoldRewardScale.HourlyIncomeAsync(db, playerId, DateTime.UtcNow) : 0);
+                    kind == DungeonKind.Gold ? await GoldRewardScale.HourlyIncomeAsync(db, playerId, GameClock.UtcNow) : 0);
                 var income = new DungeonEngine.Income(gateXp, gateGold);
 
                 if (sweep)
                 {
                     var (sOutcome, sReason, sResult, sReward, sTickets) = await DungeonEngine.RunAsync(
-                        db, playerId, kind, stage, payload, food.ItemId, food.Count, income, DateTime.UtcNow, Random.Shared, sweep: true);
+                        db, playerId, kind, stage, payload, food.ItemId, food.Count, income, GameClock.UtcNow, Random.Shared, sweep: true);
                     if (sResult != null) await AfterDungeonRunAsync(db, playerId, sResult, sReward, food.SlotIndex, food.ItemId);
                     await WriteJsonAsync(context, new { Outcome = sOutcome.ToString(), Reason = sReason ?? string.Empty, Finished = true, Result = sResult, Reward = sReward, Tickets = sTickets });
                     return;
@@ -205,12 +205,12 @@ namespace FolkIdle.Server.Network
 
                 // The party: champions whose slot holds a character and whose
                 // place this dungeon's best stage has opened.
-                var rows = await DungeonEngine.LoadAsync(db, playerId, DateTime.UtcNow);
+                var rows = await DungeonEngine.LoadAsync(db, playerId, GameClock.UtcNow);
                 int open = DungeonEngine.PartySlotsOpen(rows[kind].BestStage);
                 party = party.Where(slot => slot < open && SlotHoldsCharacter(in payload, slot)).ToList();
                 db.ChangeTracker.Clear();
 
-                var (outcome, reason, tickets) = await DungeonEngine.StartLiveAsync(db, playerId, kind, stage, payload.DefeatedRegionBossMask, DateTime.UtcNow);
+                var (outcome, reason, tickets) = await DungeonEngine.StartLiveAsync(db, playerId, kind, stage, payload.DefeatedRegionBossMask, GameClock.UtcNow);
                 if (outcome != DungeonEngine.RunOutcome.Ok)
                 {
                     await WriteJsonAsync(context, new { Outcome = outcome.ToString(), Reason = reason ?? string.Empty, Tickets = tickets });
@@ -381,7 +381,7 @@ namespace FolkIdle.Server.Network
             if (pay)
             {
                 DungeonLiveRuns.Remove(run);
-                var (paid, t) = await DungeonEngine.FinishLiveAsync(db, run.PlayerId, run.Kind, run.Stage, runner.Result!.Won, run.Income, DateTime.UtcNow, Random.Shared);
+                var (paid, t) = await DungeonEngine.FinishLiveAsync(db, run.PlayerId, run.Kind, run.Stage, runner.Result!.Won, run.Income, GameClock.UtcNow, Random.Shared);
                 reward = paid;
                 left = t;
                 await AfterDungeonRunAsync(db, run.PlayerId, runner.Result, reward, run.FoodSlot, run.FoodItemId);
@@ -494,7 +494,7 @@ namespace FolkIdle.Server.Network
             catch (JsonException) { }
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            var rows = await DungeonEngine.LoadAsync(db, playerId, DateTime.UtcNow);
+            var rows = await DungeonEngine.LoadAsync(db, playerId, GameClock.UtcNow);
             foreach (var (k, row) in rows)
             {
                 if (kind < 0 || (int)k == kind) row.Tickets = Math.Clamp(tickets, 0, DungeonEngine.TicketCap);

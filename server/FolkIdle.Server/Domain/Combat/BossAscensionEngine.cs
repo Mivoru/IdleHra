@@ -159,7 +159,7 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 await db.Database.ExecuteSqlRawAsync(
                     "INSERT INTO boss_ascension_progress (\"PlayerId\", \"Region\", \"HighestStep\", \"UpdatedAtUtc\") VALUES ({0}, {1}, {2}, {3})",
-                    playerId, (short)region, (short)step, DateTime.UtcNow);
+                    playerId, (short)region, (short)step, GameClock.UtcNow);
             }
             await tx.CommitAsync();
         }

@@ -345,7 +345,7 @@ namespace FolkIdle.Server.Domain.Economy
             // is a craft, and unlike the bench's it is not always Normal.
             var tally = new DropTally();
             tally.Count(DropSource.Craft, region, tier);
-            await DropRecord.WriteAsync(db, playerId, tally, DateTime.UtcNow);
+            await DropRecord.WriteAsync(db, playerId, tally, GameClock.UtcNow);
 
             await db.SaveChangesAsync();
             await tx.CommitAsync();

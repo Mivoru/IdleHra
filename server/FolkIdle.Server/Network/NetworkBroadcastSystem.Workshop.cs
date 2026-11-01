@@ -29,7 +29,7 @@ namespace FolkIdle.Server.Network
             return false;
         }
 
-        private static long NowEpoch() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        private static long NowEpoch() => GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
         private async Task HandleWorkshopView(HttpListenerContext context)
         {

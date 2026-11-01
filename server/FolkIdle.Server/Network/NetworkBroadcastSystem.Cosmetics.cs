@@ -210,7 +210,7 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var (result, opened) = await CosmeticEngine.OpenAsync(db, playerId, rarity, Random.Shared, DateTime.UtcNow);
+                var (result, opened) = await CosmeticEngine.OpenAsync(db, playerId, rarity, Random.Shared, GameClock.UtcNow);
                 await WriteJsonAsync(context, await CosmeticEngine.ViewAsync(db, playerId, result.ToString(), opened));
             }
             catch (Exception ex)
@@ -359,7 +359,7 @@ namespace FolkIdle.Server.Network
             {
                 long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (playerId <= 0) { context.Response.StatusCode = 401; return; }
-                var (current, phase) = SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+                var (current, phase) = SeasonalEventRegistry.Current(GameClock.UtcNowOffset);
                 if (current == null)
                 {
                     await WriteJsonAsync(context, new { EventId = 0, Tiers = Array.Empty<object>() });
@@ -503,7 +503,7 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                bool owned = await PetEngine.MarkSeenAsync(db, playerId, petId!, DateTime.UtcNow);
+                bool owned = await PetEngine.MarkSeenAsync(db, playerId, petId!, GameClock.UtcNow);
                 await WriteJsonAsync(context, new
                 {
                     Result = owned ? "Ok" : "NotOwned",
@@ -525,7 +525,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                var (current, phase) = SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+                var (current, phase) = SeasonalEventRegistry.Current(GameClock.UtcNowOffset);
                 if (current == null)
                 {
                     await WriteJsonAsync(context, new { Event = (object?)null });
@@ -703,7 +703,7 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath.EndsWith("/list", StringComparison.Ordinal))
                 {
-                    result = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.ListAsync(db, playerId, id, price, DateTime.UtcNow);
+                    result = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.ListAsync(db, playerId, id, price, GameClock.UtcNow);
                 }
                 else if (requestPath.EndsWith("/cancel", StringComparison.Ordinal))
                 {
@@ -712,7 +712,7 @@ namespace FolkIdle.Server.Network
                 else
                 {
                     (result, _) = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.BuyAsync(
-                        db, _playerSessionRegistry, playerId, id, DateTime.UtcNow);
+                        db, _playerSessionRegistry, playerId, id, GameClock.UtcNow);
 
                     // The buyer's gold moved in the database, out of band from
                     // the live payload - the Delve's reason for ReloadState.
@@ -764,7 +764,7 @@ namespace FolkIdle.Server.Network
 
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            await CosmeticEngine.InsertChestsAsync(db, playerId, new[] { rarity }, CosmeticSource.Dev, DateTime.UtcNow);
+            await CosmeticEngine.InsertChestsAsync(db, playerId, new[] { rarity }, CosmeticSource.Dev, GameClock.UtcNow);
             await WriteJsonAsync(context, await CosmeticEngine.ViewAsync(db, playerId));
         }
     }

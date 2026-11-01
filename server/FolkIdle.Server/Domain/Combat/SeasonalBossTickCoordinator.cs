@@ -24,7 +24,7 @@ namespace FolkIdle.Server.Domain.Combat
         {
             int tier = (int)cmd.TargetId;
             int eventId = (int)cmd.SecondaryId;
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
             var code = SeasonalBossRegistry.Validate(in currentPayload, tier, eventId, now);
             int bossId = SeasonalBossRegistry.BossMonsterIdFor(tier);

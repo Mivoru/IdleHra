@@ -201,7 +201,7 @@ namespace FolkIdle.Server.Domain.Progression
         public static async Task SaveDropAsync(IDbContextFactory<FolkIdleDbContext> factory, PlayerSessionRegistry registry, PetDropNote note)
         {
             await using var db = await factory.CreateDbContextAsync();
-            var outcome = await SaveDropCoreAsync(db, note, DateTime.UtcNow);
+            var outcome = await SaveDropCoreAsync(db, note, GameClock.UtcNow);
             if (outcome == DropOutcome.New)
             {
                 registry.EnqueueCommandResult(note.PlayerId, (byte)FolkIdle.Server.Network.CommandResultCode.EventPetFound);
@@ -241,7 +241,7 @@ namespace FolkIdle.Server.Domain.Progression
                 DiamondAttachment = PetRegistry.DuplicateDiamonds,
                 SenderName = pet.Name,
                 MessageText = $"{pet.Name} found you again. You already have one, so here are {PetRegistry.DuplicateDiamonds} diamonds instead.",
-                ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ReceivedTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds(),
             });
             await db.SaveChangesAsync();
             return DropOutcome.Duplicate;

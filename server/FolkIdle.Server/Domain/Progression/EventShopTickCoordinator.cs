@@ -23,7 +23,7 @@ namespace FolkIdle.Server.Domain.Progression
             in CommandCoordinatorContext ctx)
         {
             long pId = currentPayload.PlayerId;
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
             var (current, phase) = SeasonalEventRegistry.Current(now);
 
             if (current == null || phase == SeasonalEventPhase.None)
@@ -75,7 +75,7 @@ namespace FolkIdle.Server.Domain.Progression
                 {
                     // Normalised first so a balance that has never been stamped
                     // (a session older than a dev-forced event) takes the grant.
-                    SeasonalEventEarning.Normalise(ref payload, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    SeasonalEventEarning.Normalise(ref payload, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                     SeasonalEventEarning.Refund(ref payload, refund.EventId, refund.Amount);
                 }
             }
