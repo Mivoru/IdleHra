@@ -110,7 +110,10 @@ $env:FOLKIDLE_E2E_BASE='https://folkidle.duckdns.org/'; npm run smoke:screens
 
 Use `smoke:screens`, not `exercise` — `exercise` spends items, marries
 villagers and rerolls affixes on whatever account it signs into. `smoke:screens`
-signs in as a guest and only navigates.
+signs in as a guest and only navigates. It reuses one guest (device id
+`e2e-smoke-guest-v1`) so deploys stop adding accounts; until 2026-11-01 each run
+made a new one, and 66 of the box's 69 "active" accounts were these. Add
+`-- --fresh-guest` only when you need to see what a brand-new account meets.
 
 `FOLKIDLE_E2E_BASE` genuinely aims it as of 2026-09-02; before that the script
 hardcoded localhost and ignored the variable, so this post-deploy step had been
