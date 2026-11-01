@@ -21,8 +21,10 @@ namespace FolkIdle.Server.Domain.Combat
     /// enemy swing lands on the next champion in turn with that champion's
     /// armour - but the health is one shared bar, so the bosses' rules (burns of
     /// max health, drains, the meal cap) keep working on "the player" unchanged.
-    /// A party of three is therefore much stronger than one champion; the stages
-    /// are not yet calibrated for it (CHESTS_DUNGEONS_DIAMONDS.md 2.8).
+    /// Calibrated 2026-11-01 (CHESTS_DUNGEONS_DIAMONDS.md 2.8): a geared second
+    /// champion is worth one or two stages; an ungeared one is worse than none,
+    /// because every third blow lands through no armour, so the lobby benches
+    /// a champion without full gear by default.
     /// </remarks>
     public sealed class DungeonRunner
     {

@@ -43,6 +43,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         items: [
           "A red dot on Dungeon in the menu tells you when a gate is full of tickets. A full gate cannot hold the next day's tickets, so spend one before midnight UTC.",
           'A menu group now shows the dot of anything inside it, so you see it without opening the menu.',
+          'A champion without full gear now stays home from the dungeon unless you send them. Bosses hit them through no armour, so they made the party weaker than going alone. One tap still sends them.',
         ],
       },
     ],
