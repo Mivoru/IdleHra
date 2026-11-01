@@ -89,6 +89,27 @@ export const CLIPS = {
   runeAdd: 'ui_rune_add.wav',
   runeConfirm: 'ui_rune_confirm.wav',
   runeLocked: 'ui_rune_locked.wav',
+
+  // Modul: THE DUNGEON'S OWN SOUNDS (ElevenLabs, 2026-11-01; prompts in
+  // tools/assets/manifest.json, sfx_dungeon_* / sfx_boss_* / sfx_wave_horn /
+  // sfx_victory / sfx_defeat). A run borrowed the boss first-clear fanfare for
+  // every boss, "notification" for every warning and the death cry for a
+  // missed dodge - so a dodge, the moment the run is built around, sounded
+  // like mail arriving. Played by DungeonRun.svelte only; none is a combat
+  // clip, because the Dungeon screen is not the Combat screen.
+  dungeonGate: 'dungeon_gate.wav',
+  dungeonWave: 'dungeon_wave.wav',
+  dungeonBossKoschei: 'dungeon_boss_koschei.wav',
+  dungeonBossZmey: 'dungeon_boss_zmey.wav',
+  dungeonBossBabaYaga: 'dungeon_boss_babayaga.wav',
+  dungeonAbility: 'dungeon_ability.wav',
+  dungeonTelegraph: 'dungeon_telegraph.wav',
+  dungeonSwipe: 'dungeon_swipe.wav',
+  dungeonDodged: 'dungeon_dodged.wav',
+  dungeonMissed: 'dungeon_missed.wav',
+  dungeonPerk: 'dungeon_perk.wav',
+  dungeonVictory: 'dungeon_victory.wav',
+  dungeonDefeat: 'dungeon_defeat.wav',
 } as const;
 
 export type ClipName = keyof typeof CLIPS;

@@ -75,6 +75,13 @@ namespace FolkIdle.Server.Domain.Progression
                 new TitleDefinition(Combat.WorldBossStrike.WorldBossRewards.ThirdPlaceSlug, "Simargl's Wing", 0, "#e8743b"),
             };
 
+            // The three dungeons: the first clear of stage 15 (DungeonEngine.PayAsync).
+            foreach (var kind in Combat.DungeonBoss.All)
+            {
+                var boss = Combat.DungeonBoss.For(kind);
+                list.Add(new TitleDefinition(boss.TitleSlug, boss.TitleName, 0, boss.TitleColor));
+            }
+
             // Task 87: one title per Boss Ascension step per boss - a rank the
             // player wears ("Wolfbane IV"). DeepFloor 0 marks them as not the
             // Deep's, so ForDeepFloor and NextDeepTitle never see them. The names

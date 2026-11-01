@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.52.0',
+    date: '2026-11-01',
+    headline: 'The dungeons have their own sounds, and stage 15 of each gate pays a title.',
+    sections: [
+      {
+        title: 'Dungeons',
+        items: [
+          "Every run now sounds like a dungeon: the gate grinding open, a horn for each wave, a voice for each boss - Koschei's laugh, Zmey's three roars, Baba Yaga's cackle - a warning when a big blow winds up, a whoosh for each swipe, and its own sound for a dodge, a blow that lands, a blessing, a win and a loss.",
+          `Win stage 15 of a gate for the first time and you earn its title: "Deathless" from Koschei's Tower, "Dragonbane" from Zmey's Hoard, "Witch-bane" from Baba Yaga's Hut. Wear it from the title picker in The Delve.`,
+        ],
+      },
+    ],
+  },
+  {
     version: '1.51.2',
     date: '2026-11-01',
     sections: [

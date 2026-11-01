@@ -27,7 +27,7 @@
   import { prettifyBaseId } from '../net/content';
   import { requestScreen } from '../stores/navigation';
   import { playerState, pushLocalNotice } from '../stores/game';
-  import { play } from './audio';
+  import { play, type ClipName } from './audio';
   import { formatNumber } from './format';
   import { motionMs } from './motion';
   import MonsterPortrait from './MonsterPortrait.svelte';
@@ -138,12 +138,14 @@
       case 'wave':
         fight = e.Value - 1;
         showBanner(`Wave ${e.Value}`, 'wave', 900);
+        // The gate's own sound opens wave 1; the horn calls the later ones.
+        if (e.Value > 1) play('dungeonWave');
         pausedUntil = performance.now() + (motionMs(700) || 0);
         break;
       case 'boss':
         fight = 5;
         introBoss = true;
-        play('bossFirstClear');
+        play(BOSS_CLIP[dungeon.Key]);
         pausedUntil = performance.now() + (motionMs(2200) || 300);
         setTimeout(() => (introBoss = false), motionMs(2200) || 300);
         break;
@@ -153,8 +155,7 @@
       case 'ability': {
         const name = e.Text.split(' - ')[0];
         showBanner(name, 'ability', 1700);
-        // Not a combat clip: those are muted off the Combat screen (audio.ts).
-        play('notification');
+        play('dungeonAbility');
         break;
       }
       case 'meal':
@@ -162,11 +163,12 @@
         break;
       case 'dodged':
         showBanner('Dodged!', 'dodged', 1100);
+        play('dungeonDodged');
         break;
       case 'missed':
         selfHit++;
         showBanner('The blow lands!', 'missed', 1100);
-        play('playerDied');
+        play('dungeonMissed');
         break;
       case 'perk':
         taken = [...taken, { name: e.Text, penalty: false }];
@@ -218,7 +220,7 @@
       enemyHp = last.EnemyHpPct;
       selfHp = last.PlayerHpPct;
     }
-    play(result.Won ? 'chestOpenLegendary' : 'playerDied');
+    play(result.Won ? 'dungeonVictory' : 'dungeonDefeat');
     client.invalidateQueries({ queryKey: dungeonKeys.view });
     if (reward?.PieceId || reward?.ChestId) invalidateOwnedItems(client);
   }
@@ -246,7 +248,7 @@
       wrong = false;
       timeLeft = 1;
       telegraph = { dirs: t.Dirs, windowMs: t.WindowMs, startedAt: performance.now() };
-      play('notification');
+      play('dungeonTelegraph');
     } finally {
       busy = false;
     }
@@ -257,6 +259,7 @@
     if (!telegraph || busy) return;
     const want = telegraph.dirs[entered.length];
     entered = [...entered, dir];
+    if (dir === want) play('dungeonSwipe');
     if (dir !== want) {
       wrong = true;
       void sendAnswer();
@@ -293,6 +296,7 @@
         return;
       }
       offer = null;
+      play('dungeonPerk');
       take(reply);
     } finally {
       busy = false;
@@ -410,6 +414,14 @@
     setTimeout(gateFallback, 1200);
     setTimeout(closeGate, 5000); // a clip that stalls halfway still ends
   }
+  // The gate's grind plays with the opening, video or doors alike (the clip is muted).
+  if (showGate) play('dungeonGate');
+
+  const BOSS_CLIP: Record<DungeonInfo['Key'], ClipName> = {
+    Xp: 'dungeonBossKoschei',
+    Gold: 'dungeonBossZmey',
+    Equipment: 'dungeonBossBabaYaga',
+  };
   raf = requestAnimationFrame(frame);
   onDestroy(() => cancelAnimationFrame(raf));
 </script>
@@ -590,6 +602,7 @@
           {#if reward.PieceBaseId}<li>{reward.PieceRarity} {prettifyBaseId(reward.PieceBaseId)}</li>{/if}
           {#if reward.Chest}<li>A {reward.Chest} loot chest</li>{/if}
           {#if reward.Diamonds > 0}<li>+{reward.Diamonds} diamonds for the first clear</li>{/if}
+          {#if reward.Title}<li class="title-earned" data-testid="dungeon-title-earned">A new title: <strong>{reward.Title}</strong> - wear it from the title picker in The Delve</li>{/if}
         </ul>
       {:else if !result.Won}
         <p class="dim small">Nothing this time - a lost run here pays a Bronze chest one time in four.</p>
@@ -910,6 +923,7 @@
   .small {
     font-size: 0.82rem;
   }
+  .reward .title-earned { color: var(--gold); font-weight: 600; }
   .reward {
     margin: 0;
     padding-left: 1.1rem;

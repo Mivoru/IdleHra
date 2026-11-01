@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,45 @@ namespace FolkIdle.Server.Tests
                 AutoEatThreshold = 50,
                 DefeatedRegionBossMask = mask,
             };
+        }
+
+        [Fact]
+        public async Task StageFifteenPaysEachGatesTitleOnceAndOnlyOnAWin()
+        {
+            const long playerId = 950_420_015L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+            var now = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
+            const int last = DungeonSimulator.StageCount;
+            foreach (var kind in DungeonBoss.All)
+            {
+                var boss = DungeonBoss.For(kind);
+                Assert.Equal(boss.TitleName, TitleRegistry.DisplayNameFor(boss.TitleSlug));
+                Assert.Contains(boss.TitleName, DungeonEngine.RewardLine(kind, last));
+                Assert.DoesNotContain(boss.TitleName, DungeonEngine.RewardLine(kind, last - 1));
+
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    var lost = await DungeonEngine.FinishLiveAsync(db, playerId, kind, last, false, default, now, new Random(1));
+                    Assert.Equal(string.Empty, lost.Reward?.Title ?? string.Empty);
+                }
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    var won = await DungeonEngine.FinishLiveAsync(db, playerId, kind, last, true, default, now, new Random(1));
+                    Assert.Equal(boss.TitleName, won.Reward!.Title);
+                }
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    var again = await DungeonEngine.FinishLiveAsync(db, playerId, kind, last, true, default, now, new Random(2));
+                    Assert.Equal(string.Empty, again.Reward!.Title);
+                }
+            }
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var slugs = await verify.PlayerTitles.AsNoTracking().Where(t => t.PlayerId == playerId).Select(t => t.TitleSlug).ToListAsync();
+            Assert.Equal(DungeonBoss.All.Select(k => DungeonBoss.For(k).TitleSlug).OrderBy(x => x), slugs.OrderBy(x => x));
         }
 
         [Fact]

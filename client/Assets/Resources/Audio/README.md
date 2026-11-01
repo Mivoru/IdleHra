@@ -83,6 +83,15 @@ loud for what is rare (the first-clear fanfare at -4).
 | `race_unlocked.wav` | A region boss first-kill granted a playable race |
 | `achievement_unlock.wav` | An achievement tier crossed |
 | `error.wav` | Any rejection surfaced as a toast; the last fallback for a death - **2026-09-27** |
+| `dungeon_gate.wav` | A dungeon run starts: the gate opens (DungeonRun.svelte) - **2026-11-01**, ElevenLabs, as are all dungeon_* |
+| `dungeon_wave.wav` | Waves 2 to 5 of a run begin (a trembita horn) |
+| `dungeon_boss_koschei.wav` / `dungeon_boss_zmey.wav` / `dungeon_boss_babayaga.wav` | The boss of the run appears, one voice each |
+| `dungeon_ability.wav` | A boss ability fires (its banner shows) |
+| `dungeon_telegraph.wav` | A telegraph opens: swipe now |
+| `dungeon_swipe.wav` | One correct swipe or arrow key inside a telegraph; quiet, it repeats |
+| `dungeon_dodged.wav` / `dungeon_missed.wav` | A telegraph dodged / the heavy blow of a missed one |
+| `dungeon_perk.wav` | A blessing card taken after a dodge |
+| `dungeon_victory.wav` / `dungeon_defeat.wav` | The run's end |
 
 `combat_player_hit.wav` and `combat_monster_defeated.wav` were removed
 2026-09-28 at the owner's request; a kill is now silent and nothing falls back
