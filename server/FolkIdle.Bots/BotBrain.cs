@@ -419,7 +419,8 @@ namespace FolkIdle.Bots
             }
             else
             {
-                target = ChooseMonster(state, larder > 0);
+                long scout = ChooseScout(state, larder > 0);
+                target = scout > 0 ? scout : ChooseMonster(state, larder > 0);
                 if (target <= 0 && larder == 0 && carried == 0)
                 {
                     _fishing = true;
@@ -464,6 +465,55 @@ namespace FolkIdle.Bots
                 }
             }
             return best;
+        }
+
+        private int _scoutFailedAtLevel = -100;
+        private const int ScoutRetryLevels = 2;
+
+        /// <summary>
+        /// One kill in the next location, to open its gathering.
+        ///
+        /// Modul: THE REGION-2 CATCH-22 (24 h run, 2026-11-01). A location's
+        /// fishing opens on the first kill THERE (ApplyKillProgression), and
+        /// region 2's fights need region 2's fish: on region-1 fish all three
+        /// bots were told "you would die" by every region-2 monster and farmed
+        /// region 1 to level 30 with region 2 open since level 18-28. A sensible
+        /// player tries one fight at full health to get through that door, so
+        /// the bot does: the first monster of the next location, when the
+        /// projection gives at least one kill before death (or holds with
+        /// food). A death there waits two levels before the next try.
+        /// </summary>
+        private long ChooseScout(StateUpdatePacket state, bool hasFood)
+        {
+            int reached = Math.Max(1, (int)state.HighestLocationReached);
+            int open = Math.Max(1, (int)state.HighestUnlockedRegion);
+            if (reached >= open) return 0;
+
+            int firstMonster = ContentRegistry.FirstCanonicalMonsterId + reached * ContentRegistry.MonstersPerRegion;
+            if (state.ActivityHaltReason == ActivityHaltReason.Died && state.LastDeathMonsterId == firstMonster
+                && _scoutFailedAtLevel != state.CurrentLevel)
+            {
+                _scoutFailedAtLevel = state.CurrentLevel;
+                _log.Event(_name, $"scouting location {reached + 1} failed at level {state.CurrentLevel}; next try at level {state.CurrentLevel + ScoutRetryLevels}");
+                _log.Count(_name, "scout_deaths");
+            }
+            if (state.CurrentLevel < _scoutFailedAtLevel + ScoutRetryLevels) return 0;
+
+            if (_projection is not { } proj || !proj.TryGetProperty("Monsters", out var monsters)) return 0;
+            foreach (var e in monsters.EnumerateArray())
+            {
+                if (e.GetProperty("MonsterId").GetInt32() != firstMonster) continue;
+                bool canDamage = e.GetProperty("CanDamage").GetBoolean();
+                int killsBeforeDeath = e.TryGetProperty("KillsBeforeDeathWithoutFood", out var k) && k.ValueKind == JsonValueKind.Number ? k.GetInt32() : 0;
+                bool holdsWithFood = hasFood && e.GetProperty("SurvivesWithFood").GetBoolean();
+                if (canDamage && (killsBeforeDeath >= 1 || holdsWithFood || hasFood))
+                {
+                    if (state.ActiveActivityId != firstMonster)
+                        _log.Event(_name, $"scouting location {reached + 1}: one fight with {MonsterName(firstMonster)} to open its gathering (projected kills before death {killsBeforeDeath}, food {hasFood})");
+                    return firstMonster;
+                }
+            }
+            return 0;
         }
 
         private long ChooseMonster(StateUpdatePacket state, bool hasFood)
