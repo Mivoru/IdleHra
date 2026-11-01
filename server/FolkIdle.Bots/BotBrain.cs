@@ -415,7 +415,7 @@ namespace FolkIdle.Bots
                     _log.Event(_name, $"fishing done: {carried} food carried");
                     return false; // the food command loads it on the next pass
                 }
-                target = ChooseFishingNode();
+                target = ChooseFishingNode(state);
             }
             else
             {
@@ -425,7 +425,7 @@ namespace FolkIdle.Bots
                     _fishing = true;
                     _log.Event(_name, $"no fight holds without food and the larder is empty: going fishing (level {state.CurrentLevel})");
                     _log.Count(_name, "fishing_trips");
-                    target = ChooseFishingNode();
+                    target = ChooseFishingNode(state);
                 }
             }
 
@@ -441,18 +441,27 @@ namespace FolkIdle.Bots
         }
 
         /// <summary>
-        /// The first fishing node not yet refused - region 1's, which a new
-        /// account can always reach. Choosing a better node by reach and heal
-        /// is a later step; the report's fishing_trips column shows its cost.
+        /// The best fishing node the character can reach: the highest location
+        /// not past the snapshot's HighestLocationReached (the rule
+        /// ChangeActivity and AutomationRules apply), since a region's fish
+        /// heal by that region's tier. A refused node is skipped.
         /// </summary>
-        private long ChooseFishingNode()
+        private long ChooseFishingNode(StateUpdatePacket state)
         {
             var nodes = ContentRegistry.GatheringNodes;
             long best = 0;
+            int bestLocation = 0;
+            int reach = Math.Max(1, (int)state.HighestLocationReached);
             for (int i = 0; i < nodes.Length; i++)
             {
                 if (nodes[i].ProfessionType != 2 || _refusedMonsters.Contains(nodes[i].ActivityId)) continue;
-                if (best == 0 || nodes[i].ActivityId < best) best = nodes[i].ActivityId;
+                int location = ContentRegistry.GetNodeLocation(nodes[i].ActivityId);
+                if (location < 1 || location > reach) continue;
+                if (location > bestLocation)
+                {
+                    best = nodes[i].ActivityId;
+                    bestLocation = location;
+                }
             }
             return best;
         }
