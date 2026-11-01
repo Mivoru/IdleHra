@@ -19,6 +19,79 @@ do next.
 
 ---
 
+# 2026-11-01 (afternoon) - Real population, playtest bots, the starter kit
+
+**The player count was mostly our own smoke test.** Production showed 69
+accounts active in the last 7 days, but 66 of them were guests made by
+post-deploy `smoke:screens` runs (level 1, 0 XP, nameless, ids 163-228, one
+per deploy). Only 3 people play: the owner (Mivoru), Tomda and player 108.
+Only those 3 have beaten the region-2 boss, so only they can open the
+dungeon. Tomda cleared stages 1-4 on all three gates with no losses, so
+"nobody has cleared stage 1" was a population problem, not a balance one.
+Balance cannot be measured with players at n=3.
+- **#276** `smoke:screens` reuses one guest (device `e2e-smoke-guest-v1`,
+  production id 229); `--fresh-guest` makes a new one. The 66 old guests were
+  deleted with the owner's yes, after backup `folkidle-20261101T161642Z.dump`.
+  13 accounts remain.
+
+**Playtest bots** (#277, #278, #280, #282, #284) stand in for the missing players:
+`server/FolkIdle.Bots` (see its README). Headless guests play over the web
+client's own WebSocket + REST surface, on a dev server sped up with
+`FOLKIDLE_TICK_SPEED` (dev tools only, max 20, `TickPacer.ResolveTickSpeed`).
+There are three personas: optimal, casual (8 h check-ins) and idle (24 h). A
+run writes `milestones.csv`, `events.log` and `summary.md` (median game hours
+per milestone).
+- **Trap fixed on the way:** the snapshot broadcast, and the anti-cheat
+  challenge it carries, ran every 10 TICKS. At x10 the answers spent the
+  wall-clock token bucket ten times a second and the socket was aborted as a
+  flood after about 4 s, with no log line. It now runs every `10 x speed`
+  ticks (1 Hz wall). At speed 1 nothing changed.
+- **24 game hours** (3 optimal bots, x10, old ten-fish kit): level 10 at
+  1.8-1.9 h, level 15 at 4.5-4.7 h, level 20 at 7.7-8.0 h, level 25 at
+  11.4-12.7 h, level 30 at 16.2-20.1 h, end at level 32-36. The region-1 boss
+  fell at 6.8 / 9.5 / 14.3 h. Two fishing trips each, at most one death. The
+  server kept 100 ticks/s for 2.4 h (0.03% dropped, tick p99 0.41 ms).
+- **The region-2 catch-22** (the run's main finding): no bot ever fought in
+  region 2, even at level 30 with region 2 open since level 18-28. A location's
+  fishing opens on the first kill THERE (`ApplyKillProgression`), and on
+  region-1 fish every region-2 monster projected "you would die" (first
+  monster: a 3.9 s kill, about 874 fish/h). #282 makes the bot scout one fight.
+  Whether the game itself should open a region's fishing when the previous
+  region's boss falls is measured next, as an owner decision.
+- **GameClock (#284):** 149 of 224 `UtcNow` sites read a game clock that runs
+  at the tick multiplier. That covers offline, daily keys, expiries, village,
+  events, mail and market. It is the wall clock at speed 1, so production is
+  unchanged. Casual and idle bots now really log out. A fast clock writes
+  future timestamps, so bot runs use a throwaway `folkidle_bots` DB
+  (`new-bot-db.ps1`).
+- **Full write-up:** `docs/architecture/PLAYTEST_BOTS_REPORT.md`. It covers
+  all three runs, x10 against x20 (they agree), the x100 estimate (not run, at
+  the owner's request), the bot's mistakes and missing systems, and the next
+  steps.
+
+**GDPR purge never worked** (#281): it deleted from "PasswordResetTokens"
+while the table is `password_reset_tokens`, so every erasure request rolled
+back with one console line. Found while running the same sequence by hand to
+delete the smoke guests. The delete now goes through EF, and
+`CompliancePurgeTests` covers it.
+
+**The starter kit** (#279): a new account had 10 fish. Measured with the new
+`ProgressionRateTests.TheStarterKitWinsTheFirstFights` (the real kit: the
+fish, the claymore, auto-eat at 30%), at about four fish a Field Mouse:
+1-2 kills, 93-186 XP, still level 1 when the food ran out. After that it got
+0 kills without food until it found fishing on its own. The owner raised the
+kit to **40** (6-7 kills, level 2 before the first fishing trip).
+- **Two checks had not measured a new player:**
+  `TheFirstMonsterTakesAboutSeventyFiveSeconds` stocks 1,000,000 fish, and
+  `exercise.mjs` only checked that the tutorial POINTS at the fight. The
+  new-account block now presses Fight and waits for a kill in
+  `/codex/snapshot`.
+- `/codex/regions` `CurrentKills` is the MINIMUM over a region's regulars,
+  each needing 1,000 for completion. It reads 0 until every regular has been
+  fought. This is correct, but it is not a kill counter.
+
+---
+
 # 2026-10-31 (autonomous run) - What shipped, what is open
 
 Owner away ~6 h with "decide by your own recommendation, deploy when CI is
