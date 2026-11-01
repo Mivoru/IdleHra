@@ -54,6 +54,20 @@ namespace FolkIdle.Server.Domain.Combat
         public abstract string BossName { get; }
         public abstract string Intro { get; }
         public abstract string Fall { get; }
+
+        /// <summary>
+        /// The title for the first clear of the last stage (StageCount), its slug
+        /// and the colour of its chip - the gate's own tone in the lobby.
+        /// </summary>
+        /// <remarks>
+        /// Modul: STAGE 15 PAYS A TITLE (CHESTS_DUNGEONS_DIAMONDS.md 2.6, names
+        /// from the design table). TitleRegistry lists these from here, so a
+        /// boss and its title cannot drift apart; the slug is stored per player
+        /// and never changes, the name may.
+        /// </remarks>
+        public string TitleSlug => $"dungeon_{Kind.ToString().ToLowerInvariant()}_{DungeonSimulator.StageCount}";
+        public abstract string TitleName { get; }
+        public abstract string TitleColor { get; }
         public abstract IReadOnlyList<DungeonAbilityView> AbilitiesAt(int stage);
 
         /// <summary>Share of an average swing that lands on the boss: dodge, hide, a weak spot.</summary>
@@ -90,6 +104,8 @@ namespace FolkIdle.Server.Domain.Combat
         public static readonly BabaYaga Instance = new();
         public override DungeonKind Kind => DungeonKind.Equipment;
         public override string DungeonName => "Baba Yaga's Hut";
+        public override string TitleName => "Witch-bane";
+        public override string TitleColor => "#b685f0";
         public override string BossName => "Baba Yaga";
         public override string Intro => "Baba Yaga flies in on her mortar.";
         public override string Fall => "Baba Yaga falls.";
@@ -173,6 +189,8 @@ namespace FolkIdle.Server.Domain.Combat
         public static readonly Koschei Instance = new();
         public override DungeonKind Kind => DungeonKind.Xp;
         public override string DungeonName => "Koschei's Tower";
+        public override string TitleName => "Deathless";
+        public override string TitleColor => "#4fd1a5";
         public override string BossName => "Koschei the Deathless";
         public override string Intro => "Koschei the Deathless rises from his throne of bone.";
         public override string Fall => "Koschei's needle snaps. He falls for good.";
@@ -250,6 +268,8 @@ namespace FolkIdle.Server.Domain.Combat
         public static readonly Zmey Instance = new();
         public override DungeonKind Kind => DungeonKind.Gold;
         public override string DungeonName => "Zmey's Hoard";
+        public override string TitleName => "Dragonbane";
+        public override string TitleColor => "#f0a640";
         public override string BossName => "Zmey Gorynych";
         public override string Intro => "Zmey Gorynych uncoils from the hoard, three heads hissing.";
         public override string Fall => "The last head falls. The hoard is yours.";

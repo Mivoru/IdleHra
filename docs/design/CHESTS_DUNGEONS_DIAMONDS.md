@@ -446,10 +446,15 @@ level 112, after the DiamondRework migration):**
   **stage 10 with every meal spent** and loses stage 11 with Baba Yaga at 69%;
   stages 12-15 are out of its reach. That is the target the owner approved.
 
-**Not built yet:** the XP (Koschei) and Gold (Zmey) dungeons, tickets from
-chests, first-clear titles at stage 15, the run's art and sounds from the
-visuals doc, and the calibration-harness report of the highest stage the
-owner's character and the maxed profile clear (needs task 112).
+**Since built:** the XP (Koschei) and Gold (Zmey) dungeons, tickets from
+chests, the art, the calibration-harness report (2.8). On 2026-11-01 the last
+two: **titles at stage 15** - the first win of a gate's stage 15 grants
+"Deathless" (Koschei's Tower), "Dragonbane" (Zmey's Hoard) or "Witch-bane"
+(Baba Yaga's Hut), listed in TitleRegistry from DungeonBoss.TitleName and
+granted in DungeonEngine.PayAsync - and **the run's sounds**: thirteen
+ElevenLabs clips (gate, wave horn, one voice per boss, boss ability,
+telegraph warning, swipe, dodge, missed blow, blessing taken, victory,
+defeat), listed in client/Assets/Resources/Audio/README.md.
 
 ### 2.8 The rework (owner, 2026-10-31) - plan and what is built
 

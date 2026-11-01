@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -150,14 +151,17 @@ namespace FolkIdle.Server.Domain.Economy
             return won ? gold : gold * ConsolationPct / 100;
         }
 
-        public static string RewardLine(DungeonKind kind, int stage) => kind switch
+        public static string RewardLine(DungeonKind kind, int stage) => BaseRewardLine(kind, stage)
+            + (stage == DungeonSimulator.StageCount ? $" And the title \"{DungeonBoss.For(kind).TitleName}\"." : string.Empty);
+
+        private static string BaseRewardLine(DungeonKind kind, int stage) => kind switch
         {
             DungeonKind.Xp => $"{IncomeMinutes(stage)} minutes of your best hunting XP. First clear: {FirstClearDiamonds(stage)} diamonds.",
             DungeonKind.Gold => $"{IncomeMinutes(stage)} minutes of your gold income. First clear: {FirstClearDiamonds(stage)} diamonds.",
             _ => $"A region {DungeonSimulator.RegionOfStage(stage)} piece, {RarityTier.GetName(RarityFloorFor(stage))} or better, and a {ChestFor(stage)} chest. First clear: {FirstClearDiamonds(stage)} diamonds.",
         };
 
-        public sealed record RunReward(long PieceId, string PieceBaseId, string PieceRarity, long ChestId, string Chest, int Diamonds, long Xp = 0, long Gold = 0);
+        public sealed record RunReward(long PieceId, string PieceBaseId, string PieceRarity, long ChestId, string Chest, int Diamonds, long Xp = 0, long Gold = 0, string Title = "");
 
         public enum RunOutcome { Ok, NoTickets, Locked, PlayerNotFound }
 
@@ -262,6 +266,7 @@ namespace FolkIdle.Server.Domain.Economy
             bool won, Income income, DateTime utcNow, Random rng)
         {
             int diamonds = 0;
+            string title = string.Empty;
             if (won)
             {
                 int bit = 1 << stage;
@@ -272,6 +277,14 @@ namespace FolkIdle.Server.Domain.Economy
                     player.PremiumDiamonds += diamonds;
                 }
                 row.BestStage = Math.Max(row.BestStage, stage);
+                // The last stage pays a title. GrantAsync is idempotent and joins
+                // this transaction, so it is asked on every win there: a title
+                // added after someone's first clear still reaches them on the next.
+                if (stage == DungeonSimulator.StageCount)
+                {
+                    var boss = DungeonBoss.For(kind);
+                    if (await TitleEngine.GrantAsync(db, player.Id, boss.TitleSlug, utcNow)) title = boss.TitleName;
+                }
             }
 
             RunReward? reward = kind switch
@@ -281,7 +294,7 @@ namespace FolkIdle.Server.Domain.Economy
                 DungeonKind.Gold => await PayGoldAsync(db, player.Id, GoldFor(stage, income.HourlyGold, won), diamonds),
                 _ => await PayEquipmentAsync(db, player.Id, stage, won, diamonds, utcNow, rng),
             };
-            return reward;
+            return reward != null && title.Length > 0 ? reward with { Title = title } : reward;
         }
 
         private static async Task<RunReward> PayGoldAsync(FolkIdleDbContext db, long playerId, long gold, int diamonds)

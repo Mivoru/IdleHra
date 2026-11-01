@@ -103,6 +103,8 @@ export interface DungeonReward {
   Diamonds: number;
   Xp: number;
   Gold: number;
+  /** The stage-15 title, by its display name, the first time it is earned; '' otherwise. */
+  Title?: string;
 }
 
 /** A bonus on a card, or a penalty in a banner. */

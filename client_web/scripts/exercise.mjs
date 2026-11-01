@@ -10,6 +10,7 @@
 // "there is nothing to fuse".
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
+import { readFileSync as readFileSyncTop } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { navButton } from './screens.mjs';
 
@@ -1776,6 +1777,16 @@ if (want('dungeon')) {
   record('the menu dots Dungeon exactly when a gate is full of tickets', (navDot > 0) === Boolean(fullNow), `full ${Boolean(fullNow)}, dots ${navDot}`);
   record('each gate shows its own loaded ticket picture', ticketArt.length === 3
     && new Set(ticketArt).size === 3 && ticketArt.every((t) => t.endsWith(':ok')), ticketArt.join(' ') || 'none');
+  // The run's own sounds (2026-11-01): every dungeon_* clip audio.ts names is
+  // served as real audio. A run only asks for the ones its events reach, so
+  // the generic "no audio 404" check below would never see a missing boss voice.
+  const dungeonClips = [...readFileSyncTop(new URL('../src/lib/ui/audio.ts', import.meta.url), 'utf8').matchAll(/'(dungeon_[a-z_]+\.wav)'/g)].map((m) => m[1]);
+  const clipSizes = await Promise.all(dungeonClips.map(async (f) => {
+    const res = await fetch(`${API_BASE}/audio/${f}`).catch(() => null);
+    return res && res.ok ? (await res.arrayBuffer()).byteLength : 0;
+  }));
+  record('every dungeon sound is served as real audio', dungeonClips.length === 13 && clipSizes.every((n) => n > 4000),
+    dungeonClips.map((f, i) => `${f.replace('dungeon_', '').replace('.wav', '')}:${clipSizes[i]}`).join(' '));
   const view = await apiGet('/api/v1/dungeon').catch(() => null);
   const kinds = (view?.Dungeons ?? []).map((d) => d.Key).join(',');
   record('the lobby has three gates with fifteen stages and four abilities each', kinds === 'Xp,Gold,Equipment'
