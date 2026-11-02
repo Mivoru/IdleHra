@@ -306,7 +306,7 @@ namespace FolkIdle.Server.Engine
                 // Modul: a Serializable transaction is EXPECTED to fail under
                 // contention, and this catch used to swallow it - the button
                 // did nothing and said nothing. Rolled back, so nothing was spent.
-                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingFailed);
+                Refuse(playerId, FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex, FolkIdle.Server.Network.CommandResultCode.BreedingFailed));
             }
         }
 
@@ -527,7 +527,7 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Hero-villager breeding failed: {ex}");
-                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingFailed);
+                Refuse(playerId, FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex, FolkIdle.Server.Network.CommandResultCode.BreedingFailed));
             }
         }
     }

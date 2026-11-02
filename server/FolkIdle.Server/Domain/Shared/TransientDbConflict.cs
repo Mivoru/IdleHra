@@ -38,6 +38,21 @@ namespace FolkIdle.Server.Domain.Shared
         }
 
         /// <summary>
+        /// The result code for a command whose transaction threw: "try again"
+        /// (TransactionPending) for a lost race, <paramref name="otherwise"/>
+        /// for anything else.
+        ///
+        /// Modul: an engine that catches its own exception never reaches
+        /// SafeDispatchAsync's conflict branch, so before this each such catch
+        /// answered a race with a refusal that read like a rule violation - or
+        /// with nothing at all, leaving the button waiting for its timeout.
+        /// </summary>
+        public static FolkIdle.Server.Network.CommandResultCode RefusalFor(
+            Exception ex,
+            FolkIdle.Server.Network.CommandResultCode otherwise = FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure)
+            => IsConflict(ex) ? FolkIdle.Server.Network.CommandResultCode.TransactionPending : otherwise;
+
+        /// <summary>
         /// Runs <paramref name="attempt"/>, and again after a short random pause
         /// when it fails with a conflict, up to <paramref name="attempts"/> times.
         ///

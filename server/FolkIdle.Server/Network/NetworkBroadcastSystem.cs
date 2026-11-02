@@ -4067,6 +4067,16 @@ namespace FolkIdle.Server.Network
 
                 var outcome = await VillageChestEngine.RemoveEquipmentUpToTierAsync(
                     db, playerId, maxQualityTier, sell, regions);
+                // Modul: a lost race is retried on a fresh context (the failed
+                // one still tracks the rolled-back rows); a sweep that still
+                // fails says so instead of reporting an empty success.
+                for (int attempt = 2; attempt <= Domain.Shared.TransientDbConflict.DefaultAttempts && outcome.LostRace; attempt++)
+                {
+                    using var retryScope = _serviceProvider.CreateScope();
+                    var retryDb = retryScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    outcome = await VillageChestEngine.RemoveEquipmentUpToTierAsync(
+                        retryDb, playerId, maxQualityTier, sell, regions);
+                }
 
                 // Modul: THE GOLD HAS TO REACH THE LIVE SESSION, and it must
                 // not be banked twice on the way.
@@ -4096,7 +4106,7 @@ namespace FolkIdle.Server.Network
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestBulkActionResponse
                 {
-                    Success = true,
+                    Success = !outcome.Failed,
                     RemovedCount = outcome.RemovedCount,
                     GoldGained = outcome.GoldGained,
                     SkippedWornCount = outcome.SkippedWornCount
@@ -4270,15 +4280,21 @@ namespace FolkIdle.Server.Network
                 }
 
                 var engine = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
+                // Modul: each Delve action is one Serializable transaction on its
+                // own context, touching the gold and player rows the checkpoint
+                // flush writes too. A lost race (40001) reached the catch below
+                // as a 500 the client reads as "could not reach the server";
+                // every action is safe to rerun (nothing leaves the database
+                // before its commit), so it is retried (audit 2026-11-02).
                 FolkIdle.Server.Domain.Economy.DelveActionOutcome outcome;
 
                 if (requestPath == "/api/v1/delve/start")
                 {
-                    outcome = await engine.StartRunAsync(playerId);
+                    outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.StartRunAsync(playerId));
                 }
                 else if (requestPath == "/api/v1/delve/bank")
                 {
-                    outcome = await engine.BankAsync(playerId);
+                    outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.BankAsync(playerId));
                 }
                 else if (requestPath == "/api/v1/delve/door")
                 {
@@ -4304,7 +4320,7 @@ namespace FolkIdle.Server.Network
                         return;
                     }
 
-                    outcome = await engine.ChooseDoorAsync(playerId, door);
+                    outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.ChooseDoorAsync(playerId, door));
                 }
                 else if (requestPath == "/api/v1/delve/deep/descend")
                 {
@@ -4335,13 +4351,13 @@ namespace FolkIdle.Server.Network
                         return;
                     }
 
-                    outcome = await engine.DescendAsync(playerId, quotedStake);
+                    outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.DescendAsync(playerId, quotedStake));
                 }
                 else if (requestPath == "/api/v1/delve/deep/lantern")
                 {
                     // No body is read: the action is the whole request, and the
                     // price is the engine's (stake x 2^bought, frozen stake).
-                    outcome = await engine.BuyLanternAsync(playerId);
+                    outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.BuyLanternAsync(playerId));
                 }
                 else
                 {
@@ -4761,25 +4777,34 @@ namespace FolkIdle.Server.Network
 
                 var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
 
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-                VillageChestEngine.ChestActionResult result;
-                long gold;
+                VillageChestEngine.ChestActionResult result = VillageChestEngine.ChestActionResult.Busy;
+                long gold = 0L;
 
                 // An equipment id and a material id are different shapes, so
                 // which one is present decides the operation rather than a
                 // separate "kind" field that could disagree with the payload.
-                if (payload.TryGetProperty("equipmentId", out var equipmentElement))
+                bool isEquipment = payload.TryGetProperty("equipmentId", out var equipmentElement);
+                bool isMaterial = !isEquipment && payload.TryGetProperty("itemId", out _);
+                if (isEquipment || isMaterial)
                 {
-                    (result, gold) = await VillageChestEngine.RemoveEquipmentAsync(
-                        db, playerId, equipmentElement.GetInt64(), sell);
-                }
-                else if (payload.TryGetProperty("itemId", out var itemElement))
-                {
-                    long quantity = payload.TryGetProperty("quantity", out var q) ? q.GetInt64() : 0L;
-                    (result, gold) = await VillageChestEngine.RemoveMaterialAsync(
-                        db, playerId, itemElement.GetString() ?? string.Empty, quantity, sell);
+                    // Modul: a lost race (Busy) is retried on a fresh context -
+                    // the failed one still tracks the rolled-back rows.
+                    for (int attempt = 1; attempt <= Domain.Shared.TransientDbConflict.DefaultAttempts && result == VillageChestEngine.ChestActionResult.Busy; attempt++)
+                    {
+                        using var scope = _serviceProvider.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                        if (isEquipment)
+                        {
+                            (result, gold) = await VillageChestEngine.RemoveEquipmentAsync(
+                                db, playerId, equipmentElement.GetInt64(), sell);
+                        }
+                        else
+                        {
+                            long quantity = payload.TryGetProperty("quantity", out var q) ? q.GetInt64() : 0L;
+                            (result, gold) = await VillageChestEngine.RemoveMaterialAsync(
+                                db, playerId, payload.GetProperty("itemId").GetString() ?? string.Empty, quantity, sell);
+                        }
+                    }
                 }
                 else
                 {

@@ -393,7 +393,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // this path used to say nothing at all - the client's Fuse
                 // button stayed held until its timeout and no toast explained
                 // the missing upgrade.
-                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
                 return ForgeSplicingResult.InvalidRequest;
             }
         }
@@ -774,7 +774,7 @@ namespace FolkIdle.Server.Domain.Economy
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Stack fusion aborted: {ex.Message}");
-                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
                 return null;
             }
         }

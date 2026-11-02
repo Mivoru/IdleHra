@@ -26,13 +26,20 @@ namespace FolkIdle.Server.Domain.Social
                 ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, req.PlayerId);
                 if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                 {
-                    {
-                        // GoldLedger: display only - CommitMailClaimAsync credits and records it.
-                        currentPayload.AddGold(req.GoldAttachment);
-                        currentPayload.IsDirty = true;
-                        safeDispatch("MailClaim.Accept", req.PlayerId, async () => { await mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, true); });
-                    }
+                    // GoldLedger: display only - CommitMailClaimAsync credits and records it.
+                    currentPayload.AddGold(req.GoldAttachment);
+                    currentPayload.IsDirty = true;
                 }
+
+                // Modul: the commit runs whether or not the player is still
+                // online (audit 2026-11-02). It writes rows only, and a player
+                // who disconnected between the claim and this drain used to be
+                // skipped - leaving the mail IsPending in the database with
+                // nothing left to clear it, hidden and unclaimable until the
+                // seven-day cleanup deleted it.
+                long claimant = req.PlayerId;
+                long mailId = req.MailId;
+                safeDispatch("MailClaim.Accept", claimant, async () => { await mailboxEngine.CommitMailClaimAsync(claimant, mailId, true); });
             }
         }
 

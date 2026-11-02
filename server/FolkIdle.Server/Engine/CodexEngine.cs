@@ -214,12 +214,19 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul: a batch that fails is LOST - the kills are dequeued before the
-        // transaction opens and the rollback does not put them back. Bounded
-        // re-enqueue is written up in the backlog rather than done here,
-        // because a batch that always fails would then be retried every five
-        // seconds for the life of the process.
-        private async Task ProcessKillBatchAsync(CancellationToken stoppingToken)
+        // Modul: A LOST RACE NO LONGER LOSES THE BATCH (audit 2026-11-02). The
+        // kills are dequeued before the transaction opens, so a batch that
+        // fails is gone - and one batch is every player's kills for five
+        // seconds. What rides on it is durable: the codex counts that
+        // LoadPlayerState derives DefeatedRegionBossMask and the unlocked
+        // regions from, the first-clear trophy and chest, race unlocks. A
+        // Serializable conflict (40001) is an ordinary outcome for it, so the
+        // persist is retried a bounded number of times (TransientDbConflict);
+        // anything else is still dropped, with a count in the log, so a batch
+        // that always fails cannot spin. The post-commit work runs once,
+        // outside the retry - re-running it after a commit would count every
+        // kill twice.
+        internal async Task ProcessKillBatchAsync(CancellationToken stoppingToken)
         {
             var killsToProcess = new System.Collections.Generic.List<KillEvent>();
             while (KillEventQueue.TryDequeue(out var killEvent))
@@ -229,11 +236,43 @@ namespace FolkIdle.Server.Engine
 
             if (killsToProcess.Count == 0) return;
 
+            KillBatchOutcome outcome;
+            try
+            {
+                outcome = await TransientDbConflict.RetryAsync(() => PersistKillBatchAsync(killsToProcess, stoppingToken));
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException && stoppingToken.IsCancellationRequested))
+            {
+                Console.WriteLine($"Failed to process Codex entries - {killsToProcess.Count} kill event(s) dropped: {ex.Message}");
+                return;
+            }
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await PublishKillBatchAsync(killsToProcess, outcome, dbContext, stoppingToken);
+        }
+
+        /// <summary>What a committed kill batch has to tell the tick and the client.</summary>
+        internal sealed class KillBatchOutcome
+        {
+            public System.Collections.Generic.HashSet<long> CodexLeveledUpPlayerIds { get; } = new();
+            public System.Collections.Generic.Dictionary<long, int> NewRegionFlagsByPlayer { get; } = new();
+            public System.Collections.Generic.List<RaceUnlockNotification> RaceUnlocks { get; } = new();
+            public System.Collections.Generic.List<MasteryUpdateNotification> MasteryLevelUps { get; } = new();
+        }
+
+        /// <summary>
+        /// One attempt at a kill batch: its own scope and transaction, and
+        /// nothing outside the database before the commit, so a rerun after a
+        /// conflict starts from what is committed.
+        /// </summary>
+        internal async Task<KillBatchOutcome> PersistKillBatchAsync(System.Collections.Generic.List<KillEvent> killsToProcess, CancellationToken stoppingToken)
+        {
+            var outcome = new KillBatchOutcome();
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
-            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
-            try
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
             {
                 var playerIds = killsToProcess.Select(k => k.PlayerId).Distinct().ToList();
 
@@ -245,7 +284,7 @@ namespace FolkIdle.Server.Engine
                     .Where(m => playerIds.Contains(m.PlayerId))
                     .ToDictionaryAsync(m => new { m.PlayerId, m.RaceId }, stoppingToken);
 
-                var codexLeveledUpPlayerIds = new System.Collections.Generic.HashSet<long>();
+                var codexLeveledUpPlayerIds = outcome.CodexLeveledUpPlayerIds;
 
                 // Modul: race unlocks. A region boss's FIRST kill unlocks a
                 // playable race. Detected here rather than in the combat
@@ -257,7 +296,7 @@ namespace FolkIdle.Server.Engine
                 var newlyUnlockedRaces = new System.Collections.Generic.List<(long PlayerId, byte RaceId, int MonsterId)>();
                 // Modul: race unlock feedback. Staged before the commit,
                 // published after it - see the enqueue site below.
-                var pendingUnlockNotifications = new System.Collections.Generic.List<RaceUnlockNotification>();
+                var pendingUnlockNotifications = outcome.RaceUnlocks;
 
                 foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
                 {
@@ -363,7 +402,7 @@ namespace FolkIdle.Server.Engine
                 var existingCompletionSet = new System.Collections.Generic.HashSet<(long PlayerId, int RegionId)>(
                     existingCompletions.Select(e => (e.PlayerId, e.RegionId)));
 
-                var newRegionFlagsByPlayer = new System.Collections.Generic.Dictionary<long, int>();
+                var newRegionFlagsByPlayer = outcome.NewRegionFlagsByPlayer;
 
                 // Modul: task 26 (H5) - the five canonical regions, 1,000 kills
                 // of each regular and 100 of the boss, by RegionCompletionRules.
@@ -489,7 +528,10 @@ namespace FolkIdle.Server.Engine
 
                     if (leveledUp)
                     {
-                        _playerRegistry.MasteryUpdateQueue.Enqueue(new MasteryUpdateNotification
+                        // Staged, published after the commit (it used to be
+                        // enqueued here, so a rolled-back batch still told the
+                        // client about a level it never got).
+                        outcome.MasteryLevelUps.Add(new MasteryUpdateNotification
                         {
                             PlayerId = group.Key.PlayerId,
                             RaceId = group.Key.RaceId,
@@ -500,7 +542,20 @@ namespace FolkIdle.Server.Engine
 
                 await dbContext.SaveChangesAsync(stoppingToken);
                 await transaction.CommitAsync(stoppingToken);
+                return outcome;
+            }
+        }
 
+        /// <summary>The work after a kill batch commits: run once, never retried.</summary>
+        private async Task PublishKillBatchAsync(System.Collections.Generic.List<KillEvent> killsToProcess, KillBatchOutcome outcome, FolkIdleDbContext dbContext, CancellationToken stoppingToken)
+        {
+            foreach (var levelUp in outcome.MasteryLevelUps)
+            {
+                _playerRegistry.MasteryUpdateQueue.Enqueue(levelUp);
+            }
+
+            try
+            {
                 // The Vault lock's marker: the highest region this life has
                 // killed in (PlayerRecord.LifeHighestRegion). After the commit
                 // and outside the batch's transaction, so it can never abort a
@@ -523,12 +578,12 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
-                foreach (long leveledUpPlayerId in codexLeveledUpPlayerIds)
+                foreach (long leveledUpPlayerId in outcome.CodexLeveledUpPlayerIds)
                 {
                     await RecalculateAndSyncMultipliersAsync(leveledUpPlayerId, dbContext, _playerRegistry);
                 }
 
-                foreach (var regionCompletionKvp in newRegionFlagsByPlayer)
+                foreach (var regionCompletionKvp in outcome.NewRegionFlagsByPlayer)
                 {
                     _playerRegistry.RegionCompletionUpdateQueue.Enqueue(new RegionCompletionNotification
                     {
@@ -539,15 +594,16 @@ namespace FolkIdle.Server.Engine
 
                 // Modul: race unlock feedback. Post-commit, so the client is
                 // only ever told about a race that is durably granted.
-                for (int i = 0; i < pendingUnlockNotifications.Count; i++)
+                for (int i = 0; i < outcome.RaceUnlocks.Count; i++)
                 {
-                    _playerRegistry.RaceUnlockQueue.Enqueue(pendingUnlockNotifications[i]);
+                    _playerRegistry.RaceUnlockQueue.Enqueue(outcome.RaceUnlocks[i]);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!(ex is OperationCanceledException && stoppingToken.IsCancellationRequested))
             {
-                await transaction.RollbackAsync(stoppingToken);
-                Console.WriteLine($"Failed to process Codex entries: {ex.Message}");
+                // The batch is committed; a failure here costs a stale display
+                // until the next login recomputes it, never a kill.
+                Console.WriteLine($"Codex: post-commit sync failed: {ex.Message}");
             }
         }
     }

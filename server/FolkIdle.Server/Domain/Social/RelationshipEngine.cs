@@ -89,6 +89,8 @@ namespace FolkIdle.Server.Domain.Social
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"AddFriend failed for player {playerId}: {ex.Message}");
+                // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 
@@ -120,6 +122,7 @@ namespace FolkIdle.Server.Domain.Social
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"RemoveFriend failed for player {playerId}: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 
@@ -184,6 +187,7 @@ namespace FolkIdle.Server.Domain.Social
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"BlockPlayer failed for player {playerId}: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 
@@ -215,6 +219,7 @@ namespace FolkIdle.Server.Domain.Social
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"UnblockPlayer failed for player {playerId}: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
     }

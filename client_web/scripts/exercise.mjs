@@ -1693,7 +1693,11 @@ if (want('potions')) {
     await page.waitForTimeout(500);
     brewed = await chestCount(brewId);
   }
-  record('brewing takes the herbs and puts an Ironbark Brew in the chest', brewed === brewBefore + 1,
+  // At least one, not exactly one: a craft can legitimately yield an extra unit
+  // (CraftingEngine.MasterArtisanExtraUnits during that global event). Exact
+  // equality failed on a working build and, worse, left the spare brew behind
+  // for the next run's shelf check (audit 2026-11-02).
+  record('brewing takes the herbs and puts an Ironbark Brew in the chest', brewed >= brewBefore + 1,
     `brew ${brewBefore} -> ${brewed}, mallow ${mallowBefore + 150} -> ${await chestCount('marsh_mallow')}`);
   await page.getByLabel('Filter recipes').fill('');
 
@@ -1702,7 +1706,10 @@ if (want('potions')) {
   await slot.getByTestId('potion-stock-1').first().click({ timeout: 10000 }).catch(() => {});
   const shelved = await slot.getByTestId('potion-count-1').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
   const onShelf = shelved ? (await slot.getByTestId('potion-count-1').innerText()).trim() : '';
-  record('the brew moves from the chest onto the combat shelf', shelved && Number(onShelf) >= 1 && (await chestCount(brewId)) === brewBefore,
+  // Stocking moves the whole stack, including a brew an earlier run unloaded
+  // into the chest above, so the chest falls below what was brewed rather than
+  // back to brewBefore.
+  record('the brew moves from the chest onto the combat shelf', shelved && Number(onShelf) >= 1 && (await chestCount(brewId)) < brewed,
     `shelf ${onShelf || 'empty'}, chest ${await chestCount(brewId)}`);
 
   // Auto-drink round-trips: on, then off again.
@@ -4147,6 +4154,19 @@ await go('The Delve');
 // the grant, nothing else - so the step passes on every run without a reseed.
 {
   await apiPost('/api/v1/dev/event', { EventId: 1 });
+  // Modul: THE INTRO ARRIVES WITH THE EVENT (audit 2026-11-02). Out of season
+  // eventIntroStep at the start finds no live event and marks nothing seen, so
+  // switching the event on HERE makes EventIntro open over the screen a moment
+  // later - and its scrim swallowed the chip click below. Correlated 7 of 7
+  // runs: every crash was a run whose start had no live event. A player sees
+  // the same intro when an event goes live mid-session; that part is right.
+  {
+    const introClose = page.getByTestId('event-intro-close');
+    if (await introClose.waitFor({ timeout: 4000 }).then(() => true).catch(() => false)) {
+      await introClose.click();
+      await page.waitForTimeout(400);
+    }
+  }
   const ev = (await apiGet('/api/v1/event'))?.Event ?? null;
   record(
     'the server lists a live seasonal event with a shop',

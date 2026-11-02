@@ -92,6 +92,19 @@ namespace FolkIdle.Server.Engine
         {
             Task.Run(async () =>
             {
+                try
+                {
+                    int released = await ReleaseOrphanedClaimsAsync();
+                    if (released > 0)
+                    {
+                        Console.WriteLine($"Mailbox: released {released} mail claim(s) stranded by a restart.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Mailbox: releasing stranded claims failed: {ex.Message}");
+                }
+
                 while (true)
                 {
                     try
@@ -162,124 +175,193 @@ namespace FolkIdle.Server.Engine
 
         public async Task CommitMailClaimAsync(long playerId, long mailId, bool isSuccess)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-            using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-            int? diamondBalance = null;
             try
             {
-                var mailQuery = "SELECT * FROM \"MailboxInstances\" WHERE \"Id\" = {0} FOR UPDATE";
-                var mail = await db.MailboxInstances.FromSqlRaw(mailQuery, mailId).SingleOrDefaultAsync();
-
-                if (mail == null) return;
-
-                if (isSuccess)
+                // Modul: A LOST RACE NO LONGER LOSES THE MAIL (audit 2026-11-02).
+                // This transaction locks the PlayerRecords and gold rows the
+                // checkpoint flush writes too, so a Serializable conflict (40001)
+                // is an ordinary outcome here. It used to be swallowed: the claim
+                // rolled back with IsPending still true from ClaimMailItemAsync,
+                // and nothing ever cleared it - the mailbox list hides pending
+                // mail and the claim refuses it, so the gold, diamonds or item
+                // were out of reach until the seven-day cleanup deleted them.
+                // The success result was also sent BEFORE the commit, so the
+                // player was told it worked. Now each attempt is a fresh
+                // transaction (TransientDbConflict.RetryAsync), the result is
+                // sent after the commit, and a claim that still fails is
+                // released so the mail is claimable again.
+                var outcome = await TransientDbConflict.RetryAsync(() => CommitMailClaimOnceAsync(mailId, isSuccess));
+                if (!outcome.Claimed)
                 {
-                    mail.IsClaimed = true;
-                    mail.IsPending = false;
-
-                    if (mail.AttachedEquipmentId.HasValue)
-                    {
-                        var eqQuery = "SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE";
-                        var eq = await db.EquipmentInstances.FromSqlRaw(eqQuery, mail.AttachedEquipmentId.Value).SingleOrDefaultAsync();
-                        if (eq != null)
-                        {
-                            eq.PlayerId = mail.PlayerId;
-                        }
-                    }
-                    else if (!string.IsNullOrEmpty(mail.BaseItemId))
-                    {
-                        db.EquipmentInstances.Add(new EquipmentInstance
-                        {
-                            PlayerId = mail.PlayerId,
-                            BaseItemId = mail.BaseItemId,
-                            QualityTier = mail.QualityTier,
-                            AffixPayload = "{}"
-                        });
-                    }
-
-                    if (mail.GoldAttachment > 0)
-                    {
-                        // Modul: an upsert (CommodityLedger), task 44.
-                        await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", mail.GoldAttachment);
-                        await GoldLedger.RecordIncomeAsync(db, mail.PlayerId, GoldIncomeSource.Mail, mail.GoldAttachment);
-                    }
-
-                    // Modul: diamonds and a title, sent only by the admin mail
-                    // (the 2026-10-09 betatester thank-you). The title is worn
-                    // at once: a gift nobody sees is no gift, and a level-1
-                    // tester cannot reach the Delve's title picker yet.
-                    if (mail.DiamondAttachment > 0 || !string.IsNullOrEmpty(mail.TitleAttachment))
-                    {
-                        var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == mail.PlayerId);
-                        if (player != null)
-                        {
-                            if (mail.DiamondAttachment > 0)
-                            {
-                                player.PremiumDiamonds += mail.DiamondAttachment;
-                            }
-                            if (FolkIdle.Server.Domain.Progression.TitleRegistry.Find(mail.TitleAttachment) != null)
-                            {
-                                await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, mail.PlayerId, mail.TitleAttachment!, GameClock.UtcNow);
-                                player.ActiveTitleSlug = mail.TitleAttachment;
-                            }
-                            diamondBalance = mail.DiamondAttachment > 0 ? player.PremiumDiamonds : null;
-                        }
-                    }
-
-                    // Modul: this path never told the live session anything -
-                    // isSuccess is hardcoded true at this method's one call
-                    // site, so a claim always lands here, and Mailbox.svelte's
-                    // claim()/claimAll() had no signal besides their own
-                    // guessed-delay setTimeout. Routes through the same
-                    // CommandResult ring buffer every other engine's success
-                    // path already uses.
-                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
-                }
-                else
-                {
-                    mail.IsPending = false;
+                    return;
                 }
 
-                await db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
 
                 // Modul: the live payload owns PremiumCurrency and the checkpoint
                 // writes it back by plain assignment, so a DB-only credit would be
                 // overwritten by the next flush (the 2026-08-02 achievement bug).
                 // Hand the committed balance to the tick thread instead.
-                if (diamondBalance.HasValue)
+                if (outcome.DiamondBalance.HasValue)
                 {
                     _playerRegistry.BillingSyncQueue.Enqueue(new BillingSyncNotification
                     {
-                        PlayerId = mail.PlayerId,
-                        PremiumDiamondsBalance = diamondBalance.Value
+                        PlayerId = outcome.OwnerId,
+                        PremiumDiamondsBalance = outcome.DiamondBalance.Value
                     });
                 }
 
                 // Claiming mail can put an equipment instance in the backpack,
                 // so the live count has to learn about it.
-                await EnqueueInventoryCensusAsync(db, mail.PlayerId);
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await EnqueueInventoryCensusAsync(db, outcome.OwnerId);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Modul: a known, deliberately out-of-scope gap (2026-09-19
-                // REST-race plan) - this and the `mail == null` early return
-                // above still report nothing to the client. Both are
-                // unreachable from CommitMailClaimAsync's one real call site
-                // today (isSuccess is hardcoded true), so closing them is
-                // scoped out rather than missed.
-                await transaction.RollbackAsync();
+                Console.WriteLine($"Mail claim {mailId} for {playerId} failed: {ex.Message}");
+                await ReleasePendingClaimAsync(mailId);
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)TransientDbConflict.RefusalFor(ex));
             }
             finally
             {
-                // Modul: the pending flag started in ClaimMailItemAsync is
-                // only ever cleared here, regardless of outcome (mail row
-                // missing, success, rejection, or a thrown exception) -
-                // this method is that claim's terminal step.
+                // Modul: the in-memory pending flag started in ClaimMailItemAsync
+                // is only ever cleared here, regardless of outcome (mail row
+                // missing, success, rejection, or a thrown exception) - this
+                // method is that claim's terminal step.
                 EndPendingTransaction(playerId);
             }
+        }
+
+        private readonly record struct MailClaimOutcome(bool Claimed, long OwnerId, int? DiamondBalance);
+
+        /// <summary>
+        /// One attempt at the claim: its own scope and transaction, nothing done
+        /// outside the database before the commit, so a rerun after a conflict
+        /// starts from what is committed.
+        /// </summary>
+        private async Task<MailClaimOutcome> CommitMailClaimOnceAsync(long mailId, bool isSuccess)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            int? diamondBalance = null;
+
+            var mailQuery = "SELECT * FROM \"MailboxInstances\" WHERE \"Id\" = {0} FOR UPDATE";
+            var mail = await db.MailboxInstances.FromSqlRaw(mailQuery, mailId).SingleOrDefaultAsync();
+
+            // Modul: IsClaimed is checked under the lock. ReleaseOrphanedClaimsAsync
+            // and ReleasePendingClaimAsync can make a mail claimable again while
+            // an earlier request for it is still queued, so two commits for one
+            // mail are possible - the second must credit nothing.
+            if (mail == null || mail.IsClaimed)
+            {
+                return new MailClaimOutcome(false, 0, null);
+            }
+
+            if (!isSuccess)
+            {
+                mail.IsPending = false;
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return new MailClaimOutcome(false, mail.PlayerId, null);
+            }
+
+            mail.IsClaimed = true;
+            mail.IsPending = false;
+
+            if (mail.AttachedEquipmentId.HasValue)
+            {
+                var eqQuery = "SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE";
+                var eq = await db.EquipmentInstances.FromSqlRaw(eqQuery, mail.AttachedEquipmentId.Value).SingleOrDefaultAsync();
+                if (eq != null)
+                {
+                    eq.PlayerId = mail.PlayerId;
+                }
+            }
+            else if (!string.IsNullOrEmpty(mail.BaseItemId))
+            {
+                db.EquipmentInstances.Add(new EquipmentInstance
+                {
+                    PlayerId = mail.PlayerId,
+                    BaseItemId = mail.BaseItemId,
+                    QualityTier = mail.QualityTier,
+                    AffixPayload = "{}"
+                });
+            }
+
+            if (mail.GoldAttachment > 0)
+            {
+                // Modul: an upsert (CommodityLedger), task 44.
+                await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", mail.GoldAttachment);
+                await GoldLedger.RecordIncomeAsync(db, mail.PlayerId, GoldIncomeSource.Mail, mail.GoldAttachment);
+            }
+
+            // Modul: diamonds and a title, sent only by the admin mail
+            // (the 2026-10-09 betatester thank-you). The title is worn
+            // at once: a gift nobody sees is no gift, and a level-1
+            // tester cannot reach the Delve's title picker yet.
+            if (mail.DiamondAttachment > 0 || !string.IsNullOrEmpty(mail.TitleAttachment))
+            {
+                var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == mail.PlayerId);
+                if (player != null)
+                {
+                    if (mail.DiamondAttachment > 0)
+                    {
+                        player.PremiumDiamonds += mail.DiamondAttachment;
+                    }
+                    if (FolkIdle.Server.Domain.Progression.TitleRegistry.Find(mail.TitleAttachment) != null)
+                    {
+                        await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, mail.PlayerId, mail.TitleAttachment!, GameClock.UtcNow);
+                        player.ActiveTitleSlug = mail.TitleAttachment;
+                    }
+                    diamondBalance = mail.DiamondAttachment > 0 ? player.PremiumDiamonds : null;
+                }
+            }
+
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new MailClaimOutcome(true, mail.PlayerId, diamondBalance);
+        }
+
+        /// <summary>
+        /// Makes one unclaimed mail claimable again after its claim failed.
+        /// Best-effort: if this fails too, ReleaseOrphanedClaimsAsync clears it
+        /// at the next start.
+        /// </summary>
+        private async Task ReleasePendingClaimAsync(long mailId)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE \"MailboxInstances\" SET \"IsPending\" = false WHERE \"Id\" = {mailId} AND \"IsClaimed\" = false");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Releasing mail claim {mailId} failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Clears IsPending on every unclaimed mail. Run once at start-up.
+        ///
+        /// Modul: the queue between ClaimMailItemAsync and CommitMailClaimAsync
+        /// (MailClaimRequestQueue) lives in memory, so a restart between the two
+        /// strands the mail as pending for good - hidden from the list, refused
+        /// by the claim, deleted unclaimed after seven days. Nothing can be in
+        /// flight before this process has served a request, so every pending
+        /// row at start-up is such an orphan. A commit that does still arrive
+        /// checks IsClaimed under its lock, so nothing is credited twice.
+        /// </summary>
+        public async Task<int> ReleaseOrphanedClaimsAsync()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            return await db.Database.ExecuteSqlRawAsync(
+                "UPDATE \"MailboxInstances\" SET \"IsPending\" = false WHERE \"IsPending\" = true AND \"IsClaimed\" = false");
         }
 
         /// <summary>

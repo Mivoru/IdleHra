@@ -382,20 +382,45 @@ namespace FolkIdle.Server.Engine
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)TransientDbConflict.RefusalFor(ex));
                 Console.WriteLine($"Order placement failed: {ex.Message}");
             }
         }
 
         public async Task MatchOrdersAsync(string baseItemId, int qualityTier)
         {
+            // Modul: A LOST RACE NO LONGER STRANDS CROSSED ORDERS (audit
+            // 2026-11-02). Matching runs fire-and-forget after a placement and
+            // takes FOR UPDATE on the same order, gold and equipment rows as the
+            // instant buy, a cancel and the checkpoint flush, so a Serializable
+            // conflict is an ordinary outcome. It used to be caught and logged
+            // and nothing else: the whole pass rolled back, and since a placement
+            // is the only thing that starts a pass, a buy at or above a sell sat
+            // unmatched until somebody listed the same item and tier again.
+            // Each attempt is a fresh transaction; display credits leave only
+            // after the commit that earned them.
+            try
+            {
+                var displayCredits = await TransientDbConflict.RetryAsync(() => MatchOrdersOnceAsync(baseItemId, qualityTier));
+                foreach (var credit in displayCredits)
+                {
+                    _playerRegistry.MarketMatchQueue.Enqueue(credit);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Order matching failed for {baseItemId} T{qualityTier}: {ex.Message}");
+            }
+        }
+
+        private async Task<List<MarketMatchNotification>> MatchOrdersOnceAsync(string baseItemId, int qualityTier)
+        {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
-            using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             // Display credits for online players, sent only once the match commits.
             var displayCredits = new List<MarketMatchNotification>();
-            try
             {
                 var buyQuery = "SELECT * FROM \"MarketOrderRecords\" WHERE \"Status\" = 0 AND \"OrderType\" = 'BUY' AND \"BaseItemId\" = {0} AND \"QualityTier\" = {1} ORDER BY \"Price\" DESC FOR UPDATE";
                 var sellQuery = "SELECT * FROM \"MarketOrderRecords\" WHERE \"Status\" = 0 AND \"OrderType\" = 'SELL' AND \"BaseItemId\" = {0} AND \"QualityTier\" = {1} ORDER BY \"Price\" ASC FOR UPDATE";
@@ -506,17 +531,10 @@ namespace FolkIdle.Server.Engine
                 }
 
                 await transaction.CommitAsync();
-                // After the commit, never inside it: a display credit for a
-                // match that then rolled back would be gold the row never got.
-                foreach (var credit in displayCredits)
-                {
-                    _playerRegistry.MarketMatchQueue.Enqueue(credit);
-                }
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                Console.WriteLine($"Order matching failed: {ex.Message}");
+                // Returned, not enqueued: the caller sends them after the
+                // commit, never inside it - a display credit for a match that
+                // then rolled back would be gold the row never got.
+                return displayCredits;
             }
         }
     }
