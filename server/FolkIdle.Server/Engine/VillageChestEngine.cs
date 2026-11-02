@@ -101,6 +101,13 @@ namespace FolkIdle.Server.Engine
             /// (task 99), but the client is not the authority.
             /// </summary>
             NotRemovable = 5,
+
+            /// <summary>
+            /// The transaction lost a race (40001) and changed nothing; the
+            /// caller retries it. It used to come back as NotFound - "the item
+            /// is gone" - for an item that was still there.
+            /// </summary>
+            Busy = 6,
         }
 
         /// <summary>
@@ -171,9 +178,11 @@ namespace FolkIdle.Server.Engine
                 await transaction.CommitAsync();
                 return (ChestActionResult.Success, gold);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                if (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex)) return (ChestActionResult.Busy, 0L);
+                Console.WriteLine($"Chest removal failed for player {playerId}: {ex.Message}");
                 return (ChestActionResult.NotFound, 0L);
             }
         }
@@ -254,9 +263,11 @@ namespace FolkIdle.Server.Engine
                 await transaction.CommitAsync();
                 return (ChestActionResult.Success, gold);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                if (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex)) return (ChestActionResult.Busy, 0L);
+                Console.WriteLine($"Chest removal failed for player {playerId}: {ex.Message}");
                 return (ChestActionResult.NotFound, 0L);
             }
         }
@@ -404,6 +415,15 @@ namespace FolkIdle.Server.Engine
             public int RemovedCount { get; init; }
             public long GoldGained { get; init; }
             public int SkippedWornCount { get; init; }
+
+            /// <summary>
+            /// Rolled back. Before this a failed sweep came back as an empty
+            /// success, and the client announced "Sold 0 pieces".
+            /// </summary>
+            public bool Failed { get; init; }
+
+            /// <summary>Failed because it lost a race (40001) - worth retrying.</summary>
+            public bool LostRace { get; init; }
         }
 
         /// <summary>
@@ -546,10 +566,12 @@ namespace FolkIdle.Server.Engine
                     SkippedWornCount = skippedWorn
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return new BulkRemovalOutcome();
+                bool lostRace = FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex);
+                if (!lostRace) Console.WriteLine($"Chest sweep failed for player {playerId}: {ex.Message}");
+                return new BulkRemovalOutcome { Failed = true, LostRace = lostRace };
             }
         }
 

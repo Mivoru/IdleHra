@@ -1,6 +1,13 @@
 # Skill tree and affix rework - design
 
-Status: **proposal, awaiting owner decisions** (section 9). No code yet.
+Status (2026-11-02): **BUILT and live - this is now the design record, not
+an open proposal.** The War half replaced the old tree for every player
+(#225-#229, 1.0.1352 / client 1.39.0); the Hearth half shipped in client 1.41.0
+(#236, `HearthTreeRegistry`). The affix half is phase 3 of
+`ROADMAP_2026_10_30.md` section 6 and is largely built (see the task board).
+For what was decided and why, read `SKILL_TREE_HANDOFF.md` first.
+
+Originally: **proposal, awaiting owner decisions** (section 9).
 Written 2026-10-29 against production 1.0.1310 / client 1.37.0. It merges
 two outside proposals (Gemini: four hybrid combat paths, cross-domain
 conversions; ChatGPT: five disciplines, draft mode, Recast/Refine, affix

@@ -11,6 +11,22 @@ is done, move its section to the archive (or a new archive file) rather than
 leaving it here marked DONE - a board that is mostly finished work is how
 the old one reached 420 KB and three contradictory START HERE blocks.
 
+## State on 2026-11-02
+
+- **Production** is 1.0.1557 / client 1.53.0 (see the top of
+  `architecture/NEXT_STEPS_BACKLOG.md` for what each release carried).
+- **Closed since 2026-10-30** (still listed below until moved to the archive,
+  each marked): 128 (CI runs vitest, #231), 132 (the Hearth half, #236,
+  client 1.41.0), 119 (the findings were the checker's own - audit
+  2026-11-02). **133 is largely built**: 3.1, 3.3 (utility half), 3.4 Refine,
+  `crushing_blow_pct` and `thorns_pct` (3.6) are live; `double_hit_pct` and
+  the 3.5 re-measure are what is left.
+- Also shipped and not on this board: herbs and potions, the Ascension reset,
+  the Book of Deeds, the diamond rework, loot chests, the dungeon gates, the
+  playtest bots (backlog, 2026-10-31 to 2026-11-02).
+- **What is next** is 134 (phase 2b, the per-swing simulator) and 135 (affix
+  families and signatures), plus the measurement batch.
+
 ## State on 2026-10-30
 
 - **Production** runs `main` through PR #229 (**server 1.0.1356, client
@@ -70,20 +86,23 @@ says otherwise.
 
 | # | Task | Roadmap | Size |
 |---|---|---|---|
-| 1 | 128. CI runs the client unit tests | 4.1 | S |
+| 1 | 128. CI runs the client unit tests | 4.1 | S, done (#231) |
 | 2 | Board tidy (this rewrite) | 4.2 | S, done |
 | 3 | 120. `exercise` flakes | 2.1 | M, done |
 | 4 | 129. Flaky server tests | 2.2 | S-M |
 | 5 | 37, 111, 130, 131. Measurement batch | 3.1-3.4 | S each |
-| 6 | 132. Phase 4 - Hearth | 7 | L-XL |
-| 7 | 133. Phase 3 - affixes | 6 | L |
+| 6 | 132. Phase 4 - Hearth | 7 | L-XL, done (#236) |
+| 7 | 133. Phase 3 - affixes | 6 | L, largely done - see 133 |
 | 8 | 112. Malakor re-measure | 3.5 | M |
 | 9 | 134. Phase 2b - the per-swing simulator | 5 | XL |
 | 10 | 135. Phase 5 - affix families and signatures | 8 | L |
 | - | 118. UI wave 3, when the event art exists | 4.4 | M |
-| - | 119. Safe-area triage, between phases | 4.3 | M |
+| - | 119. Safe-area triage, between phases | 4.3 | M, done (checker bug) |
 
-### 128. CI runs the client unit tests - TOOLING (roadmap 4.1)
+### 128. CI runs the client unit tests - TOOLING (roadmap 4.1) - DONE
+
+**Done in #231**: `deploy.yml`'s client job runs `npm test`. Move to the
+archive at the next tidy.
 
 The `client` CI job never ran vitest, so four guard tests stayed red on
 `main` from #216 until 2026-10-30. **In PR #231**: `npm test` after
@@ -94,7 +113,9 @@ and the revert turns it green.
 
 `OfflineCombatParityTests` and
 `AutomationAutoFuseTests.TheWorker_FusesTheStacksARequestsDropsLandedIn`
-fail only under full-suite load. Suspect the process-wide static queues
+fail only under full-suite load. 2026-11-02: a different parity row ("lifesteal
+r2 hungry") failed once in a full run and passed 4 of 4 runs of the class on
+its own - the same shape. Suspect the process-wide static queues
 (`CombatLootEngine.DropRequestQueue`, `GatheringGrantQueue`) shared by test
 classes that xUnit runs in parallel. Acceptance: 5 full local runs green.
 
@@ -112,13 +133,24 @@ keystones, gold respecs. Compare with the harness's predicted best builds.
 Material flow per active player before and after #211 (the extras now
 multiply). Run it with 111's queries. It feeds Hearth's D2.
 
-### 132. Phase 4 - the Hearth half of the skill tree - BUILD (roadmap 7)
+### 132. Phase 4 - the Hearth half of the skill tree - BUILD (roadmap 7) - DONE
+
+**Shipped in #236 (client 1.41.0)**; `HearthTreeRegistry` wires 24 effects,
+with Green Thumb pending (no herbalism node, #245). Move to the archive at the
+next tidy. The text below is the plan as written.
 
 Gives back the craft time, gathering speed and offline bonus the switch
 took. Measure first (step 4.0, D2). The rank buffer decision (7.2) is the
 owner's. Masterwork waits for phase 3.
 
-### 133. Phase 3 - the affix rework - BUILD (roadmap 6)
+### 133. Phase 3 - the affix rework - BUILD (roadmap 6) - LARGELY DONE
+
+**Built (2026-10-30, roadmap 6.2/6.2a):** 3.1 the damage family (#240), 3.3
+the ring/amulet utility half, 3.4 Refine (#244), 3.6 `crushing_blow_pct` on
+gloves and `thorns_pct` on the chest (thorns back in rolls after 3fa32b5b
+priced it per swing offline). **Left:** `double_hit_pct` (not in
+`AffixRegistry`), and 3.5 - re-measure the tree harness, the walls and
+Malakor (task 112) now the gear has moved.
 
 Includes the ring's pool (owner decision D4, from task 125). Keep the
 `KNOWN_AFFIX_IDS` order: it is a wire index.
@@ -251,7 +283,14 @@ with `check:perf` and the geometry checks. Write-up of what shipped:
   Which events exist and when they run is server content - ask the owner
   before inventing dates.
 
-### 119. `check:safearea` - triage the existing findings
+### 119. `check:safearea` - triage the existing findings - DONE (2026-11-02)
+
+**The findings were the checker's.** `markPinned` tagged `display: contents`
+boxes (Game.svelte's `main.screen-main` reports an all-zero rect, so it never
+"moved"), and every element below it inherited the tag through
+`closest('[data-sa-pinned]')`. Fixed in the checker: 49 of 62 pairs -> 0. A
+negative control (body's bottom padding removed) still finds 3. The check
+already fails on any finding, which is the ratchet at zero.
 
 Measured 2026-10-14: findings on 48 of 60 screen/orientation pairs on
 `main`, almost all "bottom ... (pinned)" - content under the gesture bar at

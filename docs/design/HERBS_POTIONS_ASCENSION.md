@@ -2,7 +2,16 @@
 
 Written 2026-10-30 from the owner's questions in one conversation. Each part
 says what is true today (measured or read from the code), proposes a design,
-and ends with the decisions it needs. Nothing here is built.
+and ends with the decisions it needs.
+
+**Status (2026-11-02): BUILT and live.** The Ascension reset and its ladder
+shipped in 1.0.1457 / client 1.45.0 (#247); herbs and potions are complete in
+1.0.1472 / client 1.47.0 (#250: shelves, three slots, offline stretches,
+measured effects), with rare-material crafts (R1) alongside. The owner's
+decisions are recorded in section 1.2a. Read this as the design record; the
+sentence below is what it said when it was written.
+
+Originally: "Nothing here is built."
 
 ---
 

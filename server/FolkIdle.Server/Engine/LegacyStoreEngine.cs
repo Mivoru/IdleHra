@@ -130,6 +130,8 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Legacy unlock purchase failed: {ex.Message}");
+                // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 

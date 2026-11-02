@@ -150,7 +150,19 @@ const measureClipping = (tolerance) => {
     // honest horizontal scrollers.
     const isSvg = el instanceof SVGElement;
     if (isSvg) {
-      const r = el.getBoundingClientRect();
+      let r = el.getBoundingClientRect();
+      // Modul: a child of an <svg> is painted only inside that svg's own box
+      // unless the svg says overflow: visible - so a rotated <g>, whose
+      // axis-aligned box is ~1.4x the circle it draws, is not "off screen"
+      // when its svg is on screen (the shield wheel's false finding, audit
+      // 2026-11-02). Measure what can actually be painted.
+      const owner = el.ownerSVGElement;
+      if (owner && getComputedStyle(owner).overflow !== 'visible') {
+        const o = owner.getBoundingClientRect();
+        const left = Math.max(r.left, o.left);
+        const right = Math.min(r.right, o.right);
+        r = { left, right, width: Math.max(0, right - left), height: r.height };
+      }
       if (r.width >= 1 && r.height >= 1) {
         const s = getComputedStyle(el);
         const hidden = s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0;

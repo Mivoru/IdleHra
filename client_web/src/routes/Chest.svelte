@@ -337,6 +337,18 @@
     invalidateOwnedItems(client);
   }
 
+  // Why the server refused (VillageChestEngine.ChestActionResult, sent as its
+  // name). The reason always came back and was thrown away, so a locked or
+  // worn piece read the same as a vanished one.
+  const CHEST_REFUSALS: Record<string, string> = {
+    NotFound: ' - it is no longer in the chest.',
+    Equipped: ' - a character is wearing it.',
+    Locked: ' - it is locked. Unlock it first.',
+    NotRemovable: ' - it cannot be removed.',
+    InvalidQuantity: ' - you do not have that many.',
+    Busy: ' - something else was being saved at that moment. Try again.',
+  };
+
   async function act(
     target: { equipmentId: number } | { itemId: string; quantity: number },
     sell: boolean,
@@ -349,7 +361,7 @@
       // the quantity was stale. Checking only the status would report a
       // failure as a sale.
       if (!result || result.Success === false) {
-        pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`, 'error');
+        pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}${CHEST_REFUSALS[result?.Reason ?? ''] ?? '.'}`, 'error');
       } else if (sell) {
         play('itemSold');
         pushLocalNotice(`Sold ${label} for ${formatGold(result.GoldGained)}.`, 'info');

@@ -10,6 +10,15 @@ By the end of 2026-10-29 every item is fixed and live, kept on purpose, or
 parked by the owner - its status table says which, and where. The sections
 above describe the code as of production 1.0.1310 (client 1.37.0).
 
+> **Not re-verified since 1.0.1310 (checked 2026-11-02).** Systems that change
+> numbers here have shipped since, and this document was not updated for them:
+> the War skill tree replaced the old tree (1.0.1352), the Hearth half added
+> gathering, craft and offline terms (client 1.41.0), the affix rework moved the
+> damage family and added Refine, `crushing_blow_pct` and `thorns_pct`
+> (2026-10-30), potions added armour and other shelf effects (1.0.1472), and the
+> diamond rework changed inheritance (1.0.1482). Read the owning file before you
+> trust a number below; `CharacterStatSheet` and its tests are the live answer.
+
 ---
 
 ## 0. The pipeline in one page

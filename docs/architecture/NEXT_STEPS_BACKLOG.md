@@ -19,6 +19,100 @@ do next.
 
 ---
 
+# 2026-11-02 (audit) - Lost database races no longer lose mail or market matches
+
+Branch `claude/audit-2026-11-02`, slice A of a whole-game audit. #288 taught
+`SafeDispatchAsync` that a 40001 conflict is "try again", but an engine that
+catches its own exception never reaches it. Counted on `main`: 100
+Serializable transactions in 45 files, 29 of those files with no retry at all.
+
+- **Mail claim (data loss).** `CommitMailClaimAsync` swallowed a conflict with
+  the mail still `IsPending` from `ClaimMailItemAsync`; nothing ever cleared
+  it, the list hides pending mail and the claim refuses it, so the gold,
+  diamonds or item were gone until the seven-day cleanup deleted the row. It
+  also sent Success before its commit. Two more ways to strand a claim: the
+  tick drain skipped a player who had gone offline, and a restart lost the
+  in-memory `MailClaimRequestQueue`. Now: retried per attempt, Success after
+  the commit, a failed claim is released, the drain commits for offline
+  players, start-up releases orphans (`ReleaseOrphanedClaimsAsync`), and the
+  commit checks `IsClaimed` under its lock so a duplicate pays nothing.
+- **Market matching.** `MatchOrdersAsync` rolled the whole pass back on a
+  conflict and only a new placement starts a pass, so crossed orders could sit
+  unmatched indefinitely. Retried now; display credits leave after the commit.
+- **Refusals.** `TransientDbConflict.RefusalFor` answers a lost race with
+  TransactionPending (client: "Something else was being saved at that moment -
+  try again."). Applied to the catches that said GenericValidationFailure
+  (limit order, fusion x2, affix reroll), BreedingFailed (breeding x2) or
+  nothing at all (village recruit/dismiss/upgrade/evict, friends x4, Hall x3,
+  Legacy store).
+- `LostRaceRecoveryTests` stage real races (a second transaction updates the
+  row, the engine's FOR UPDATE waits, the blocker commits). The three race and
+  offline tests fail on the old code.
+
+- **Codex kill batches (slice B).** `CodexEngine` dropped a whole batch -
+  every player's kills for five seconds, or a whole offline window, which the
+  offline catch-up sends as one event - on any failure, a 40001 included
+  (its own comment said so). LoadPlayerState derives the defeated-boss mask
+  and the unlocked regions from those rows, and the batch also carries the
+  first-clear trophy, its chest and race unlocks. The persist is now retried
+  (bounded) and the post-commit work runs once outside the retry; mastery
+  level-ups were enqueued before the commit and are now staged.
+  `ACodexKillBatchThatLosesARace_IsRetried_AndNoKillIsLost`: 8 kills, 5 on
+  the old code.
+- Slice B checked and found sound: payload fields the flush does not write
+  (324 fields cross-checked; the rest are derived at login from durable rows
+  or written by their engines), the loot failure path (raw-SQL outbox, so a
+  failed context's tracked entities are never re-saved), Boss Ascension /
+  challenge / level-chest grants (ReadCommitted, failures told), village
+  production (own retry), shutdown flush (SIGTERM + 60 s grace period).
+- **GDPR erasure (slice C).** `CompliancePurgeEngine` locks PlayerRecords FOR
+  UPDATE (Serializable) while the session that asked may still have a
+  checkpoint on the CheckpointWriter for the same row; a 40001 rolled the
+  purge back with one console line and nothing asked again, though the session
+  had been closed as if the account were gone. `PurgeWithRetryAsync` waits for
+  the player's queued flushes, retries (3), and logs an account that survives
+  as needing erasure by hand. Race test fails with one attempt.
+- **Chest sell/bin and the sweep (slice A rest).** A lost race came back as
+  `NotFound` ("it is gone") for a piece still there; a failed sweep came back
+  as an empty SUCCESS ("Sold 0 pieces"). `ChestActionResult.Busy` and
+  `BulkRemovalOutcome.Failed/LostRace` now say so, the REST handlers retry on a
+  fresh context, and Chest.svelte finally shows the reason the server always
+  sent (locked, worn, gone, try again) instead of one generic line.
+- **The Delve** REST actions are retried on a conflict (each is one
+  transaction on its own context); a 40001 was a 500 the client reads as
+  "could not reach the server".
+- Checked and left: world boss strikes are serialised in-process by
+  `_snapshotGate` (conflicts only with other writers - low risk); background
+  worker loops all wrap their bodies in try (chat's dispatch loop builds
+  packets outside its try - a null announcement would stop chat, no producer
+  found that sends one); guild engines not reviewed (Guild Wars hidden).
+- **Silent refusals (slice D)** are UX-sized, not stuck buttons: the client's
+  `commandInFlight` releases after 3 s and the screens that matter pre-check
+  (recruit shows `RecruitBlockedReason`). Left as is: dismissing a newcomer and
+  a refused mail claim still answer nothing.
+- **Task 119 is a checker bug (slice E).** `safearea-check.mjs`'s
+  `markPinned` tagged `display: contents` boxes (Game.svelte's
+  `main.screen-main`, an all-zero rect that never "moves"), and `intrude()`
+  asks `closest('[data-sa-pinned]')` - so every element on every screen was
+  judged as pinned to the glass. Fixed: 49 of 62 -> 0 of 62. Negative control:
+  with body's bottom padding removed it still finds 3 real ones. Also fixed:
+  `clipping-check` measured SVG children past their own svg's clip (the shield
+  wheel's rotated `<g>`), and Wardrobe's "x5" button was 37px wide.
+- **exercise's event section** crashed whenever the run began out of season:
+  `/dev/event` switches the event on mid-run and EventIntro opens over the
+  chip (7 of 7 runs correlated). The step now closes the intro it causes.
+- `exercise.mjs`: the Ironbark brew checks demanded exactly +1, but a craft
+  can yield an extra unit (`MasterArtisanExtraUnits`); the spare then broke
+  the next run's shelf check. Both now accept the extra unit.
+
+**Still open from the audit:** guild engines (contribution, logistics, raid,
+war, matchmaking) were not reviewed for the lost-race pattern; dismissing a
+newcomer and a refused mail claim answer nothing; mail's display gold is added
+on the tick before the claim commits, so a claim that finally fails shows too
+much gold until the next login.
+
+---
+
 # 2026-11-02 - The bot plays every system; the conflict kick fixed; rebirth experiment ready
 
 **Live:** 1.0.1557 / client 1.53.0. #285/#286: the chest's bulk sell and
@@ -35,7 +129,7 @@ in 61, dungeon pushes stalling at stage 5-8.
 `docs/architecture/PLAYTEST_BOTS_REPORT.md` section 0 has it all.
 
 **Open:** the rebirth experiment (eager vs patient, report 0.6) is built on
-branch `claude/bot-rebirth-experiment` (no PR yet) and NOT run - it was
+branch `claude/bot-rebirth-experiment` (merged as #289) and NOT run - it was
 cancelled with the local stack. Run it with
 `server/FolkIdle.Bots/run-overnight.ps1 -StartAt 00:00 -EndAt 08:55`, then
 compare and recommend rebirth changes. Design reads waiting for the owner:

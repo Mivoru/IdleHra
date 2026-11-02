@@ -299,6 +299,14 @@ async function markPinned() {
     if (moved < 2) return;
 
     for (let i = 0; i < boxes.length; i++) {
+      // Modul: A BOX WITH NO BOX CANNOT BE PINNED (audit 2026-11-02). A
+      // `display: contents` element - Game.svelte's main.screen-main - reports
+      // an all-zero rect wherever the page is, so it "did not move" and was
+      // tagged; intrude() asks closest('[data-sa-pinned]'), so every element
+      // on every screen inherited the tag. That, not the layout, was most of
+      // task 119's 48 of 60: content judged at rest as if fixed to the glass.
+      const r = boxes[i].getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
       if (Math.abs(after[i] - before[i]) < 2) boxes[i].setAttribute('data-sa-pinned', '1');
     }
   });

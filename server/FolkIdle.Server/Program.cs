@@ -532,7 +532,7 @@ var pendingGrantDrainEngine = new PendingGrantDrainEngine(serviceProvider, playe
 var redisWriteBehindEngine = new RedisWriteBehindEngine(serviceProvider, redisMultiplexer);
 var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(serviceProvider, redisMultiplexer);
 var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, worldBossEngine, pushNotificationTriggerEngine);
-var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer);
+var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer, checkpointManager);
 var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMultiplexer);
 // Modul: reads the ZSET leaderboardCronEngine publishes, so the payout and the
 // board a player looked at cannot disagree. Idempotent per ISO week off the

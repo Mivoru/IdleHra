@@ -369,6 +369,12 @@
     min-width: 0;
   }
 
+  /* The short "×5" label left it 37px wide - under the 44px thumb floor
+     check:touch measures at 390px (audit 2026-11-02). */
+  .open-row .open-five {
+    min-width: 2.75rem;
+  }
+
   .chest {
     display: grid;
     gap: 0.3rem;

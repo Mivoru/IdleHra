@@ -19,11 +19,15 @@ namespace FolkIdle.Server.Engine
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IConnectionMultiplexer? _redis;
+        private readonly StateCheckpointManager? _checkpointManager;
 
-        public CompliancePurgeEngine(IServiceProvider serviceProvider, IConnectionMultiplexer? redis)
+        internal const int PurgeAttempts = 3;
+
+        public CompliancePurgeEngine(IServiceProvider serviceProvider, IConnectionMultiplexer? redis, StateCheckpointManager? checkpointManager = null)
         {
             _serviceProvider = serviceProvider;
             _redis = redis;
+            _checkpointManager = checkpointManager;
         }
 
         public void QueueGdprPurge(long playerId)
@@ -33,7 +37,52 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            _ = Task.Run(async () => await ExecuteGdprPurgeAsync(playerId));
+            _ = Task.Run(() => PurgeWithRetryAsync(playerId));
+        }
+
+        /// <summary>
+        /// Runs the purge until the account is gone, a bounded number of times.
+        ///
+        /// Modul: AN ERASURE REQUEST IS NOT BEST-EFFORT (audit 2026-11-02). The
+        /// purge locks the PlayerRecords row FOR UPDATE inside a Serializable
+        /// transaction, and the request arrives from a live session - whose
+        /// last checkpoint may still be on the CheckpointWriter, writing that
+        /// same row. A lost race (40001) rolled the purge back with one console
+        /// line and nothing ever asked again, while the session had already
+        /// been closed as if the account were gone. Now: the session's queued
+        /// flushes finish first, a failed attempt is retried, and an account
+        /// that survives every attempt is logged as needing erasure by hand.
+        /// </summary>
+        internal async Task<bool> PurgeWithRetryAsync(long playerId)
+        {
+            try
+            {
+                if (_checkpointManager != null)
+                {
+                    await _checkpointManager.WaitForPendingFlushesAsync(playerId);
+                }
+
+                for (int attempt = 1; attempt <= PurgeAttempts; attempt++)
+                {
+                    if (await ExecuteGdprPurgeAsync(playerId)) return true;
+                    if (!await PlayerExistsAsync(playerId)) return true;
+                    if (attempt < PurgeAttempts) await Task.Delay(200 * attempt);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GDPR purge for player {playerId} threw: {ex.Message}");
+            }
+
+            Console.WriteLine($"GDPR PURGE FAILED for player {playerId} after {PurgeAttempts} attempts - the account still exists and must be erased by hand.");
+            return false;
+        }
+
+        private async Task<bool> PlayerExistsAsync(long playerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            return await db.PlayerRecords.AsNoTracking().AnyAsync(p => p.Id == playerId);
         }
 
         /// <summary>Runs one purge now. True when the account is gone.</summary>

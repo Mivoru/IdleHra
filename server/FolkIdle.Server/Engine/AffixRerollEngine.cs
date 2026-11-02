@@ -535,7 +535,7 @@ namespace FolkIdle.Server.Engine
                 // code, no log the player could see - and the auto-reroll loop
                 // could not tell it apart from a refusal either. It is a refusal
                 // now, and the run reports it once.
-                if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
                 return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
             }
         }

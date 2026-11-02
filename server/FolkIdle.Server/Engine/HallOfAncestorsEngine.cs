@@ -80,6 +80,8 @@ namespace FolkIdle.Server.Engine
             catch (Exception ex)
             {
                 Console.WriteLine($"Hall SetKept failed: {ex.Message}");
+                // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 
@@ -137,6 +139,7 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Hall PurchaseSlot failed: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 
@@ -274,6 +277,7 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Hall AssignSlot failed: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
         }
 
