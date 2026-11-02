@@ -35,6 +35,26 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.54.0',
+    date: '2026-11-02',
+    headline: "Malakor's ascension climbs more steeply, and a few rare stuck states are gone.",
+    sections: [
+      {
+        title: 'Ascension',
+        items: [
+          "Malakor's ascension steps were re-measured against today's characters, who had outgrown the old ladder. Each step now hits harder than before, so the top of the ladder is a real goal again.",
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Claiming mail at a busy moment could leave it stuck as pending forever. It now retries and never stays stuck.',
+          'The chest says why an action was refused instead of failing silently, and busy moments ask you to try again instead of reporting an item missing.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.53.0',
     date: '2026-11-02',
     headline: 'The chest can now clear Legendary and Mythic gear in bulk.',
