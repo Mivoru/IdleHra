@@ -91,6 +91,7 @@ namespace FolkIdle.Bots
             var view = await _client.GetAsync("/api/v1/dungeon", token);
             if (view is not { } v || !v.Bool("Open")) return;
             int[] party = v.Arr("Roster").Select(r => r.Int("Slot")).Where(s => s is 1 or 2).ToArray();
+            NoteProgress(dungeon: v.Arr("Dungeons").Select(d => d.Int("BestStage")).DefaultIfEmpty(0).Max());
 
             foreach (var d in v.Arr("Dungeons"))
             {
@@ -257,6 +258,7 @@ namespace FolkIdle.Bots
             var view = await _client.GetAsync("/api/v1/boss-ascension", token);
             if (view is not { } v) return;
 
+            NoteProgress(ascension: v.Arr("Bosses").Sum(b => b.Int("HighestStep")));
             if (_ascensionPending is { } pending)
             {
                 var row = v.Arr("Bosses").FirstOrDefault(b => b.Int("Region") == pending.Region);

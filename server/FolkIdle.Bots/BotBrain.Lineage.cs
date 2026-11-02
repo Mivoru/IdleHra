@@ -12,10 +12,22 @@ namespace FolkIdle.Bots
         private int _lastLevelSeen = -1;
         private double _lastLevelUpAt;
 
+        /// <summary>The best dungeon stage and the Ascension steps cleared, for the timeline and the patient rebirth rule.</summary>
+        internal int DungeonBest { get; private set; }
+        internal int AscensionSteps { get; private set; }
+        private double _lastProgressAt;
+
+        private void NoteProgress(int dungeon = -1, int ascension = -1)
+        {
+            if (dungeon > DungeonBest) { DungeonBest = dungeon; _lastProgressAt = Now; }
+            if (ascension > AscensionSteps) { AscensionSteps = ascension; _lastProgressAt = Now; }
+        }
+
         private async Task LineageChoresAsync(CancellationToken token)
         {
             if (_state.CurrentLevel != _lastLevelSeen)
             {
+                if (_state.CurrentLevel > _lastLevelSeen) _lastProgressAt = Now;
                 _lastLevelSeen = _state.CurrentLevel;
                 _lastLevelUpAt = Now;
             }
@@ -166,16 +178,38 @@ namespace FolkIdle.Bots
             // is three check-in intervals.
             double stallHours = _persona.AlwaysOn ? 6 : Math.Max(6, 3 * _persona.CheckInEveryGameHours);
             bool stalled = Now - _lastLevelUpAt >= stallHours;
-            if (!stalled && _state.CurrentLevel < 100) return;
-
-            var keep = new List<long>();
             var prices = p.Arr("KeepPriceByTier").Select(e => e.GetInt64()).ToList();
-            var weapon = Pieces().FirstOrDefault(x => x.Equipped && x.ByChar == 0 && x.InSlot == 0);
-            if (weapon != null && weapon.Tier < prices.Count && prices[weapon.Tier] * 2 <= _state.Gold) keep.Add(weapon.Id);
+            var worn = Pieces().Where(x => x.Equipped && x.ByChar == 0 && x.InSlot is >= 0 and <= 7 && x.Tier < prices.Count).ToList();
+            var keep = new List<long>();
+            string why;
+
+            if (_persona.PatientRebirth)
+            {
+                // Modul: THE PATIENT PLAYER (rebirth experiment, 2026-11-02). No
+                // progress of any kind - level, dungeon stage, Ascension step -
+                // for a game day, AND gold to keep every worn combat piece; after
+                // three days without progress it goes anyway, keeping what it
+                // can afford, best first.
+                double sinceProgress = Now - Math.Max(_lastProgressAt, _lastLevelUpAt);
+                long keepAll = worn.Sum(x => prices[x.Tier]);
+                bool canKeepAll = worn.Count > 0 && keepAll <= _state.Gold;
+                if (sinceProgress < 24 || (!canKeepAll && sinceProgress < 72)) return;
+                long budget = _state.Gold;
+                foreach (var piece in worn.OrderByDescending(x => x.Tier))
+                    if (prices[piece.Tier] <= budget) { keep.Add(piece.Id); budget -= prices[piece.Tier]; }
+                why = $"no progress {sinceProgress:0} h, keeping {keep.Count}/{worn.Count} worn pieces for {_state.Gold - budget} gold";
+            }
+            else
+            {
+                if (!stalled && _state.CurrentLevel < 100) return;
+                var weapon = worn.FirstOrDefault(x => x.InSlot == 0);
+                if (weapon != null && prices[weapon.Tier] * 2 <= _state.Gold) keep.Add(weapon.Id);
+                why = stalled ? $"stalled {stallHours:0} h" : "level 100";
+            }
 
             var (status, body) = await _client.PostAsync("/api/v1/rebirth", new { ExpectedRebirthCount = p.Int("RebirthCount"), Confirm = "REBIRTH", KeepEquipmentIds = keep }, token);
             string result = body is { } b ? b.Str("Result") : status.ToString();
-            Event($"REBIRTH {p.Int("RebirthCount") + 1} at level {_state.CurrentLevel} ({(stalled ? $"stalled {stallHours:0} h" : "level 100")}): {result}; damage bonus {p.Num("DamageBonusPctNow"):0.#}% -> {p.Num("DamageBonusPctAfter"):0.#}%, kept {keep.Count} piece(s)");
+            Event($"REBIRTH {p.Int("RebirthCount") + 1} at level {_state.CurrentLevel} ({why}; dungeon best {DungeonBest}, ascension steps {AscensionSteps}): {result}; damage bonus {p.Num("DamageBonusPctNow"):0.#}% -> {p.Num("DamageBonusPctAfter"):0.#}%, kept {keep.Count} piece(s)");
             if (result == "Ok")
             {
                 Count("rebirths");

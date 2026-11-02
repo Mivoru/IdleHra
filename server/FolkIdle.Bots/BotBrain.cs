@@ -148,7 +148,7 @@ namespace FolkIdle.Bots
                     _state = state;
                     LastState = state;
                     _log.Observe(_name, state);
-                    if (Due("timeline", 60)) _log.Timeline(_name, state);
+                    if (Due("timeline", 60)) _log.Timeline(_name, state, DungeonBest, AscensionSteps);
                     try
                     {
                         await RestChoresAsync(token);
