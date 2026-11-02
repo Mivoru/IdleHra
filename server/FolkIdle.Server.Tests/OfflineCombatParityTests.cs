@@ -91,14 +91,14 @@ namespace FolkIdle.Server.Tests
         internal readonly record struct HourResult(double Kills, double Xp, double Gold, double Food, double SecondsAlive, double DeathShare);
 
         /// <summary>Total XP a payload moved through, levels included.</summary>
-        private static long XpBetween(int levelBefore, long xpBefore, int levelAfter, long xpAfter)
+        internal static long XpBetween(int levelBefore, long xpBefore, int levelAfter, long xpAfter)
         {
             long total = -xpBefore;
             for (int l = levelBefore; l < levelAfter; l++) total += ProgressionEngine.GetRequiredXpForLevel(l);
             return total + xpAfter;
         }
 
-        private static int FoodCount(in TickStatePayload p) => p.Food1_Count + p.Food2_Count + p.Food3_Count;
+        internal static int FoodCount(in TickStatePayload p) => p.Food1_Count + p.Food2_Count + p.Food3_Count;
 
         /// <summary>The live tick, rolls and all, for <see cref="LiveHours"/> independent hours, averaged.</summary>
         internal static HourResult RunLive(TickStatePayload start)
@@ -206,7 +206,7 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "inheritance milestones r5 fed", 5, true, RegularOf(5), 20_000, 7 };
         }
 
-        private static TickStatePayload Build(int region, bool geared, int monsterId, int food, int variant)
+        internal static TickStatePayload Build(int region, bool geared, int monsterId, int food, int variant)
         {
             var payload = Character(region, geared, monsterId, food);
             if (variant == 1)
