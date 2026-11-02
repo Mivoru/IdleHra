@@ -124,6 +124,15 @@ which for an idle game means the tick loop stops.
 Docker and Compose are installed and usable without sudo. Nothing else is
 needed — both halves build inside Docker.
 
+**Capacity, measured 2026-11-02:** 2 cores, 12 GB RAM, 45 GB disk. At 14
+live sessions the app used 5.5% CPU and 209 MB, Postgres 0.6% and 157 MB
+(the whole database is 74 MB, cache hit 99.997%), load average 0.08, cold
+boot 2.2 s. **The disk is the resource that runs out:** Docker build cache
+had grown to 27.8 GB (79% full) because nothing pruned it. `deploy.sh` now
+prunes after every successful deploy; check with `df -h /` and
+`docker system df`. Manual cleanup that never touches a running container:
+`docker builder prune -f` and `docker image prune -f`.
+
 ## One origin
 
 Caddy serves the built client from `/srv` and proxies the API to the app
