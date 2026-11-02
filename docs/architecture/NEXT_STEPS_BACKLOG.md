@@ -19,16 +19,27 @@ do next.
 
 ---
 
-# 2026-11-02 (night) - The bot plays every system; x100 and x200
+# 2026-11-02 - The bot plays every system; the conflict kick fixed; rebirth experiment ready
 
-The playtest bot now plays the whole game (village, tools, potions, forge,
-Workshop, dungeons, world boss, Delve, Ascension, breeding, inheritance,
-rebirth) and decides attributes, skill nodes and gear with the dev-only
-`POST /api/v1/dev/projection/whatif`. `MaxTickSpeed` is 200 (dev only); x100
-matches x20 milestone for milestone. Full results:
-`docs/architecture/PLAYTEST_BOTS_REPORT.md` section 0. **Owner decision:**
-Postgres 40001 conflicts in a command's write force-disconnect the player
-(section 0.2). Also live since 1.53.0: the chest sweeps up to Mythic (#285).
+**Live:** 1.0.1557 / client 1.53.0. #285/#286: the chest's bulk sell and
+auto-sell reach Mythic (Relic+ still never). #288: a Postgres 40001 conflict
+no longer force-disconnects the player - ChangeActivity and Potions.Stock
+retry (TransientDbConflict), any other command is refused with
+TransactionPending ("try again"); Login keeps the kick.
+
+**Bots (#287, dev only):** the playtest bot plays the whole game and decides
+attributes, skill nodes and gear with `POST /api/v1/dev/projection/whatif`.
+`MaxTickSpeed` 200; x100 matches x20 milestone for milestone. The overnight
+x200 run (63 game days): region 4 at 4.5 days, region 5 at 31, 16 rebirths
+in 61, dungeon pushes stalling at stage 5-8.
+`docs/architecture/PLAYTEST_BOTS_REPORT.md` section 0 has it all.
+
+**Open:** the rebirth experiment (eager vs patient, report 0.6) is built on
+branch `claude/bot-rebirth-experiment` (no PR yet) and NOT run - it was
+cancelled with the local stack. Run it with
+`server/FolkIdle.Bots/run-overnight.ps1 -StartAt 00:00 -EndAt 08:55`, then
+compare and recommend rebirth changes. Design reads waiting for the owner:
+dungeon stall at stage 5-8, region 5 after a month.
 
 ---
 

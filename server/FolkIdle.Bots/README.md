@@ -39,18 +39,31 @@ Results go to `bot-runs/<timestamp>/` (or `--out DIR`):
 
 | Persona | Attention |
 |---|---|
-| `optimal` | Plays without pause |
+| `optimal` | Plays without pause; reborn when Renown rises and no level for 6 game hours ("eager") |
+| `patient` | Plays without pause; reborn only after a game day with no progress (level, best dungeon stage, Ascension steps) and with gold to keep every worn combat piece - after three days without progress it goes anyway |
 | `casual` | Checks in every 8 game hours for 20 minutes |
 | `idle` | Checks in every 24 game hours for 20 minutes |
 
-All three make the same decisions while checked in. Between check-ins a bot
+All four make the same decisions while checked in (only the rebirth rule differs for `patient`). Between check-ins a bot
 is LOGGED OUT: the server's own offline catch-up and offline cap decide what
 the time away earned, and `events.log` records each login's offline hours,
 XP and gold.
 
+## An unattended run
+
+`run-overnight.ps1` does it all: a fresh `folkidle_bots`, the server at a
+multiplier (shield wheel on, as production), the bots until a wall-clock end
+time, then stops the server. Build first; it starts both projects with
+`--no-build`.
+
+```powershell
+dotnet build server/FolkIdle.Bots/FolkIdle.Bots.csproj
+.\server\FolkIdle.Botsun-overnight.ps1 -StartAt 00:00 -EndAt 08:55   # the rebirth experiment, x200
+```
+
 ## The tick multiplier
 
-`FOLKIDLE_TICK_SPEED=N` (1-100) makes the engine run N ticks per 100 ms of wall
+`FOLKIDLE_TICK_SPEED=N` (1-200) makes the engine run N ticks per 100 ms of wall
 time. It is honoured only when dev tools are on and `DOTNET_ENVIRONMENT` is not
 `Production` (`TickPacer.ResolveTickSpeed`).
 

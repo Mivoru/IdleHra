@@ -126,7 +126,36 @@ after the run).
    so casual bots were reborn at level 50 nine times and ended at level 1.
    For a persona that logs out the threshold is three check-in intervals.
 
-### 0.5 Speed limits now
+### 0.6 Rebirth experiment: eager vs patient (prepared, NOT run yet)
+
+The owner's question (2026-11-02): is a rebirth every ~4 game days fine (the
+owner thinks so - it makes players play more), would real players rebirth
+that early, or would many save to keep their gear and push dungeons,
+Ascension, breeding and affixes first - and do dungeon and Ascension progress
+become so slow past some point that it stops paying?
+
+Prepared on branch `claude/bot-rebirth-experiment`:
+- persona `patient`: reborn only after a game day with no progress of any
+  kind and with gold to keep every worn combat piece (after three days
+  without progress it goes anyway, keeping what it can afford);
+- `timeline.csv` gains `dungeon_best` and `ascension_steps`;
+- `run-overnight.ps1` runs it unattended. The owner asked for it to start at
+  midnight; it was scheduled for 2026-11-03 00:00 and then cancelled when
+  the local stack was shut down. Start it with
+  `.\server\FolkIdle.Botsun-overnight.ps1 -StartAt 00:00 -EndAt 08:55`.
+
+A 240-game-hour day test of that build (x200, 1 bot each) passed: optimal
+reborn at 150.8 h (level 73, dungeon best 3, 20 Ascension steps), patient
+not yet at 240 h (level 79), casual level 52 and idle level 38 - the
+fixes in 0.4 work (they ended at 1 and 4 before), 0 dropped ticks.
+
+**To compare after the run** (per persona, at game days 10, 30 and 60):
+level, region, rebirths, best dungeon stage, Ascension steps, and the boss
+kill time in the region being pushed. Then a recommendation for rebirth
+(for instance larger rewards for rebirths 11-20, whose damage bonus is
+flat at 13% today, or a rebirth that pays more for kept gear).
+
+### 0.7 Speed limits now
 
 `TickPacer.MaxTickSpeed` is 200 (dev only). x100 and x200 hold with a few
 bots. x1000 does not fit: a tick would get 0.1 ms, the bot's 0.4-1.2 s
@@ -303,9 +332,14 @@ if the milestones match. Try x100 only after x50 passes. 24 game hours take
 Items 1-3 of the first list (fish at the new river, decide by the projection,
 forge/potions/dungeons) are done - see section 0. Now:
 
-1. **Owner:** the serialization-conflict kick (section 0.2).
-2. Rerun casual and idle (the overnight run's were broken by two bot
-   defects, 0.4); at x20, where a check-in is a minute of wall time.
+1. ~~The serialization-conflict kick (0.2)~~ - fixed and DEPLOYED as
+   1.0.1557 (#288): a 40001 conflict retries ChangeActivity and
+   Potions.Stock, and refuses any other command with "try again" instead
+   of disconnecting; Login keeps the kick.
+1a. Run the rebirth experiment (0.6) and write up its comparison.
+2. Casual and idle are part of the 0.6 run (their x200 defects are fixed;
+   the day test showed it). A casual run at x20 would still confirm that
+   the 20-minute check-in is not an artefact of speed.
 3. Design reads from the overnight run (0.4): a rebirth every ~4 game days,
    region 5 after a month, dungeon pushes stalling at stage 5-8.
 4. A casual run at x20, to tell the casual-never-reaches-region-2 result
