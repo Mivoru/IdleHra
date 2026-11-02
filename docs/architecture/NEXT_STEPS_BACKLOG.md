@@ -19,6 +19,19 @@ do next.
 
 ---
 
+# 2026-11-02 (night) - The bot plays every system; x100 and x200
+
+The playtest bot now plays the whole game (village, tools, potions, forge,
+Workshop, dungeons, world boss, Delve, Ascension, breeding, inheritance,
+rebirth) and decides attributes, skill nodes and gear with the dev-only
+`POST /api/v1/dev/projection/whatif`. `MaxTickSpeed` is 200 (dev only); x100
+matches x20 milestone for milestone. Full results:
+`docs/architecture/PLAYTEST_BOTS_REPORT.md` section 0. **Owner decision:**
+Postgres 40001 conflicts in a command's write force-disconnect the player
+(section 0.2). Also live since 1.53.0: the chest sweeps up to Mythic (#285).
+
+---
+
 # 2026-11-01 (afternoon) - Real population, playtest bots, the starter kit
 
 **The player count was mostly our own smoke test.** Production showed 69

@@ -8,6 +8,83 @@ Production has 3 real players, so balance cannot be measured on players. The
 bots are the only progression data the game has. Read every number below as
 "a player who does what the screens recommend", not "the best possible player".
 
+## 0. Update 2026-11-02: the bot plays every system, x100 validated
+
+Sections 1-5 below describe the first bot (2026-11-01). Since then:
+
+**The bot plays the whole game** (see `server/FolkIdle.Bots/README.md`):
+village, tools, herbs and potions, forge, Workshop, Great Works, loot
+chests, mail, achievements, world boss (Auto strike), the three dungeons
+(telegraphs answered at human speed), the Delve, boss Ascension, characters
+2 and 3, breeding, inheritance and rebirth. Every bot mistake in 4.1 is
+fixed. Attributes, skill nodes and gear are now chosen with
+`POST /api/v1/dev/projection/whatif` (dev only), the server's own
+HuntingProjection on a copy of the payload with the change applied.
+
+**x100 agrees with x20.** Same bot build, optimal persona, median game hours:
+
+| Milestone | x20 (3 bots, run E) | x100 (3 bots, run D) | old bot, x20 (run C) |
+|---|---|---|---|
+| level 10 | 1.95 | 2.26 | 2.03 |
+| level 15 | 3.89 | 4.06 | 4.68 |
+| level 20 | 6.65 | 6.72 | 8.03 |
+| level 25 | 10.05 | 9.87 | 11.65 |
+| region-1 boss / region 2 open | 13.10 | 12.78 | 15.36 |
+| level 30 | 14.39 | 14.41 | 15.50 |
+| level at 24 h | 37, 38, 41 | 39, 39, 40 | 32-36 |
+
+Both runs: 0 ticks dropped (x20: 864,083 ticks; x100: 2,592,648 ticks with
+7 bots). The early levels run slightly behind at x100 (level 2 at 0.53 h
+against 0.26 h), because the bot makes fewer decisions per GAME minute; from
+level 15 on the two agree within the spread between bots. x200 then held
+x201 effective with tick p95 0.17 ms (overnight run, section 0.3).
+
+### 0.1 What the full bot shows (run D, x100, 72 game hours)
+
+- **The full game is much faster than fighting alone.** Region 2 at 12.8 h
+  (old bot 15.4 h), region 3 at 25.2 h, level 50 at 40.1 h, level 60 at
+  66.6 h (2 of 3 bots). The old bot never left region 1 in 26 h.
+- **Every system was used.** Per optimal bot in 72 h: 9-10 Ascension steps,
+  6 dungeon wins and 19-24 sweeps, 20-42 fusions, 120-129 building upgrades
+  sent, 6-7 tools, 70-96 potions, 7-9 Workshop pieces, 8-9 Delve runs for
+  14-20 diamonds, 1-4 children bred, 2 inheritance levels. No rebirth yet:
+  no bot stalled for 6 game hours, and none reached level 100.
+- **Casual (3 x 20 min/day) reached level 36-39 but never region 2 in 72 h.**
+  The region boss is fought only while online, and at x100 a 20-minute
+  check-in is 12 wall seconds - a few decisions. Treat this as a likely x100
+  artefact until a casual run at x20 confirms or refutes it.
+- **One casual login paid +340,000 gold and +0 XP** for 7.7 offline hours
+  at level 34-38 (both casual bots, the same login); the next login paid
+  XP normally. Not investigated yet.
+- **Idle stayed at level 3-4** in this run because it logged out on a fight
+  that holds only with food, ran dry and died offline. Fixed after the run:
+  a bot about to log out picks a fight that holds without food, and fishes
+  for the time away first.
+
+### 0.2 A server defect the bots found (owner decision)
+
+A Postgres serialization conflict (`40001: could not serialize access due
+to concurrent update`, or EF's "transient failure") inside a command's
+write makes `SafeDispatchAsync` **force-disconnect the player** - seen for
+`Character.ChangeActivity`, `Potions.Stock` and the village upgrade. The bot
+then reconnected at once, and the old session's teardown removed the new
+one (plus `RunRedisLockRenewalAsync` kicks), leaving an open socket with no
+session. Seen 4 times in 7 bots x 72 h at x100; checkpoints are counted in
+ticks, so x100 writes 100x as often and makes the race far more likely, but
+nothing about it is specific to the speed. In production it would show as a
+player dropped to the reconnect screen right after a command. Possible
+fixes: retry the write on 40001 (the usual EF answer), or refuse the one
+command instead of kicking the session. Not changed - production code.
+
+### 0.3 Speed limits now
+
+`TickPacer.MaxTickSpeed` is 200 (dev only). x100 and x200 hold with a few
+bots. x1000 does not fit: a tick would get 0.1 ms, the bot's 0.4-1.2 s
+command spacing (anti-cheat and throttler) would be 7-20 game minutes a
+decision, and the database write rate would grow 10x again. That speed
+needs a lockstep mode where the server waits for the bots, not a faster
+clock.
+
 ## 1. Runs
 
 All runs used the old starter kit of **10 fish**. Since client 1.52.1 a new
@@ -173,11 +250,14 @@ if the milestones match. Try x100 only after x50 passes. 24 game hours take
 
 ## 5. Next steps, in recommended order
 
-1. Close bot mistake 4.1.1 (fish at the new location) and rerun run C. This
-   decides whether the region-2 catch-22 needs a game change.
-2. Bot mistakes 4.1.2-4.1.4: decide by the server's projection instead of
-   heuristics. This turns "a player who follows the screens" into "a good
-   player", and the gap between the two personas is itself a finding.
-3. Forge and potions (4.2.1-2), then dungeons (4.2.5).
-4. Owner decisions waiting: the region-2 fishing unlock (section 2.2) and the
-   idle player's day (section 2.4).
+Items 1-3 of the first list (fish at the new river, decide by the projection,
+forge/potions/dungeons) are done - see section 0. Now:
+
+1. **Owner:** the serialization-conflict kick (section 0.2).
+2. Read the overnight x200 run (63 game days, 3 optimal, 2 casual, 2 idle):
+   rebirth, breeding over generations, regions 4-5.
+3. A casual run at x20, to tell the casual-never-reaches-region-2 result
+   (0.1) from an x100 artefact; and the +0 XP offline login.
+4. **Owner decisions still waiting:** the region-2 fishing unlock (2.2) is
+   now moot for a bot that fetches the new fish (region 2 at 12.8 h, region 3
+   at 25.2 h), and the idle player's day (2.4).
