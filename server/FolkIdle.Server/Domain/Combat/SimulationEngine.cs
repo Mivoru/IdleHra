@@ -4918,8 +4918,15 @@ namespace FolkIdle.Server.Domain.Combat
             int localXpMultiplier,
             int localDropMultiplier,
             System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue,
-            System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+            System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts,
+            Random? rng = null)
         {
+            // Modul: phase 2b.1 (roadmap 5). Every roll in the tick goes through
+            // this one generator. Live passes nothing and gets Random.Shared, as
+            // before; a test or the offline simulator passes a seeded Random so
+            // an hour can be replayed swing for swing (SeededLiveHourTests).
+            rng ??= Random.Shared;
+
             // Modul: task 85, rule 1. Auto-eat raised OutOfFood on an earlier
             // tick (the larder ran dry mid-fight); if this character has the
             // rule, it leaves the fight now and fishes. Answered at the top of
@@ -5059,329 +5066,7 @@ namespace FolkIdle.Server.Domain.Combat
             // which is exact for any interval and needs no extra payload state.
             if (HasCrossedInterval(payload.CombatTargetTickAccumulator, playerAttackSpeedMs))
             {
-                // Step 1 (Hit Determination). AccuracyRating (DEX-derived,
-                // see StatsCalculator) and the monster's content-authored
-                // DodgeRating replace the previous fixed 100/100 placeholder
-                // pair - a 0-DEX/0-DodgeRating pairing reproduces the exact
-                // old fixed-midpoint hit chance, so this is a pure extension,
-                // not a rebalance of existing content.
-                float attackerAccuracy = 100f + combatStats.AccuracyRating;
-                float defenderDodge = 100f + activeMonster.DodgeRating;
-                float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
-
-                var warSwing = WarTreeRegistry.Resolve(in payload);
-                if (warSwing.PerfectSequence) payload.WarSwingCount++;
-                // Every PerfectEvery-th swing is Perfect Sequence's; it crits if it lands.
-                bool perfect = warSwing.PerfectSequence && !warSwing.LivingFortress
-                    && payload.WarSwingCount % WarEffects.PerfectEvery == 0;
-
-                if (Random.Shared.NextDouble() <= hitChance)
-                {
-                    // Step 2 (Crit Check)
-                    float critMult = 1.0f;
-                    // Modul: skill tree. Precision adds percentage POINTS of
-                    // crit chance and Cruelty adds to the multiplier - both are
-                    // applied here rather than inside StatsCalculator because
-                    // the tree is a player-account bonus, not a property of the
-                    // gear the stats are computed from.
-                    // Modul: CRIT CHANCE HAD NO CEILING, found by
-                    // PowerCeilingTests on its first run, 2026-09-06.
-                    //
-                    // It sums from DEX, Vila mastery, five affix rolls, the
-                    // bred crit locus and this tree branch, and nothing clamped
-                    // the total - so `NextDouble() <= chance/100` was a
-                    // guaranteed crit forever past 100. Five crit_chance rolls
-                    // on one region-5 Legendary weapon already exceed it on
-                    // their own, which turned crit from variance into a flat
-                    // multiplier and made every further crit-chance roll a dead
-                    // affix nobody was told about.
-                    //
-                    // Clamped rather than rebalanced: 100% is the honest
-                    // ceiling for a probability, it takes nothing away from
-                    // anyone (you cannot crit more often than always), and it
-                    // makes the excess visible to the ledger instead of
-                    // silently wasted.
-                    float treeCritChance = LiveCritChancePct(in payload, in combatStats);
-
-                    // Modul: and the client is told, so a crit can look like
-                    // one. Cleared on every swing rather than only set, or a
-                    // single crit would paint every later hit yellow.
-                    payload.LastHitWasCrit = 0;
-                    // Modul: told apart on the feed (FlagDoubleStrike) so the
-                    // client can say DOUBLE CRIT. A local, not a payload field:
-                    // nothing outside this swing's own event needs it.
-                    bool doubleStrikeLanded = false;
-
-                    if (perfect || Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
-                    {
-                        payload.LastHitWasCrit = 1;
-                        // Modul: Guile, the Precision bough, stacks with Cruelty
-                        // rather than replacing it - see LiveCritMultiplier.
-                        critMult = LiveCritMultiplier(in payload, in combatStats);
-                        if (perfect) critMult += WarEffects.PerfectCritBonus;
-
-                        // Modul: Double Strike, the Precision crown. Expressed
-                        // as extra multiplier rather than a second swing,
-                        // because a second swing here would need its own
-                        // to-hit, its own lifesteal and its own kill check -
-                        // three places to get out of step for an effect the
-                        // player experiences as "that one hit harder".
-                        double doubleChance = DoubleStrikeChance(in payload);
-                        if (doubleChance > 0 && Random.Shared.NextDouble() <= doubleChance)
-                        {
-                            critMult *= 2f;
-                            doubleStrikeLanded = true;
-                        }
-                    }
-
-                    // Modul: computed once per tick and cached, because the
-                    // world boss needs the same number and a second derivation
-                    // of it would be a second authority over how hard this
-                    // character hits. See EffectiveMilliAttackFor.
-                    long effectiveMilliAttack = payload.CachedEffectiveMilliAttack;
-
-                    int rawDamage = (int)(effectiveMilliAttack * critMult);
-
-                    // Active Skill Tree: a successful RequestCastSkill sets this
-                    // for exactly one attack resolution, then it is consumed
-                    // (reset to 0) here - "injected into the next tick's
-                    // StatsCalculator combat resolution" per the task.
-                    if (payload.PendingSkillDamageMultiplier > 0f)
-                    {
-                        rawDamage = (int)(rawDamage * payload.PendingSkillDamageMultiplier);
-                        payload.PendingSkillDamageMultiplier = 0f;
-                    }
-
-                    // Step 3 (Mitigation). Monsters carry no block stat (no
-                    // shields modeled on the PvE monster side), so armour is the
-                    // whole of it - activeMonster.Armor is sourced from content
-                    // data rather than a hardcoded 0.
-                    //
-                    // Modul: it REDUCES. This was `max(1 hp, raw - armour*1000)`
-                    // and it was the fifth copy of that rule - the one inside
-                    // the live tick, which is the one that decides what actually
-                    // happens. It went on subtracting for a few minutes after
-                    // CombatDamageModel stopped, and the two disagreed by nearly
-                    // a factor of two: every projection in the game said a kill
-                    // took half as long as it did.
-                    // Modul: the War half's Crushing Blow and First Strike (rework
-                    // slice 2.3), both on the post-armour hit. One roll here;
-                    // HuntingProjection takes the same terms as an expectation, and
-                    // WarMechanicParityTests holds the two together.
-                    var warHit = WarTreeRegistry.Resolve(in payload);
-                    double crushChance = warHit.CrushingChanceWith(in payload.CachedAffixTotals);
-                    bool crushed = crushChance > 0 && Random.Shared.NextDouble() < crushChance;
-                    // "First" is a monster still at full health: no field to
-                    // remember, and the projection can price exactly that.
-                    bool firstStrike = warHit.FirstStrikeTenthsPct > 0 && payload.CurrentMonsterHp >= SpawnHpFor(in payload);
-                    int defenderArmor = activeMonster.Armor;
-                    // Modul: and the player's armour PENETRATION, which this
-                    // call never passed and nothing else applied - so Might's
-                    // second effect and every armor_pen_flat affix in the game
-                    // were worth exactly nothing. See Mitigate's own note.
-                    int netDamage = (int)CombatDamageModel.Mitigate(
-                        rawDamage,
-                        defenderArmor,
-                        CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
-                        combatStats.FlatArmorPenetration);
-                    if (crushed) netDamage *= WarEffects.CrushingMultiplier;
-                    // Ruin: every RuinEvery-th connecting hit, counted across fights.
-                    bool ruined = false;
-                    if (warHit.Ruin)
-                    {
-                        payload.WarHitCount++;
-                        ruined = payload.WarHitCount % WarEffects.RuinEvery == 0;
-                        if (ruined) netDamage = (int)(netDamage * WarEffects.RuinMultiplier);
-                    }
-                    if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
-                    // Executioner below 35% of the bar, judged on the health
-                    // before this hit lands.
-                    int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
-                    if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
-                    // A2: step 10 cleared on this region's boss - +2% against its monsters.
-                    int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, activeMonster.RegionTier);
-                    if (mastery > 0) netDamage += (int)((long)netDamage * mastery / 1000L);
-                    // Boss-bane Philtre: against a region's boss only.
-                    int bossbane = BossbaneTenthsPctFor(in payload, in activeMonster);
-                    if (bossbane > 0) netDamage += (int)((long)netDamage * bossbane / 1000L);
-                    if (warHit.ExecuteTenthsPct > 0
-                        && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
-                        netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
-                    // Echo: a crit repeats at half its damage. Folded into this
-                    // hit, so it heals, kills and logs as one blow; an echo is
-                    // never rolled again.
-                    bool echoed = payload.LastHitWasCrit == 1 && warHit.EchoTenths > 0 && Random.Shared.NextDouble() < warHit.EchoChance;
-                    if (echoed) netDamage += (int)(netDamage * WarEffects.EchoShare);
-                    netDamage = (int)(netDamage * LiveCodexDamageMultiplier(in payload));
-
-                    // Modul: set bonuses made real. The Chiming Steel 4-piece
-                    // grants FireDamageMultiplierPct, which reached CombatStats
-                    // and was read by nothing - so the whole 4-piece tier paid
-                    // out zero. Applied here rather than to rawDamage so it
-                    // scales the post-armour figure, matching how the codex
-                    // multiplier directly above it behaves.
-                    if (combatStats.SetFireDamageMultiplierPct > 0f)
-                    {
-                        netDamage = (int)(netDamage * (1f + (combatStats.SetFireDamageMultiplierPct / 100f)));
-                    }
-
-                    // A2 Ward: a warded boss takes nothing; each quarter of its bar
-                    // it loses raises a new ward for 3 s of the fight clock.
-                    bool warded = false;
-                    if (TryGetAscensionModifiers(in payload, out var wardMods) && wardMods.Ward)
-                    {
-                        long spawn = SpawnHpFor(in payload);
-                        if (payload.CurrentMonsterHp >= spawn) { payload.AscensionWardQuarters = 0; payload.AscensionWardUntilTenths = 0; }
-                        if (payload.CombatTargetTickAccumulator < payload.AscensionWardUntilTenths) { netDamage = 0; warded = true; }
-                    }
-
-                    payload.CurrentMonsterHp -= netDamage;
-
-                    if (!warded && wardMods.Ward && payload.CurrentMonsterHp > 0)
-                    {
-                        long spawn = SpawnHpFor(in payload);
-                        int quartersLost = (int)Math.Min(3L, (spawn - payload.CurrentMonsterHp) * 4L / Math.Max(1L, spawn));
-                        if (quartersLost > payload.AscensionWardQuarters)
-                        {
-                            payload.AscensionWardQuarters = (byte)quartersLost;
-                            payload.AscensionWardUntilTenths = payload.CombatTargetTickAccumulator + AscensionModifiers.WardTenths;
-                        }
-                    }
-
-                    // Modul: Bloodthirst, the Cruelty bough - a share of the
-                    // damage dealt comes back as health.
-                    //
-                    // On the POST-armour figure, so it scales with what you
-                    // actually did rather than with what you swung for, and
-                    // capped at the health pool because overhealing into a
-                    // bar the client scales against observedMaxPlayerHp would
-                    // draw a health bar longer than the bar.
-                    if (BloodthirstTenths(in payload) > 0 && netDamage > 0)
-                    {
-                        long healed = (long)netDamage
-                            * BloodthirstTenths(in payload) / 1000L;
-                        if (healed > 0)
-                        {
-                            payload.PlayerHp = (int)Math.Min(
-                                effectiveMaxHp, payload.PlayerHp + healed);
-                        }
-                    }
-
-                    // Modul: set bonuses made real. Burn - the Chiming Steel
-                    // 4-piece's damage-over-time half. Deliberately modelled as
-                    // a deterministic fraction of the hit that applied it,
-                    // resolved immediately, rather than as a timed DoT: this
-                    // combat loop has no per-target effect timers, and adding a
-                    // scheduler for one effect would be a much larger change
-                    // than the effect is worth. The player-visible result is
-                    // the same - a matching 4-piece set burns for extra damage.
-                    // Modul: hoisted out of the block below only so the combat
-                    // event at the end of this swing can say the burn happened.
-                    // The arithmetic is unchanged.
-                    int burnDamageDealt = 0;
-                    if (combatStats.SetBurnApplicationActive)
-                    {
-                        int burnDamage = (int)(netDamage * BurnDamageFraction);
-                        if (burnDamage > 0)
-                        {
-                            payload.CurrentMonsterHp -= burnDamage;
-                            payload.TargetStatusEffectBitmask |= ActiveSkillEngine.StatusFlagBurning;
-                            burnDamageDealt = burnDamage;
-                        }
-                    }
-
-                    // Modul: LIFESTEAL HEALED SEVEN HUNDRED PERCENT OF THE HIT.
-                    //
-                    // `netDamage * LifestealPct` with no divide by 100, and the
-                    // stat arrives as a percentage - so a 7% lifesteal affix
-                    // healed seven TIMES the damage the swing dealt. One hit
-                    // refilled the bar from anywhere, always, and the auto-eat
-                    // larder never fired because health never fell.
-                    //
-                    // Reported from a live playtest as "weird regeneration": a
-                    // player in three low-rarity pieces from the first monster
-                    // in the game killed the region 1, 2 and 3 bosses without
-                    // dropping below half health. It is the third stat in this
-                    // codebase found being written as a percent and read as a
-                    // fraction; attack speed was the last one, four hours ago.
-                    //
-                    // The cap is the second half and it is not paranoia. Damage
-                    // grows faster than the health pool does, so even a correct
-                    // percentage of a large hit is a full heal at depth -
-                    // lifesteal has to be sustain, not immunity, or it makes
-                    // every fight after the first one unloseable.
-                    long lifestealHealed = 0;
-                    if (combatStats.LifestealPct > 0)
-                    {
-                        long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100f));
-                        long lifestealCeiling = effectiveMaxHp / 100; // 1% of the bar per hit
-                        if (lifestealAmount > lifestealCeiling) lifestealAmount = lifestealCeiling;
-
-                        payload.PlayerHp = HealClamped(payload.PlayerHp, lifestealAmount, effectiveMaxHp);
-                        lifestealHealed = lifestealAmount;
-                    }
-
-                    // Modul: AND THE PLAYER IS TOLD WHAT JUST HAPPENED.
-                    //
-                    // Everything above resolved a blow and then discarded the
-                    // detail, leaving the client to infer the whole fight from
-                    // the difference between two CurrentMonsterHp snapshots.
-                    // Measured 2026-09-04: snapshots arrive every ~1090ms and a
-                    // geared character kills an early monster every ~1400ms, so
-                    // across 27 consecutive snapshots that field took exactly
-                    // ONE value and there was nothing to infer. See
-                    // ResponseCombatEventPacket.
-                    //
-                    // Reported in whole hit points, and burn is folded into the
-                    // hit that applied it - it is not a second swing, and a log
-                    // that split it would read as one.
-                    // Task 51: the same whole-hit-point figure the feed reports,
-                    // so the record and the log line can never disagree.
-                    Domain.Progression.PersonalRecords.ObserveHit(ref payload, (int)((netDamage + burnDamageDealt) / 1000L));
-
-                    CombatEventFeed.Publish(
-                        payload.PlayerId,
-                        payload.CurrentMonsterId,
-                        Network.ResponseCombatEventPacket.KindPlayerHit,
-                        (int)((netDamage + burnDamageDealt) / 1000L),
-                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
-                        (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
-                             | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
-                             | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)),
-                        ruined ? Network.SkillProc.Ruin
-                        : perfect && payload.LastHitWasCrit == 1 ? Network.SkillProc.PerfectSequence
-                        : crushed ? Network.SkillProc.CrushingBlow
-                        : echoed ? Network.SkillProc.Echo
-                        : Network.SkillProc.None);
-
-                    // Separate line, because it is health arriving rather than
-                    // damage leaving - folding it into the hit above would make
-                    // the two indistinguishable in a log.
-                    if (lifestealHealed >= 1000L)
-                    {
-                        CombatEventFeed.Publish(
-                            payload.PlayerId,
-                            payload.CurrentMonsterId,
-                            Network.ResponseCombatEventPacket.KindLifesteal,
-                            (int)(lifestealHealed / 1000L),
-                            (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
-                    }
-                }
-                else
-                {
-                    // Modul: A MISS IS THE ONE EVENT NO HEALTH DIFFERENCE CAN
-                    // IMPLY. It moves nothing, so before this feed existed it
-                    // was invisible by construction - the fight simply appeared
-                    // to pause. Accuracy and the monster's dodge rating are both
-                    // real stats, and this is the only place they are ever
-                    // visible.
-                    CombatEventFeed.Publish(
-                        payload.PlayerId,
-                        payload.CurrentMonsterId,
-                        Network.ResponseCombatEventPacket.KindPlayerMiss,
-                        0,
-                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
-                }
+                ResolvePlayerSwing(ref payload, in combatStats, in activeMonster, effectiveMaxHp, rng);
             }
 
             // Monster attacks player
@@ -5390,177 +5075,7 @@ namespace FolkIdle.Server.Domain.Combat
             // be non-multiples of the 100ms tick.
             if (payload.CurrentMonsterHp > 0 && HasCrossedInterval(payload.CombatTargetTickAccumulator, activeMonster.AttackIntervalMs))
             {
-                // Step 1 (Hit Determination). Monsters have no authored
-                // accuracy stat (their content data only defines DodgeRating
-                // and Armor, both defensive), so attackerAccuracy stays the
-                // fixed baseline; combatStats.DodgeChancePct (defensive
-                // potions, Vila's innate racial passive) is the player's own
-                // defensive stat and was already wired here.
-                // (MonsterHitChance - shared with the two projections.)
-                float hitChance = MonsterHitChance(in combatStats);
-
-                if (Random.Shared.NextDouble() <= hitChance)
-                {
-                    // Step 2 (Monster Crit Check): 5% base + 0.5% per region
-                    // tier (region now resolved via
-                    // ContentRegistry.GetMonsterRegionTier, which uses each
-                    // monster's authored RegionTier instead of wrapping ids
-                    // 31+ back onto tiers 1-5). Vodnik's innate
-                    // CritMitigationPct subtracts directly from the crit
-                    // damage multiplier, floored at 1.0 so mitigation can never
-                    // make a crit deal less than a normal hit.
-                    int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(payload.CurrentMonsterId);
-                    float monsterCritChance = MonsterCritChance(monsterRegionTier);
-                    float monsterCritMult = 1.0f;
-                    if (Random.Shared.NextDouble() <= monsterCritChance)
-                    {
-                        monsterCritMult = MonsterCritMultiplier(in combatStats);
-                    }
-
-                    // Computed in long, then saturated. AttackPower * 1000 * 1.5
-                    // overflows int for the highest-tier authored monsters
-                    // (Perun's Shattered Aspect sits at 5,368,903 AP, which
-                    // reaches 8.05e9 on a crit against an int ceiling of
-                    // 2.15e9). The wrapped value went negative, the Math.Max
-                    // floor below caught it, and the deadliest monster in the
-                    // game dealt exactly 1 HP per hit - the inverse of the
-                    // spawn-already-dead bug on the HP side.
-                    // Modul: AND IT STAYS A LONG, 2026-09-12.
-                    //
-                    // Saturating at int.MaxValue was a correct fix for the
-                    // overflow described above and a CEILING on the boss wall
-                    // nobody had noticed: 2.147e9 milli-damage is about twelve
-                    // times Malakor's authored attack, and the per-region wall
-                    // needs more than that to out-pace a level-100 larder. The
-                    // saturation would have silently eaten the difference and
-                    // the wall would have looked tuned while being capped.
-                    //
-                    // Nothing downstream needs an int: Mitigate already takes a
-                    // long, and the only int in the chain is PlayerHp, which is
-                    // assigned through a clamped subtraction below.
-                    //
-                    // Step 3+4 (Armor then Block, combined): armor REDUCES (see
-                    // CombatDamageModel.Mitigate - this was once `raw - armour *
-                    // 1000`, full hit or 1 HP with nothing between), then
-                    // BlockStrengthPct (CON-derived, see StatsCalculator) shaves
-                    // a fraction off what armour did not stop, clamped below
-                    // 100% so a high-CON build nears the floor but never zero.
-                    //
-                    // Step 5, the Eternal Dreadnought 4-piece: any single hit is
-                    // capped at a share of max HP. It replaced CcImmunityActive,
-                    // which could never fire (the game has no player-facing crowd
-                    // control); it targets burst, since the larder can only
-                    // respond BETWEEN hits. Applied after armour and block so it
-                    // is a true ceiling, and before the subtraction so thorns
-                    // below reflects the capped figure.
-                    //
-                    // Modul: all of it in LandedMonsterMilliDamage, which the
-                    // hunting advisor and the offline projection price from too.
-                    //
-                    // Task 87: an armed Ascension step raises the boss's attack
-                    // BEFORE mitigation, as the step's calibration assumes.
-                    long monsterAttackPower = BossFirstClearRules.AttackPowerFor(FightBossMask(in payload), payload.CurrentMonsterId);
-                    if (TryGetSeasonalBoss(in payload, out var seasonalTier))
-                    {
-                        monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, seasonalTier.Modifiers);
-                    }
-                    else if (TryGetAscensionModifiers(in payload, out var ascensionMods))
-                    {
-                        monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, in ascensionMods);
-                        // A2 Enrage: below 30% of its bar the boss hits a third harder.
-                        if (ascensionMods.Enrage
-                            && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * AscensionModifiers.EnrageBelowPct)
-                            monsterAttackPower = monsterAttackPower * AscensionModifiers.EnrageAttackPct / 100L;
-                    }
-                    float blockStrengthFraction = PlayerBlockFraction(in combatStats);
-                    long finalDamage = LandedMonsterMilliDamage(
-                        monsterAttackPower,
-                        monsterCritMult,
-                        in combatStats,
-                        monsterRegionTier,
-                        effectiveMaxHp);
-
-                    // Modul: clamped, because finalDamage is a long now and
-                    // PlayerHp is an int. Any value at or below zero is death, so
-                    // flooring the result costs nothing and an unclamped cast
-                    // could wrap a lethal hit into a positive health bar - the
-                    // exact shape of the overflow bug this block already records.
-                    long playerHpAfterHit = payload.PlayerHp - finalDamage;
-                    payload.PlayerHp = playerHpAfterHit < MinimumRepresentableHp
-                        ? MinimumRepresentableHp
-                        : (int)playerHpAfterHit;
-
-                    // Modul: set bonuses made real. Thorns - the Eternal
-                    // Dreadnought 4-piece. Reflects a fraction of what actually
-                    // landed (post-armour, post-block), so a heavily armoured
-                    // build reflects less rather than more; reflecting the raw
-                    // pre-mitigation figure would make stacking armour and
-                    // thorns together absurd.
-                    //
-                    // Only reflects while a monster is actually alive, so the
-                    // final blow cannot reflect into an already-dead target and
-                    // drive CurrentMonsterHp further negative.
-                    // Riposte (War half): the block's share of a connecting swing
-                    // answers back. RiposteChance prices exactly this roll.
-                    if (payload.CurrentMonsterHp > 0 && Random.Shared.NextDouble() < blockStrengthFraction)
-                        Riposte(ref payload, in combatStats, in activeMonster);
-
-                    long thornsReflected = 0;
-                    double thornsFraction = ThornsFractionFor(in payload, in combatStats);
-                    if (thornsFraction > 0 && payload.CurrentMonsterHp > 0)
-                    {
-                        long reflectedDamage = (long)(finalDamage * thornsFraction);
-                        if (reflectedDamage > 0)
-                        {
-                            payload.CurrentMonsterHp -= reflectedDamage;
-                            thornsReflected = reflectedDamage;
-                        }
-                    }
-
-                    // Modul: the incoming half of the fight log.
-                    //
-                    // BLOCKED IS A REAL THING HERE and only here: monsters carry
-                    // no block stat, so a player's swing is never blocked, but
-                    // the player's own BlockStrengthPct (CON-derived) shaves a
-                    // fraction off what armour did not already stop. Armour
-                    // itself is deliberately NOT an event - it reduces every hit
-                    // rather than stopping any, so it is a smaller number on
-                    // this line, not a line of its own.
-                    CombatEventFeed.Publish(
-                        payload.PlayerId,
-                        payload.CurrentMonsterId,
-                        Network.ResponseCombatEventPacket.KindMonsterHit,
-                        (int)Math.Min(int.MaxValue, finalDamage / 1000),
-                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
-                        (byte)((monsterCritMult > 1.0f ? Network.ResponseCombatEventPacket.FlagCrit : 0)
-                             | (blockStrengthFraction > 0f ? Network.ResponseCombatEventPacket.FlagBlocked : 0)));
-
-                    if (thornsReflected > 0)
-                    {
-                        CombatEventFeed.Publish(
-                            payload.PlayerId,
-                            payload.CurrentMonsterId,
-                            Network.ResponseCombatEventPacket.KindPlayerHit,
-                            (int)Math.Min(int.MaxValue, thornsReflected / 1000),
-                            (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
-                            Network.ResponseCombatEventPacket.FlagThorns);
-                    }
-                }
-                else
-                {
-                    // The monster swung and the player's dodge took it. Same
-                    // argument as the player's own miss above: nothing moves, so
-                    // without this line the fight looks like it stopped.
-                    CombatEventFeed.Publish(
-                        payload.PlayerId,
-                        payload.CurrentMonsterId,
-                        Network.ResponseCombatEventPacket.KindMonsterMiss,
-                        0,
-                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
-
-                    // Riposte: every dodged swing answers back.
-                    if (payload.CurrentMonsterHp > 0) Riposte(ref payload, in combatStats, in activeMonster);
-                }
+                ResolveMonsterSwing(ref payload, in combatStats, in activeMonster, effectiveMaxHp, rng);
             }
 
             // Step 5 (Auto-Eat)
@@ -5701,7 +5216,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // XP, gold, loot, codex, diamonds and the Golden Fleece count -
                 // which is what the offline projection draws for its window's
                 // kills. The fight itself is untouched.
-                int paidKills = (int)ScholarRate.RewardUnits(Random.Shared, 1, ScholarRate.BonusPermille(in payload));
+                int paidKills = (int)ScholarRate.RewardUnits(rng, 1, ScholarRate.BonusPermille(in payload));
 
 
                 // Modul: and the same removal on the live-kill path. Two copies
@@ -5974,7 +5489,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     for (int paid = 0; paid < paidKills; paid++)
                     {
-                        if (!OrdinaryKillPaysDiamond(Random.Shared.NextDouble())) continue;
+                        if (!OrdinaryKillPaysDiamond(rng.NextDouble())) continue;
                         payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
                         payload.IsDirty = true;
                     }
@@ -5984,10 +5499,10 @@ namespace FolkIdle.Server.Domain.Combat
                 // daily cap. Bosses count like any kill - the cap is the bound.
                 Domain.Progression.SeasonalEventEarning.Roll(
                     ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, paidKills,
-                    GameClock.UtcNowOffset.ToUnixTimeSeconds(), Random.Shared);
+                    GameClock.UtcNowOffset.ToUnixTimeSeconds(), rng);
 
                 // A monster pet: a chance on every kill, no event needed.
-                Domain.Progression.PetRegistry.RollMonsterPets(payload.PlayerId, paidKills, Random.Shared);
+                Domain.Progression.PetRegistry.RollMonsterPets(payload.PlayerId, paidKills, rng);
 
                 // Modul 03/10/11/12: equipment drop roll request. ProcessSubTick
                 // is static, so this enqueues onto CombatLootEngine's static
@@ -6057,6 +5572,530 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.AteThisFight = false;
 
                 if (seasonalReturn >= 0) ReturnFromSeasonalBoss(ref payload, seasonalReturn);
+            }
+        }
+
+        /// <summary>
+        /// The player's swing, resolved once (phase 2b.1, roadmap 5). Moved out of
+        /// RunCombatTick verbatim, so the live tick and the per-swing simulator run
+        /// the same code: hit, crit, Double Strike, Crushing Blow, Echo, the damage and its side effects. The caller decides WHEN a swing happens (the
+        /// interval test); this decides what it does. Every roll uses
+        /// <paramref name="rng"/>, which is what lets a seeded hour replay.
+        /// </summary>
+        /// <remarks>Modul: the roadmap sketched a separate CombatState struct; the
+        /// payload already IS that state (health, accumulators, War counters,
+        /// LastHitWasCrit, eat cooldown, food), so it is passed by ref instead of
+        /// being copied in and out of a second struct that could drift from it.</remarks>
+        internal static void ResolvePlayerSwing(ref TickStatePayload payload, in CombatStats combatStats, in MonsterDefinition activeMonster, int effectiveMaxHp, Random rng)
+        {
+            // Step 1 (Hit Determination). AccuracyRating (DEX-derived,
+            // see StatsCalculator) and the monster's content-authored
+            // DodgeRating replace the previous fixed 100/100 placeholder
+            // pair - a 0-DEX/0-DodgeRating pairing reproduces the exact
+            // old fixed-midpoint hit chance, so this is a pure extension,
+            // not a rebalance of existing content.
+            float attackerAccuracy = 100f + combatStats.AccuracyRating;
+            float defenderDodge = 100f + activeMonster.DodgeRating;
+            float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
+
+            var warSwing = WarTreeRegistry.Resolve(in payload);
+            if (warSwing.PerfectSequence) payload.WarSwingCount++;
+            // Every PerfectEvery-th swing is Perfect Sequence's; it crits if it lands.
+            bool perfect = warSwing.PerfectSequence && !warSwing.LivingFortress
+                && payload.WarSwingCount % WarEffects.PerfectEvery == 0;
+
+            if (rng.NextDouble() <= hitChance)
+            {
+                // Step 2 (Crit Check)
+                float critMult = 1.0f;
+                // Modul: skill tree. Precision adds percentage POINTS of
+                // crit chance and Cruelty adds to the multiplier - both are
+                // applied here rather than inside StatsCalculator because
+                // the tree is a player-account bonus, not a property of the
+                // gear the stats are computed from.
+                // Modul: CRIT CHANCE HAD NO CEILING, found by
+                // PowerCeilingTests on its first run, 2026-09-06.
+                //
+                // It sums from DEX, Vila mastery, five affix rolls, the
+                // bred crit locus and this tree branch, and nothing clamped
+                // the total - so `NextDouble() <= chance/100` was a
+                // guaranteed crit forever past 100. Five crit_chance rolls
+                // on one region-5 Legendary weapon already exceed it on
+                // their own, which turned crit from variance into a flat
+                // multiplier and made every further crit-chance roll a dead
+                // affix nobody was told about.
+                //
+                // Clamped rather than rebalanced: 100% is the honest
+                // ceiling for a probability, it takes nothing away from
+                // anyone (you cannot crit more often than always), and it
+                // makes the excess visible to the ledger instead of
+                // silently wasted.
+                float treeCritChance = LiveCritChancePct(in payload, in combatStats);
+
+                // Modul: and the client is told, so a crit can look like
+                // one. Cleared on every swing rather than only set, or a
+                // single crit would paint every later hit yellow.
+                payload.LastHitWasCrit = 0;
+                // Modul: told apart on the feed (FlagDoubleStrike) so the
+                // client can say DOUBLE CRIT. A local, not a payload field:
+                // nothing outside this swing's own event needs it.
+                bool doubleStrikeLanded = false;
+
+                if (perfect || rng.NextDouble() <= (treeCritChance / 100.0f))
+                {
+                    payload.LastHitWasCrit = 1;
+                    // Modul: Guile, the Precision bough, stacks with Cruelty
+                    // rather than replacing it - see LiveCritMultiplier.
+                    critMult = LiveCritMultiplier(in payload, in combatStats);
+                    if (perfect) critMult += WarEffects.PerfectCritBonus;
+
+                    // Modul: Double Strike, the Precision crown. Expressed
+                    // as extra multiplier rather than a second swing,
+                    // because a second swing here would need its own
+                    // to-hit, its own lifesteal and its own kill check -
+                    // three places to get out of step for an effect the
+                    // player experiences as "that one hit harder".
+                    double doubleChance = DoubleStrikeChance(in payload);
+                    if (doubleChance > 0 && rng.NextDouble() <= doubleChance)
+                    {
+                        critMult *= 2f;
+                        doubleStrikeLanded = true;
+                    }
+                }
+
+                // Modul: computed once per tick and cached, because the
+                // world boss needs the same number and a second derivation
+                // of it would be a second authority over how hard this
+                // character hits. See EffectiveMilliAttackFor.
+                long effectiveMilliAttack = payload.CachedEffectiveMilliAttack;
+
+                int rawDamage = (int)(effectiveMilliAttack * critMult);
+
+                // Active Skill Tree: a successful RequestCastSkill sets this
+                // for exactly one attack resolution, then it is consumed
+                // (reset to 0) here - "injected into the next tick's
+                // StatsCalculator combat resolution" per the task.
+                if (payload.PendingSkillDamageMultiplier > 0f)
+                {
+                    rawDamage = (int)(rawDamage * payload.PendingSkillDamageMultiplier);
+                    payload.PendingSkillDamageMultiplier = 0f;
+                }
+
+                // Step 3 (Mitigation). Monsters carry no block stat (no
+                // shields modeled on the PvE monster side), so armour is the
+                // whole of it - activeMonster.Armor is sourced from content
+                // data rather than a hardcoded 0.
+                //
+                // Modul: it REDUCES. This was `max(1 hp, raw - armour*1000)`
+                // and it was the fifth copy of that rule - the one inside
+                // the live tick, which is the one that decides what actually
+                // happens. It went on subtracting for a few minutes after
+                // CombatDamageModel stopped, and the two disagreed by nearly
+                // a factor of two: every projection in the game said a kill
+                // took half as long as it did.
+                // Modul: the War half's Crushing Blow and First Strike (rework
+                // slice 2.3), both on the post-armour hit. One roll here;
+                // HuntingProjection takes the same terms as an expectation, and
+                // WarMechanicParityTests holds the two together.
+                var warHit = WarTreeRegistry.Resolve(in payload);
+                double crushChance = warHit.CrushingChanceWith(in payload.CachedAffixTotals);
+                bool crushed = crushChance > 0 && rng.NextDouble() < crushChance;
+                // "First" is a monster still at full health: no field to
+                // remember, and the projection can price exactly that.
+                bool firstStrike = warHit.FirstStrikeTenthsPct > 0 && payload.CurrentMonsterHp >= SpawnHpFor(in payload);
+                int defenderArmor = activeMonster.Armor;
+                // Modul: and the player's armour PENETRATION, which this
+                // call never passed and nothing else applied - so Might's
+                // second effect and every armor_pen_flat affix in the game
+                // were worth exactly nothing. See Mitigate's own note.
+                int netDamage = (int)CombatDamageModel.Mitigate(
+                    rawDamage,
+                    defenderArmor,
+                    CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
+                    combatStats.FlatArmorPenetration);
+                if (crushed) netDamage *= WarEffects.CrushingMultiplier;
+                // Ruin: every RuinEvery-th connecting hit, counted across fights.
+                bool ruined = false;
+                if (warHit.Ruin)
+                {
+                    payload.WarHitCount++;
+                    ruined = payload.WarHitCount % WarEffects.RuinEvery == 0;
+                    if (ruined) netDamage = (int)(netDamage * WarEffects.RuinMultiplier);
+                }
+                if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
+                // Executioner below 35% of the bar, judged on the health
+                // before this hit lands.
+                int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
+                if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
+                // A2: step 10 cleared on this region's boss - +2% against its monsters.
+                int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, activeMonster.RegionTier);
+                if (mastery > 0) netDamage += (int)((long)netDamage * mastery / 1000L);
+                // Boss-bane Philtre: against a region's boss only.
+                int bossbane = BossbaneTenthsPctFor(in payload, in activeMonster);
+                if (bossbane > 0) netDamage += (int)((long)netDamage * bossbane / 1000L);
+                if (warHit.ExecuteTenthsPct > 0
+                    && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
+                    netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
+                // Echo: a crit repeats at half its damage. Folded into this
+                // hit, so it heals, kills and logs as one blow; an echo is
+                // never rolled again.
+                bool echoed = payload.LastHitWasCrit == 1 && warHit.EchoTenths > 0 && rng.NextDouble() < warHit.EchoChance;
+                if (echoed) netDamage += (int)(netDamage * WarEffects.EchoShare);
+                netDamage = (int)(netDamage * LiveCodexDamageMultiplier(in payload));
+
+                // Modul: set bonuses made real. The Chiming Steel 4-piece
+                // grants FireDamageMultiplierPct, which reached CombatStats
+                // and was read by nothing - so the whole 4-piece tier paid
+                // out zero. Applied here rather than to rawDamage so it
+                // scales the post-armour figure, matching how the codex
+                // multiplier directly above it behaves.
+                if (combatStats.SetFireDamageMultiplierPct > 0f)
+                {
+                    netDamage = (int)(netDamage * (1f + (combatStats.SetFireDamageMultiplierPct / 100f)));
+                }
+
+                // A2 Ward: a warded boss takes nothing; each quarter of its bar
+                // it loses raises a new ward for 3 s of the fight clock.
+                bool warded = false;
+                if (TryGetAscensionModifiers(in payload, out var wardMods) && wardMods.Ward)
+                {
+                    long spawn = SpawnHpFor(in payload);
+                    if (payload.CurrentMonsterHp >= spawn) { payload.AscensionWardQuarters = 0; payload.AscensionWardUntilTenths = 0; }
+                    if (payload.CombatTargetTickAccumulator < payload.AscensionWardUntilTenths) { netDamage = 0; warded = true; }
+                }
+
+                payload.CurrentMonsterHp -= netDamage;
+
+                if (!warded && wardMods.Ward && payload.CurrentMonsterHp > 0)
+                {
+                    long spawn = SpawnHpFor(in payload);
+                    int quartersLost = (int)Math.Min(3L, (spawn - payload.CurrentMonsterHp) * 4L / Math.Max(1L, spawn));
+                    if (quartersLost > payload.AscensionWardQuarters)
+                    {
+                        payload.AscensionWardQuarters = (byte)quartersLost;
+                        payload.AscensionWardUntilTenths = payload.CombatTargetTickAccumulator + AscensionModifiers.WardTenths;
+                    }
+                }
+
+                // Modul: Bloodthirst, the Cruelty bough - a share of the
+                // damage dealt comes back as health.
+                //
+                // On the POST-armour figure, so it scales with what you
+                // actually did rather than with what you swung for, and
+                // capped at the health pool because overhealing into a
+                // bar the client scales against observedMaxPlayerHp would
+                // draw a health bar longer than the bar.
+                if (BloodthirstTenths(in payload) > 0 && netDamage > 0)
+                {
+                    long healed = (long)netDamage
+                        * BloodthirstTenths(in payload) / 1000L;
+                    if (healed > 0)
+                    {
+                        payload.PlayerHp = (int)Math.Min(
+                            effectiveMaxHp, payload.PlayerHp + healed);
+                    }
+                }
+
+                // Modul: set bonuses made real. Burn - the Chiming Steel
+                // 4-piece's damage-over-time half. Deliberately modelled as
+                // a deterministic fraction of the hit that applied it,
+                // resolved immediately, rather than as a timed DoT: this
+                // combat loop has no per-target effect timers, and adding a
+                // scheduler for one effect would be a much larger change
+                // than the effect is worth. The player-visible result is
+                // the same - a matching 4-piece set burns for extra damage.
+                // Modul: hoisted out of the block below only so the combat
+                // event at the end of this swing can say the burn happened.
+                // The arithmetic is unchanged.
+                int burnDamageDealt = 0;
+                if (combatStats.SetBurnApplicationActive)
+                {
+                    int burnDamage = (int)(netDamage * BurnDamageFraction);
+                    if (burnDamage > 0)
+                    {
+                        payload.CurrentMonsterHp -= burnDamage;
+                        payload.TargetStatusEffectBitmask |= ActiveSkillEngine.StatusFlagBurning;
+                        burnDamageDealt = burnDamage;
+                    }
+                }
+
+                // Modul: LIFESTEAL HEALED SEVEN HUNDRED PERCENT OF THE HIT.
+                //
+                // `netDamage * LifestealPct` with no divide by 100, and the
+                // stat arrives as a percentage - so a 7% lifesteal affix
+                // healed seven TIMES the damage the swing dealt. One hit
+                // refilled the bar from anywhere, always, and the auto-eat
+                // larder never fired because health never fell.
+                //
+                // Reported from a live playtest as "weird regeneration": a
+                // player in three low-rarity pieces from the first monster
+                // in the game killed the region 1, 2 and 3 bosses without
+                // dropping below half health. It is the third stat in this
+                // codebase found being written as a percent and read as a
+                // fraction; attack speed was the last one, four hours ago.
+                //
+                // The cap is the second half and it is not paranoia. Damage
+                // grows faster than the health pool does, so even a correct
+                // percentage of a large hit is a full heal at depth -
+                // lifesteal has to be sustain, not immunity, or it makes
+                // every fight after the first one unloseable.
+                long lifestealHealed = 0;
+                if (combatStats.LifestealPct > 0)
+                {
+                    long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100f));
+                    long lifestealCeiling = effectiveMaxHp / 100; // 1% of the bar per hit
+                    if (lifestealAmount > lifestealCeiling) lifestealAmount = lifestealCeiling;
+
+                    payload.PlayerHp = HealClamped(payload.PlayerHp, lifestealAmount, effectiveMaxHp);
+                    lifestealHealed = lifestealAmount;
+                }
+
+                // Modul: AND THE PLAYER IS TOLD WHAT JUST HAPPENED.
+                //
+                // Everything above resolved a blow and then discarded the
+                // detail, leaving the client to infer the whole fight from
+                // the difference between two CurrentMonsterHp snapshots.
+                // Measured 2026-09-04: snapshots arrive every ~1090ms and a
+                // geared character kills an early monster every ~1400ms, so
+                // across 27 consecutive snapshots that field took exactly
+                // ONE value and there was nothing to infer. See
+                // ResponseCombatEventPacket.
+                //
+                // Reported in whole hit points, and burn is folded into the
+                // hit that applied it - it is not a second swing, and a log
+                // that split it would read as one.
+                // Task 51: the same whole-hit-point figure the feed reports,
+                // so the record and the log line can never disagree.
+                Domain.Progression.PersonalRecords.ObserveHit(ref payload, (int)((netDamage + burnDamageDealt) / 1000L));
+
+                CombatEventFeed.Publish(
+                    payload.PlayerId,
+                    payload.CurrentMonsterId,
+                    Network.ResponseCombatEventPacket.KindPlayerHit,
+                    (int)((netDamage + burnDamageDealt) / 1000L),
+                    (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                    (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
+                         | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
+                         | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)),
+                    ruined ? Network.SkillProc.Ruin
+                    : perfect && payload.LastHitWasCrit == 1 ? Network.SkillProc.PerfectSequence
+                    : crushed ? Network.SkillProc.CrushingBlow
+                    : echoed ? Network.SkillProc.Echo
+                    : Network.SkillProc.None);
+
+                // Separate line, because it is health arriving rather than
+                // damage leaving - folding it into the hit above would make
+                // the two indistinguishable in a log.
+                if (lifestealHealed >= 1000L)
+                {
+                    CombatEventFeed.Publish(
+                        payload.PlayerId,
+                        payload.CurrentMonsterId,
+                        Network.ResponseCombatEventPacket.KindLifesteal,
+                        (int)(lifestealHealed / 1000L),
+                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
+                }
+            }
+            else
+            {
+                // Modul: A MISS IS THE ONE EVENT NO HEALTH DIFFERENCE CAN
+                // IMPLY. It moves nothing, so before this feed existed it
+                // was invisible by construction - the fight simply appeared
+                // to pause. Accuracy and the monster's dodge rating are both
+                // real stats, and this is the only place they are ever
+                // visible.
+                CombatEventFeed.Publish(
+                    payload.PlayerId,
+                    payload.CurrentMonsterId,
+                    Network.ResponseCombatEventPacket.KindPlayerMiss,
+                    0,
+                    (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
+            }
+        }
+
+        /// <summary>
+        /// The monster's swing, resolved once (phase 2b.1, roadmap 5). Moved out of
+        /// RunCombatTick verbatim, so the live tick and the per-swing simulator run
+        /// the same code: hit, crit, mitigation, block, thorns, lifesteal replies and Riposte. The caller decides WHEN a swing happens (the
+        /// interval test); this decides what it does. Every roll uses
+        /// <paramref name="rng"/>, which is what lets a seeded hour replay.
+        /// </summary>
+        /// <remarks>Modul: the roadmap sketched a separate CombatState struct; the
+        /// payload already IS that state (health, accumulators, War counters,
+        /// LastHitWasCrit, eat cooldown, food), so it is passed by ref instead of
+        /// being copied in and out of a second struct that could drift from it.</remarks>
+        internal static void ResolveMonsterSwing(ref TickStatePayload payload, in CombatStats combatStats, in MonsterDefinition activeMonster, int effectiveMaxHp, Random rng)
+        {
+            // Step 1 (Hit Determination). Monsters have no authored
+            // accuracy stat (their content data only defines DodgeRating
+            // and Armor, both defensive), so attackerAccuracy stays the
+            // fixed baseline; combatStats.DodgeChancePct (defensive
+            // potions, Vila's innate racial passive) is the player's own
+            // defensive stat and was already wired here.
+            // (MonsterHitChance - shared with the two projections.)
+            float hitChance = MonsterHitChance(in combatStats);
+
+            if (rng.NextDouble() <= hitChance)
+            {
+                // Step 2 (Monster Crit Check): 5% base + 0.5% per region
+                // tier (region now resolved via
+                // ContentRegistry.GetMonsterRegionTier, which uses each
+                // monster's authored RegionTier instead of wrapping ids
+                // 31+ back onto tiers 1-5). Vodnik's innate
+                // CritMitigationPct subtracts directly from the crit
+                // damage multiplier, floored at 1.0 so mitigation can never
+                // make a crit deal less than a normal hit.
+                int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(payload.CurrentMonsterId);
+                float monsterCritChance = MonsterCritChance(monsterRegionTier);
+                float monsterCritMult = 1.0f;
+                if (rng.NextDouble() <= monsterCritChance)
+                {
+                    monsterCritMult = MonsterCritMultiplier(in combatStats);
+                }
+
+                // Computed in long, then saturated. AttackPower * 1000 * 1.5
+                // overflows int for the highest-tier authored monsters
+                // (Perun's Shattered Aspect sits at 5,368,903 AP, which
+                // reaches 8.05e9 on a crit against an int ceiling of
+                // 2.15e9). The wrapped value went negative, the Math.Max
+                // floor below caught it, and the deadliest monster in the
+                // game dealt exactly 1 HP per hit - the inverse of the
+                // spawn-already-dead bug on the HP side.
+                // Modul: AND IT STAYS A LONG, 2026-09-12.
+                //
+                // Saturating at int.MaxValue was a correct fix for the
+                // overflow described above and a CEILING on the boss wall
+                // nobody had noticed: 2.147e9 milli-damage is about twelve
+                // times Malakor's authored attack, and the per-region wall
+                // needs more than that to out-pace a level-100 larder. The
+                // saturation would have silently eaten the difference and
+                // the wall would have looked tuned while being capped.
+                //
+                // Nothing downstream needs an int: Mitigate already takes a
+                // long, and the only int in the chain is PlayerHp, which is
+                // assigned through a clamped subtraction below.
+                //
+                // Step 3+4 (Armor then Block, combined): armor REDUCES (see
+                // CombatDamageModel.Mitigate - this was once `raw - armour *
+                // 1000`, full hit or 1 HP with nothing between), then
+                // BlockStrengthPct (CON-derived, see StatsCalculator) shaves
+                // a fraction off what armour did not stop, clamped below
+                // 100% so a high-CON build nears the floor but never zero.
+                //
+                // Step 5, the Eternal Dreadnought 4-piece: any single hit is
+                // capped at a share of max HP. It replaced CcImmunityActive,
+                // which could never fire (the game has no player-facing crowd
+                // control); it targets burst, since the larder can only
+                // respond BETWEEN hits. Applied after armour and block so it
+                // is a true ceiling, and before the subtraction so thorns
+                // below reflects the capped figure.
+                //
+                // Modul: all of it in LandedMonsterMilliDamage, which the
+                // hunting advisor and the offline projection price from too.
+                //
+                // Task 87: an armed Ascension step raises the boss's attack
+                // BEFORE mitigation, as the step's calibration assumes.
+                long monsterAttackPower = BossFirstClearRules.AttackPowerFor(FightBossMask(in payload), payload.CurrentMonsterId);
+                if (TryGetSeasonalBoss(in payload, out var seasonalTier))
+                {
+                    monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, seasonalTier.Modifiers);
+                }
+                else if (TryGetAscensionModifiers(in payload, out var ascensionMods))
+                {
+                    monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, in ascensionMods);
+                    // A2 Enrage: below 30% of its bar the boss hits a third harder.
+                    if (ascensionMods.Enrage
+                        && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * AscensionModifiers.EnrageBelowPct)
+                        monsterAttackPower = monsterAttackPower * AscensionModifiers.EnrageAttackPct / 100L;
+                }
+                float blockStrengthFraction = PlayerBlockFraction(in combatStats);
+                long finalDamage = LandedMonsterMilliDamage(
+                    monsterAttackPower,
+                    monsterCritMult,
+                    in combatStats,
+                    monsterRegionTier,
+                    effectiveMaxHp);
+
+                // Modul: clamped, because finalDamage is a long now and
+                // PlayerHp is an int. Any value at or below zero is death, so
+                // flooring the result costs nothing and an unclamped cast
+                // could wrap a lethal hit into a positive health bar - the
+                // exact shape of the overflow bug this block already records.
+                long playerHpAfterHit = payload.PlayerHp - finalDamage;
+                payload.PlayerHp = playerHpAfterHit < MinimumRepresentableHp
+                    ? MinimumRepresentableHp
+                    : (int)playerHpAfterHit;
+
+                // Modul: set bonuses made real. Thorns - the Eternal
+                // Dreadnought 4-piece. Reflects a fraction of what actually
+                // landed (post-armour, post-block), so a heavily armoured
+                // build reflects less rather than more; reflecting the raw
+                // pre-mitigation figure would make stacking armour and
+                // thorns together absurd.
+                //
+                // Only reflects while a monster is actually alive, so the
+                // final blow cannot reflect into an already-dead target and
+                // drive CurrentMonsterHp further negative.
+                // Riposte (War half): the block's share of a connecting swing
+                // answers back. RiposteChance prices exactly this roll.
+                if (payload.CurrentMonsterHp > 0 && rng.NextDouble() < blockStrengthFraction)
+                    Riposte(ref payload, in combatStats, in activeMonster);
+
+                long thornsReflected = 0;
+                double thornsFraction = ThornsFractionFor(in payload, in combatStats);
+                if (thornsFraction > 0 && payload.CurrentMonsterHp > 0)
+                {
+                    long reflectedDamage = (long)(finalDamage * thornsFraction);
+                    if (reflectedDamage > 0)
+                    {
+                        payload.CurrentMonsterHp -= reflectedDamage;
+                        thornsReflected = reflectedDamage;
+                    }
+                }
+
+                // Modul: the incoming half of the fight log.
+                //
+                // BLOCKED IS A REAL THING HERE and only here: monsters carry
+                // no block stat, so a player's swing is never blocked, but
+                // the player's own BlockStrengthPct (CON-derived) shaves a
+                // fraction off what armour did not already stop. Armour
+                // itself is deliberately NOT an event - it reduces every hit
+                // rather than stopping any, so it is a smaller number on
+                // this line, not a line of its own.
+                CombatEventFeed.Publish(
+                    payload.PlayerId,
+                    payload.CurrentMonsterId,
+                    Network.ResponseCombatEventPacket.KindMonsterHit,
+                    (int)Math.Min(int.MaxValue, finalDamage / 1000),
+                    (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                    (byte)((monsterCritMult > 1.0f ? Network.ResponseCombatEventPacket.FlagCrit : 0)
+                         | (blockStrengthFraction > 0f ? Network.ResponseCombatEventPacket.FlagBlocked : 0)));
+
+                if (thornsReflected > 0)
+                {
+                    CombatEventFeed.Publish(
+                        payload.PlayerId,
+                        payload.CurrentMonsterId,
+                        Network.ResponseCombatEventPacket.KindPlayerHit,
+                        (int)Math.Min(int.MaxValue, thornsReflected / 1000),
+                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                        Network.ResponseCombatEventPacket.FlagThorns);
+                }
+            }
+            else
+            {
+                // The monster swung and the player's dodge took it. Same
+                // argument as the player's own miss above: nothing moves, so
+                // without this line the fight looks like it stopped.
+                CombatEventFeed.Publish(
+                    payload.PlayerId,
+                    payload.CurrentMonsterId,
+                    Network.ResponseCombatEventPacket.KindMonsterMiss,
+                    0,
+                    (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
+
+                // Riposte: every dodged swing answers back.
+                if (payload.CurrentMonsterHp > 0) Riposte(ref payload, in combatStats, in activeMonster);
             }
         }
 
