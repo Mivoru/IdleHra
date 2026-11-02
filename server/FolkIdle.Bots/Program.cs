@@ -142,7 +142,7 @@ namespace FolkIdle.Bots
                 foreach (string part in Mix.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 {
                     string[] kv = part.Split(':');
-                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, casual, idle)");
+                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, patient, casual, idle)");
                     int count = kv.Length > 1 ? int.Parse(kv[1], CultureInfo.InvariantCulture) : 1;
                     roster.AddRange(Enumerable.Repeat(persona, Math.Clamp(count, 1, 50)));
                 }

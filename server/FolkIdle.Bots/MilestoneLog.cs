@@ -56,7 +56,7 @@ namespace FolkIdle.Bots
             _events = new StreamWriter(Path.Combine(directory, "events.log")) { AutoFlush = true };
             _csv.WriteLine("bot,milestone,game_hours,wall_minutes,level,region,gold,deaths");
             _timeline = new StreamWriter(Path.Combine(directory, "timeline.csv")) { AutoFlush = true };
-            _timeline.WriteLine("bot,game_hours,level,xp,region,location,gold,diamonds,activity,larder,deaths,forge,town_hall,rebirths");
+            _timeline.WriteLine("bot,game_hours,level,xp,region,location,gold,diamonds,activity,larder,deaths,forge,town_hall,rebirths,dungeon_best,ascension_steps");
         }
 
         public double GameHours => (DateTime.UtcNow - _startUtc).TotalHours * _speed;
@@ -124,14 +124,14 @@ namespace FolkIdle.Bots
         }
 
         /// <summary>One row per bot per game hour: where it stands, for curves rather than milestones (report 4.3).</summary>
-        public void Timeline(string bot, StateUpdatePacket s)
+        public void Timeline(string bot, StateUpdatePacket s, int dungeonBest = 0, int ascensionSteps = 0)
         {
             lock (_lock)
             {
                 _progress.TryGetValue(bot, out var p);
                 _timeline.WriteLine(string.Join(",", bot, GameHours.ToString("0.00", CultureInfo.InvariantCulture), s.CurrentLevel, s.CurrentXp,
                     s.HighestUnlockedRegion, s.HighestLocationReached, s.Gold, s.PremiumCurrencyBalance, s.ActiveActivityId,
-                    s.Food1_Count + s.Food2_Count + s.Food3_Count, p?.Deaths ?? 0, s.ForgeLevel, s.TownHallLevel, p?.Rebirths ?? 0));
+                    s.Food1_Count + s.Food2_Count + s.Food3_Count, p?.Deaths ?? 0, s.ForgeLevel, s.TownHallLevel, p?.Rebirths ?? 0, dungeonBest, ascensionSteps));
             }
         }
 
