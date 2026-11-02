@@ -29,6 +29,20 @@ echo "deploy: stamping over-the-air bundle $V"
 
 docker compose up -d --build
 
+# Modul: THE DISK FILLED WITH BUILD CACHE (measured 2026-11-02). Nothing ever
+# pruned it, and every deploy's `--build` added layers: 27.8 GB of the 45 GB
+# disk was reclaimable build cache and the disk stood at 79%. Postgres stops
+# when its disk is full, so this is a stability rule, not tidiness. Pruned only
+# after a deploy that answered OK (a failed one keeps its cache for the retry),
+# and only cache older than a week, so the next build still reuses the layers
+# this one just made. Dangling images are the previous builds' leftovers;
+# images a container uses are never touched.
+prune() {
+  docker builder prune -f --filter until=168h >/dev/null || true
+  docker image prune -f >/dev/null || true
+  echo "deploy: pruned; disk $(df -h / | awk 'NR==2 {print $5}') used"
+}
+
 # Modul: every --build leaves its layers in the build cache, and nothing ever
 # removed them: on 2026-10-20 the 45 GB disk was 78% full, 28 GB of it build
 # cache. Keep the last three days' (a quick redeploy stays fast) and drop the
@@ -44,6 +58,7 @@ for _ in $(seq 1 36); do
     status="$(curl -s -o /dev/null -w '%{http_code}' "$URL")"
     if [[ "$status" == "200" ]]; then
       echo "deploy: OK - manifest answers $V and $URL serves 200"
+      prune
       exit 0
     fi
     echo "deploy: FAILED - manifest answers $V but $URL answered $status" >&2
