@@ -186,7 +186,9 @@ namespace FolkIdle.Server.Domain.Progression
             for (int i = 0; i < found; i++)
             {
                 var pet = MonsterPool[random.Next(MonsterPool.Count)];
-                PetEngine.Drops.Enqueue(new PetDropNote(playerId, pet.Id));
+                // A simulated away window counts the find instead (CombatSimulator).
+                if (Domain.Combat.SimulationEngine.Simulating is { } simulating) simulating.PetDrops.Add(pet.Id);
+                else PetEngine.Drops.Enqueue(new PetDropNote(playerId, pet.Id));
             }
             return found;
         }

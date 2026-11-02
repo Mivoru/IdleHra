@@ -4888,6 +4888,33 @@ namespace FolkIdle.Server.Domain.Combat
             payload.RestedHpPending = true;
         }
 
+        // Modul: phase 2b.2 (roadmap 5). While CombatSimulator replays an away
+        // window through RunCombatTick, everything the tick would SEND - the
+        // event feed, loot and codex queues, boss notes, announcements, pet
+        // drops - is counted into this tally instead, so an offline window
+        // never reaches a live queue and the caller decides what to pay. The
+        // game state and every dice roll are untouched, which is what keeps a
+        // simulated window identical to the same window ticked live.
+        [ThreadStatic] private static CombatSimulator.Tally? t_simulating;
+
+        /// <summary>The tally of the simulation running on this thread, or null on the live tick.</summary>
+        internal static CombatSimulator.Tally? Simulating => t_simulating;
+
+        internal static CombatSimulator.Tally? BeginSimulation(CombatSimulator.Tally tally)
+        {
+            var previous = t_simulating;
+            t_simulating = tally;
+            return previous;
+        }
+
+        internal static void EndSimulation(CombatSimulator.Tally? previous) => t_simulating = previous;
+
+        private static void EnqueueDrop(System.Collections.Generic.List<CombatLootDropRequest>? sink, CombatLootDropRequest request)
+        {
+            if (sink != null) sink.Add(request);
+            else CombatLootEngine.DropRequestQueue.Enqueue(request);
+        }
+
         /// <summary>
         /// Monster combat resolution for one tick - spawn, the player's swing,
         /// the monster's reply, auto-eat, death, and kill rewards. Extracted
@@ -5261,9 +5288,11 @@ namespace FolkIdle.Server.Domain.Combat
                 // Task 55: the boss challenges, judged off the tick from what this
                 // fight was. CombatTargetTickAccumulator is zeroed at the spawn
                 // and counts ticks, so it is the fight's length in tenths.
+                var simulating = Simulating;
                 if (clearedBossRegion > 0)
                 {
-                    CosmeticGrantEngine.NoteBossKill(payload.PlayerId, clearedBossRegion, activeMonster.Id,
+                    if (simulating != null) simulating.BossKills++;
+                    else CosmeticGrantEngine.NoteBossKill(payload.PlayerId, clearedBossRegion, activeMonster.Id,
                         levelAtKill, payload.AteThisFight, (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator));
                 }
 
@@ -5281,7 +5310,8 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         int clearedStep = payload.AscensionStep;
                         payload.BossAscensionPacked = BossAscensionRegistry.WithHighestStep(payload.BossAscensionPacked, clearedBossRegion, clearedStep);
-                        BossAscensionEngine.NoteClear(payload.PlayerId, clearedBossRegion, clearedStep, activeMonster.Id);
+                        if (simulating != null) simulating.AscensionClears++;
+                        else BossAscensionEngine.NoteClear(payload.PlayerId, clearedBossRegion, clearedStep, activeMonster.Id);
                         // No result here: "cleared" is announced by the worker AFTER
                         // the reward commits, so the ladder the client refetches on
                         // that result already shows the step.
@@ -5317,7 +5347,8 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             payload.SeasonalBossClearedMask = SeasonalBossRegistry.WithCleared(payload.SeasonalBossClearedMask, wonTier.Tier);
                             Domain.Progression.SeasonalEventEarning.Grant(ref payload, wonTier.Currency, nowSeconds);
-                            SeasonalBossEngine.Clears.Enqueue(new SeasonalBossClearNote(payload.PlayerId, seasonalEvent.Id, wonTier.Tier));
+                            if (simulating != null) simulating.SeasonalBossClears++;
+                            else SeasonalBossEngine.Clears.Enqueue(new SeasonalBossClearNote(payload.PlayerId, seasonalEvent.Id, wonTier.Tier));
                             DisarmAscension(ref payload);
                         }
                     }
@@ -5352,11 +5383,11 @@ namespace FolkIdle.Server.Domain.Combat
                 // holding it in Redis, where every pod can see the same answer.
                 if (wasFirstClearForThisPlayer && clearedBossRegion > 0)
                 {
-                    BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
+                    if (simulating == null) BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
 
                     // Funnel step 6: this player's first clear of region 1's
                     // boss - the door to everything past the tutorial region.
-                    if (clearedBossRegion == RaceUnlockRegistry.FirstRegion)
+                    if (simulating == null && clearedBossRegion == RaceUnlockRegistry.FirstRegion)
                     {
                         FunnelRecorder.Record(payload.PlayerId, FunnelStep.Region1Boss);
                     }
@@ -5437,14 +5468,16 @@ namespace FolkIdle.Server.Domain.Combat
                     codexRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
                 }
 
-                CodexEngine.KillEventQueue.Enqueue(new KillEvent
+                var killEvent = new KillEvent
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = payload.CurrentMonsterId,
                     RaceId = codexRaceId,
                     GainedXp = (long)seasonalCombatXp * paidKills,
                     Kills = paidKills,
-                });
+                };
+                if (simulating != null) simulating.CodexKills.Add(killEvent);
+                else CodexEngine.KillEventQueue.Enqueue(killEvent);
 
                 // Modul: counted HERE as well as sixty lines below, because the
                 // live server insisted on something the source says is
@@ -5452,7 +5485,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // this same straight-line block never fired. One of those two
                 // observations is wrong, and only the running process can say
                 // which.
-                CombatLootEngine.NoteCodexKill();
+                if (simulating == null) CombatLootEngine.NoteCodexKill();
 
                 // Modul: one shared definition. This site and CombatLootEngine
                 // both used `% 6 == 0`, copied between them on the reasoning
@@ -5519,9 +5552,10 @@ namespace FolkIdle.Server.Domain.Combat
                 // split OfflineSimulationEngine.ProjectCombatLoot makes too - a
                 // Scholar kill paid as two can carry one fleece proc and one
                 // plain kill.
+                var dropSink = simulating != null ? simulating.DropRequests : null;
                 if (plainKills > 0)
                 {
-                    CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                    EnqueueDrop(dropSink, CombatLootDropRequest.Build(
                         in payload,
                         in combatStats,
                         payload.CurrentMonsterId,
@@ -5531,7 +5565,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
                 if (fleeceKills > 0)
                 {
-                    CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                    EnqueueDrop(dropSink, CombatLootDropRequest.Build(
                         in payload,
                         in combatStats,
                         payload.CurrentMonsterId,
@@ -5548,7 +5582,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // exactly where a day went. These two numbers must track each
                 // other; a gap is the bug, and which side the gap is on says
                 // which half to look at.
-                CombatLootEngine.NoteKillEnqueued();
+                if (simulating == null) CombatLootEngine.NoteKillEnqueued();
+                else { simulating.Kills++; simulating.PaidKills += paidKills; }
 
                 // Modul: A DEAD MATERIAL ROLL WAS DELETED HERE, 2026-09-30.
                 //

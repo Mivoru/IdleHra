@@ -109,6 +109,103 @@ namespace FolkIdle.Server.Tests
             return FormattableString.Invariant($"{offline / live.Mean:F3}{range}");
         }
 
+        /// <summary>
+        /// Phase 2b.2: the per-swing simulator over the same rows, many seeded
+        /// hours against many live ones. Both sides roll dice, so each cell
+        /// carries both means' error. The bar the roadmap set: every interval
+        /// contains 1.000 (the expected-value model above misses it on a third of
+        /// the rows).
+        /// </summary>
+        [Fact]
+        public void Print_TheSimulatorAgainstTheLiveTick()
+        {
+            if (!Enabled) return;
+            int samples = Samples;
+            var table = new StringBuilder();
+            table.AppendLine($"Per-swing simulator against the live tick, {samples} seeded simulator hours and {samples} live hours a row.");
+            table.AppendLine("Each cell: simulator mean / live mean [95% interval from both errors].");
+            table.AppendLine("row | kills | xp | gold | food | seconds alive");
+            int misses = 0, cells = 0;
+            foreach (object[] r in OfflineCombatParityTests.Rows())
+            {
+                var payload = OfflineCombatParityTests.Build((int)r[1], (bool)r[2], (int)r[3], (int)r[4], (int)r[5]);
+                var live = SampleLive(payload, samples);
+                var sim = SampleSimulator(payload, samples);
+                var line = new StringBuilder($"{r[0]}");
+                foreach (string key in new[] { "kills", "xp", "gold", "food", "alive" })
+                {
+                    var a = Of(sim[key]);
+                    var l = Of(live[key]);
+                    if (l.Mean == 0 && a.Mean == 0) { line.Append(" |  = "); continue; }
+                    double ratio = a.Mean / l.Mean;
+                    double rel = Math.Sqrt(Math.Pow(a.StdErr / Math.Max(1e-9, a.Mean), 2) + Math.Pow(l.StdErr / Math.Max(1e-9, l.Mean), 2));
+                    double lo = ratio * (1 - (1.96 * rel)), hi = ratio * (1 + (1.96 * rel));
+                    bool contains = lo <= 1.0 && hi >= 1.0;
+                    cells++;
+                    if (!contains) misses++;
+                    line.Append(FormattableString.Invariant($" | {ratio:F3} [{lo:F3}-{hi:F3}]{(contains ? "" : " MISS")}"));
+                }
+                table.AppendLine(line.ToString());
+            }
+            table.AppendLine($"{misses} of {cells} intervals miss 1.000 (at 95%, about {cells / 20} would by chance alone).");
+            _out.WriteLine(table.ToString());
+        }
+
+        private static Dictionary<string, List<double>> SampleSimulator(TickStatePayload start, int samples)
+        {
+            var figures = new Dictionary<string, List<double>>
+            {
+                ["kills"] = new(), ["xp"] = new(), ["gold"] = new(), ["food"] = new(), ["alive"] = new(),
+            };
+            for (int seed = 0; seed < samples; seed++)
+            {
+                var payload = start;
+                var outcome = CombatSimulator.Run(ref payload, HuntingProjection.HorizonTicks, new Random(1_000_003 * (seed + 1)));
+                figures["kills"].Add(outcome.Tally.Kills);
+                figures["xp"].Add(OfflineCombatParityTests.XpBetween(start.CurrentLevel, start.CurrentXp, payload.CurrentLevel, payload.CurrentXp));
+                figures["gold"].Add(payload.CurrentGold - start.CurrentGold);
+                figures["food"].Add(OfflineCombatParityTests.FoodCount(in start) - OfflineCombatParityTests.FoodCount(in payload));
+                figures["alive"].Add(outcome.SecondsFought);
+            }
+            return figures;
+        }
+
+        /// <summary>
+        /// Phase 2b.3's number: what a 12-hour window costs, ticked and simulated,
+        /// against the expected-value model. The roadmap's budget is 50 ms.
+        /// </summary>
+        [Fact]
+        public void Print_WhatATwelveHourWindowCosts()
+        {
+            if (!Enabled) return;
+            var table = new StringBuilder("row | ticked every tick ms | simulated ms (ticks run) | expected-value model ms" + Environment.NewLine);
+            foreach (var (name, region, geared, monster) in new[]
+            {
+                ("r5 geared fed", 5, true, ContentRegistry.FirstCanonicalMonsterId + 22),
+                ("r3 geared fed", 3, true, ContentRegistry.FirstCanonicalMonsterId + 12),
+                ("r1 bare fed", 1, false, ContentRegistry.FirstCanonicalMonsterId + 2),
+            })
+            {
+                for (int rep = 0; rep < 3; rep++)
+                {
+                    var a = OfflineCombatParityTests.Build(region, geared, monster, 20_000, 0);
+                    var b = a; var c = a;
+                    var w = System.Diagnostics.Stopwatch.StartNew();
+                    CombatSimulator.Run(ref a, 12L * 36_000, new Random(rep), tickEveryTick: true);
+                    double tickedMs = w.Elapsed.TotalMilliseconds;
+                    w.Restart();
+                    var o = CombatSimulator.Run(ref b, 12L * 36_000, new Random(rep));
+                    double simMs = w.Elapsed.TotalMilliseconds;
+                    w.Restart();
+                    OfflineSimulationEngine.ProjectCombat(ref c, monster, 12 * 3600);
+                    double evMs = w.Elapsed.TotalMilliseconds;
+                    while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
+                    table.AppendLine(FormattableString.Invariant($"{name} | {tickedMs:F0} | {simMs:F0} ({o.TicksTicked} of {o.TicksRun}) | {evMs:F1}"));
+                }
+            }
+            _out.WriteLine(table.ToString());
+        }
+
         [Fact]
         public void Print_TheOfflineModelAgainstTheLiveTick()
         {
