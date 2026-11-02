@@ -43,6 +43,14 @@ namespace FolkIdle.Server.Domain.Combat
             public readonly List<CombatLootDropRequest> DropRequests = new();
             public readonly List<KillEvent> CodexKills = new();
             public readonly List<string> PetDrops = new();
+            // Modul: phase 2b.4. The notes the live kill hands its engines, kept
+            // whole rather than counted, so an away window can REPLAY them
+            // (OfflineSimulationEngine) - an Ascension step cleared away is
+            // marked on the payload by the tick, and a count alone would leave
+            // its titles and frames unpaid.
+            public readonly List<(int Region, int MonsterId, int Level, bool Ate, int FightTenths)> BossKillNotes = new();
+            public readonly List<(int Region, int Step, int MonsterId)> AscensionNotes = new();
+            public readonly List<SeasonalBossClearNote> SeasonalBossNotes = new();
         }
 
         internal readonly record struct Outcome(long TicksRun, long TicksTicked, bool Died, bool LeftTheFight, Tally Tally)

@@ -211,8 +211,12 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(plain.OfflineGoldEarned > 0, "the offline window killed nothing");
             Assert.Equal(0L, plain.OfflineGoldEarned % plainPerKill);
+            // Per run, not across runs: with FOLKIDLE_OFFLINE_SIM=1 each window
+            // has its own dice (see CombatGoldParityTests).
+            Assert.Equal(0L, buffed.OfflineGoldEarned % buffedPerKill);
             long kills = plain.OfflineGoldEarned / plainPerKill;
-            Assert.Equal(kills * buffedPerKill, buffed.OfflineGoldEarned);
+            long buffedKills = buffed.OfflineGoldEarned / buffedPerKill;
+            Assert.True(Math.Abs(buffedKills - kills) <= Math.Max(2L, kills / 50), $"kills {kills} plain, {buffedKills} buffed");
 
             // Still running at sign-in: the slot keeps its own countdown.
             Assert.Equal(goldmoss.ItemId, buffed.ActiveOffensivePotionId);
