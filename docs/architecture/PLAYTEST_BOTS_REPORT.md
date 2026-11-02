@@ -37,7 +37,7 @@ Both runs: 0 ticks dropped (x20: 864,083 ticks; x100: 2,592,648 ticks with
 7 bots). The early levels run slightly behind at x100 (level 2 at 0.53 h
 against 0.26 h), because the bot makes fewer decisions per GAME minute; from
 level 15 on the two agree within the spread between bots. x200 then held
-x201 effective with tick p95 0.17 ms (overnight run, section 0.3).
+x200.0 effective for 7.6 wall hours (overnight run, section 0.4).
 
 ### 0.1 What the full bot shows (run D, x100, 72 game hours)
 
@@ -76,7 +76,57 @@ player dropped to the reconnect screen right after a command. Possible
 fixes: retry the write on 40001 (the usual EF answer), or refuse the one
 command instead of kicking the session. Not changed - production code.
 
-### 0.3 Speed limits now
+### 0.4 The overnight run (x200, 1,526 game hours = 63.6 game days)
+
+3 optimal, 2 casual, 2 idle; 54.9 million ticks in 458 wall minutes, x200.0
+effective, 0 dropped. **Only the optimal bots' numbers are usable** - the
+casual and idle bots hit two bot defects that x200 exposed (below, fixed
+after the run).
+
+**Optimal, median game hours (3 of 3 bots unless noted):**
+
+| Milestone | Game hours | Game days |
+|---|---|---|
+| region 2 / 3 open | 11.3 / 31.3 | 0.5 / 1.3 |
+| level 60 | 67.5 | 2.8 |
+| region 4 open | 109.0 | 4.5 |
+| first rebirth (at level 68-75) | 114.9 | 4.8 |
+| region 5 open | 745.5 | 31.1 |
+| region-5 boss | 793.0 (1 of 3) | 33.0 |
+| rebirth 10 | 931.1 | 38.8 |
+| rebirth 16 | 1,475.0 | 61.5 |
+| level at the end | 76, 81, 84 | |
+
+- **Rebirth is a fast loop.** After a rebirth a bot is back at level 60 in
+  about 10 game hours and level 75 in 25-40 (the below-peak XP bonus), then
+  stalls and is reborn again: 16 rebirths each, one every 80-100 game hours
+  from rebirth 5 on. The damage bonus reaches 13% by rebirth 10 and stops
+  there. The rebirth level crept from 68 to 91. Level 100 was reached once,
+  in a bot's 15th life. Whether a rebirth every four days is the intended
+  rhythm is a design question; the bot's rule (reborn when Renown rises and
+  no level for 6 game hours) is one plausible player, not the only one.
+- **Region 5 takes a month.** Region 4 opens in under five days, region 5
+  only after 31; the region-4 boss is the wall of the long game.
+- **The dungeons stall at stage 5-8.** Across the three bots: stage 5 lost
+  11 times and won 3, stages 6-8 won 4 and lost 4; everything else was
+  sweeps (358-390 each). The pushes stop well short of stage 15.
+- **Diamonds:** 520-532 from the Delve per bot, which bought 10-14
+  inheritance levels. 25-51 children bred, 170-185 villagers recruited,
+  119-136 tools, 468-659 fusions, 161-169 Workshop pieces.
+- **The kick from 0.2 is common at this length:** 15-24 reconnects per
+  optimal bot, about one per 70 game hours of play.
+
+**Bot defects the run exposed (fixed after it; casual and idle need a rerun):**
+1. At x200 a 20-minute check-in is 6 wall seconds, and the first pass after
+   a login ran every chore before the loop sent a command. An idle bot whose
+   character had died offline logged out again without restarting the
+   fight and stood dead for ten game days (+0 XP a login). Now the fight is
+   restarted before any chore.
+2. "No level for 6 game hours" read every slow offline window as a stall,
+   so casual bots were reborn at level 50 nine times and ended at level 1.
+   For a persona that logs out the threshold is three check-in intervals.
+
+### 0.5 Speed limits now
 
 `TickPacer.MaxTickSpeed` is 200 (dev only). x100 and x200 hold with a few
 bots. x1000 does not fit: a tick would get 0.1 ms, the bot's 0.4-1.2 s
@@ -254,10 +304,12 @@ Items 1-3 of the first list (fish at the new river, decide by the projection,
 forge/potions/dungeons) are done - see section 0. Now:
 
 1. **Owner:** the serialization-conflict kick (section 0.2).
-2. Read the overnight x200 run (63 game days, 3 optimal, 2 casual, 2 idle):
-   rebirth, breeding over generations, regions 4-5.
-3. A casual run at x20, to tell the casual-never-reaches-region-2 result
+2. Rerun casual and idle (the overnight run's were broken by two bot
+   defects, 0.4); at x20, where a check-in is a minute of wall time.
+3. Design reads from the overnight run (0.4): a rebirth every ~4 game days,
+   region 5 after a month, dungeon pushes stalling at stage 5-8.
+4. A casual run at x20, to tell the casual-never-reaches-region-2 result
    (0.1) from an x100 artefact; and the +0 XP offline login.
-4. **Owner decisions still waiting:** the region-2 fishing unlock (2.2) is
+5. **Owner decisions still waiting:** the region-2 fishing unlock (2.2) is
    now moot for a bot that fetches the new fish (region 2 at 12.8 h, region 3
    at 25.2 h), and the idle player's day (2.4).

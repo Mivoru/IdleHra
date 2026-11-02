@@ -121,6 +121,7 @@ namespace FolkIdle.Bots
                     _nextDue.Clear();
                     _queue.Clear();
                     _pendingActivity = 0;
+                    _needFightAfterLogin = true;
                     await Task.Delay(2000, token); // the login snapshot carries the offline summary
                     if (_client.TryGetState(out var back))
                     {
@@ -219,9 +220,25 @@ namespace FolkIdle.Bots
         // command, and the decisions that end in a queued command
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Modul: THE FIGHT FIRST AFTER A LOGIN (x200 run, 2026-11-02). A
+        /// 20-game-minute check-in is 6 wall seconds at x200, and the first
+        /// pass ran every chore (all timers expire at login) before the loop
+        /// could send a command - so an idle bot whose character had died
+        /// offline logged out again without restarting the fight, and stood
+        /// dead for ten game days. Until the main character has an activity
+        /// again after a login, only the refresh runs.
+        /// </summary>
+        private bool _needFightAfterLogin;
+
         private async Task RestChoresAsync(CancellationToken token)
         {
             await RefreshAsync(token);
+            if (_needFightAfterLogin)
+            {
+                if (_state.ActiveActivityId != 0 && _state.ActivityHaltReason == 0) _needFightAfterLogin = false;
+                else return;
+            }
 
             // Each chore guards itself with a game-time timer, so most passes
             // run none of them. Ordered by how much a delay costs.

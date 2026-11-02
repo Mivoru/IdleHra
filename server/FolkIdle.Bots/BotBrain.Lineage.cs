@@ -159,7 +159,13 @@ namespace FolkIdle.Bots
         {
             var preview = await _client.GetAsync("/api/v1/rebirth/preview", token);
             if (preview is not { } p || p.Bool("Capped") || !p.Bool("Renowned")) return;
-            bool stalled = Now - _lastLevelUpAt >= 6;
+            // Modul: A STALL IS COUNTED IN CHECK-INS FOR A PLAYER WHO LOGS OUT
+            // (x200 run, 2026-11-02). Six game hours without a level read
+            // every slow offline window as a stall, so the casual bots reborn
+            // at level 50 nine times and ended the run at level 1. For them it
+            // is three check-in intervals.
+            double stallHours = _persona.AlwaysOn ? 6 : Math.Max(6, 3 * _persona.CheckInEveryGameHours);
+            bool stalled = Now - _lastLevelUpAt >= stallHours;
             if (!stalled && _state.CurrentLevel < 100) return;
 
             var keep = new List<long>();
@@ -169,7 +175,7 @@ namespace FolkIdle.Bots
 
             var (status, body) = await _client.PostAsync("/api/v1/rebirth", new { ExpectedRebirthCount = p.Int("RebirthCount"), Confirm = "REBIRTH", KeepEquipmentIds = keep }, token);
             string result = body is { } b ? b.Str("Result") : status.ToString();
-            Event($"REBIRTH {p.Int("RebirthCount") + 1} at level {_state.CurrentLevel} ({(stalled ? "stalled 6 h" : "level 100")}): {result}; damage bonus {p.Num("DamageBonusPctNow"):0.#}% -> {p.Num("DamageBonusPctAfter"):0.#}%, kept {keep.Count} piece(s)");
+            Event($"REBIRTH {p.Int("RebirthCount") + 1} at level {_state.CurrentLevel} ({(stalled ? $"stalled {stallHours:0} h" : "level 100")}): {result}; damage bonus {p.Num("DamageBonusPctNow"):0.#}% -> {p.Num("DamageBonusPctAfter"):0.#}%, kept {keep.Count} piece(s)");
             if (result == "Ok")
             {
                 Count("rebirths");
