@@ -29,7 +29,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   6: 'Target not found.',
   7: 'Guild not found.',
   8: 'The server rejected that.',
-  9: 'A bank transaction is already in flight - try again in a moment.',
+  9: 'Something else was being saved at that moment - try again.',
   10: 'That piece is already at the highest rarity there is.',
   // The server no longer returns this - storage is unlimited. Mapped so a
   // stale code cannot render as a bare number.

@@ -788,6 +788,24 @@ namespace FolkIdle.Server.Domain.Combat
             }
             catch (Exception ex)
             {
+                // Modul: A DATABASE CONFLICT REFUSES THE COMMAND, IT DOES NOT
+                // KICK THE PLAYER (found by the playtest bots, 2026-11-02). A
+                // Serializable write that loses a race with the checkpoint flush
+                // throws 40001, and this handler answered it by force-
+                // disconnecting - 15-24 times per bot in 63 game days, each one a
+                // player thrown to the reconnect screen after an ordinary click.
+                // The kick exists so a state transition that failed (Login above
+                // all) cannot leave the client waiting for a packet that never
+                // comes; an ordinary command that lost a race has changed nothing,
+                // so it is refused with "try again in a moment" (TransactionPending)
+                // and the session lives. Login keeps the kick.
+                if (playerIdToDisconnectOnFailure != 0 && context != "Login" && TransientDbConflict.IsConflict(ex))
+                {
+                    Console.WriteLine($"SafeDispatchAsync[{context}] lost a database race (refused, session kept): {ex.Message}");
+                    _playerRegistry.EnqueueCommandResult(playerIdToDisconnectOnFailure, (byte)CommandResultCode.TransactionPending);
+                    return;
+                }
+
                 Console.WriteLine($"SafeDispatchAsync[{context}] failed: {ex.Message}");
                 if (playerIdToDisconnectOnFailure != 0)
                 {
@@ -2790,7 +2808,13 @@ namespace FolkIdle.Server.Domain.Combat
         // is a session. The rows lag it by up to a checkpoint (a death idles a
         // character on the payload first), so a stale row must not refuse a
         // deploy the live state allows. Null reads the rows (no session).
-        internal async Task<Network.CommandResultCode> ChangeCharacterActivityAsync(long playerId, Guid characterId, long targetActivityId, long[]? liveActivitiesBySlot = null, int liveRequestingSlot = -1)
+        // Modul: retried on a Postgres conflict (TransientDbConflict). The core
+        // is one Serializable transaction on its own context that returns a code
+        // and touches nothing else, so a rerun after a rollback is safe.
+        internal Task<Network.CommandResultCode> ChangeCharacterActivityAsync(long playerId, Guid characterId, long targetActivityId, long[]? liveActivitiesBySlot = null, int liveRequestingSlot = -1)
+            => TransientDbConflict.RetryAsync(() => ChangeCharacterActivityCoreAsync(playerId, characterId, targetActivityId, liveActivitiesBySlot, liveRequestingSlot));
+
+        private async Task<Network.CommandResultCode> ChangeCharacterActivityCoreAsync(long playerId, Guid characterId, long targetActivityId, long[]? liveActivitiesBySlot, int liveRequestingSlot)
         {
             await using var db = await _contextFactory.CreateDbContextAsync();
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
