@@ -93,7 +93,10 @@ namespace FolkIdle.Server.Domain.Shared
             }
             int toMove = Math.Min(quantity, room);
             string potionBaseId = ContentRegistry.GetItemBaseId(itemId);
-            ctx.SafeDispatch("Potions.Stock", playerId, async () =>
+            // Retried on a Postgres conflict: the attempt is one transaction on
+            // its own context, and the delta and the result are enqueued only
+            // after its commit.
+            ctx.SafeDispatch("Potions.Stock", playerId, () => TransientDbConflict.RetryAsync(async () =>
             {
                 await using var db = await factory.CreateDbContextAsync();
                 await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
@@ -107,7 +110,7 @@ namespace FolkIdle.Server.Domain.Shared
                 await transaction.CommitAsync();
                 Deltas.Enqueue(new ShelfDelta(playerId, slot, itemId, toMove));
                 registry.EnqueueCommandResult(playerId, (byte)CommandResultCode.Success);
-            });
+            }));
         }
 
         // DrinkPotion: TargetSlotIndex = slot. Tick-only - the shelf is on the payload.
