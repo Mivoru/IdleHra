@@ -62,7 +62,11 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "frenzy r3", 3, r3, new[] { WarTreeRegistry.Frenzy }, new byte[] { 5 } };
             yield return new object[] { "double strike r3", 3, r3, new[] { WarTreeRegistry.DoubleStrike }, new byte[] { 3 } };
             // Riposte answers the block's share of each connecting swing.
-            yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
+            // Modul: TOO SMALL FOR THE 1% BAR (2026-11-03). Eight local runs moved
+            // kills 1.2-3.0% (173-174 against 169-171), and #296's CI run failed
+            // the bar with no server change. Its wiring is proved exactly by
+            // Riposte_moves_the_live_tick_under_the_same_dice; this row holds parity.
+            yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 }, true };
             // Ruin is a TRADE: x1.7 every 8th hit against attack speed counting
             // 85%, worth little on this fast region-5 character (+1.8% by the
             // projection, inside one live hour's noise). Its wiring is proved by
@@ -158,6 +162,49 @@ namespace FolkIdle.Server.Tests
             var sw = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in wall);
             Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in counter, in sw)
                 > FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in wall, in sw));
+        }
+
+        /// <summary>
+        /// Riposte rolls no dice of its own: it only takes health off the monster
+        /// when a blow is blocked or dodged. So two live runs on the same seed,
+        /// Shield Wall in both and Riposte in one, tick identically until the
+        /// first riposte lands, and from there the Riposte run must be AHEAD -
+        /// the same kills with the monster lower, or a kill sooner. An unwired
+        /// Riposte keeps the two runs identical for the whole hour.
+        /// </summary>
+        [Fact]
+        public void Riposte_moves_the_live_tick_under_the_same_dice()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3, (WarTreeRegistry.ShieldWall, 5), (WarTreeRegistry.Riposte, 3));
+            var without = War(3, r3, (WarTreeRegistry.ShieldWall, 5));
+            var guildWar = new System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent>();
+            var sessions = new System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext>();
+            var diceWith = new Random(2026);
+            var diceWithout = new Random(2026);
+            int killsWith = 0, killsWithout = 0;
+            try
+            {
+                for (int tick = 0; tick < HuntingProjection.HorizonTicks; tick++)
+                {
+                    int fleeceWith = with.KillsSinceFleece, fleeceWithout = without.KillsSinceFleece;
+                    SimulationEngine.RunCombatTick(ref with, 100, 100, guildWar, sessions, diceWith);
+                    SimulationEngine.RunCombatTick(ref without, 100, 100, guildWar, sessions, diceWithout);
+                    if (with.KillsSinceFleece != fleeceWith) killsWith++;
+                    if (without.KillsSinceFleece != fleeceWithout) killsWithout++;
+                    if (killsWith == killsWithout && with.CurrentMonsterHp == without.CurrentMonsterHp) continue;
+
+                    bool ahead = killsWith > killsWithout
+                        || (killsWith == killsWithout && with.CurrentMonsterHp < without.CurrentMonsterHp);
+                    Assert.True(ahead, $"tick {tick}: the first difference puts Riposte behind (kills {killsWith} vs {killsWithout}, monster {with.CurrentMonsterHp} vs {without.CurrentMonsterHp})");
+                    return;
+                }
+                Assert.Fail("an hour on the same dice never told Riposte from Shield Wall alone: the live tick does not use it");
+            }
+            finally
+            {
+                while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
+            }
         }
 
         /// <summary>Counterstroke reads the Guard column's dodge and block: more defence, more crit.</summary>
