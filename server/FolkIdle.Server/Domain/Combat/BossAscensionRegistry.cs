@@ -189,8 +189,17 @@ namespace FolkIdle.Server.Domain.Combat
         // HealClamped). A3 = x32 again puts the owner back at about A3; x1.15 a
         // step puts the maxed profile at A6 (x48.7) and A10 at about x85, some
         // 1.75x the maxed power.
-        internal const double MalakorHeadroomAtStepThree = 32.0;
-        internal const double MalakorStepGrowth = 1.15;
+        //
+        // Re-measured 2026-11-02 (roadmap 3.5, after the affix rework, potions
+        // and the diamond rework) on the 2026-11-02 nightly backup: the owner's
+        // character about x47.6, the maxed profile x68-77 (the fights roll, so
+        // the harness ran twice). On 32 / 1.15 the owner cleared A5 and the
+        // maxed profile A8, and A10 asked only ~1.1x the maxed power. 40 / 1.21
+        // measured: owner A3 both runs, maxed A5 (A6 once), A10 x152, about 2x
+        // the maxed power. 47 / 1.18 overshot (owner A2, maxed A4), because the
+        // enrage from A4 on costs more than the headroom search prices.
+        internal const double MalakorHeadroomAtStepThree = 40.0;
+        internal const double MalakorStepGrowth = 1.21;
         internal const double MalakorHpExponent = 0.68;
 
         /// <summary>Malakor's attack multiplier at an Ascension step (1 = unchanged at step 0).</summary>
