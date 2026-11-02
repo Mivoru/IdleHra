@@ -178,7 +178,7 @@ namespace FolkIdle.Server.Tests
         public void Print_WhatATwelveHourWindowCosts()
         {
             if (!Enabled) return;
-            var table = new StringBuilder("row | ticked every tick ms | simulated ms (ticks run) | expected-value model ms" + Environment.NewLine);
+            var table = new StringBuilder("row | ticked every tick ms | simulated ms, best of 5 (ticks run) | expected-value model ms" + Environment.NewLine);
             foreach (var (name, region, geared, monster) in new[]
             {
                 ("r5 geared fed", 5, true, ContentRegistry.FirstCanonicalMonsterId + 22),
@@ -189,13 +189,21 @@ namespace FolkIdle.Server.Tests
                 for (int rep = 0; rep < 3; rep++)
                 {
                     var a = OfflineCombatParityTests.Build(region, geared, monster, 20_000, 0);
-                    var b = a; var c = a;
+                    var a0 = a; var b = a; var c = a;
                     var w = System.Diagnostics.Stopwatch.StartNew();
                     CombatSimulator.Run(ref a, 12L * 36_000, new Random(rep), tickEveryTick: true);
                     double tickedMs = w.Elapsed.TotalMilliseconds;
-                    w.Restart();
-                    var o = CombatSimulator.Run(ref b, 12L * 36_000, new Random(rep));
-                    double simMs = w.Elapsed.TotalMilliseconds;
+                    // The minimum of five runs: one run on a desktop swings by 2x
+                    // with whatever else the machine is doing.
+                    double simMs = double.MaxValue;
+                    CombatSimulator.Outcome o = default;
+                    for (int run = 0; run < 5; run++)
+                    {
+                        b = a0;
+                        w.Restart();
+                        o = CombatSimulator.Run(ref b, 12L * 36_000, new Random(rep));
+                        simMs = Math.Min(simMs, w.Elapsed.TotalMilliseconds);
+                    }
                     w.Restart();
                     OfflineSimulationEngine.ProjectCombat(ref c, monster, 12 * 3600);
                     double evMs = w.Elapsed.TotalMilliseconds;
@@ -203,6 +211,66 @@ namespace FolkIdle.Server.Tests
                     table.AppendLine(FormattableString.Invariant($"{name} | {tickedMs:F0} | {simMs:F0} ({o.TicksTicked} of {o.TicksRun}) | {evMs:F1}"));
                 }
             }
+            _out.WriteLine(table.ToString());
+        }
+
+        /// <summary>
+        /// Phase 2b.3's second number: a cold boot reconstructs every session,
+        /// so what does a batch of accounts each away 12 hours cost, one after
+        /// another and on two threads (the Oracle box has two cores)? The
+        /// accounts cycle through the parity rows. Release build, or the
+        /// numbers mean nothing.
+        /// </summary>
+        [Fact]
+        public void Print_AColdRecoveryBatch()
+        {
+            if (!Enabled) return;
+            const int accounts = 200;
+            var rows = new List<object[]>(OfflineCombatParityTests.Rows());
+            var starts = new TickStatePayload[accounts];
+            for (int i = 0; i < accounts; i++)
+            {
+                object[] r = rows[i % rows.Count];
+                starts[i] = OfflineCombatParityTests.Build((int)r[1], (bool)r[2], (int)r[3], (int)r[4], (int)r[5]);
+            }
+
+            long ticked = 0;
+            void One(int i)
+            {
+                var payload = starts[i];
+                var o = CombatSimulator.Run(ref payload, 12L * 36_000, new Random(i));
+                System.Threading.Interlocked.Add(ref ticked, o.TicksTicked);
+            }
+
+            One(0); // the JIT's first pass, not the batch's
+            var table = new StringBuilder(FormattableString.Invariant($"{accounts} accounts, 12 away hours each (dying and starving rows stop early)") + Environment.NewLine);
+            for (int rep = 0; rep < 3; rep++)
+            {
+                ticked = 0;
+                var w = System.Diagnostics.Stopwatch.StartNew();
+                for (int i = 0; i < accounts; i++) One(i);
+                double serialMs = w.Elapsed.TotalMilliseconds;
+                w.Restart();
+                System.Threading.Tasks.Parallel.For(0, accounts, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 2 }, One);
+                double parallelMs = w.Elapsed.TotalMilliseconds;
+                table.AppendLine(FormattableString.Invariant($"one thread {serialMs:F0} ms ({serialMs / accounts:F1} ms an account) | two threads {parallelMs:F0} ms | ticks run {ticked / 2}"));
+            }
+            // Per row, best of three: which kind of account is the expensive one.
+            table.AppendLine("row | ms for 12 h, best of 3 | ticks ticked | ticks run");
+            for (int i = 0; i < rows.Count; i++)
+            {
+                double best = double.MaxValue;
+                CombatSimulator.Outcome o = default;
+                for (int run = 0; run < 3; run++)
+                {
+                    var payload = starts[i];
+                    var w = System.Diagnostics.Stopwatch.StartNew();
+                    o = CombatSimulator.Run(ref payload, 12L * 36_000, new Random(run));
+                    best = Math.Min(best, w.Elapsed.TotalMilliseconds);
+                }
+                table.AppendLine(FormattableString.Invariant($"{rows[i][0]} | {best:F1} | {o.TicksTicked} | {o.TicksRun}"));
+            }
+            while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
             _out.WriteLine(table.ToString());
         }
 

@@ -117,6 +117,17 @@ namespace FolkIdle.Server.Engine
             foreach (var node in Nodes) if (node != null) yield return node;
         }
 
+        // Modul: THE NODES RESOLVE READS, AS A PLAIN ARRAY (phase 2b.3,
+        // 2026-11-02). Resolve runs several times a tick for every character
+        // with the tree (the stats, the bar, the swing interval, crit, the
+        // kill's gold and XP), and it used to walk All() - a yield iterator
+        // over every rank-buffer slot, an allocation and an interface call per
+        // node - which made a treed character's simulated 12 hours cost 270-380
+        // ms against 25-40 ms for one without. The bots that load-test the
+        // server have no tree, so the live tick's share of it never showed.
+        private static readonly WarNodeDef[] StatNodes =
+            System.Array.FindAll(Nodes, n => n != null && n.Effect != WarEffect.Mechanic)!;
+
         private static WarNodeDef?[] Build()
         {
             var t = new WarNodeDef?[SkillRankBuffer.Length];
@@ -375,10 +386,10 @@ namespace FolkIdle.Server.Engine
             var e = new WarEffects();
             if (payload.SkillTreeVersion != 1) return e;
             int scale = Math.Max(1, TestValueScale.Value);
-            foreach (var n in All())
+            foreach (var n in StatNodes)
             {
                 int rank = Math.Min((int)payload.SkillRanks[n.Id], n.MaxLevel);
-                if (rank <= 0 || n.Effect == WarEffect.Mechanic) continue;
+                if (rank <= 0) continue;
                 int v = n.ValueAt(rank) * scale;
                 switch (n.Effect)
                 {

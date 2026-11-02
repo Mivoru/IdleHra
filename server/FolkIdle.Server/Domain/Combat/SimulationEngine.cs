@@ -4907,7 +4907,33 @@ namespace FolkIdle.Server.Domain.Combat
             return previous;
         }
 
-        internal static void EndSimulation(CombatSimulator.Tally? previous) => t_simulating = previous;
+        internal static void EndSimulation(CombatSimulator.Tally? previous)
+        {
+            t_simulating = previous;
+            t_hasCarriedStats = false;
+        }
+
+        // Modul: phase 2b.3. CombatSimulator derives the character's stats
+        // after every tick it runs, to find the next swing (QuietTicksAhead),
+        // and the next tick derived them again from the same inputs - the
+        // derivation was the largest single cost of a simulated window. The
+        // quiet ticks it skips in between touch only the fight clock, health
+        // and the cooldown and ration counters, none of which the stats read,
+        // so the simulator hands its copy to the next tick instead. The live
+        // tick never sets this. CombatSimulatorTests' byte-for-byte equality
+        // is the guard: a stale copy would change a swing and part the runs.
+        [ThreadStatic] private static bool t_hasCarriedStats;
+        [ThreadStatic] private static CombatStats t_carriedStats;
+
+        internal static void CarryStatsIntoNextTick(in CombatStats stats)
+        {
+            // Only inside a simulation, which clears it on the way out
+            // (EndSimulation) - a copy left behind would be read by whatever
+            // live tick ran next on this thread.
+            if (t_simulating == null) return;
+            t_carriedStats = stats;
+            t_hasCarriedStats = true;
+        }
 
         private static void EnqueueDrop(System.Collections.Generic.List<CombatLootDropRequest>? sink, CombatLootDropRequest request)
         {
@@ -4977,7 +5003,16 @@ namespace FolkIdle.Server.Domain.Combat
             // Modul: the stats and the health bar are computed by helpers now
             // (task 78) - the hunting advisor projects a fight from the same
             // payload and must not hold a second copy of either.
-            var combatStats = LiveCombatStats(in payload);
+            CombatStats combatStats;
+            if (t_hasCarriedStats)
+            {
+                combatStats = t_carriedStats;
+                t_hasCarriedStats = false;
+            }
+            else
+            {
+                combatStats = LiveCombatStats(in payload);
+            }
             long effectiveMilliHp = EffectiveMaxMilliHpFor(in payload, in combatStats);
             // Modul: AN INT BAR (2026-10-11). PlayerHp is int milli-HP, so the
             // bar is clamped into int range here instead of truncated, and every

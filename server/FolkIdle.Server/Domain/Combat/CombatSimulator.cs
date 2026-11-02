@@ -110,6 +110,9 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.ActiveActivityId <= 0) return 0;
 
             var stats = SimulationEngine.LiveCombatStats(in payload);
+            // Every return below this line is followed by the next tick, on a
+            // payload that differs only in fields the stats never read.
+            SimulationEngine.CarryStatsIntoNextTick(in stats);
             maxHp = SimulationEngine.BarAsInt(SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats));
             var monster = ContentRegistry.Monsters[payload.CurrentMonsterId - 1];
             int playerInterval = SimulationEngine.LiveAttackIntervalMs(in payload, in stats);
