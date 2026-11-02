@@ -133,6 +133,16 @@ prunes after every successful deploy; check with `df -h /` and
 `docker system df`. Manual cleanup that never touches a running container:
 `docker builder prune -f` and `docker image prune -f`.
 
+**Load test, 2026-11-02 (local, not the box):** a Release server pinned to 2
+cores on the dev PC, 105 bot players (`FolkIdle.Bots`, 15 waves of 7, 45
+minutes each) at full speed. At a steady 105 sessions the tick took p50 ~3 ms,
+p95 ~9-11 ms and p99 ~13-20 ms against a 100 ms tick, with one 187 ms spike
+(4 catch-up ticks, 0 dropped). The process used ~0.11 of one core and ~310 MB.
+Tick cost grew roughly linearly with sessions (p50 0.5 ms at 7, 3 ms at 105),
+so the tick budget, not memory, is the first limit, somewhere in the high
+hundreds of sessions. That extrapolation is loose: the bots stayed in region 1
+(cheap fights) and the dev PC's cores are faster than the Ampere's.
+
 ## One origin
 
 Caddy serves the built client from `/srv` and proxies the API to the app
