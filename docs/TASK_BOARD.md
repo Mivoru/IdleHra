@@ -19,8 +19,8 @@ the old one reached 420 KB and three contradictory START HERE blocks.
   each marked): 128 (CI runs vitest, #231), 132 (the Hearth half, #236,
   client 1.41.0), 119 (the findings were the checker's own - audit
   2026-11-02). **133 is largely built**: 3.1, 3.3 (utility half), 3.4 Refine,
-  `crushing_blow_pct` and `thorns_pct` (3.6) are live; `double_hit_pct` and
-  the 3.5 re-measure are what is left.
+  `crushing_blow_pct` and `thorns_pct` (3.6) are live; `double_hit_pct` was
+  dropped by design (roadmap 6.2a). The 3.5 re-measure is what is left.
 - Also shipped and not on this board: herbs and potions, the Ascension reset,
   the Book of Deeds, the diamond rework, loot chests, the dungeon gates, the
   playtest bots (backlog, 2026-10-31 to 2026-11-02).
@@ -148,9 +148,10 @@ owner's. Masterwork waits for phase 3.
 **Built (2026-10-30, roadmap 6.2/6.2a):** 3.1 the damage family (#240), 3.3
 the ring/amulet utility half, 3.4 Refine (#244), 3.6 `crushing_blow_pct` on
 gloves and `thorns_pct` on the chest (thorns back in rolls after 3fa32b5b
-priced it per swing offline). **Left:** `double_hit_pct` (not in
-`AffixRegistry`), and 3.5 - re-measure the tree harness, the walls and
-Malakor (task 112) now the gear has moved.
+priced it per swing offline). `double_hit_pct` was **dropped** (roadmap
+6.2a: a full repeat at chance p has the same expectation as Crushing Blow, so
+it would be a second name for one stat). **Left:** 3.5 - re-measure the tree
+harness, the walls and Malakor (task 112) now the gear has moved.
 
 Includes the ring's pool (owner decision D4, from task 125). Keep the
 `KNOWN_AFFIX_IDS` order: it is a wire index.
