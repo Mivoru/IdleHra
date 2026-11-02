@@ -30,8 +30,19 @@ namespace FolkIdle.Server.Domain.Shared
     {
         public const int MaxCatchUpTicks = 5;
 
-        /// <summary>The fastest the dev tick multiplier may run.</summary>
-        public const int MaxTickSpeed = 20;
+        /// <summary>
+        /// The fastest the dev tick multiplier may run.
+        ///
+        /// Modul: 20 UNTIL 2026-11-01, THEN 100, THEN 200, on the owner's
+        /// requests. x20 was validated against x10 and x100 against x20
+        /// (PLAYTEST_BOTS_REPORT.md section 1); x100 ran 2.59 million ticks with
+        /// 7 bots and dropped none. At x200 a tick gets 0.5 ms of wall time
+        /// against a measured 0.07-0.4 ms; the run's summary.md reports the
+        /// effective speed from /metrics, so a run that fell behind shows it.
+        /// x1000 is out of reach this way (0.1 ms a tick) - it would need a
+        /// lockstep mode, not a faster clock.
+        /// </summary>
+        public const int MaxTickSpeed = 200;
 
         /// <summary>
         /// How many ticks the engine runs per <c>TickIntervalMs</c> of wall

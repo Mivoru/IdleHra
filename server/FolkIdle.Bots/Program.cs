@@ -42,6 +42,8 @@ namespace FolkIdle.Bots
             using var cts = new CancellationTokenSource();
             Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
             DateTime stopAt = DateTime.UtcNow.AddHours(o.Hours / o.Speed);
+            var metricsAtStart = await TickMetrics.ReadAsync(o.Server);
+            DateTime wallStart = DateTime.UtcNow;
             string runId = DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
 
             var tasks = roster.Select(async (persona, index) =>
@@ -69,9 +71,44 @@ namespace FolkIdle.Bots
             }).ToArray();
 
             await Task.WhenAll(tasks);
-            log.WriteSummary();
+            var metricsAtEnd = await TickMetrics.ReadAsync(o.Server);
+            log.WriteSummary(TickMetrics.Describe(metricsAtStart, metricsAtEnd, DateTime.UtcNow - wallStart, o.Speed));
             Console.WriteLine($"Done. {Path.GetFullPath(Path.Combine(outDir, "milestones.csv"))}");
             return 0;
+        }
+
+        /// <summary>
+        /// Modul: GAME TIME IS CHECKED, NOT ASSUMED (report 4.3, 2026-11-01).
+        /// MilestoneLog counts game hours as wall time x --speed. If the server
+        /// cannot keep up it drops ticks and the real game time is shorter, so
+        /// every milestone reads early. The tick counter and the dropped-tick
+        /// counter from /metrics, read at both ends of the run, give the speed
+        /// the server actually ran at; summary.md reports it.
+        /// </summary>
+        private static class TickMetrics
+        {
+            public static async Task<(long Ticks, long Dropped)?> ReadAsync(string server)
+            {
+                try
+                {
+                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    string text = await http.GetStringAsync(server.TrimEnd('/') + "/metrics");
+                    long Read(string name) => text.Split('\n').Where(l => l.StartsWith(name + " ", StringComparison.Ordinal))
+                        .Select(l => long.TryParse(l.Split(' ')[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long v) ? v : 0).FirstOrDefault();
+                    return (Read("folkidle_tick_duration_milliseconds_count"), Read("folkidle_ticks_dropped_total"));
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+
+            public static string Describe((long Ticks, long Dropped)? start, (long Ticks, long Dropped)? end, TimeSpan wall, int speed)
+            {
+                if (start is not { } a || end is not { } b || wall.TotalSeconds < 1) return "Tick metrics: /metrics was not readable.";
+                double effective = (b.Ticks - a.Ticks) / (wall.TotalSeconds * 10.0);
+                return $"Tick metrics: {b.Ticks - a.Ticks:N0} ticks in {wall.TotalMinutes:0.0} wall minutes = x{effective:0.0} effective (asked x{speed}); {b.Dropped - a.Dropped:N0} ticks dropped. Game hours above assume x{speed}; at x{effective:0.0} they are {effective / speed * 100:0.0}% of what they say.";
+            }
         }
 
         private static string FindGameData()
@@ -123,7 +160,7 @@ namespace FolkIdle.Bots
                         case "--server": o.Server = next().TrimEnd('/'); break;
                         case "--bots": o.Bots = Math.Clamp(int.Parse(next(), CultureInfo.InvariantCulture), 1, 50); break;
                         case "--hours": o.Hours = double.Parse(next(), CultureInfo.InvariantCulture); break;
-                        case "--speed": o.Speed = Math.Clamp(int.Parse(next(), CultureInfo.InvariantCulture), 1, 20); break;
+                        case "--speed": o.Speed = Math.Clamp(int.Parse(next(), CultureInfo.InvariantCulture), 1, FolkIdle.Server.Domain.Shared.TickPacer.MaxTickSpeed); break;
                         case "--out": o.Out = next(); break;
                         case "--prefix": o.Prefix = next(); break;
                         case "--allow-remote": o.AllowRemote = true; break;

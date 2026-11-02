@@ -28,6 +28,10 @@ namespace FolkIdle.Bots
             _ => null,
         };
 
+        /// <summary>Game hours left in the current check-in; infinite for a bot that never logs out.</summary>
+        public double HoursLeftInCheckIn(double gameHours)
+            => AlwaysOn ? double.PositiveInfinity : Math.Max(0, CheckInGameMinutes / 60.0 - gameHours % CheckInEveryGameHours);
+
         /// <summary>True while the bot is looking at the game.</summary>
         public bool IsCheckedIn(double gameHours)
             => AlwaysOn || gameHours % CheckInEveryGameHours < CheckInGameMinutes / 60.0;
