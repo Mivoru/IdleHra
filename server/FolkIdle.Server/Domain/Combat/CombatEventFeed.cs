@@ -59,6 +59,10 @@ namespace FolkIdle.Server.Domain.Combat
             byte flags = 0,
             byte proc = 0)
         {
+            // Nobody watches a simulated away window (CombatSimulator), and its
+            // hours of blows would crowd live players out of the feed.
+            if (SimulationEngine.Simulating != null) return;
+
             if (_pending.Count >= MaxPending)
             {
                 Interlocked.Increment(ref DroppedCount);

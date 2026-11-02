@@ -94,7 +94,9 @@ namespace FolkIdle.Server.Domain.Progression
             if (pet == null) return;
             double none = Math.Pow(1.0 - PetRegistry.RareDropPerCurrency, currency);
             if (random.NextDouble() >= 1.0 - none) return;
-            PetEngine.Drops.Enqueue(new PetDropNote(payload.PlayerId, pet.Id));
+            // A simulated away window counts the find instead (CombatSimulator).
+            if (Domain.Combat.SimulationEngine.Simulating is { } simulating) simulating.PetDrops.Add(pet.Id);
+            else PetEngine.Drops.Enqueue(new PetDropNote(payload.PlayerId, pet.Id));
         }
 
         private static int Credit(ref TickStatePayload payload, int amount)
