@@ -214,6 +214,10 @@ per region behind, no heal. Unpaid = hungry, kills pay half XP and gold.
 
 ### 112. Re-measure Malakor's Ascension after power changes (after phase 3, roadmap 3.5)
 
+**Re-measured 2026-11-02** (roadmap 6.2a item 4): the ladder had drifted
+(owner x47.6, maxed x68-77) and is re-solved to A3 = x40, x1.21 a step. Run
+it again after the next power change.
+
 Malakor's ladder (`BossAscensionRegistry.MalakorAttackMultiplier`) is solved
 against measured headroom: about x19 attack for the owner's character on
 2026-10-07, about x34 for a maxed profile. Anything that makes characters

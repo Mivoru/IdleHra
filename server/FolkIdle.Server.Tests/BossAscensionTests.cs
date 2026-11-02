@@ -109,17 +109,19 @@ namespace FolkIdle.Server.Tests
             double Attack(int step) => 1 + BossAscensionRegistry.ModifiersFor(5, step).AttackPct / 100.0;
             double Health(int step) => 1 + BossAscensionRegistry.ModifiersFor(5, step).BossHpPct / 100.0;
 
-            // Re-measured 2026-10-11 (task 112): the owner's character ~x32,
-            // the maxed profile ~x49 (AscensionCalibrationHarness).
-            Assert.InRange(Attack(3), 31.9, 32.1);
+            // Re-measured 2026-11-02 (roadmap 3.5): the owner's character
+            // ~x47.6, the maxed profile ~x73 (68-77 over two runs of
+            // AscensionCalibrationHarness). A3 sits below the owner's headroom
+            // because the enrage from A4 on costs more than the search prices.
+            Assert.InRange(Attack(3), 39.9, 40.1);
             for (int step = 4; step <= 10; step++)
             {
-                Assert.InRange(Attack(step) / Attack(step - 1), 1.14, 1.16);
+                Assert.InRange(Attack(step) / Attack(step - 1), 1.20, 1.22);
             }
-            // The maxed profile's ~x49 reaches A6 and falls short of A8...
-            Assert.True(Attack(6) <= 49 && Attack(8) > 49, $"A6 x{Attack(6):F1}, A8 x{Attack(8):F1}");
-            // ...and A10 asks well beyond it (1.6-2x).
-            Assert.InRange(Attack(10), 1.6 * 49.0, 2.0 * 49.0);
+            // The maxed profile's ~x73 reaches A5 and falls short of A7...
+            Assert.True(Attack(5) <= 73 && Attack(7) > 73, $"A5 x{Attack(5):F1}, A7 x{Attack(7):F1}");
+            // ...and A10 asks about twice it.
+            Assert.InRange(Attack(10), 1.8 * 73.0, 2.3 * 73.0);
             // Health rides on attack, as the old ladder's split did.
             for (int step = 1; step <= 10; step++)
             {
