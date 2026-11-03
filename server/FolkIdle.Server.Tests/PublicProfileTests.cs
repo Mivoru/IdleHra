@@ -213,7 +213,7 @@ namespace FolkIdle.Server.Tests
             Assert.NotNull(view);
             Assert.False(view!.ViewerIsMember);
             Assert.Equal(new[] { leader, member }, view.Members.Select(m => m.PlayerId).ToArray());
-            Assert.Equal(2, view.Members[0].Role);
+            Assert.Equal(GuildManagementEngine.RoleChieftain, view.Members[0].Role);
             Assert.True(view.Members[0].IsOnline);
             Assert.Equal("pg_member", view.Members[1].Username);
             Assert.Equal(25, view.Members[1].Level);

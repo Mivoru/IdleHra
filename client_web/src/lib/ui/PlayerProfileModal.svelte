@@ -11,6 +11,7 @@
   // click again"). tests/runesMode.test.ts guards that.
   import { createQuery } from '@tanstack/svelte-query';
   import PlayerAvatar from './PlayerAvatar.svelte';
+  import { RANK_NAMES } from './guildRanks';
   import PlayerTitle from './PlayerTitle.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import Affixes from './Affixes.svelte';
@@ -79,7 +80,7 @@
     pet = null;
   });
 
-  const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
+  const ROLE_NAMES = RANK_NAMES;
   const AGE = ['Child', 'Adult', 'Senior', 'Elder'];
 
   function wornIn(char: ProfileCharacter, slotIndex: number): ProfilePiece | undefined {

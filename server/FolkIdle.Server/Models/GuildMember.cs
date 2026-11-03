@@ -20,10 +20,12 @@ namespace FolkIdle.Server.Models
         public long GuildId { get; set; }
         public long ContributionPoints { get; set; }
 
-        // 0 = Member, 1 = Officer, 2 = Leader. Kick and guild-administration
-        // actions are gated on Officer/Leader; a guild always has exactly one
-        // Leader, reassigned by GuildManagementEngine.LeaveGuildAsync when
-        // the current leader departs a non-empty guild.
+        // 0 = Member, 1 = Warden, 2 = Elder, 3 = Chieftain (2026-11-03; see
+        // GuildManagementEngine.RoleChieftain and the GuildFourRanks migration).
+        // Administration is gated on the rank's NUMBER (higher = more power);
+        // a guild always has exactly one Chieftain, handed on by
+        // GuildManagementEngine.LeaveAsync, TransferLeadershipAsync, or
+        // HandOnAbandonedGuildsAsync after 14 days away.
         public int Role { get; set; }
 
         public long WeeklyContributionPoints { get; set; }

@@ -126,7 +126,7 @@ namespace FolkIdle.Server.Engine
                     .FromSqlRaw("SELECT * FROM \"GuildMembers\" WHERE \"GuildId\" = {0} AND \"PlayerId\" = {1} FOR UPDATE", guildId, requestingPlayerId)
                     .SingleOrDefaultAsync();
 
-                if (requester == null || requester.Role != GuildManagementEngine.RoleLeader)
+                if (requester == null || requester.Role < GuildManagementEngine.RoleElder)
                 {
                     await transaction.RollbackAsync();
                     return;
