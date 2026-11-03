@@ -45,7 +45,7 @@ namespace FolkIdle.Server.Domain.Social
             {
                 if (targetPlayerId <= 0 || targetPlayerId == playerId)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
                     return;
                 }
@@ -53,7 +53,7 @@ namespace FolkIdle.Server.Domain.Social
                 bool targetExists = await db.PlayerRecords.AsNoTracking().AnyAsync(p => p.Id == targetPlayerId);
                 if (!targetExists)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.TargetNotFound);
                     return;
                 }
@@ -69,7 +69,7 @@ namespace FolkIdle.Server.Domain.Social
                     // Blocked - blocking takes precedence and is never
                     // silently overwritten by a friend request) is
                     // rejected without mutating the existing row.
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.RelationshipAlreadyExists);
                     return;
                 }
@@ -87,7 +87,7 @@ namespace FolkIdle.Server.Domain.Social
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"AddFriend failed for player {playerId}: {ex.Message}");
                 // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
@@ -108,7 +108,7 @@ namespace FolkIdle.Server.Domain.Social
 
                 if (existing == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.TargetNotFound);
                     return;
                 }
@@ -120,7 +120,7 @@ namespace FolkIdle.Server.Domain.Social
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"RemoveFriend failed for player {playerId}: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
@@ -136,7 +136,7 @@ namespace FolkIdle.Server.Domain.Social
             {
                 if (targetPlayerId <= 0 || targetPlayerId == playerId)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
                     return;
                 }
@@ -144,7 +144,7 @@ namespace FolkIdle.Server.Domain.Social
                 bool targetExists = await db.PlayerRecords.AsNoTracking().AnyAsync(p => p.Id == targetPlayerId);
                 if (!targetExists)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.TargetNotFound);
                     return;
                 }
@@ -157,7 +157,7 @@ namespace FolkIdle.Server.Domain.Social
                 {
                     if (existing.RelationType == RelationType.Blocked)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.RelationshipAlreadyExists);
                         return;
                     }
@@ -185,7 +185,7 @@ namespace FolkIdle.Server.Domain.Social
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"BlockPlayer failed for player {playerId}: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
@@ -205,7 +205,7 @@ namespace FolkIdle.Server.Domain.Social
 
                 if (existing == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.TargetNotFound);
                     return;
                 }
@@ -217,7 +217,7 @@ namespace FolkIdle.Server.Domain.Social
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"UnblockPlayer failed for player {playerId}: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }

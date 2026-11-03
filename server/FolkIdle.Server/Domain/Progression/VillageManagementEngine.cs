@@ -398,7 +398,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                 if (player == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -414,7 +414,7 @@ namespace FolkIdle.Server.Domain.Progression
                 if (refusal != null)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 70, Value2 = 1, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -428,7 +428,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RollbackQuietlyAsync(transaction);
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Recruit villager failed: {ex.Message}");
                 // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
@@ -493,7 +493,7 @@ namespace FolkIdle.Server.Domain.Progression
                 if (slotOccupied)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 29, Value2 = 2, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -545,7 +545,7 @@ namespace FolkIdle.Server.Domain.Progression
                 bool isStructuralBuilding = targetBuildingId == TownHallBuildingId || targetBuildingId == CraftingWorkshopBuildingId;
                 if (isStructuralBuilding && infrastructure.CurrentLevel >= MaxStructuralBuildingLevel)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Reject(playerId, FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
                     return;
                 }
@@ -560,7 +560,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                     if (infrastructure.CurrentLevel + 1 > GetMaxBuildingLevelCeiling(townHallLevel))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         Console.WriteLine($"Village upgrade rejected: building {targetBuildingId} at level {infrastructure.CurrentLevel} exceeds the Town Hall ceiling.");
                         Reject(playerId, FolkIdle.Server.Network.CommandResultCode.TownHallCeilingReached);
                         return;
@@ -612,7 +612,7 @@ namespace FolkIdle.Server.Domain.Progression
                     if (line.ItemId == GoldItemId) continue;
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, line.ItemId, line.Quantity))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                         return;
                     }
@@ -647,7 +647,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                     if (goldRecord == null || goldRecord.Quantity < goldCost)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                         return;
                     }
@@ -668,7 +668,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RollbackQuietlyAsync(transaction);
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Village upgrade failed: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
@@ -778,7 +778,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                 if (resident == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -794,7 +794,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RollbackQuietlyAsync(transaction);
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Village eviction failed: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }

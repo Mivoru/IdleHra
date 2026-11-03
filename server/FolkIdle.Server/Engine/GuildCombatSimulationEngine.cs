@@ -71,13 +71,13 @@ namespace FolkIdle.Server.Engine
                 if (match == null)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 27, Value2 = 1, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return GuildCombatTurnResult.NotFound;
                 }
 
                 if (!ClientCommandValidator.ValidateCombatTurnRequest(playerId, guildId, ref packet, match))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return GuildCombatTurnResult.InvalidRequest;
                 }
 
@@ -121,7 +121,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild combat turn failed: {ex.Message}");
                 return GuildCombatTurnResult.InvalidRequest;
             }

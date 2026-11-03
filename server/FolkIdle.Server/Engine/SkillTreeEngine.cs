@@ -225,7 +225,7 @@ namespace FolkIdle.Server.Engine
                         .SingleOrDefaultAsync();
                     if (player == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeRespecResult { Reason = "No such player." };
                         return;
                     }
@@ -257,7 +257,7 @@ namespace FolkIdle.Server.Engine
                         : RespecBlockedReason(player.FreeRespecUsed, player.PaidRespecGrants, payWithGold, gold?.Quantity ?? 0L, price);
                     if (refusal != null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeRespecResult { Reason = refusal };
                         return;
                     }
@@ -300,7 +300,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     throw;
                 }
             });
@@ -339,7 +339,7 @@ namespace FolkIdle.Server.Engine
                         .SingleOrDefaultAsync();
                     if (player == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeCommitResult { Reason = "No such player." };
                         return;
                     }
@@ -368,7 +368,7 @@ namespace FolkIdle.Server.Engine
                     }
                     if (reason != null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeCommitResult { Reason = reason, Levels = Array.ConvertAll(current, b => (int)b), AvailableSkillPoints = player.AvailableSkillPoints };
                         return;
                     }
@@ -403,7 +403,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     throw;
                 }
             });
@@ -450,7 +450,7 @@ namespace FolkIdle.Server.Engine
                         .SingleOrDefaultAsync();
                     if (player == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeCommitResult { Reason = "No such player." };
                         return;
                     }
@@ -472,7 +472,7 @@ namespace FolkIdle.Server.Engine
                     }
                     if (reason != null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeCommitResult { Reason = reason, Levels = Array.ConvertAll(current, b => (int)b), AvailableSkillPoints = available };
                         return;
                     }
@@ -508,7 +508,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     throw;
                 }
             });
@@ -545,7 +545,7 @@ namespace FolkIdle.Server.Engine
                         .SingleOrDefaultAsync();
                     if (player == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeRespecResult { Reason = "No such player." };
                         return;
                     }
@@ -566,7 +566,7 @@ namespace FolkIdle.Server.Engine
                         : null;
                     if (refusal != null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         result = new SkillTreeRespecResult { Reason = refusal };
                         return;
                     }
@@ -597,7 +597,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     throw;
                 }
             });

@@ -56,7 +56,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild contribution failed: {ex.Message}");
             }
         }
@@ -123,7 +123,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild gold contribution failed: {ex.Message}");
             }
         }
@@ -190,7 +190,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch (System.Exception ex)
                 {
-                    await transaction_gold.RollbackAsync();
+                    await transaction_gold.SafeRollbackAsync();
                     System.Console.WriteLine($"Depot gold contribution failed: {ex.Message}");
                     return false;
                 }
@@ -251,7 +251,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Depot contribution failed: {ex.Message}");
                 return false;
             }
@@ -352,7 +352,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Buff activation failed: {ex.Message}");
                 return false;
             }

@@ -232,10 +232,9 @@ Found and fixed on the way:
   the transaction complete, and `catch { await transaction.RollbackAsync();
   throw; }` then threw "This NpgsqlTransaction has completed", REPLACING the
   40001 - no retry, no refusal, and SafeDispatchAsync kicked the player (13
-  kicks in one run). `TransientDbConflict.RollbackQuietlyAsync` now does the
-  catch-block rollback on the two paths that showed it (activity change,
-  village upgrade): 0 kicks, 16 polite refusals. About 60 other catch blocks
-  have the same pattern and were NOT changed (separate, reviewed change).
+  kicks in one run). Fixed for every rollback in the server by PR #315
+  (`SafeRollbackAsync`, a source guard keeps bare `RollbackAsync` out): 0
+  kicks, 16 polite refusals.
 - The default wake quantum is 1 tick: a 10-tick quantum rounded every
   reaction to one boundary, so 20 bots' commands hit one tick together.
 - Before a wake the checkpoint writer must be idle (it was "at most 16").

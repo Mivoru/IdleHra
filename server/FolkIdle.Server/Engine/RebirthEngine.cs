@@ -144,7 +144,7 @@ namespace FolkIdle.Server.Engine
 
                     if (player == null)
                     {
-                        await transaction.RollbackAsync(cancellationToken);
+                        await transaction.SafeRollbackAsync(cancellationToken);
                         return new RebirthOutcome(RebirthResult.NotFound, 0, 0, 0, 0, false);
                     }
 
@@ -155,14 +155,14 @@ namespace FolkIdle.Server.Engine
                     // silent success - and never a second rebirth.
                     if (player.RebirthCount != expectedRebirthCount)
                     {
-                        await transaction.RollbackAsync(cancellationToken);
+                        await transaction.SafeRollbackAsync(cancellationToken);
                         return new RebirthOutcome(RebirthResult.AlreadyReborn, player.RebirthCount, player.RenownedRebirths,
                             RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                     }
 
                     if (RebirthRules.IsCapped(player.RebirthCount))
                     {
-                        await transaction.RollbackAsync(cancellationToken);
+                        await transaction.SafeRollbackAsync(cancellationToken);
                         return new RebirthOutcome(RebirthResult.Capped, player.RebirthCount, player.RenownedRebirths,
                             RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                     }
@@ -180,7 +180,7 @@ namespace FolkIdle.Server.Engine
                             .ToListAsync(cancellationToken);
                         if (kept.Count != keep.Length)
                         {
-                            await transaction.RollbackAsync(cancellationToken);
+                            await transaction.SafeRollbackAsync(cancellationToken);
                             return new RebirthOutcome(RebirthResult.KeepNotOwned, player.RebirthCount, player.RenownedRebirths,
                                 RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                         }
@@ -190,7 +190,7 @@ namespace FolkIdle.Server.Engine
                             new object[] { price, playerId }, cancellationToken);
                         if (paid == 0)
                         {
-                            await transaction.RollbackAsync(cancellationToken);
+                            await transaction.SafeRollbackAsync(cancellationToken);
                             return new RebirthOutcome(RebirthResult.NotEnoughGold, player.RebirthCount, player.RenownedRebirths,
                                 RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                         }
@@ -299,7 +299,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync(CancellationToken.None);
+                    await transaction.SafeRollbackAsync(CancellationToken.None);
                     Console.WriteLine($"[rebirth] player {playerId} FAILED: {ex}");
                     return new RebirthOutcome(RebirthResult.Failed, expectedRebirthCount, 0, 0, 0, false);
                 }

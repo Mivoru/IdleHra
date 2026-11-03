@@ -278,7 +278,7 @@ DO UPDATE SET ""FactAtUtc"" = COALESCE(quest_line_claims.""FactAtUtc"", EXCLUDED
                 .SingleOrDefaultAsync();
             if (quarantine == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return QuestClaimResult.PlayerNotFound;
             }
             // Modul: a quarantined account has every command rejected on the
@@ -286,7 +286,7 @@ DO UPDATE SET ""FactAtUtc"" = COALESCE(quest_line_claims.""FactAtUtc"", EXCLUDED
             // the quarantine forgot (WorkshopCommissionEngine says the same).
             if (quarantine.IsQuarantined || quarantine.Quarantine_Active)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return QuestClaimResult.Restricted;
             }
 
@@ -297,13 +297,13 @@ DO UPDATE SET ""FactAtUtc"" = COALESCE(quest_line_claims.""FactAtUtc"", EXCLUDED
             switch (StateOf(step, facts, row?.FactAtUtc != null, row?.ClaimedAtUtc != null))
             {
                 case QuestStepState.Claimed:
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return QuestClaimResult.AlreadyClaimed;
                 case QuestStepState.Locked:
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return QuestClaimResult.Locked;
                 case QuestStepState.Available:
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return QuestClaimResult.NotDone;
             }
 
@@ -324,7 +324,7 @@ DO UPDATE SET ""ClaimedAtUtc"" = EXCLUDED.""ClaimedAtUtc"",
 WHERE quest_line_claims.""ClaimedAtUtc"" IS NULL");
             if (touched == 0)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return QuestClaimResult.AlreadyClaimed;
             }
 
@@ -360,7 +360,7 @@ WHERE quest_line_claims.""ClaimedAtUtc"" IS NULL");
                 .SingleOrDefaultAsync(q => q.PlayerId == playerId && q.StepId == stepId);
             if (row?.ClaimedAtUtc == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return false;
             }
 

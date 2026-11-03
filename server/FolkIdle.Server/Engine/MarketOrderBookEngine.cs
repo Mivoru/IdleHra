@@ -304,7 +304,7 @@ namespace FolkIdle.Server.Engine
 
                     if (goldRecord == null || goldRecord.Quantity < price)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                         Console.WriteLine("BUY Order failed: Insufficient gold.");
                         return;
@@ -337,7 +337,7 @@ namespace FolkIdle.Server.Engine
 
                     if (equip == null || equip.PlayerId != playerId || equip.IsLockedInEscrow)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                         Console.WriteLine("SELL Order failed: Item unavailable or already locked.");
                         return;
@@ -381,7 +381,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 _playerRegistry.EnqueueCommandResult(playerId, (byte)TransientDbConflict.RefusalFor(ex));
                 Console.WriteLine($"Order placement failed: {ex.Message}");
             }

@@ -1,7 +1,9 @@
 # An unattended bot run: a fresh folkidle_bots database, the dev server at a
 # tick multiplier, and the bots until a wall-clock end time. Run from the repo
-# root; build first (dotnet build server/FolkIdle.Bots/FolkIdle.Bots.csproj),
-# because this starts both projects with --no-build.
+# root; build first IN RELEASE (dotnet build -c Release server/FolkIdle.Bots/FolkIdle.Bots.csproj),
+# because this starts both projects with --no-build -c Release. A Debug
+# server tick costs about twice a Release one (lockstep P0, 2026-11-03: p50
+# 0.17 vs 0.09 ms, 10 bots, x200), and every earlier overnight run was Debug.
 #
 # Usage:
 #   .\server\FolkIdle.Bots\run-overnight.ps1                                  # now until 08:55, x200
@@ -52,7 +54,7 @@ $server = Start-Job -ScriptBlock {
     $env:FOLKIDLE_TICK_SPEED = "$speed"
     $env:FOLKIDLE_BOSS_MINIGAME = 'wheel'   # as production
     $env:FOLKIDLE_OFFLINE_SIM = "$offlineSim"
-    dotnet run --no-build --project server/FolkIdle.Server/FolkIdle.Server.csproj *> "$root\bot-runs\server.log"
+    dotnet run --no-build -c Release --project server/FolkIdle.Server/FolkIdle.Server.csproj *> "$root\bot-runs\server.log"
 } -ArgumentList $repo, $Speed, $OfflineSim
 New-Item -ItemType Directory -Force "$repo\bot-runs" | Out-Null
 for ($i = 0; $i -lt 120; $i++) {
@@ -66,7 +68,7 @@ $hours = [math]::Round(($end - (Get-Date)).TotalHours * $Speed, 1).ToString([Sys
 if (-not $Out) { $Out = "bot-runs\overnight-" + (Get-Date -Format "yyyyMMdd-HHmm") }
 Write-Host "Bots: $Mix, $hours game hours at x$Speed, FOLKIDLE_OFFLINE_SIM=$OfflineSim, seed $Seed -> $Out"
 
-dotnet run --no-build --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix $Mix --hours $hours --speed $Speed --out $Out --seed $Seed
+dotnet run --no-build -c Release --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix $Mix --hours $hours --speed $Speed --out $Out --seed $Seed
 Get-Process FolkIdle.Server -ErrorAction SilentlyContinue | Stop-Process -Force
 Stop-Job $server -ErrorAction SilentlyContinue
 Write-Host "Done: $Out\summary.md"

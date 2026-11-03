@@ -173,7 +173,7 @@ namespace FolkIdle.Server.Engine
 
                         if (player is null)
                         {
-                            await tx.RollbackAsync(token);
+                            await tx.SafeRollbackAsync(token);
                             continue;
                         }
 

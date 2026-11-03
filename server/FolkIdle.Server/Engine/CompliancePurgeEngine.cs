@@ -101,7 +101,7 @@ namespace FolkIdle.Server.Engine
 
                 if (player == null)
                 {
-                    await transaction.RollbackAsync(timeout.Token);
+                    await transaction.SafeRollbackAsync(timeout.Token);
                     return false;
                 }
 
@@ -178,7 +178,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(CancellationToken.None);
+                await transaction.SafeRollbackAsync(CancellationToken.None);
                 Console.WriteLine($"GDPR purge failed for player {playerId}: {ex.Message}");
                 return false;
             }

@@ -97,7 +97,7 @@ namespace FolkIdle.Server.Domain.Progression
             var pet = await db.PlayerPets.FirstOrDefaultAsync(p => p.PlayerId == playerId && p.PetId == petId);
             if (pet == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (PetAssignResult.NotOwned, updates);
             }
 
@@ -109,7 +109,7 @@ namespace FolkIdle.Server.Domain.Progression
                     .Where(p => p.Id == playerId).Select(p => p.RebirthCount).FirstOrDefaultAsync();
                 if (rebirths < RebirthRules.SecondPetSlotRebirths)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return (PetAssignResult.SlotLocked, updates);
                 }
             }
@@ -119,7 +119,7 @@ namespace FolkIdle.Server.Domain.Progression
                 bool mine = await db.CharacterRecords.AnyAsync(c => c.Id == characterId.Value && c.PlayerId == playerId);
                 if (!mine)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return (PetAssignResult.NotYourCharacter, updates);
                 }
             }

@@ -220,7 +220,7 @@ namespace FolkIdle.Server.Domain.Economy
                 .SingleOrDefaultAsync();
             if (player == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CommissionResult.NotFound;
             }
 
@@ -229,7 +229,7 @@ namespace FolkIdle.Server.Domain.Economy
             // the one door the quarantine forgot.
             if (player.IsQuarantined || player.Quarantine_Active)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CommissionResult.Restricted;
             }
 
@@ -237,7 +237,7 @@ namespace FolkIdle.Server.Domain.Economy
             int floor = WorkshopCommissionRules.FloorTierFor(workshopLevel, region);
             if (floor <= 0)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CommissionResult.WorkshopNotBuilt;
             }
 
@@ -247,7 +247,7 @@ namespace FolkIdle.Server.Domain.Economy
             var defeated = await RegionUnlockGate.LoadDefeatedBossesAsync(db, playerId);
             if (!RegionUnlockGate.CanWearRegionTier(region, defeated))
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CommissionResult.RegionLocked;
             }
 
@@ -255,7 +255,7 @@ namespace FolkIdle.Server.Domain.Economy
                 .AnyAsync(s => s.PlayerId == playerId && s.SlotIndex == WorkshopCommissionRules.CommissionSlotIndex);
             if (busy)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CommissionResult.Busy;
             }
 
@@ -264,7 +264,7 @@ namespace FolkIdle.Server.Domain.Economy
             {
                 if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, line.ItemId, line.Quantity))
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     db.ChangeTracker.Clear();
                     return CommissionResult.NotEnoughMaterials;
                 }
@@ -306,12 +306,12 @@ namespace FolkIdle.Server.Domain.Economy
                 .SingleOrDefaultAsync();
             if (slot == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CommissionResult.NothingToCollect, null);
             }
             if (slot.CompletionEpoch > nowEpoch)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CommissionResult.NotReady, null);
             }
 
@@ -322,7 +322,7 @@ namespace FolkIdle.Server.Domain.Economy
             // with nothing to show for the materials.
             if (!WorkshopCommissionRules.TryGetCommissionable(slot.ActiveRecipeId, out string baseItemId, out int region))
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CommissionResult.UnknownPiece, null);
             }
 
@@ -366,7 +366,7 @@ namespace FolkIdle.Server.Domain.Economy
                 .FirstOrDefaultAsync(s => s.PlayerId == playerId && s.SlotIndex == WorkshopCommissionRules.CommissionSlotIndex);
             if (slot == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CommissionResult.NothingToCollect;
             }
 

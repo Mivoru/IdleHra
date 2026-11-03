@@ -110,7 +110,7 @@ namespace FolkIdle.Server.Engine
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 15, Value2 = 4, Timestamp = Environment.TickCount64 });
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingNoGrounds);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -134,14 +134,14 @@ namespace FolkIdle.Server.Engine
                 if (pChar == null || mChar == null || pLineage == null || mLineage == null)
                 {
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
                 if (pChar.PlayerId != playerId || mChar.PlayerId != playerId)
                 {
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -168,7 +168,7 @@ namespace FolkIdle.Server.Engine
                 if (refusal != BreedingRefusal.None)
                 {
                     Refuse(playerId, refusal);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -183,7 +183,7 @@ namespace FolkIdle.Server.Engine
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 15, Value2 = 5, Timestamp = Environment.TickCount64 });
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingInsufficientGold);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -301,7 +301,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Breeding failed: {ex}");
                 // Modul: a Serializable transaction is EXPECTED to fail under
                 // contention, and this catch used to swallow it - the button
@@ -344,7 +344,7 @@ namespace FolkIdle.Server.Engine
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 1, Timestamp = Environment.TickCount64 });
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingNoGrounds);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -367,14 +367,14 @@ namespace FolkIdle.Server.Engine
                 if (hero == null || newcomer == null || heroLineage == null)
                 {
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
                 if (hero.PlayerId != playerId || newcomer.PlayerId != playerId)
                 {
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -403,7 +403,7 @@ namespace FolkIdle.Server.Engine
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = (int)refusal, Timestamp = Environment.TickCount64 });
                     Refuse(playerId, refusal);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -421,7 +421,7 @@ namespace FolkIdle.Server.Engine
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 7, Timestamp = Environment.TickCount64 });
                     Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingInsufficientGold);
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -525,7 +525,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Hero-villager breeding failed: {ex}");
                 Refuse(playerId, FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex, FolkIdle.Server.Network.CommandResultCode.BreedingFailed));
             }

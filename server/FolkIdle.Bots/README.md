@@ -56,10 +56,10 @@ XP and gold.
 `run-overnight.ps1` does it all: a fresh `folkidle_bots`, the server at a
 multiplier (shield wheel on, as production), the bots until a wall-clock end
 time, then stops the server. Build first; it starts both projects with
-`--no-build`.
+`--no-build -c Release` (a Debug tick costs about twice a Release one).
 
 ```powershell
-dotnet build server/FolkIdle.Bots/FolkIdle.Bots.csproj
+dotnet build -c Release server/FolkIdle.Bots/FolkIdle.Bots.csproj
 .\server\FolkIdle.Botsun-overnight.ps1 -StartAt 00:00 -EndAt 08:55   # the rebirth experiment, x200
 ```
 

@@ -102,7 +102,7 @@ namespace FolkIdle.Server.Domain.Shared
                 await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
                 if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, potionBaseId, toMove))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     registry.EnqueueCommandResult(playerId, (byte)CommandResultCode.InsufficientMaterials);
                     return;
                 }
