@@ -43,6 +43,7 @@ namespace FolkIdle.Server.Engine
         /// weekend settles up when it comes back.
         /// </summary>
         private const int TickIntervalMs = 600_000;
+        internal const int CyclePeriodMs = TickIntervalMs;
 
         /// <summary>How deep into the board to pay. The widest tier is 1000.</summary>
         private const int PayoutDepth = 1000;

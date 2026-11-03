@@ -3,7 +3,9 @@
 Status, 2026-11-03: owner approved the lockstep approach (P0 -> P3, bots stay
 on the real WebSocket/REST surface) and asked for implementation. BUILT: step 0
 (PR #313) and phase 1a (`SimConductor`, `SimLockstep`, the control socket, the
-engine branch, tick-driven `GameClock`). Not built: 1b-1d, 2, 3. The bots do
+engine branch, tick-driven `GameClock`) and phase 1b (`SimCronPump`: nine
+gameplay crons run on the tick at their production periods). Not built: 1c,
+1d, 2, 3. The bots do
 not speak the control socket yet, so a lockstep server today holds still until
 a client joins - nothing runs lockstep end to end with real bots.
 
@@ -184,24 +186,30 @@ thinking, not game time); bots are exempted on dev if they bite.
 |---|---|---|
 | 0 | Release build for overnight runs; precise tick sum | PR #313 |
 | 1a (BUILT) | `SimConductor`, tick-driven `GameClock`, control socket, wake/yield, quantum, clock jump at zero sessions | `SimConductorTests`; live control-socket smoke |
-| 1b | Cron pump on game time for the gameplay crons | per-cron test: lag in ticks equals the production period |
+| 1b (BUILT) | Cron pump on the tick for the gameplay crons: liveops (600 ticks, run at start), codex 50, loot 30, pending grants 50, achievements 150, cosmetic chests 10, season era 3,000, leaderboards 3,000, leaderboard payout 6,000. The tick waits for each. | `SimCronPumpTests`; live smoke: 9 registered, no failures |
 | 1c | Game-time guards (throttler, validator, macro detector, dungeon window); event notifications into `SimConductor.Notify` (death, halt, level up, telegraph, reveal, daily reset) | existing guard tests pass at speed 1; new lockstep cases |
 | 1d | Checkpoint back-pressure, logout ack, per-route REST timing | staged logout-then-login race test |
 | 2 | Bot on the conductor; personas as attention budgets | a 24-game-hour lockstep run finishes and logs no wall waits |
 | 3 | Validation: lockstep vs x20 (same mix and seed), quantum 1 vs 10, x50 vs flat out | `compare-run.py` per persona, overnight |
 
+## Owner decisions (2026-11-03, second review)
+
+- **Every persona sleeps.** optimal, patient, patientbare and eagerkit go
+  offline 6-8 game hours a night too, with a shared core where ALL personas
+  are offline (00:30-06:30 game time) so the conductor jumps every night;
+  evening logouts and morning logins are staggered by a few minutes so no
+  login storm lands on one tick. 24/7 stays only as a persona option.
+- **P4 is shelved.** P0 dropped no tick outside the login burst; nightly
+  jumps plus event-driven wakes by day should reach the target without it.
+- **Daytime bots sleep long.** An online persona with a long activity sets a
+  distant `nextWakeTick` and relies on `wakeOn` (level up, inventory full,
+  death, activity stopped, dungeon telegraph) instead of checking every few
+  seconds.
+- **Crons on the tick, awaited** - built as phase 1b.
+
 ## Open questions for the owner
 
-1. **Always-online personas.** `optimal`, `patient`, `patientbare` and
-   `eagerkit` never log out, and the rebirth 2x2 uses only them. For them the
-   clock jump never happens, and 20 online bots cap lockstep around
-   x200-x500 in late game. Is a player who is online 24/7 the right model? A
-   realistic "engaged" persona (say 6-8 h online, overnight offline) would
-   be both truer and much faster.
-2. **P4, quiet-tick jumping for online players**, is only worth building if
-   question 1 keeps always-online personas and P3 shows the speed is not
-   enough. It would reuse the live tick on event ticks (as `CombatSimulator`
-   does), never a second formula.
-3. **Population effects** (world boss HP from registration strikes, market)
+1. (Answered above: every persona sleeps; P4 shelved.)
+2. **Population effects** (world boss HP from registration strikes, market)
    reflect 10-20 bots. That is not a speed problem and lockstep does not fix
    it.

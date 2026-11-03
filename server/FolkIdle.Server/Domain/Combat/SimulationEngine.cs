@@ -2760,6 +2760,11 @@ namespace FolkIdle.Server.Domain.Combat
             // While the bots think, the game clock reads the state they see:
             // the end of the last completed tick.
             GameClock.SetLockstepTick(tick - 1);
+            // Phase 1b: the gameplay crons due by this tick run first, on this
+            // thread, and finish before any bot wakes or the tick runs - so a
+            // kill's codex entry or loot lands on a fixed tick, at production's
+            // lag, whatever the CPU is doing.
+            SimLockstep.Crons?.RunDue(tick);
             if (wakes.Count > 0)
             {
                 var sink = SimLockstep.WakeSink;

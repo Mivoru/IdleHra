@@ -308,3 +308,72 @@ namespace FolkIdle.Server.Tests
         }
     }
 }
+
+namespace FolkIdle.Server.Tests
+{
+    /// <summary>Phase 1b: the gameplay crons on the tick (SimCronPump).</summary>
+    public class SimCronPumpTests
+    {
+        [Fact]
+        public void ACronRunsAtItsProductionPeriodInTicks()
+        {
+            var pump = new SimCronPump();
+            var ranAt = new List<long>();
+            long tick = 0;
+            pump.Register("codex", 5000, () => { ranAt.Add(tick); return Task.CompletedTask; });
+            for (tick = 1; tick <= 160; tick++) pump.RunDue(tick);
+            Assert.Equal(new long[] { 50, 100, 150 }, ranAt);
+        }
+
+        [Fact]
+        public void RunAtStartRunsOnTheFirstTick()
+        {
+            var pump = new SimCronPump();
+            var ranAt = new List<long>();
+            long tick = 0;
+            pump.Register("liveops", 60_000, () => { ranAt.Add(tick); return Task.CompletedTask; }, runAtStart: true);
+            for (tick = 1; tick <= 1300; tick++) pump.RunDue(tick);
+            Assert.Equal(new long[] { 1, 601, 1201 }, ranAt);
+        }
+
+        [Fact]
+        public void AJumpOverManyPeriodsRunsTheCronOnceOnLanding()
+        {
+            var pump = new SimCronPump();
+            int runs = 0;
+            pump.Register("loot", 3000, () => { runs++; return Task.CompletedTask; });
+            pump.RunDue(1);
+            pump.RunDue(216_000); // six game hours later, nobody online
+            Assert.Equal(1, runs);
+            pump.RunDue(216_029);
+            Assert.Equal(1, runs);
+            pump.RunDue(216_030);
+            Assert.Equal(2, runs);
+        }
+
+        [Fact]
+        public void TheTickWaitsForTheCycleToFinish()
+        {
+            var pump = new SimCronPump();
+            bool finished = false;
+            pump.Register("slow", 100, async () => { await Task.Delay(50); finished = true; });
+            pump.RunDue(1);
+            Assert.True(finished);
+        }
+
+        [Fact]
+        public void AFailingCycleIsCountedAndTheOthersStillRun()
+        {
+            var pump = new SimCronPump();
+            int good = 0;
+            pump.Register("bad", 100, () => throw new InvalidOperationException("pool refused"));
+            pump.Register("good", 100, () => { good++; return Task.CompletedTask; });
+            pump.RunDue(1);
+            pump.RunDue(2);
+            Assert.Equal(2, good);
+            var bad = pump.Describe().Single(d => d.Name == "bad");
+            Assert.Equal(2, bad.Failures);
+            Assert.Equal(2, bad.Runs);
+        }
+    }
+}

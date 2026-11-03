@@ -37,6 +37,16 @@ namespace FolkIdle.Server.Engine
             _ = Task.Run(RunAsync);
         }
 
+        /// <summary>One cycle of the loop below (lockstep runs it from SimCronPump).</summary>
+        internal async Task RunCycleAsync()
+        {
+            await SyncLeaderboardsAsync();
+            await SyncGuildWeeklyLeaderboardsAsync();
+            await HandOnAbandonedGuildsAsync();
+        }
+
+        internal const int CyclePeriodMs = TickIntervalMs;
+
         private async Task RunAsync()
         {
             while (_isRunning)

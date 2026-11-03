@@ -796,6 +796,74 @@ namespace FolkIdle.Server.Engine
             _cts.Cancel();
         }
 
+        /// <summary>The production period of <see cref="RunCycleAsync"/>.</summary>
+        internal const int CyclePeriodMs = 3000;
+
+        /// <summary>
+        /// One drain cycle: the queued drops, the auto-fusions they asked for, the
+        /// gathering grants, the throughput line. The loop below runs it every
+        /// three seconds; lockstep (SimCronPump) every 30 ticks.
+        /// </summary>
+        internal async Task RunCycleAsync()
+        {
+            // Modul: TAKE A BUDGET, NOT "EVERYTHING THERE IS".
+            //
+            // Both drains below used to be `while (TryDequeue)`, which
+            // terminates only when the producer pauses. Gathering
+            // produces faster than this worker can write - see
+            // DrainGatheringGrantsAsync - so the second loop never
+            // returned, the first never ran again, and equipment stopped
+            // for everyone with a gatherer online. Reading the depth
+            // once and stopping there makes a cycle finite whatever the
+            // producers are doing.
+            int lootBudget = DropRequestQueue.Count;
+            for (int drained = 0; drained < lootBudget; drained++)
+            {
+                if (!DropRequestQueue.TryDequeue(out var request)) break;
+
+                int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
+                _requestsDrained++;
+                NoteOdds(in request);
+                _killsRolled += killsThisRequest;
+
+                try
+                {
+                    await ProcessMonsterLootDropAsync(
+                        request.PlayerId, request.MonsterId, request.LootLuckPct,
+                        request.MaterialQuantityPct, request.BonusRarityTiers,
+                        // Zero means one - see CombatLootDropRequest.Kills.
+                        killsThisRequest,
+                        request.SkipMaterialRoll,
+                        request.AutoSalvageBelowTier,
+                        request.RarityElevationPct,
+                        request.RecordedSource,
+                        request.SalvageGoldTenthsPct);
+
+                    if (request.AutoFuseToTier >= 2)
+                    {
+                        NoteAutoFuse(request.PlayerId, request.AutoFuseToTier, _requestCommittedBaseIds);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _requestsFailed++;
+                    Console.WriteLine(
+                        $"Loot: drop request for player {request.PlayerId} (monster {request.MonsterId}) failed: {ex.Message}");
+                }
+            }
+
+            // Task 85: after the drops, before the gathering drain - one
+            // fusion pass per player whose drops this cycle asked for one.
+            await RunAutoFusionsAsync();
+
+            await DrainGatheringGrantsAsync();
+
+            // Reported at the END of a cycle, so its queue depths
+            // describe what this cycle could not finish rather than what
+            // it had not started.
+            ReportLootThroughput();
+        }
+
         // Modul: ONE FAILED REQUEST USED TO KILL LOOT FOR THE WHOLE PROCESS.
         //
         // This loop had no exception handling of any kind, and
@@ -828,62 +896,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await Task.Delay(3000, stoppingToken);
 
-                    // Modul: TAKE A BUDGET, NOT "EVERYTHING THERE IS".
-                    //
-                    // Both drains below used to be `while (TryDequeue)`, which
-                    // terminates only when the producer pauses. Gathering
-                    // produces faster than this worker can write - see
-                    // DrainGatheringGrantsAsync - so the second loop never
-                    // returned, the first never ran again, and equipment stopped
-                    // for everyone with a gatherer online. Reading the depth
-                    // once and stopping there makes a cycle finite whatever the
-                    // producers are doing.
-                    int lootBudget = DropRequestQueue.Count;
-                    for (int drained = 0; drained < lootBudget; drained++)
-                    {
-                        if (!DropRequestQueue.TryDequeue(out var request)) break;
-
-                        int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
-                        _requestsDrained++;
-                        NoteOdds(in request);
-                        _killsRolled += killsThisRequest;
-
-                        try
-                        {
-                            await ProcessMonsterLootDropAsync(
-                                request.PlayerId, request.MonsterId, request.LootLuckPct,
-                                request.MaterialQuantityPct, request.BonusRarityTiers,
-                                // Zero means one - see CombatLootDropRequest.Kills.
-                                killsThisRequest,
-                                request.SkipMaterialRoll,
-                                request.AutoSalvageBelowTier,
-                                request.RarityElevationPct,
-                                request.RecordedSource,
-                                request.SalvageGoldTenthsPct);
-
-                            if (request.AutoFuseToTier >= 2)
-                            {
-                                NoteAutoFuse(request.PlayerId, request.AutoFuseToTier, _requestCommittedBaseIds);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _requestsFailed++;
-                            Console.WriteLine(
-                                $"Loot: drop request for player {request.PlayerId} (monster {request.MonsterId}) failed: {ex.Message}");
-                        }
-                    }
-
-                    // Task 85: after the drops, before the gathering drain - one
-                    // fusion pass per player whose drops this cycle asked for one.
-                    await RunAutoFusionsAsync();
-
-                    await DrainGatheringGrantsAsync();
-
-                    // Reported at the END of a cycle, so its queue depths
-                    // describe what this cycle could not finish rather than what
-                    // it had not started.
-                    ReportLootThroughput();
+                    await RunCycleAsync();
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {

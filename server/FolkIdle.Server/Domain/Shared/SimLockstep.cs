@@ -12,6 +12,9 @@ namespace FolkIdle.Server.Domain.Shared
         /// <summary>Set once at startup by Program.cs when lockstep is on; null otherwise.</summary>
         public static SimConductor? Conductor { get; set; }
 
+        /// <summary>The gameplay crons the tick runs under lockstep (phase 1b); null otherwise.</summary>
+        public static SimCronPump? Crons { get; set; }
+
         /// <summary>
         /// The tick thread hands a wake to the control socket through this; the
         /// socket handler sets it when the bot process connects. The tick then
