@@ -69,7 +69,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (step <= highest)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return paid;
             }
 

@@ -410,7 +410,7 @@ namespace FolkIdle.Server.Engine
                 var row = await db.PlayerRefreshTokens.SingleOrDefaultAsync(r => r.TokenHash == hash);
                 if (row == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L, string.Empty);
                 }
 
@@ -641,7 +641,7 @@ namespace FolkIdle.Server.Engine
                     // directly: roll back and return the winner's row,
                     // which is, from this request's point of view, actually
                     // a successful login rather than a hard failure.
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
 
                     var raced = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.DeviceId == deviceId);
                     if (raced != null)
@@ -690,13 +690,13 @@ namespace FolkIdle.Server.Engine
 
                         if (player == null)
                         {
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
                             return OAuthLinkOutcome.AccountNotFound;
                         }
 
                         if (player.ProviderType != 0)
                         {
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
                             return OAuthLinkOutcome.AlreadyLinked;
                         }
 
@@ -713,7 +713,7 @@ namespace FolkIdle.Server.Engine
                         // (ProviderType, ExternalProviderId) pair for a
                         // different account - not retryable, a real
                         // conflict that will fail identically every time.
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return OAuthLinkOutcome.ExternalIdentityInUse;
                     }
                 });
@@ -886,7 +886,7 @@ namespace FolkIdle.Server.Engine
                     // strategy to replay. The Postgres constraint name
                     // tells the caller which field actually collided so the
                     // register screen can show an accurate error.
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
 
                     string constraintName = pgEx.ConstraintName ?? string.Empty;
                     if (constraintName.Contains("Email", StringComparison.OrdinalIgnoreCase))

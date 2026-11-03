@@ -135,7 +135,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                await transaction.SafeRollbackAsync(cancellationToken);
                 Console.WriteLine($"Redis write-behind flush failed: {ex.Message}");
             }
         }

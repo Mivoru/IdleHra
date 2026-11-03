@@ -251,7 +251,7 @@ namespace FolkIdle.Server.Domain.Economy
                     string mat1ItemId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1ItemId, mat1Required))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return (false, 0);
                     }
                 }
@@ -261,7 +261,7 @@ namespace FolkIdle.Server.Domain.Economy
                     string mat2ItemId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2ItemId, mat2Required))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return (false, 0);
                     }
                 }
@@ -531,7 +531,7 @@ namespace FolkIdle.Server.Domain.Economy
                 if ((spent1 > 0 && !await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1!, spent1))
                     || (spent2 > 0 && !await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2!, spent2)))
                 {
-                    if (ownTransaction != null) await ownTransaction.RollbackAsync();
+                    if (ownTransaction != null) await ownTransaction.SafeRollbackAsync();
                     context.ChangeTracker.Clear();
                     return default;
                 }

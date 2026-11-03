@@ -74,7 +74,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Village: live production for player {grant.PlayerId} failed and was rolled back: {ex.Message} - queued for retry.");
 
                 var lumberjackMats = VillageManagementEngine.GetTierMaterials(grant.LumberjackLevel);

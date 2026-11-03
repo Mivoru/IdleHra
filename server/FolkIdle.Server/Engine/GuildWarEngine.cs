@@ -275,7 +275,7 @@ namespace FolkIdle.Server.Engine
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync(stoppingToken);
+                        await transaction.SafeRollbackAsync(stoppingToken);
                     }
                 }
             }
@@ -356,17 +356,17 @@ namespace FolkIdle.Server.Engine
                             }
                             else
                             {
-                                await transaction.RollbackAsync(stoppingToken);
+                                await transaction.SafeRollbackAsync(stoppingToken);
                             }
                         }
                         else
                         {
-                            await transaction.RollbackAsync(stoppingToken);
+                            await transaction.SafeRollbackAsync(stoppingToken);
                         }
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync(stoppingToken);
+                        await transaction.SafeRollbackAsync(stoppingToken);
                     }
                 }
                 else
@@ -610,7 +610,7 @@ namespace FolkIdle.Server.Engine
                 // Diagnosing the first-match gate meant reading the
                 // source because the log had nothing to say.
                 Console.WriteLine($"GuildWar matchmaking pass failed: {ex.Message}");
-                await transaction.RollbackAsync(stoppingToken);
+                await transaction.SafeRollbackAsync(stoppingToken);
             }
 
             return true;

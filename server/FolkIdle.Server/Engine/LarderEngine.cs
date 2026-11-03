@@ -54,7 +54,7 @@ namespace FolkIdle.Server.Engine
                 using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
                 if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, foodBaseId, quantity))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return false;
                 }
                 await context.SaveChangesAsync();

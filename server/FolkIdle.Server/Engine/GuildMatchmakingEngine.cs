@@ -182,7 +182,7 @@ namespace FolkIdle.Server.Engine
             }
             catch
             {
-                await transaction.RollbackAsync(stoppingToken);
+                await transaction.SafeRollbackAsync(stoppingToken);
                 throw;
             }
         }

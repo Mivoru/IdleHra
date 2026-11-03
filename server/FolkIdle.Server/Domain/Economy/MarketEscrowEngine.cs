@@ -143,7 +143,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (player == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return ListAttemptOutcome.Rejected("MarketListItem failed: Player not found.");
                 }
 
@@ -153,7 +153,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // the equipped-item guard's early-abort pattern below.
                 if (player.GuildId <= 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return ListAttemptOutcome.Rejected(
                         "MarketListItem failed: Player has no guild trade license.",
                         (byte)FolkIdle.Server.Network.CommandResultCode.NoGuildLicense);
@@ -164,7 +164,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (equip == null || equip.PlayerId != playerId)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return ListAttemptOutcome.Rejected(
                         "MarketListItem failed: Item unavailable.",
                         (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
@@ -180,7 +180,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // leave a dangling equip pointer behind.
                 if (await EquipmentSlotEngine.IsEquippedAnywhereAsync(db, playerId, equip.Id))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return ListAttemptOutcome.Rejected(
                         "MarketListItem failed: Item is currently equipped.",
                         (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
@@ -277,7 +277,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // ListItemAsync's own gate.
                 if (buyer == null || buyer.GuildId <= 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine("MarketBuyItem failed: Buyer has no guild trade license.");
                     _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.NoGuildLicense);
                     return;
@@ -298,7 +298,7 @@ namespace FolkIdle.Server.Domain.Economy
                 var buyerDefeatedBosses = await RegionUnlockGate.LoadDefeatedBossesAsync(db, buyerId);
                 if (!RegionUnlockGate.CanWearItem(order.BaseItemId, buyerDefeatedBosses))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine($"MarketBuyItem failed: buyer {buyerId} has not unlocked the region for {order.BaseItemId} (highest unlocked {RegionUnlockGate.HighestUnlockedRegion(buyerDefeatedBosses)}).");
                     _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.RegionLocked);
                     return;
@@ -474,7 +474,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"MarketBuyItem failed: {ex.Message}");
             }
         }
@@ -519,7 +519,7 @@ namespace FolkIdle.Server.Domain.Economy
 
             if (order == null)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 // Gone. Say whether it sold, so the player is not left
                 // wondering where the piece went - a filled listing is
                 // archived under its own order id. (A filled BUY order is
@@ -531,13 +531,13 @@ namespace FolkIdle.Server.Domain.Economy
 
             if (order.SellerId != playerId)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 return new MarketCancelOutcome(MarketCancelResult.NotYours);
             }
 
             if (order.Status != 0)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 return new MarketCancelOutcome(MarketCancelResult.Gone);
             }
 
@@ -562,7 +562,7 @@ namespace FolkIdle.Server.Domain.Economy
                 {
                     // An order that points at someone else's piece is corrupt;
                     // handing that piece to the order's owner would be theft.
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine($"MarketCancel refused: order {orderId} of player {playerId} escrows piece {escrowed.Id} owned by {escrowed.PlayerId}.");
                     return new MarketCancelOutcome(MarketCancelResult.NotYours);
                 }
@@ -599,7 +599,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // A commodity order, or a shape nothing writes today. Its
                 // escrow would be materials this method does not know how to
                 // return, so refuse rather than delete the only record of them.
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"MarketCancel refused: order {orderId} is {order.OrderType} with no equipment escrow.");
                 return new MarketCancelOutcome(MarketCancelResult.Unsupported);
             }

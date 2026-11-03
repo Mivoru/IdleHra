@@ -111,7 +111,7 @@ namespace FolkIdle.Server.Domain.Progression
 
             if (row.Stage >= GreatWorksRegistry.StageCount)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CommandResultCode.GreatWorkComplete, 0);
             }
 
@@ -135,7 +135,7 @@ namespace FolkIdle.Server.Domain.Progression
             if (amount <= 0 || balance.Total < amount
                 || !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, item, amount))
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CommandResultCode.InsufficientMaterials, 0);
             }
 

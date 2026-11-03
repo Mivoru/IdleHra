@@ -231,7 +231,7 @@ namespace FolkIdle.Server.Engine
 
                         if (profile == null)
                         {
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
                             return false;
                         }
 
@@ -250,7 +250,7 @@ namespace FolkIdle.Server.Engine
                             // currency or writing any other ledger row, even
                             // though the store API call that produced this
                             // receipt reported success.
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
                             return false;
                         }
 
@@ -284,7 +284,7 @@ namespace FolkIdle.Server.Engine
                         // TransactionId already exists in ProcessedTransactions
                         // (or PrimaryPurchaseLedger) - a replay, not a
                         // retryable failure. Roll back and reject.
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
                 });

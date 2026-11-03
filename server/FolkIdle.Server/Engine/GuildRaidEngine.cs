@@ -128,7 +128,7 @@ namespace FolkIdle.Server.Engine
 
                 if (requester == null || requester.Role < GuildManagementEngine.RoleElder)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -139,7 +139,7 @@ namespace FolkIdle.Server.Engine
                 if (existing != null && existing.RaidBossCurrentHp > 0)
                 {
                     // Already active - nothing to (re)start.
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -152,7 +152,7 @@ namespace FolkIdle.Server.Engine
 
                 if (goldRecord == null || goldRecord.Quantity < cost)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -184,7 +184,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild raid launch failed for guild {guildId}: {ex.Message}");
             }
         }
@@ -201,7 +201,7 @@ namespace FolkIdle.Server.Engine
 
                 if (lockedRaid == null || lockedRaid.RaidBossCurrentHp <= 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -211,7 +211,7 @@ namespace FolkIdle.Server.Engine
 
                 if (guildDps <= 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -248,7 +248,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild raid boss tick failed for guild {raid.GuildId}: {ex.Message}");
             }
         }

@@ -101,7 +101,7 @@ namespace FolkIdle.Server.Domain.Progression
                 .SingleOrDefaultAsync();
             if (chest == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CosmeticResult.NoChest, null);
             }
 
@@ -197,7 +197,7 @@ namespace FolkIdle.Server.Domain.Progression
                 .ToListAsync();
             if (row.Count == 0)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return new List<(long, int)>();
             }
 
@@ -205,7 +205,7 @@ namespace FolkIdle.Server.Domain.Progression
             int paid = row[0].LevelChestsGranted;
             if (owed <= paid)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return new List<(long, int)>();
             }
 

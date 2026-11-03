@@ -65,7 +65,7 @@ WHERE ""PlayerId"" = {playerId} AND ""AchievementId"" = {AchievementMilestones.M
 
             if (moved != 1)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (0, 0);
             }
 

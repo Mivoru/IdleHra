@@ -85,7 +85,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild contribution failed: {ex.Message}");
             }
         }

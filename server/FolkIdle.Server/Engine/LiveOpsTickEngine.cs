@@ -248,7 +248,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"LiveOps rotation update failed: {ex.Message}");
             }
         }

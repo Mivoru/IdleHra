@@ -107,7 +107,7 @@ namespace FolkIdle.Server.Engine
 
                 if (owner == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -116,7 +116,7 @@ namespace FolkIdle.Server.Engine
                 {
                     // Zero means "all four bought", never "free".
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 72, Value2 = 1, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
                     return;
                 }
@@ -124,7 +124,7 @@ namespace FolkIdle.Server.Engine
                 if (owner.PremiumDiamonds < cost)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 72, Value2 = 2, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.InsufficientMaterials);
                     return;
                 }
@@ -137,7 +137,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Hall PurchaseSlot failed: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
@@ -186,7 +186,7 @@ namespace FolkIdle.Server.Engine
                 if (!CharacterSlotEngine.IsSlotUnlocked(targetSlotIndex, townHallLevel))
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 75, Value2 = 2, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -198,13 +198,13 @@ namespace FolkIdle.Server.Engine
                 if (incoming == null)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 75, Value2 = 3, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
                 if (incoming.SlotIndex == targetSlotIndex)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -214,7 +214,7 @@ namespace FolkIdle.Server.Engine
                 if (incoming.IsLockedInEscrow)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 75, Value2 = 4, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -275,7 +275,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Hall AssignSlot failed: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }

@@ -135,7 +135,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // pointing at a deleted row.
                 if (await EquipmentSlotEngine.IsAnyEquippedAnywhereAsync(db, playerId, targetItemGuid, sacrificialItem1Guid, sacrificialItem2Guid))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine("Fusion failed: target or sacrifice item is currently equipped.");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                     return ForgeSplicingResult.FailedItemEquipped;
@@ -154,7 +154,7 @@ namespace FolkIdle.Server.Domain.Economy
                 };
                 if (!ClientCommandValidator.ValidateForgeSplicingRequest(ref validationPayload, targetItemGuid, sacrificialItem1Guid, sacrificialItem2Guid, lockedItems))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
 
                     // Modul: SAY WHICH GATE, because this one covers the two
                     // refusals a player can actually act on - a Forge too low
@@ -208,7 +208,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (targetItem == null || sac1 == null || sac2 == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     // One of the three is no longer yours - sold, fused into
                     // something else in another tab, or listed on the market.
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
@@ -217,7 +217,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (targetItem.BaseItemId != sac1.BaseItemId || targetItem.BaseItemId != sac2.BaseItemId)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine("Fusion failed: Items must have identical Base Item IDs.");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemsNotIdentical);
                     return ForgeSplicingResult.InvalidRequest;
@@ -231,7 +231,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // now, and it is what makes a guaranteed result affordable.
                 if (targetItem.QualityTier != sac1.QualityTier || targetItem.QualityTier != sac2.QualityTier)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine("Fusion failed: all three items must share the same rarity.");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.RarityMismatch);
                     return ForgeSplicingResult.InvalidRequest;
@@ -271,7 +271,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
                 if (currentTier >= effectiveTierCap)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine("Fusion failed: target item has already reached MaxQualityTier.");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
                     return ForgeSplicingResult.MaxTierReached;
@@ -315,7 +315,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (goldRecord == null || goldRecord.Quantity < cost)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine("Fusion failed: Insufficient gold.");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                     return ForgeSplicingResult.InsufficientGold;
@@ -386,7 +386,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Fusion transaction aborted: {ex.Message}");
                 // Modul: ANSWERED. Two fusions over the same pieces in quick
                 // succession can collide here (a serialization failure), and
@@ -726,7 +726,7 @@ namespace FolkIdle.Server.Domain.Economy
                     .SingleOrDefaultAsync();
                 if (sample == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return null;
                 }
@@ -735,13 +735,13 @@ namespace FolkIdle.Server.Domain.Economy
                 int ceiling = Math.Min(Math.Min(requestedTier, forgeLevel), MaxQualityTier);
                 if (sample.QualityTier >= MaxQualityTier)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
                     return null;
                 }
                 if (ceiling <= sample.QualityTier)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ForgeLevelTooLow);
                     return null;
                 }
@@ -751,7 +751,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (plan.TotalFusions == 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     var reason = plan.StoppedByGold
                         ? FolkIdle.Server.Network.CommandResultCode.InsufficientGold
                         : FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure;
@@ -772,7 +772,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Stack fusion aborted: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
                 return null;
@@ -820,7 +820,7 @@ namespace FolkIdle.Server.Domain.Economy
 
             if (fusions == 0)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 return default;
             }
 

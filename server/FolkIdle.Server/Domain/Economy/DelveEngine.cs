@@ -579,7 +579,7 @@ namespace FolkIdle.Server.Domain.Economy
                 var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == playerId);
                 if (player == null)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.PlayerNotFound;
                     return outcome;
                 }
@@ -594,7 +594,7 @@ namespace FolkIdle.Server.Domain.Economy
                     // fee that has already been taken; overwriting it would
                     // destroy paid-for progress and look like the button simply
                     // resetting the screen.
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.RunAlreadyInProgress;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -604,7 +604,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (goldRow == null || goldRow.Quantity < fee)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.NotEnoughGold;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -639,7 +639,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 throw;
             }
         }
@@ -670,7 +670,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (run == null || player == null)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = run == null ? DelveResult.NoRunInProgress : DelveResult.PlayerNotFound;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -678,7 +678,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (run.IsDeep && run.ChargesRemaining <= 0)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.LanternOut;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -686,7 +686,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (IsAtLanding(run))
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.AtTheBottom;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -819,7 +819,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 throw;
             }
         }
@@ -924,7 +924,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (run == null)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.NoRunInProgress;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -934,7 +934,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (player == null)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.PlayerNotFound;
                     return outcome;
                 }
@@ -963,7 +963,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 throw;
             }
         }
@@ -1009,7 +1009,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (refusal != null)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = refusal.Value;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -1037,7 +1037,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 throw;
             }
         }
@@ -1138,7 +1138,7 @@ namespace FolkIdle.Server.Domain.Economy
                     : null;
                 if (refusal != null)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome.Result = refusal.Value;
                     outcome.View = await GetViewAsync(playerId);
                     return outcome;
@@ -1171,7 +1171,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (stake > quotedStake)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome = new DelveActionOutcome { Result = DelveResult.PriceChanged, View = await GetViewAsync(playerId) };
                     return outcome;
                 }
@@ -1182,7 +1182,7 @@ namespace FolkIdle.Server.Domain.Economy
                     // The whole transaction goes, the floors-1-8 bank with it:
                     // the run stays at the bottom and can still walk out and be
                     // paid exactly that.
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     outcome = new DelveActionOutcome { Result = DelveResult.NotEnoughGold, View = await GetViewAsync(playerId) };
                     return outcome;
                 }
@@ -1215,7 +1215,7 @@ namespace FolkIdle.Server.Domain.Economy
             }
             catch
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 throw;
             }
         }

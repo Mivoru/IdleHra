@@ -63,7 +63,7 @@ namespace FolkIdle.Server.Domain.Combat
                 note.PlayerId, note.EventId, note.Tier, DateTime.SpecifyKind(utcNow, DateTimeKind.Utc));
             if (inserted == 0)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return false;
             }
 

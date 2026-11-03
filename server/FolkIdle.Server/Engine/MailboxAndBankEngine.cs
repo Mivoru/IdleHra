@@ -169,7 +169,7 @@ namespace FolkIdle.Server.Engine
             catch (Exception)
             {
                 EndPendingTransaction(playerId);
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
             }
         }
 
