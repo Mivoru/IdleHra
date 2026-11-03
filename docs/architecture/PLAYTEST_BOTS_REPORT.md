@@ -216,14 +216,42 @@ The first eager rebirth came at 103 h, the first patient one at 444 h.
 - The rebirth damage bonus is flat at 13% from rebirth 10. Every eager bot
   passed rebirth 10 by day 47 and gained nothing measurable after it.
 
-**Defects the run exposed (not investigated yet):**
-1. **Dungeon pushes stop at stage 3-4**, against 5-8 in the 0.4 run. It is
-   either a game regression or a bot regression since #287.
-2. **An idle player stuck at level 4 for all 61 days (idle9).** It dies to
-   the Field Mouse (91) during every 12-hour offline window and every login
-   logs "+0 XP". The other idle bot escaped only around day 25 and ended at
-   level 61. That is a new-player risk, not only a bot quirk.
-3. **Casual bots never left region 1** in 60 days (level 61-66 at best,
+**What the run exposed, and what each turned out to be** (read from the
+run's `events.log`, 2026-11-03, no new run):
+1. **Dungeon pushes stop at stage 3-4: NOT a defect - the region gate.**
+   `DungeonEngine.StageLockedReason` opens stage N only once the region-N
+   boss is beaten, and the bot sweeps while the next stage is locked. The
+   pushes themselves almost always won (64 wins, 7 losses across six bots);
+   patient5 made no push between 122 h and 989 h because stage 4 stayed
+   locked until its region-4 boss fell at 972 h. Eager bots never beat that
+   boss, so they never saw stage 4. The 0.4 run reached stages 5-8 because
+   its bots reached region 5. The dungeon ceiling is the region-4 boss.
+2. **An idle player stuck at level 4 for all 61 days (idle9): mostly a BOT
+   defect at x200.** A daily check-in is 20 game minutes = 6 wall seconds.
+   The login path spent about 5 of them waiting - 3 s before the first
+   connect attempt (a backoff meant for a dropped socket) and a fixed 2 s for
+   the first snapshot - so idle9 logged in 19 game minutes into its window
+   (log: check-in from 24.00 h, "logged in" at 24.32 h, "logged out" at
+   24.36 h) and rarely got the fight restarted before it logged out again.
+   idle10 escaped at 552 h on the one login where the fight command went
+   through, and then levelled normally (level 16 the next day, 61 at the
+   end). Fixed in the bot: a login connects at once, waits only for the
+   first state frame, sends the fight before attributes and food, and logs
+   how much of the check-in was already gone. A 34-game-hour check at x200
+   (1 idle + 1 casual, 2026-11-03) logged in 1.6-4.9 game minutes into the
+   window instead of 19, and the idle bot restarted its fight on its first
+   login. Still open: why a level 1-4 character dies offline to the Field
+   Mouse at all (the starter larder running out is the likely reading) -
+   for the x20 casual/idle run.
+3. **"+0 XP" on a login that gained levels: a GAME defect, fixed.**
+   `OfflineXpEarned` (and the per-character `OfflineSlotNXp`) was
+   "CurrentXp after - CurrentXp before", but CurrentXp is the progress into
+   the current level and drops at every level-up, so a night that paid
+   levels read 0 (idle10: level 4 to 16, "+0 XP"). With no gold either, the
+   client's "earned nothing" warning would tell such a player the night was
+   wasted. Now counted with `ProgressionEngine.CumulativeXp`;
+   `Test_OfflineSummary_CountsTheXpOfLevelsGainedAway` fails on the old code.
+4. **Casual bots never left region 1** in 60 days (level 61-66 at best,
    three rebirths each). This run is NOT evidence for that: at x200 a
    20-minute check-in is 6 wall seconds, and with 0.4-1.2 s between bot
    commands a whole check-in is a handful to ~15 commands. Confirm at x20
@@ -257,7 +285,17 @@ crosses the two factors the first run mixed:
 
 Use 5-10 bots per variant and repeat with different random seeds. Keep the
 same starting state, the same bot build and an explicit `FOLKIDLE_OFFLINE_SIM`
-for every variant. Track region, level, rebirths, gear strength, time
+for every variant. The bot has it now: personas `optimal` (A), `patientbare`
+(B), `eagerkit` (C) and `patient` (D), split into `Persona.PatientRebirth`
+(timing) and `Persona.KeepWholeKit` (gear), and `--seed N` / `-Seed N`
+shifts every bot's dice. One night:
+
+    .\server\FolkIdle.Bots\run-overnight.ps1 -StartAt 00:00 -EndAt 08:55 -Mix optimal:5,patientbare:5,eagerkit:5,patient:5 -Seed 1
+
+20 bots at x200 is twice the 0.6.1 load (p99 0.41 ms against 0.5 ms of
+budget at 10 bots), so check `summary.md`'s effective speed; if it falls
+behind, run x100 or split the variants over two nights.
+ Track region, level, rebirths, gear strength, time
 stalled, dungeon and Ascension. The answer says whether the rewards need to
 change, or only the economy of keeping gear.
 
@@ -448,8 +486,9 @@ forge/potions/dungeons) are done - see section 0. Now:
     the idle bot stuck at level 4 (level 4, 12 h offline, death to the
     Field Mouse, next login - record HP, food, activity, stop reason, XP;
     add a test for repeated logins and the fight restarting); analyse the
-    dungeon stall at stage 3-4 attempt by attempt against the 5-8 run;
-    a casual run at x20; then the 2x2 experiment (0.6.2).
+    dungeon stall (explained: the region gate, 0.6.1 item 1); the idle
+    login (bot defect fixed, 0.6.1 item 2); next nights: a casual + idle run
+    at x20 (`-Speed 20 -Mix casual:3,idle:3`), then the 2x2 (0.6.2).
 2. Casual and idle are part of the 0.6 run (their x200 defects are fixed;
    the day test showed it). A casual run at x20 would still confirm that
    the 20-minute check-in is not an artefact of speed.

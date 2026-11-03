@@ -132,9 +132,11 @@ in 61, dungeon pushes stalling at stage 5-8.
 RAN overnight at x200 (61.7 game days, old offline model - see 0.6.1). The
 patient combination (later rebirth + whole kit kept) beat eager on every
 axis, but timing and gear are confounded, so no rebirth rule changes.
-Open from it, in order: an idle bot stuck at level 4 for 61 days (offline
-deaths, "+0 XP"), dungeon pushes stalling at stage 3-4 (was 5-8), a casual
-run at x20, then the controlled 2x2 experiment (report 0.6.2).
+Read from its logs: the dungeon stall at stage 3-4 is the region gate
+(stage N needs the region-N boss), not a regression; the idle bot stuck at
+level 4 was the bot's login spending 5 of a check-in's 6 wall seconds
+waiting (fixed). Next nights: a casual + idle run at x20, then the controlled
+2x2 experiment (report 0.6.2; personas and `--seed` are built).
 
 ---
 

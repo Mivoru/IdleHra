@@ -56,7 +56,7 @@ namespace FolkIdle.Bots
                     var client = new BotClient(o.Server, deviceId);
                     await client.ConnectAsync(t);
                     return client;
-                }, log, seed: i * 7919, name, persona);
+                }, log, seed: i * 7919 + o.Seed * 104729, name, persona);
                 try
                 {
                     await brain.RunAsync(stopAt, cts.Token);
@@ -143,6 +143,8 @@ namespace FolkIdle.Bots
             public bool AllowRemote;
             /// <summary>--mix optimal:2,casual:1,idle:1; without it, --bots N optimal bots.</summary>
             public string? Mix;
+            /// <summary>--seed N: shifts every bot's decision dice, so a repeat of the same mix is an independent sample.</summary>
+            public int Seed;
 
             public List<Persona> Roster()
             {
@@ -151,7 +153,7 @@ namespace FolkIdle.Bots
                 foreach (string part in Mix.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 {
                     string[] kv = part.Split(':');
-                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, patient, casual, idle)");
+                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, patient, patientbare, eagerkit, casual, idle)");
                     int count = kv.Length > 1 ? int.Parse(kv[1], CultureInfo.InvariantCulture) : 1;
                     roster.AddRange(Enumerable.Repeat(persona, Math.Clamp(count, 1, 50)));
                 }
@@ -174,9 +176,10 @@ namespace FolkIdle.Bots
                         case "--prefix": o.Prefix = next(); break;
                         case "--allow-remote": o.AllowRemote = true; break;
                         case "--mix": o.Mix = next(); break;
+                        case "--seed": o.Seed = int.Parse(next(), CultureInfo.InvariantCulture); break;
                         default:
                             Console.Error.WriteLine($"unknown argument {args[i]}");
-                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID]");
+                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID] [--seed N]");
                             return null;
                     }
                 }

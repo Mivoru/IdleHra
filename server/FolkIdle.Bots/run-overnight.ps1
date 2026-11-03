@@ -16,6 +16,8 @@
 #
 # The rebirth experiment (PLAYTEST_BOTS_REPORT.md section 0.6) is the default
 # mix: 3 optimal (eager rebirth) vs 3 patient, plus 2 casual and 2 idle.
+# The controlled 2x2 (section 0.6.2) is
+#   -Mix optimal:5,patientbare:5,eagerkit:5,patient:5 -Seed 1   (then -Seed 2, ...)
 # Needs Docker with the folk-idle-db and folk-idle-redis containers.
 param(
     [string]$StartAt = "",
@@ -23,7 +25,8 @@ param(
     [int]$Speed = 200,
     [string]$Mix = "optimal:3,patient:3,casual:2,idle:2",
     [string]$Out = "",
-    [ValidateSet(0, 1)][int]$OfflineSim = 1
+    [ValidateSet(0, 1)][int]$OfflineSim = 1,
+    [int]$Seed = 0
 )
 
 $repo = (Resolve-Path "$PSScriptRoot\..\..").Path
@@ -61,9 +64,9 @@ $end = [datetime]::ParseExact($EndAt, "HH:mm", $null)
 if ($end -lt (Get-Date)) { $end = $end.AddDays(1) }
 $hours = [math]::Round(($end - (Get-Date)).TotalHours * $Speed, 1).ToString([System.Globalization.CultureInfo]::InvariantCulture)
 if (-not $Out) { $Out = "bot-runs\overnight-" + (Get-Date -Format "yyyyMMdd-HHmm") }
-Write-Host "Bots: $Mix, $hours game hours at x$Speed, FOLKIDLE_OFFLINE_SIM=$OfflineSim -> $Out"
+Write-Host "Bots: $Mix, $hours game hours at x$Speed, FOLKIDLE_OFFLINE_SIM=$OfflineSim, seed $Seed -> $Out"
 
-dotnet run --no-build --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix $Mix --hours $hours --speed $Speed --out $Out
+dotnet run --no-build --project server/FolkIdle.Bots/FolkIdle.Bots.csproj -- --mix $Mix --hours $hours --speed $Speed --out $Out --seed $Seed
 Get-Process FolkIdle.Server -ErrorAction SilentlyContinue | Stop-Process -Force
 Stop-Job $server -ErrorAction SilentlyContinue
 Write-Host "Done: $Out\summary.md"
