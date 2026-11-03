@@ -10823,6 +10823,10 @@ namespace FolkIdle.Server.Network
         {
             if (!ClientCommandValidator.ValidateNetworkThroughput(ref session.TokenBucket, playerId, ref packet, out int reasonCode))
             {
+                // Modul: A FLOOD ABORT SAYS SO. It used to close the socket with
+                // no log line at all, which twice cost a day of guessing (x10 in
+                // 2026-11-01, the 20-bot lockstep run in 2026-11-03).
+                Console.WriteLine($"[flood] player {playerId} aborted: token bucket empty on command {packet.Command} (reason {reasonCode})");
                 session.Socket.Abort();
                 _connectedClients.TryRemove(playerId, out _);
                 _ = MarkFloodInfractionAsync(playerId);

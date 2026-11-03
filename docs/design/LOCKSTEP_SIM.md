@@ -240,9 +240,31 @@ Found and fixed on the way:
   reaction to one boundary, so 20 bots' commands hit one tick together.
 - Before a wake the checkpoint writer must be idle (it was "at most 16").
 
-Open: 7 sockets closed by the server without a log line around game hour
-2.0, each shortly after a potion brew/shelf action. Not yet diagnosed;
-earlier paced runs also reconnected.
+The 7 silent socket closes were the flood abort: lockstep broadcast in the
+tick before ANY bot's wake - with 20 bots nearly every tick - and every
+broadcast issued a fresh anti-cheat challenge, so each bot answered up to
+ten a game second against a token bucket that refills five. Under lockstep a
+challenge is now issued at most once a game second, as production's one
+broadcast a second does; the flood abort now logs a line (it never did).
+
+Quantum 10 vs 1, same 20-bot run after the fix (CRON_SCALE 4, 10 game h):
+
+| quantum | wall | speed | wake frames | 40001 refusals | sockets lost |
+|---|---|---|---|---|---|
+| 10 | 4.2 min | x142 | 2,828 | 37 | 0 |
+| 1 | 3.6 min | x165 | 4,513 | 16 | 0 |
+
+Quantum 1 is both faster and cleaner: a 10-tick boundary makes twenty bots
+write at once, and the conflicts cost more than the extra round trips.
+Default stays 1.
+
+The loot cron's cost is one Serializable transaction PER KILL (about 8,000
+drop requests a minute of log at 20 bots); gathering is already one
+transaction per player per cycle. Coalescing a cycle's requests per player
+and monster into one request with `Kills = N` (the field the offline
+catch-up already uses) would cut it by orders of magnitude, but it changes
+the production loot path's failure isolation (one failure loses N kills, not
+one), so it is a proposal for the owner, not part of this PR.
 
 ## Owner decisions (2026-11-03, second review)
 

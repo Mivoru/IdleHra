@@ -2259,7 +2259,16 @@ namespace FolkIdle.Server.Domain.Combat
                         ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
                         if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                         {
-                            if (currentPayload.ActiveChallengeSeed == 0 || currentPayload.ActiveChallengeAnswered != 0)
+                            // Modul: ONE CHALLENGE A GAME SECOND UNDER LOCKSTEP TOO (20-bot
+                            // smoke, 2026-11-03). Lockstep broadcasts in the tick before ANY
+                            // bot's wake, which with twenty bots is nearly every tick; a fresh
+                            // challenge each time meant up to ten answers a game second, each
+                            // spending a token from a bucket that refills five a second - and
+                            // the flood abort closed seven sockets without a word. Production
+                            // issues one a second (one broadcast a second); so does this.
+                            bool challengeDue = conductor == null
+                                || GameClock.MonotonicMs - currentPayload.ActiveChallengeIssuedAtMs >= 1000;
+                            if ((currentPayload.ActiveChallengeSeed == 0 || currentPayload.ActiveChallengeAnswered != 0) && challengeDue)
                             {
                                 currentPayload.ActiveChallengeSeed = AntiCheatTelemetryEngine.GenerateChallengeSeed(currentPayload.PlayerId, currentPayload.LogicEpochCounter, _metrics.TotalTicksProcessed);
                                 currentPayload.ActiveChallengeIssuedAtMs = GameClock.MonotonicMs;
