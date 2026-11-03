@@ -19,6 +19,35 @@ do next.
 
 ---
 
+# 2026-11-03 - Lockstep bot simulation; two production defects it found
+
+**Read `docs/design/LOCKSTEP_SIM.md` "Read this first".** The playtest bots
+can now run against a server that waits for them (`FOLKIDLE_SIM_LOCKSTEP=1`,
+bots `--lockstep`): results no longer depend on the speed, nights with
+everyone offline are jumped, the gameplay crons run on the tick at their
+production period (`FOLKIDLE_SIM_CRON_SCALE` stretches them), and every
+persona now sleeps 00:30-06:30 game UTC (plus up to an hour either side;
+`--no-sleep` for 24/7). 20 bots run about x160, 4 bots about x500.
+
+Merged, NOT deployed: #313 (overnight runs in Release; the exported tick
+sum no longer truncates to whole ms - in production too), #314 (lockstep),
+#315, #316. Found by the 20-bot runs and fixed in production code:
+- **#315: a rollback replaced the 40001 that caused it.** A Serializable
+  commit that loses leaves the transaction complete; `catch { await
+  tx.RollbackAsync(); throw; }` then threw "This NpgsqlTransaction has
+  completed", so nothing retried or refused and SafeDispatchAsync KICKED the
+  player (13 kicks in one run). All 300 rollbacks now go through
+  `SafeRollbackAsync`; `SafeRollbackTests` has a source guard.
+- **The flood abort closed sockets without a log line** - now `[flood]`.
+- #316: one loot transaction per player and monster a cycle (`Kills = N`,
+  rolled N times), not one per kill; -26% transactions early game.
+
+Open: why a run inside Docker is slower despite a 3.7x faster database
+(suspect Nagle/delayed ACK, ~50 ms per wake); phase 3 validation results
+(night of 2026-11-04); P5 strategy cohorts (owner spec in the design doc).
+
+---
+
 # 2026-11-02 (audit) - Lost database races no longer lose mail or market matches
 
 Branch `claude/audit-2026-11-02`, slice A of a whole-game audit. #288 taught

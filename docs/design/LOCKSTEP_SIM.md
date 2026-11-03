@@ -1,5 +1,80 @@
 # Lockstep simulation for the playtest bots
 
+## Read this first - state on 2026-11-03, end of day
+
+**Phases 0-2 are BUILT and MERGED to main; none of it is DEPLOYED. Phase 3 (validation) runs the night of 2026-11-04; P5 is a spec only.**
+PRs: #313 (Release overnight runs, precise tick sum), #314 (lockstep, phases
+1a-2), #315 (`SafeRollbackAsync`, a production fix), #316 (loot coalescing,
+production). #314-#316 touch production code paths: every rollback, the
+anti-cheat/throttle guards (`GameClock.MonotonicMs`, identical off lockstep),
+the cron `RunCycleAsync` extraction, the `[flood]` log line, the loot worker.
+The owner decides the deploy (planned 2026-11-04).
+
+How to run it: server with `FOLKIDLE_DEV_TOOLS=1 FOLKIDLE_SIM_LOCKSTEP=1`
+(optional `FOLKIDLE_SIM_CRON_SCALE=4`, `FOLKIDLE_SIM_QUANTUM`, default 1),
+bots with `--lockstep`. A whole night of it:
+`server/FolkIdle.Bots/night-lockstep-validation.ps1`. Inside Docker:
+`server/FolkIdle.Bots/docker/run-lockstep.sh` (slower today - see below).
+
+Measured speed: 4 bots x500-x560; 20 bots (2x2 personas) x160 at
+`CRON_SCALE=4`, quantum 1, 0 kicks, 0 lost sockets, all reach L10.
+
+Where the wall time goes (measured, not guessed):
+- **The database round trip, not fsync.** Windows -> Postgres in Docker is
+  0.43 ms per query (`SELECT 1`); a Serializable BEGIN+INSERT+COMMIT 0.73 ms
+  with `synchronous_commit` on and 0.77 ms with it off - so turning fsync off
+  buys nothing (the sim databases already have it off). A loot transaction
+  makes 15-20 EF round trips, about 9 ms. Inside the Docker network the round
+  trip is 0.12 ms and the crons run 3x faster (4 bots, 10 game h: crons 47 s
+  on Windows, 16 s in Docker).
+- **But a run inside Docker was not faster** (4 bots: 1.1 vs 1.2 wall min;
+  20 bots: x98 vs x160). About 50 ms per wake is unaccounted for in Docker
+  (38 s over 765 wakes). Prime suspect, NOT yet confirmed: Nagle + delayed
+  ACK on Linux TCP - small request/response frames (wake -> yield, commands)
+  stall ~40 ms each, and the managed Linux `HttpListener` does not set
+  `NoDelay`. Windows loopback does not show it. Next step: set `NoDelay` on
+  the control socket and the game WebSockets and re-measure; if it holds,
+  Docker should beat Windows because its crons are 3x cheaper.
+- Loot coalescing (#316) cut loot transactions 26% at 20 early-game bots
+  (4,860 requests -> 3,578); a low-level player kills a given monster once
+  or twice per 12-second cycle, so the win grows with kill rate (late game,
+  offline bursts), not visible yet in speed (x157 vs x165, noise).
+
+Night runs (Windows Task Scheduler, from the frozen worktree
+`../IdleHra-night3` at main 4bb7c070, Release):
+- **2026-11-04 00:00** "FolkIdle bots night 2026-11-04 lockstep": phase 3 -
+  paced x20 72 game h (reference), lockstep scale 1 and scale 4 72 h, same
+  2x2 mix, seed 1; `compare-validation.py` writes `validation.md`; then a
+  240-game-hour lockstep deep run. Output `bot-runs/night-20261104/`.
+- **2026-11-05 00:00** "FolkIdle bots night 2026-11-05 rebirth lockstep": the
+  rebirth 2x2 (PLAYTEST_BOTS_REPORT 0.6.2) under lockstep, 720 game h, seed 2.
+- The old tasks "night1 casual x20" and "night2 rebirth 2x2" (frozen
+  pre-#313 worktree, Debug, x200) are DISABLED.
+
+Next, in order: read `validation.md` (does lockstep match x20, and does scale
+4 match scale 1); NoDelay in Docker; then P5 below.
+
+### P5 - strategy cohorts and an endgame scoreboard (owner spec, not built)
+
+Today's optimal bot is greedy: it scores attributes, nodes and gear by the
+immediate combat what-if, so loot luck (0 DPS now, rarity and affixes later)
+never wins, and "strongest" is not one goal. P5 runs 20 bots as five cohorts
+of four, the SAME attention budget and sleep, different decision weights:
+
+| Cohort | Decision rule |
+|---|---|
+| GreedyCombat | today's bot, pure immediate combat what-if (baseline) |
+| LuckSnowball | high loot-luck weight early/mid game, pivots to combat once rare gear with affixes is in hand |
+| BalancedLuck | a fixed synthetic value: +1% loot luck counts as +X% combat score |
+| BossSlayer | offense/crit/speed weighted 1.5x defence; max world boss strike and Malakor kills an hour |
+| AscensionDelver | strict death threshold (refuses >2% death risk), EHP/sustain; top dungeon and Malakor Ascension |
+
+Endgame scoreboard in `MilestoneLog`/`compare-run.py`, at game hours 72, 168
+and 336, per cohort: world boss total and best single strike, Malakor kills,
+top Malakor Ascension step, top dungeon tier, a gear rarity/affix index.
+
+## History
+
 Status, 2026-11-03: owner approved the lockstep approach (P0 -> P3, bots stay
 on the real WebSocket/REST surface) and asked for implementation. BUILT: step 0
 (PR #313) and phase 1a (`SimConductor`, `SimLockstep`, the control socket, the
@@ -26,9 +101,8 @@ Where the wall time goes now (10 game hours, 72 s): the gameplay crons
 1.2 ms - real database work at production cadence), REST ~20 s, ticks
 0.5 s. `synchronous_commit=off` gained ~5%. The next step up is an owner
 decision: run the crons at a multiple of their production period under
-lockstep (a fidelity trade-off), or accept ~x300. The bots do
-not speak the control socket yet, so a lockstep server today holds still until
-a client joins - nothing runs lockstep end to end with real bots.
+lockstep (a fidelity trade-off), or accept ~x300. (Owner chose the scale:
+`FOLKIDLE_SIM_CRON_SCALE`, default 1.)
 
 Phase 1a proof: `SimConductorTests` (27, mutation-checked: dropping the
 reaction or the online check fails 7), and a live Release server with
@@ -282,7 +356,7 @@ one), so it is a proposal for the owner, not part of this PR.
 
 ## Open questions for the owner
 
-1. (Answered above: every persona sleeps; P4 shelved.)
+1. (Answered: every persona sleeps; P4 shelved; cron scale built.)
 2. **Population effects** (world boss HP from registration strikes, market)
    reflect 10-20 bots. That is not a speed problem and lockstep does not fix
    it.
