@@ -35,6 +35,36 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.55.0',
+    date: '2026-11-03',
+    headline: 'A clearer Forge, guild ranks, and fairer reroll prices.',
+    sections: [
+      {
+        title: 'Forge',
+        items: [
+          'The Forge has two tabs, Affixes and Fusion, instead of two long columns side by side.',
+          'Your worn gear is listed by character, so rerolling a second or third character no longer means searching your whole chest.',
+          'Every affix has its own Reroll and Refine buttons, apart from each other and each with its price.',
+          'A reroll now costs more on rarer items: the region price is multiplied by the item rarity, from x1 for Normal up to x50 for Relic and above. Refine still costs a quarter of a reroll.',
+        ],
+      },
+      {
+        title: 'Guilds',
+        items: [
+          'Guilds have four ranks: Chieftain, Elder (up to two), Warden (up to five) and Member. The Wiki explains who can do what.',
+          'The Chieftain can hand the guild to another member. If the Chieftain does not log in for 14 days, the guild passes to the highest rank still playing.',
+          'A guild that had nobody leading it gets a Chieftain.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'With three potions running, the countdowns no longer run off a phone screen.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.54.1',
     date: '2026-11-03',
     headline: 'The welcome-back summary counts XP correctly again.',
