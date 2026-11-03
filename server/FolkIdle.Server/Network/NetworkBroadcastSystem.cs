@@ -1112,6 +1112,7 @@ namespace FolkIdle.Server.Network
             using var deadline = new CancellationTokenSource(RequestDeadline);
             var scope = new RequestScope { Aborted = deadline.Token };
             _currentRequest.Value = scope;
+            long routeStarted = DevRouteTiming.Enabled ? Stopwatch.GetTimestamp() : 0;
             try
             {
                 await RouteCoreAsync(context);
@@ -1146,6 +1147,7 @@ namespace FolkIdle.Server.Network
             {
                 scope.Stripe?.Release();
                 scope.Stripe = null;
+                if (routeStarted != 0) DevRouteTiming.Record(context.Request.Url?.AbsolutePath, Stopwatch.GetTimestamp() - routeStarted);
             }
         }
 
@@ -2138,6 +2140,15 @@ namespace FolkIdle.Server.Network
             if (requestPath.StartsWith("/api/v1/admin/"))
             {
                 await HandleAdminEndpoints(context, requestPath);
+                return;
+            }
+
+            // Lockstep control socket (docs/design/LOCKSTEP_SIM.md): before the
+            // dev REST gate, because it signs in as no player - it carries the
+            // whole bot process. 404 unless dev tools AND lockstep are on.
+            if (requestPath == "/api/v1/dev/sim")
+            {
+                await HandleSimControlSocketAsync(context);
                 return;
             }
 
@@ -10812,6 +10823,10 @@ namespace FolkIdle.Server.Network
         {
             if (!ClientCommandValidator.ValidateNetworkThroughput(ref session.TokenBucket, playerId, ref packet, out int reasonCode))
             {
+                // Modul: A FLOOD ABORT SAYS SO. It used to close the socket with
+                // no log line at all, which twice cost a day of guessing (x10 in
+                // 2026-11-01, the 20-bot lockstep run in 2026-11-03).
+                Console.WriteLine($"[flood] player {playerId} aborted: token bucket empty on command {packet.Command} (reason {reasonCode})");
                 session.Socket.Abort();
                 _connectedClients.TryRemove(playerId, out _);
                 _ = MarkFloodInfractionAsync(playerId);
@@ -11143,6 +11158,8 @@ namespace FolkIdle.Server.Network
                     body.Append("folkidle_tick_duration_recent_milliseconds_count ").Append(rt.Samples).Append('\n');
                     body.Append('\n');
                 }
+                DevRouteTiming.AppendMetrics(body);
+                FolkIdle.Server.Domain.Shared.SimLockstep.Crons?.AppendMetrics(body);
                 if (checkpointWriter != null)
                 {
                     body.Append("# HELP folkidle_checkpoint_queue_depth Checkpoint jobs queued on CheckpointWriter.\n");

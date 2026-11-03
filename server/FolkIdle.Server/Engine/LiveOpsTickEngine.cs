@@ -57,6 +57,21 @@ namespace FolkIdle.Server.Engine
             _ = Task.Run(RunAsync);
         }
 
+        /// <summary>
+        /// One cycle: the event rotation, the world boss window, the daily reset.
+        /// The loop below runs it every 600 x 100 ms; lockstep (SimCronPump)
+        /// runs it every 600 ticks instead.
+        /// </summary>
+        internal async Task RunCycleAsync()
+        {
+            await UpdateActiveEventRotationAsync();
+            await EvaluateWorldBossEventWindowAsync();
+            await EvaluateDailyResetAsync();
+        }
+
+        /// <summary>The production period of <see cref="RunCycleAsync"/>.</summary>
+        internal const int CyclePeriodMs = ScaleIntervalTicks * TickIntervalMs;
+
         private async Task RunAsync()
         {
             int tickCounter = ScaleIntervalTicks;

@@ -28,7 +28,7 @@ namespace FolkIdle.Server.Domain.Economy
         public DateTime IssuedUtc { get; set; }
         /// <summary>The bonuses offered after a clean dodge, until one is chosen.</summary>
         public IReadOnlyList<DungeonPerkView>? Offer { get; set; }
-        public DateTime TouchedUtc { get; set; } = DateTime.UtcNow;
+        public DateTime TouchedUtc { get; set; } = GameClock.ReactionUtcNow;
         /// <summary>Set once the reward has been paid, so it is paid once.</summary>
         public bool Paid { get; set; }
     }

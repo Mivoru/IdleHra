@@ -131,7 +131,7 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            long now = Environment.TickCount64;
+            long now = GameClock.MonotonicMs;
             var profile = _profiles.GetOrAdd(playerId, _ => new CommandTimingProfile());
             if (profile.RecordAndCheck(now))
             {

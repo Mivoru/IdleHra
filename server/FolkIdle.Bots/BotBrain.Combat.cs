@@ -31,7 +31,7 @@ namespace FolkIdle.Bots
         /// </summary>
         private readonly Dictionary<long, (int Level, int Location, int Region)> _refused = new();
         private long _pendingActivity;
-        private DateTime _pendingActivityAt;
+        private double _pendingActivityAtHours;
 
         private int _deathsAtLevel;
         private int _deathLevel = -1;
@@ -293,7 +293,7 @@ namespace FolkIdle.Bots
                 {
                     _pendingActivity = 0; // confirmed
                 }
-                else if (DateTime.UtcNow - _pendingActivityAt > TimeSpan.FromSeconds(8))
+                else if (Now - _pendingActivityAtHours > 8.0 / 3600)
                 {
                     // Not taken. A death also clears the activity, and is not a refusal.
                     if (_state.ActivityHaltReason != ActivityHaltReason.Died)
@@ -314,7 +314,7 @@ namespace FolkIdle.Bots
             if (target <= 0 || target == _state.ActiveActivityId) return false;
 
             _pendingActivity = target;
-            _pendingActivityAt = DateTime.UtcNow;
+            _pendingActivityAtHours = Now;
             packet = new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = target, TargetGuid = _state.Slot1_CharacterId };
             Event(_trip != null
                 ? $"{_trip.Purpose} at node {target}"

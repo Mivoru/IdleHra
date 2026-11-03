@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace FolkIdle.Server
 {
@@ -48,10 +49,75 @@ namespace FolkIdle.Server
             _anchorUtc = DateTime.UtcNow;
             _anchorTimestamp = Stopwatch.GetTimestamp();
             _speed = Math.Max(1, speed);
+            _lockstep = false;
         }
 
         public static DateTime UtcNow
-            => _speed <= 1 ? DateTime.UtcNow : Project(_anchorUtc, Stopwatch.GetTimestamp() - _anchorTimestamp, Stopwatch.Frequency, _speed);
+            => _lockstep ? LockstepTime(_anchorUtc, Volatile.Read(ref _lockstepTick))
+             : _speed <= 1 ? DateTime.UtcNow : Project(_anchorUtc, Stopwatch.GetTimestamp() - _anchorTimestamp, Stopwatch.Frequency, _speed);
+
+        // Modul: LOCKSTEP TIME IS A TICK COUNT, NOT A STOPWATCH (2026-11-03,
+        // docs/design/LOCKSTEP_SIM.md). Under FOLKIDLE_SIM_LOCKSTEP the engine
+        // runs as fast as the CPU allows and waits for the bots, so wall time
+        // says nothing about game time; the clock is the anchor plus the ticks
+        // the engine has completed (SimConductor.Tick), 100 ms each. Speed then
+        // reads LockstepNominalSpeed for the few wall-time heuristics that
+        // divide by it (the projection cache).
+        private static bool _lockstep;
+        private static long _lockstepTick;
+        public const int LockstepNominalSpeed = 1000;
+        public const long LockstepTickTimeSpanTicks = 100 * TimeSpan.TicksPerMillisecond;
+
+        public static bool IsLockstep => _lockstep;
+
+        /// <summary>Game time zero under lockstep (tick 0); the bots read the hour of day from it.</summary>
+        public static DateTime LockstepAnchorUtc => _anchorUtc;
+
+        public static void ConfigureLockstep(DateTime anchorUtc)
+        {
+            _anchorUtc = anchorUtc;
+            _anchorTimestamp = Stopwatch.GetTimestamp();
+            Volatile.Write(ref _lockstepTick, 0);
+            _speed = LockstepNominalSpeed;
+            _lockstep = true;
+        }
+
+        /// <summary>
+        /// The anti-cheat and throttling clock: <c>Environment.TickCount64</c>,
+        /// except under lockstep, where it is game time in milliseconds.
+        ///
+        /// Modul: THE GUARDS MUST SEE THE TIME THE BOT LIVES IN (phase 1c). The
+        /// 100 ms command rule, the 5-in-100-ms throttler, the token bucket, the
+        /// challenge window and the macro detector all measured wall time. In
+        /// lockstep a bot's whole turn happens in frozen game time and its turns
+        /// are game seconds apart but wall MICROSECONDS apart - so on the wall
+        /// clock a careful bot looks like a flood, and its reaction spacing
+        /// (what the macro detector judges) would be the CPU's, not the
+        /// persona's. Offset by a large base so a "0 = never" sentinel in the
+        /// guards still means never at tick 0.
+        /// </summary>
+        public static long MonotonicMs
+            => _lockstep ? LockstepMonotonicBaseMs + Volatile.Read(ref _lockstepTick) * 100 : Environment.TickCount64;
+
+        /// <summary>
+        /// The clock for HUMAN reaction windows (the dungeon telegraph): the wall
+        /// clock, because reaction time does not speed up at x200 - except under
+        /// lockstep, where the bot's reaction is game ticks the conductor waits
+        /// out, so the window must be judged in game time too (phase 1c).
+        /// </summary>
+        public static DateTime ReactionUtcNow => _lockstep ? UtcNow : DateTime.UtcNow;
+
+        /// <summary><see cref="MonotonicMs"/> in Stopwatch units, for the token bucket.</summary>
+        public static long MonotonicStopwatchTimestamp
+            => _lockstep ? MonotonicMs * (Stopwatch.Frequency / 1000) : Stopwatch.GetTimestamp();
+
+        public const long LockstepMonotonicBaseMs = 1_000_000_000;
+
+        /// <summary>The engine completed <paramref name="tick"/> (lockstep only).</summary>
+        public static void SetLockstepTick(long tick) => Volatile.Write(ref _lockstepTick, tick);
+
+        internal static DateTime LockstepTime(DateTime anchorUtc, long tick)
+            => anchorUtc.AddTicks(tick * LockstepTickTimeSpanTicks);
 
         public static DateTimeOffset UtcNowOffset
             => _speed <= 1 ? DateTimeOffset.UtcNow : new DateTimeOffset(UtcNow, TimeSpan.Zero);

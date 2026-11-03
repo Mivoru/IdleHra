@@ -23,13 +23,13 @@ namespace FolkIdle.Server.Network
             return new TokenBucket
             {
                 AvailableTokens = Capacity,
-                LastRefillTimestampEpoch = System.Diagnostics.Stopwatch.GetTimestamp()
+                LastRefillTimestampEpoch = GameClock.MonotonicStopwatchTimestamp
             };
         }
 
         public static bool TryConsume(ref TokenBucket bucket)
         {
-            long currentTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            long currentTicks = GameClock.MonotonicStopwatchTimestamp;
             if (bucket.LastRefillTimestampEpoch <= 0L)
             {
                 bucket.AvailableTokens = Capacity;

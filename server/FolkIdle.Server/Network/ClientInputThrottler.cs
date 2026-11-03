@@ -14,7 +14,7 @@ namespace FolkIdle.Server.Network
 
         public bool IsPacketAllowed()
         {
-            long currentTick = Environment.TickCount64;
+            long currentTick = GameClock.MonotonicMs;
             int oldestIndex = (_index + 1) % 5;
             long oldestTick = _timestamps[oldestIndex];
 

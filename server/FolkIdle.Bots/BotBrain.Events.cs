@@ -170,7 +170,7 @@ namespace FolkIdle.Bots
                     // A person reads, then swipes: about 350 ms plus 120-200 ms a swipe,
                     // never under the server's 90 ms floor a swipe, never past the window.
                     int wait = Math.Min(Math.Max(dirs.Count * 95, 350 + dirs.Count * _rng.Next(120, 200)), Math.Max(dirs.Count * 95, window - 150));
-                    await Task.Delay(wait, token);
+                    await _time.DelayAsync(TimeSpan.FromMilliseconds(wait), token);
                     bool miss = _rng.Next(DungeonMissOneIn) == 0;
                     if (miss && dirs.Count > 0) dirs[0] = dirs[0] == "up" ? "down" : "up";
                     if (miss) misses++; else dodges++;

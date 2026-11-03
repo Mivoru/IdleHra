@@ -178,6 +178,13 @@ namespace FolkIdle.Server.Domain.Combat
         private int _ticksSinceLastBroadcast = 0;
         // Ticks between snapshot broadcasts: 10 (1 Hz) times the dev tick speed.
         private int _ticksPerBroadcast = 10;
+
+        // Lockstep (docs/design/LOCKSTEP_SIM.md): the tick being run, the last
+        // tick that broadcast, and a one-tick request to broadcast.
+        private long _lockstepTick;
+        private long _lastLockstepBroadcastTick = -1;
+        private bool _forceBroadcastThisTick;
+        private DateTime _lockstepLastDay;
         private readonly System.Collections.Concurrent.ConcurrentQueue<TickStatePayload> _readyLogins = new();
 
         private EngineMetricsPayload _metrics;
@@ -782,10 +789,28 @@ namespace FolkIdle.Server.Domain.Combat
         // than requiring a hand match of nested braces at every one.
         private void SafeDispatchAsync(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
         {
-            _ = SafeDispatchAsyncCore(context, playerIdToDisconnectOnFailure, action);
+            Interlocked.Increment(ref _inFlightDispatches);
+            bool gating = IsWorldGatingDispatch(context);
+            if (gating) Interlocked.Increment(ref _inFlightGatingDispatches);
+            _ = SafeDispatchAsyncCore(context, playerIdToDisconnectOnFailure, action, gating);
         }
 
-        private async Task SafeDispatchAsyncCore(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
+        // The dispatches that decide WHO and WHAT is in the world - a login, an
+        // activity change, a consumable, a node migration. Lockstep waits for
+        // these before every tick; the rest (village production writes, forge,
+        // market, mail) only before a bot wakes or the clock jumps. Waiting for
+        // all of them every tick held the first lockstep run to x33: a village
+        // production write is a database round trip on most ticks.
+        private static bool IsWorldGatingDispatch(string context)
+            => context == "Login" || context == "Character.ChangeActivity" || context == "ConsumeConsumable" || context.StartsWith("NodeMigration", StringComparison.Ordinal);
+
+        private int _inFlightGatingDispatches;
+
+        // Work the tick handed to the thread pool and has not seen finish
+        // (logins above all). Lockstep waits for it - see LockstepBeforeTick.
+        private int _inFlightDispatches;
+
+        private async Task SafeDispatchAsyncCore(string context, long playerIdToDisconnectOnFailure, Func<Task> action, bool gating = false)
         {
             try
             {
@@ -816,6 +841,11 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     _networkSystem.ForceDisconnect(playerIdToDisconnectOnFailure);
                 }
+            }
+            finally
+            {
+                if (gating) Interlocked.Decrement(ref _inFlightGatingDispatches);
+                Interlocked.Decrement(ref _inFlightDispatches);
             }
         }
 
@@ -1027,7 +1057,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Set once at startup (Program.cs) so the game clock and the
             // tick can never run at different speeds.
             int tickSpeed = GameClock.Speed;
-            if (tickSpeed > 1)
+            if (tickSpeed > 1 && SimLockstep.Conductor == null)
             {
                 Console.WriteLine($"[SimulationEngine] DEV tick speed x{tickSpeed} (FOLKIDLE_TICK_SPEED) - ticks AND GameClock run {tickSpeed}x the wall clock.");
             }
@@ -1040,6 +1070,19 @@ namespace FolkIdle.Server.Domain.Combat
             // login - with no log line, because a flood abort is silent. One
             // snapshot a wall second is also all a bot or a screen needs.
             _ticksPerBroadcast = 10 * tickSpeed;
+
+            // Modul: LOCKSTEP REPLACES THE PACER, NOT THE TICK (2026-11-03). With
+            // a conductor the engine does not sleep: it waits for the bots due
+            // before a tick, then runs it at once. The tick body is untouched -
+            // the same code production runs - and the periodic broadcast is off:
+            // a snapshot goes out only in the tick before a wake, because at
+            // lockstep speed one per game second would be a packet flood.
+            var conductor = SimLockstep.Conductor;
+            if (conductor != null)
+            {
+                _ticksPerBroadcast = int.MaxValue;
+                Console.WriteLine($"[SimulationEngine] LOCKSTEP (FOLKIDLE_SIM_LOCKSTEP) - the engine waits for the bots; wake quantum {conductor.QuantumTicks} ticks.");
+            }
 
             int benchmarkTickCount = 0;
             long benchmarkStartAllocated = 0;
@@ -1059,6 +1102,11 @@ namespace FolkIdle.Server.Domain.Combat
                     while (_networkSystem.CommandQueue.TryDequeue(out _)) { }
                     Thread.Sleep(100);
                     pacer.Reset();
+                    continue;
+                }
+
+                if (conductor != null && !LockstepBeforeTick(conductor))
+                {
                     continue;
                 }
 
@@ -1768,7 +1816,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 }
                                 else
                                 {
-                                    long nowMs = Environment.TickCount64;
+                                    long nowMs = GameClock.MonotonicMs;
                                     AntiCheatTelemetryEngine.LogChallengeRun(
                                         routingPlayerId, 3,
                                         nowMs - currentPayload.LastClientCommandAtMs,
@@ -2066,7 +2114,7 @@ namespace FolkIdle.Server.Domain.Combat
                         // still reaches within about a minute.
                         if (currentPayload.ActiveChallengeSeed != 0 &&
                             currentPayload.ActiveChallengeAnswered == 0 &&
-                            Environment.TickCount64 - currentPayload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
+                            GameClock.MonotonicMs - currentPayload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
                         {
                             // Marked answered so the next broadcast issues a
                             // fresh challenge rather than re-counting this one.
@@ -2098,7 +2146,7 @@ namespace FolkIdle.Server.Domain.Combat
                             // codebase has already shipped one anti-cheat that
                             // punished people for how they play.
                             bool clientWasTalking =
-                                Environment.TickCount64 - currentPayload.LastClientCommandAtMs
+                                GameClock.MonotonicMs - currentPayload.LastClientCommandAtMs
                                     <= AntiCheatTelemetryEngine.ChallengeResponseWindowMs;
 
                             if (!clientWasTalking)
@@ -2116,7 +2164,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 }
                                 else
                                 {
-                                    long nowMs = Environment.TickCount64;
+                                    long nowMs = GameClock.MonotonicMs;
                                     AntiCheatTelemetryEngine.LogChallengeRun(
                                         currentPayload.PlayerId, 4,
                                         nowMs - currentPayload.LastClientCommandAtMs,
@@ -2185,8 +2233,10 @@ namespace FolkIdle.Server.Domain.Combat
                         // so it is safe to call mid-enumeration too.
                         try
                         {
+                            var eventsBefore = LockstepEventProbe.Capture(in currentPayload);
                             ProcessTick(ref currentPayload);
                             _checkpointManager.TrackState(ref currentPayload);
+                            SimLockstep.Conductor?.NotifyAll(currentPayload.PlayerId, LockstepEventProbe.Diff(eventsBefore, in currentPayload), _lockstepTick);
                         }
                         catch (Exception tickException)
                         {
@@ -2198,11 +2248,13 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                _ticksSinceLastBroadcast++;
-                if (_ticksSinceLastBroadcast >= _ticksPerBroadcast)
+                if (_ticksSinceLastBroadcast < int.MaxValue) _ticksSinceLastBroadcast++;
+                if (_ticksSinceLastBroadcast >= _ticksPerBroadcast || _forceBroadcastThisTick)
                 {
                     _metrics.ThrottledPacketsDropped = _networkSystem.GetThrottledCounter();
                     _ticksSinceLastBroadcast = 0;
+                    _forceBroadcastThisTick = false;
+                    _lastLockstepBroadcastTick = _lockstepTick;
 
                     long broadcastSnapshotStartTimestamp = Stopwatch.GetTimestamp();
                     FolkIdleEventSource.Log.BroadcastSnapshotStart(_activePlayers.Count);
@@ -2212,10 +2264,19 @@ namespace FolkIdle.Server.Domain.Combat
                         ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
                         if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                         {
-                            if (currentPayload.ActiveChallengeSeed == 0 || currentPayload.ActiveChallengeAnswered != 0)
+                            // Modul: ONE CHALLENGE A GAME SECOND UNDER LOCKSTEP TOO (20-bot
+                            // smoke, 2026-11-03). Lockstep broadcasts in the tick before ANY
+                            // bot's wake, which with twenty bots is nearly every tick; a fresh
+                            // challenge each time meant up to ten answers a game second, each
+                            // spending a token from a bucket that refills five a second - and
+                            // the flood abort closed seven sockets without a word. Production
+                            // issues one a second (one broadcast a second); so does this.
+                            bool challengeDue = conductor == null
+                                || GameClock.MonotonicMs - currentPayload.ActiveChallengeIssuedAtMs >= 1000;
+                            if ((currentPayload.ActiveChallengeSeed == 0 || currentPayload.ActiveChallengeAnswered != 0) && challengeDue)
                             {
                                 currentPayload.ActiveChallengeSeed = AntiCheatTelemetryEngine.GenerateChallengeSeed(currentPayload.PlayerId, currentPayload.LogicEpochCounter, _metrics.TotalTicksProcessed);
-                                currentPayload.ActiveChallengeIssuedAtMs = Environment.TickCount64;
+                                currentPayload.ActiveChallengeIssuedAtMs = GameClock.MonotonicMs;
 
                                 // Pinned so the answer is judged against the
                                 // state the client was actually shown.
@@ -2689,6 +2750,20 @@ namespace FolkIdle.Server.Domain.Combat
                 // "interval minus this tick's duration" - that lost every
                 // overrun and every oversleep for good, so live progress ran
                 // below 10 Hz whenever the box was busy. See TickPacer.
+                if (conductor != null)
+                {
+                    conductor.CompleteTick(_lockstepTick);
+                    // The game day turned during this tick (or during the jump
+                    // that led to it): wake whoever asked for the daily reset.
+                    var gameDay = GameClock.UtcNow.Date;
+                    if (gameDay != _lockstepLastDay)
+                    {
+                        if (_lockstepLastDay != default) conductor.NotifyEveryone(SimWakeReason.DailyReset, _lockstepTick);
+                        _lockstepLastDay = gameDay;
+                    }
+                    continue;
+                }
+
                 long delay = pacer.DelayUntilNextTick(Stopwatch.GetTimestamp());
                 _metrics.TicksDropped = pacer.TicksDropped;
                 _metrics.CatchUpTicks = pacer.CatchUpTicks;
@@ -2698,6 +2773,125 @@ namespace FolkIdle.Server.Domain.Combat
                     int sleepMs = (int)((delay * 1000 + Stopwatch.Frequency - 1) / Stopwatch.Frequency);
                     Thread.Sleep(sleepMs);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Lockstep, before a tick: jump the clock if nobody is online, wake the
+        /// bots due, wait for their yields, and ask for a broadcast when a wake
+        /// is due right after this tick. False = do not run a tick now (no bots
+        /// yet, or the control socket is gone).
+        /// </summary>
+        private bool LockstepBeforeTick(SimConductor conductor)
+        {
+            LockstepSettle(everything: false);
+            (long TickToRun, IReadOnlyList<SimWake> Wakes, bool NeedsBroadcast)? prep;
+            Monitor.Enter(_activePlayers);
+            try
+            {
+                long lastCompleted = conductor.Tick;
+                prep = conductor.PrepareTick(_activePlayers.Count,
+                    playerId => _activePlayers.ContainsKey(playerId) && _lastLockstepBroadcastTick != lastCompleted);
+            }
+            finally
+            {
+                Monitor.Exit(_activePlayers);
+            }
+
+            if (prep == null)
+            {
+                // No bots yet: hold the world still rather than run ahead.
+                Thread.Sleep(10);
+                return false;
+            }
+
+            var (tick, wakes, needsBroadcast) = prep.Value;
+            // Before anyone looks at the world, or the clock leaps over it, every
+            // piece of work the tick handed off has landed.
+            if (wakes.Count > 0 || tick > _lockstepTick + 1) LockstepSettle(everything: true);
+            // While the bots think, the game clock reads the state they see:
+            // the end of the last completed tick.
+            GameClock.SetLockstepTick(tick - 1);
+            // Phase 1b: the gameplay crons due by this tick run first, on this
+            // thread, and finish before any bot wakes or the tick runs - so a
+            // kill's codex entry or loot lands on a fixed tick, at production's
+            // lag, whatever the CPU is doing.
+            SimLockstep.Crons?.RunDue(tick);
+            if (wakes.Count > 0)
+            {
+                var sink = SimLockstep.WakeSink;
+                if (sink == null)
+                {
+                    Console.WriteLine("[SimulationEngine] LOCKSTEP: bots are due but no control socket is connected; dropping them.");
+                    conductor.LeaveAll();
+                    return false;
+                }
+                sink(tick, wakes);
+                // Modul: THE TICK ANSWERS REST WHILE THE BOTS THINK (phase 2). A
+                // REST call that needs the live payload - the what-if and hunting
+                // projections, the skill tree preview, the dungeon run, a world
+                // boss strike - queues an order that only the TICK thread answers,
+                // and waits 3 wall seconds for it. In lockstep the tick is parked
+                // here while the bot thinks, so every such call timed out as
+                // NoSession: the first lockstep run's optimal bots never got a
+                // projection, never picked a fight, and each failed call cost 3
+                // wall seconds (x50). So while waiting, the parked tick thread
+                // serves exactly those orders, under the same lock the tick holds.
+                while (IsRunning && !conductor.WaitForYields(TimeSpan.FromMilliseconds(1)))
+                {
+                    ServeWaitingRestCallers();
+                }
+                ServeWaitingRestCallers();
+            }
+
+            _forceBroadcastThisTick = needsBroadcast || conductor.AnyDueBy(tick + 1);
+            _lockstepTick = tick;
+            GameClock.SetLockstepTick(tick);
+            return true;
+        }
+
+        /// <summary>
+        /// The tick-side answers to REST calls that wait on the tick: payload
+        /// snapshots, world boss strikes and rebirth requests (every REST route
+        /// that awaits a tick-set Completion, 2026-11-03). Same drains, same order, as the tick
+        /// head runs them; lockstep only, between ticks.
+        /// </summary>
+        private void ServeWaitingRestCallers()
+            => LockstepRestService.Serve(_playerRegistry, _activePlayers, _worldBossEngine, _checkpointManager);
+
+        /// <summary>Checkpoint jobs allowed in the queue before lockstep stops starting ticks.</summary>
+        internal const int LockstepCheckpointQueueBound = 16;
+
+        /// <summary>
+        /// Modul: LOCKSTEP WAITS FOR THE WORK THE TICK STARTED (phase 1d). In
+        /// paced mode a login's database load (SafeDispatchAsync) takes a few
+        /// ms of a 100 ms tick; in lockstep the tick runs flat out, so the player
+        /// would enter the world at whatever tick the thread pool happened to
+        /// finish on - a result that depends on the CPU, which is exactly what
+        /// lockstep exists to remove. So before each tick: every dispatch the
+        /// tick handed off has finished, and the checkpoint writer is under its
+        /// bound (the P0 login wave queued 47). Bounded by a wall timeout, logged,
+        /// so a dispatch that itself waits on the tick cannot freeze the world.
+        /// The logout-then-login order needs nothing new: a login already fences
+        /// on that player's queued checkpoints (WaitForPendingFlushesAsync).
+        /// </summary>
+        private void LockstepSettle(bool everything)
+        {
+            var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
+            var writer = _checkpointManager.Writer;
+            var spin = new SpinWait();
+            // Before a wake the writer must be idle too: a bot's REST write that
+            // races a checkpoint of the same player is a 40001 and, for some
+            // routes, a kick (20-bot smoke, 2026-11-03: 21 sockets lost).
+            long queueBound = everything ? 0 : LockstepCheckpointQueueBound;
+            while (Volatile.Read(ref everything ? ref _inFlightDispatches : ref _inFlightGatingDispatches) > 0 || writer.QueueDepth > queueBound)
+            {
+                if (Stopwatch.GetTimestamp() > deadline)
+                {
+                    Console.WriteLine($"[SimulationEngine] LOCKSTEP: settle timed out ({Volatile.Read(ref _inFlightDispatches)} dispatches in flight, checkpoint queue {writer.QueueDepth}); running the tick anyway.");
+                    return;
+                }
+                spin.SpinOnce(sleep1Threshold: 50);
             }
         }
 

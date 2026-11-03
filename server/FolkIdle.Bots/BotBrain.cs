@@ -55,16 +55,19 @@ namespace FolkIdle.Bots
         public StateUpdatePacket? LastState { get; private set; }
         public long StateFrames { get; private set; }
 
-        public BotBrain(Func<CancellationToken, Task<BotClient>> connect, MilestoneLog log, int seed, string name, Persona persona)
+        private readonly IBotTime _time;
+
+        public BotBrain(Func<CancellationToken, Task<BotClient>> connect, MilestoneLog log, int seed, string name, Persona persona, IBotTime? time = null)
         {
             _connect = connect;
+            _time = time ?? new WallBotTime(log, 1);
             _log = log;
             _rng = new Random(seed);
             _name = name;
             _persona = persona;
         }
 
-        private double Now => _log.GameHours;
+        private double Now => _time.GameHours;
 
         /// <summary>True when the timer <paramref name="key"/> has run out; it is then rearmed for <paramref name="everyGameMinutes"/>.</summary>
         private bool Due(string key, double everyGameMinutes)
@@ -101,10 +104,11 @@ namespace FolkIdle.Bots
         public async Task RunAsync(DateTime stopAtUtc, CancellationToken token)
         {
             _client = await _connect(token);
+            if (_state.PlayerId == 0 && _client.TryGetState(out var first)) _time.Bind(first.PlayerId);
             bool connected = true;
             while (!token.IsCancellationRequested && DateTime.UtcNow < stopAtUtc)
             {
-                bool checkedIn = _persona.IsCheckedIn(Now);
+                bool checkedIn = _persona.IsOnline(Now, _time.GameUtc, _name);
                 if (!checkedIn && connected)
                 {
                     if (_client.TryGetState(out var last)) LastState = last;
@@ -136,7 +140,7 @@ namespace FolkIdle.Bots
                     while (_client.StateFrames == 0 && DateTime.UtcNow < settleUntil) await Task.Delay(50, token);
                     if (_client.TryGetState(out var back))
                     {
-                        double lateMinutes = (Now % _persona.CheckInEveryGameHours) * 60.0;
+                        double lateMinutes = _persona.CheckInEveryGameHours > 0 ? (Now % _persona.CheckInEveryGameHours) * 60.0 : 0;
                         Event($"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}, {lateMinutes:0.#} of {_persona.CheckInGameMinutes:0} check-in game min already gone");
                         Count("logins");
                         if (back.OfflineCapSeconds > 0 && back.OfflineElapsedSeconds >= back.OfflineCapSeconds) Count("offline_caps_hit");
@@ -155,26 +159,7 @@ namespace FolkIdle.Bots
                     _inventoryDirty = _projectionDirty = true;
                 }
 
-                if (connected && _client.TryGetState(out var state))
-                {
-                    _state = state;
-                    LastState = state;
-                    _log.Observe(_name, state);
-                    if (Due("timeline", 60)) _log.Timeline(_name, state, DungeonBest, AscensionSteps);
-                    try
-                    {
-                        await RestChoresAsync(token);
-                        await OneCommandAsync(token);
-                    }
-                    catch (HttpRequestException ex)
-                    {
-                        Console.WriteLine($"[{_name}] REST failed: {ex.Message}");
-                    }
-                    catch (JsonException ex)
-                    {
-                        Console.WriteLine($"[{_name}] unexpected JSON: {ex.Message}");
-                    }
-                }
+                if (connected) await TurnAsync(token);
                 await Task.Delay(connected ? _rng.Next(CommandSpacingMinMs, CommandSpacingMaxMs) : 1000, token);
             }
             if (connected)
@@ -183,6 +168,168 @@ namespace FolkIdle.Bots
                 await _client.DisposeAsync();
             }
         }
+
+        /// <summary>One look at the game: refresh, chores, at most one command. Shared by both loops.</summary>
+        private async Task TurnAsync(CancellationToken token)
+        {
+            if (!_client.TryGetState(out var state)) return;
+            _state = state;
+            LastState = state;
+            _log.Observe(_name, state);
+            if (Due("timeline", 60)) _log.Timeline(_name, state, DungeonBest, AscensionSteps);
+            try
+            {
+                await RestChoresAsync(token);
+                await OneCommandAsync(token);
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"[{_name}] REST failed: {ex.Message}");
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"[{_name}] unexpected JSON: {ex.Message}");
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Lockstep (docs/design/LOCKSTEP_SIM.md, phase 2)
+        // ------------------------------------------------------------------
+
+        /// <summary>What wakes an ONLINE bot early. A logged-out bot sleeps to its next login.</summary>
+        private const BotWake OnlineWakeOn = BotWake.Death | BotWake.ActivityHalted | BotWake.LevelUp | BotWake.DailyReset;
+
+        /// <summary>The longest an online bot sleeps with nothing due - a person glances at the screen every few game minutes.</summary>
+        private const double MaxOnlineSleepGameMinutes = 10;
+
+        /// <summary>
+        /// Modul: THE BOT'S ATTENTION IS GAME TIME, WHATEVER THE SPEED (phase 2).
+        /// Under lockstep the server does not move until this bot yields, so a
+        /// turn costs no game time and the gap between turns is exactly what the
+        /// bot asks for: a human reaction (0.4-1.2 s) while it has a command to
+        /// send or an activity to confirm, otherwise its next chore timer, at
+        /// most ten game minutes, and earlier if the server sees it die, halt,
+        /// level up or cross midnight. A 20-minute casual check-in is therefore
+        /// the same check-in at x50 or x5000 - the defect that left idle9 at
+        /// level 4 for 61 days at x200 cannot happen.
+        /// </summary>
+        /// <summary>
+        /// The next chore timer still AHEAD of now. Modul: AN OVERDUE TIMER IS NOT
+        /// A WAKE (first lockstep runs, 2026-11-03). A chore whose timer ran out
+        /// but was skipped this turn (a guard returned before it called Due) keeps
+        /// its old time, so "sleep until the earliest timer" meant "wake next
+        /// game second" for ever: 65,000-94,000 idle wakes per optimal bot in 30
+        /// game hours, and x219 instead of what the ticks allow. An overdue chore
+        /// runs at the next natural wake, at most ten game minutes on.
+        /// </summary>
+        private double NextChoreDue()
+        {
+            double now = Now, best = double.MaxValue;
+            foreach (double due in _nextDue.Values) if (due > now && due < best) best = due;
+            return best;
+        }
+
+        public async Task RunLockstepAsync(double endGameHours, LockstepBotTime time, CancellationToken token)
+        {
+            await time.FirstTurn.WaitAsync(token);
+            bool connected = false;
+            try
+            {
+                while (!token.IsCancellationRequested && Now < endGameHours)
+                {
+                    if (!_persona.IsOnline(Now, _time.GameUtc, _name))
+                    {
+                        if (connected)
+                        {
+                            if (_client.TryGetState(out var last)) LastState = last;
+                            StateFrames += _client.StateFrames;
+                            await _client.DisposeAsync();
+                            connected = false;
+                            Event($"logged out (level {LastState?.CurrentLevel})");
+                        }
+                        double away = _persona.HoursUntilOnline(Now, _time.GameUtc, _name);
+                        await _time.SleepAsync(Math.Min(endGameHours, Now + Math.Max(away, 1.0 / 3600)), BotWake.None, token);
+                        continue;
+                    }
+
+                    if (!connected)
+                    {
+                        try
+                        {
+                            _client = await _connect(token);
+                        }
+                        catch (Exception ex) when (ex is TimeoutException or HttpRequestException or System.Net.WebSockets.WebSocketException)
+                        {
+                            Event($"login failed: {ex.Message}");
+                            await _time.DelayAsync(TimeSpan.FromSeconds(30), token);
+                            continue;
+                        }
+                        connected = true;
+                        _nextDue.Clear();
+                        _queue.Clear();
+                        _pendingActivity = 0;
+                        _needFightAfterLogin = true;
+                        _inventoryDirty = _projectionDirty = true;
+                        // The login completes on the server's next ticks, and the
+                        // conductor holds this bot until its player has had a
+                        // snapshot - so a game second or two is normal.
+                        for (int i = 0; i < 120 && _client.StateFrames == 0 && _client.IsOpen; i++)
+                        {
+                            await _time.DelayAsync(TimeSpan.FromSeconds(1), token);
+                        }
+                        if (!_client.TryGetState(out var back))
+                        {
+                            Event("logged in but no state arrived within 2 game minutes; reconnecting");
+                            Count("reconnects");
+                            await _client.DisposeAsync();
+                            connected = false;
+                            continue;
+                        }
+                        _time.Bind(back.PlayerId);
+                        Event($"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}");
+                        Count("logins");
+                        if (back.OfflineCapSeconds > 0 && back.OfflineElapsedSeconds >= back.OfflineCapSeconds) Count("offline_caps_hit");
+                    }
+
+                    if (!_client.IsOpen || _noSessionSeen)
+                    {
+                        Event(_client.IsOpen ? "the server answered NoSession; reconnecting" : "socket lost; reconnecting");
+                        Count("reconnects");
+                        _noSessionSeen = false;
+                        StateFrames += _client.StateFrames;
+                        await _client.DisposeAsync();
+                        connected = false;
+                        continue;
+                    }
+
+                    long sentBefore = _client.CommandsSent;
+                    await TurnAsync(token);
+                    bool sent = _client.CommandsSent != sentBefore;
+                    bool busy = sent || _queue.Count > 0 || _pendingActivity != 0;
+                    Count(sent ? "wake_sent" : _queue.Count > 0 ? "wake_queue" : _pendingActivity != 0 ? "wake_pending" : "wake_idle");
+
+                    double next = busy
+                        ? Now + _rng.Next(CommandSpacingMinMs, CommandSpacingMaxMs + 1) / 3_600_000.0
+                        : Math.Min(Now + MaxOnlineSleepGameMinutes / 60.0, NextChoreDue());
+                    next = Math.Min(next, Now + _persona.HoursLeftInCheckIn(Now));
+                    next = Math.Min(next, Now + _persona.HoursUntilAsleep(_time.GameUtc, _name));
+                    next = Math.Min(next, endGameHours);
+                    var woke = await _time.SleepAsync(next, OnlineWakeOn, token);
+                    foreach (BotWake w in Enum.GetValues<BotWake>()) if (w != BotWake.None && (woke & w) != 0) Count("woke_" + w);
+                }
+            }
+            finally
+            {
+                if (connected)
+                {
+                    if (_client.TryGetState(out var last)) LastState = last;
+                    StateFrames += _client.StateFrames;
+                    await _client.DisposeAsync();
+                }
+                _time.Leave();
+            }
+        }
+
 
         private long _framesSeen;
         private DateTime _framesSeenAt = DateTime.UtcNow;

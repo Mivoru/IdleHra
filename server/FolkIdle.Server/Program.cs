@@ -264,6 +264,17 @@ ContentRegistry.Initialize();
 FolkIdle.Server.GameClock.Configure(FolkIdle.Server.Domain.Shared.TickPacer.ResolveTickSpeed(
     Environment.GetEnvironmentVariable("FOLKIDLE_TICK_SPEED"),
     FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()));
+// Modul: LOCKSTEP OVERRIDES THE MULTIPLIER (docs/design/LOCKSTEP_SIM.md). Same
+// gate as FOLKIDLE_TICK_SPEED; with it the engine waits for the bot process on
+// /api/v1/dev/sim and the game clock is a tick count.
+if (FolkIdle.Server.Domain.Shared.SimLockstep.ResolveEnabled(
+        Environment.GetEnvironmentVariable("FOLKIDLE_SIM_LOCKSTEP"),
+        FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()))
+{
+    FolkIdle.Server.GameClock.ConfigureLockstep(DateTime.UtcNow);
+    FolkIdle.Server.Domain.Shared.SimLockstep.Conductor = new FolkIdle.Server.Domain.Shared.SimConductor(
+        FolkIdle.Server.Domain.Shared.SimLockstep.ResolveQuantum(Environment.GetEnvironmentVariable("FOLKIDLE_SIM_QUANTUM")));
+}
 ActiveSkillEngine.Initialize();
 
 var serviceCollection = new ServiceCollection();
@@ -600,7 +611,16 @@ networkSystem.RegisterWorldBossEngine(worldBossEngine);
 var timeBankService = new TimeBankService(engine, checkpointManager);
 
 mailboxEngine.StartCleanupCron();
-liveOpsTickEngine.StartCron();
+// Modul: UNDER LOCKSTEP THE GAMEPLAY CRONS RUN ON THE TICK (phase 1b,
+// docs/design/LOCKSTEP_SIM.md). Their wall-delay loops never start; each one's
+// single cycle is registered with its production period and the engine runs
+// it on the tick thread, waiting for it. Workers that touch no gameplay
+// (telemetry, funnel, push, stat sampler, guild wars) keep their wall loops.
+var simCrons = FolkIdle.Server.Domain.Shared.SimLockstep.Conductor != null ? new FolkIdle.Server.Domain.Shared.SimCronPump() : null;
+FolkIdle.Server.Domain.Shared.SimLockstep.Crons = simCrons;
+int simCronScale = FolkIdle.Server.Domain.Shared.SimLockstep.ResolveCronScale(Environment.GetEnvironmentVariable("FOLKIDLE_SIM_CRON_SCALE"));
+if (simCrons == null) liveOpsTickEngine.StartCron();
+else simCrons.Register("liveops", LiveOpsTickEngine.CyclePeriodMs, liveOpsTickEngine.RunCycleAsync, runAtStart: true);
 pushNotificationTriggerEngine.StartCron();
 // Modul: Guild War scoreboard sync. PlayerSessionRegistry is constructed after
 // GuildWarEngine, the same ordering problem RegisterSimulationEngine and
@@ -622,13 +642,24 @@ var seasonEraSvc = new SeasonalRotationEngine(serviceProvider);
 // is the disabled one, which refuses every send, and a refused send is not
 // recorded as delivered.
 var offlineCapNotifier = new OfflineCapNotifier(serviceProvider);
-codexSvc.StartCron();
-combatLootEngine.StartCron();
-pendingGrantDrainEngine.StartCron();
+if (simCrons == null)
+{
+    codexSvc.StartCron();
+    combatLootEngine.StartCron();
+    pendingGrantDrainEngine.StartCron();
+    achSvc.StartCron();
+    seasonEraSvc.StartCron();
+}
+else
+{
+    simCrons.Register("codex", 5000 * simCronScale, () => codexSvc.ProcessKillBatchAsync(CancellationToken.None));
+    simCrons.Register("loot", CombatLootEngine.CyclePeriodMs * simCronScale, combatLootEngine.RunCycleAsync);
+    simCrons.Register("pending-grants", 5000 * simCronScale, pendingGrantDrainEngine.DrainOneCycleAsync);
+    simCrons.Register("achievements", 15000 * simCronScale, () => achSvc.SweepOnceAsync(CancellationToken.None));
+    simCrons.Register("season-era", 300_000, () => seasonEraSvc.ExecuteEraCheckAsync(CancellationToken.None), runAtStart: true);
+}
 offlineCapNotifier.StartCron();
-achSvc.StartCron();
 ecoTelemetrySvc.StartCron();
-seasonEraSvc.StartCron();
 redisWriteBehindEngine.StartCron();
 // Modul: the new-player funnel (task 39). Producers only enqueue; this drains
 // FunnelRecorder.Queue into player_funnel_events. See docs/ops/funnel.sql.
@@ -639,7 +670,8 @@ var statSampler = new StatSampler(serviceProvider, playerRegistry);
 statSampler.StartCron();
 // Task 54: the level chest, one per five levels. Producers only enqueue.
 var cosmeticGrantEngine = new CosmeticGrantEngine(serviceProvider, playerRegistry);
-cosmeticGrantEngine.StartCron();
+if (simCrons == null) cosmeticGrantEngine.StartCron();
+else simCrons.Register("cosmetic-chests", 1000 * simCronScale, cosmeticGrantEngine.DrainOneCycleAsync);
 // The world-first claim is settled in Redis, off the simulation tick - see
 // BossFirstClearAnnouncer for why the tick cannot ask the question itself.
 FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;
@@ -649,8 +681,17 @@ FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;
 FolkIdle.Server.Engine.PlayerNameResolver.ContextFactory =
     serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
 
-leaderboardCronEngine.StartCron();
-leaderboardPayoutEngine.StartCron();
+if (simCrons == null)
+{
+    leaderboardCronEngine.StartCron();
+    leaderboardPayoutEngine.StartCron();
+}
+else
+{
+    simCrons.Register("leaderboards", LeaderboardCronEngine.CyclePeriodMs, leaderboardCronEngine.RunCycleAsync, runAtStart: true);
+    simCrons.Register("leaderboard-payout", LeaderboardPayoutEngine.CyclePeriodMs, () => leaderboardPayoutEngine.PayCurrentWeekAsync(FolkIdle.Server.GameClock.UtcNow), runAtStart: true);
+    Console.WriteLine($"[SimCronPump] LOCKSTEP: {simCrons.Count} gameplay crons run on the tick; codex/loot/grants/achievements/chests at {simCronScale}x their production period (FOLKIDLE_SIM_CRON_SCALE).");
+}
 
 AppDomain.CurrentDomain.ProcessExit += (s, e) => 
 {
