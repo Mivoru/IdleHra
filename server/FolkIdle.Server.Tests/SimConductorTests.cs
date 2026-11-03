@@ -298,13 +298,24 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public async Task AYieldFromAnotherThreadReleasesTheWaitingTick()
         {
+            // Dedicated threads, not the pool: CI runs the suite in parallel and
+            // a pooled continuation was once late by more than the wait itself.
             var c = new SimConductor();
             c.Join("a");
             Prepare(c);
-            var waiter = Task.Run(() => c.WaitForYields(TimeSpan.FromSeconds(5)));
-            await Task.Delay(50);
-            c.Yield("a", 100, SimWakeReason.None);
-            Assert.True(await waiter);
+            bool released = false;
+            var waiter = new System.Threading.Thread(() => released = c.WaitForYields(TimeSpan.FromSeconds(60)));
+            waiter.Start();
+            var yielder = new System.Threading.Thread(() =>
+            {
+                System.Threading.Thread.Sleep(20);
+                c.Yield("a", 100, SimWakeReason.None);
+            });
+            yielder.Start();
+            yielder.Join();
+            waiter.Join();
+            Assert.True(released);
+            await Task.CompletedTask;
         }
     }
 }
