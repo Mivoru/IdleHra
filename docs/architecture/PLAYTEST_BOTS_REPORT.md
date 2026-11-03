@@ -126,7 +126,7 @@ after the run).
    so casual bots were reborn at level 50 nine times and ended at level 1.
    For a persona that logs out the threshold is three check-in intervals.
 
-### 0.6 Rebirth experiment: eager vs patient (prepared, NOT run yet)
+### 0.6 Rebirth experiment: eager vs patient (RUN 2026-11-03, results below)
 
 The owner's question (2026-11-02): is a rebirth every ~4 game days fine (the
 owner thinks so - it makes players play more), would real players rebirth
@@ -142,7 +142,8 @@ Prepared on branch `claude/bot-rebirth-experiment`:
 - `run-overnight.ps1` runs it unattended. The owner asked for it to start at
   midnight; it was scheduled for 2026-11-03 00:00 and then cancelled when
   the local stack was shut down. Start it with
-  `.\server\FolkIdle.Botsun-overnight.ps1 -StartAt 00:00 -EndAt 08:55`.
+  `.\server\FolkIdle.Bots
+un-overnight.ps1 -StartAt 00:00 -EndAt 08:55`.
 
 A 240-game-hour day test of that build (x200, 1 bot each) passed: optimal
 reborn at 150.8 h (level 73, dungeon best 3, 20 Ascension steps), patient
@@ -154,6 +155,66 @@ level, region, rebirths, best dungeon stage, Ascension steps, and the boss
 kill time in the region being pushed. Then a recommendation for rebirth
 (for instance larger rewards for rebirths 11-20, whose damage bonus is
 flat at 13% today, or a rebirth that pays more for kept gear).
+
+#### 0.6.1 Results (run 2026-11-03 01:30-08:55)
+
+Main at `0d114a25`, x200, default mix (3 optimal = eager, 3 patient, 2
+casual, 2 idle), 1,481 game hours = 61.7 game days. 53.3 million ticks in
+444 wall minutes, x199.9 effective, 34,292 dropped (0.06%). Output:
+`bot-runs/overnight-20261103-0130` (not committed; `summary.md`,
+`timeline.csv`, `milestones.csv`, `events.log`).
+
+Per persona at the end of the run (ranges over the three bots):
+
+| | eager (optimal) | patient |
+|---|---|---|
+| rebirths | 12-17 | 2-4 |
+| best region | 4 (none reached 5) | 5 (2 of 3, median 972 h = 40.5 days) |
+| best level in any life | 74-84 | 88-95 |
+| Ascension steps | 19-25 | 28-30 |
+| best dungeon stage | 3 | 4 |
+
+The asked-for checkpoints (level now / best so far, region, rebirths):
+
+| day | eager | patient |
+|---|---|---|
+| 10 | lvl 1-66 (best 66-69), r3-r4, 1-2 rebirths, gold 0.3-24M | lvl 73-78, r4, 0 rebirths, gold 42-118M |
+| 30 | best 72-74, r3-r4, 4-6 rebirths | best 79-90, r4, 1-2 rebirths |
+| 60 | best 74-84, r4, 12-17 rebirths | best 87-95, r4-r5, 2-4 rebirths |
+
+Milestones (median game hours; eager / patient): level 50 at 38.6 / 37.8,
+region 3 at 27.3 / 27.2, region 4 at 313 / 103, region 5 never / 972.
+The first eager rebirth came at 103 h, the first patient one at 444 h.
+
+**Reading:**
+- **Eager rebirth does not pay at today's rewards.** From day 4 on the eager
+  bots loop: a rebirth every 4-5 game days, back to level ~70, and the
+  region-4 boss never falls. The patient bots keep growing and are stronger
+  on every axis measured - level, region, Ascension, dungeon, gold.
+- This disagrees with the 0.4 run, where eager bots reached region 5 at 31
+  days with 16 rebirths. The bot changed in between (projection-based
+  decisions, #287), and each persona is 3 bots, so the direction is clear
+  but the size is not.
+- The rebirth damage bonus is flat at 13% from rebirth 10. Every eager bot
+  passed rebirth 10 by day 47 and gained nothing measurable after it.
+
+**Defects the run exposed (not investigated yet):**
+1. **Dungeon pushes stop at stage 3-4**, against 5-8 in the 0.4 run. It is
+   either a game regression or a bot regression since #287.
+2. **An idle player stuck at level 4 for all 61 days (idle9).** It dies to
+   the Field Mouse (91) during every 12-hour offline window and every login
+   logs "+0 XP". The other idle bot escaped only around day 25 and ended at
+   level 61. That is a new-player risk, not only a bot quirk.
+3. **Casual bots never left region 1** in 60 days (level 61-66 at best,
+   three rebirths each) - the region-2 catch-22 (2.2), still an owner
+   decision.
+
+**Recommendation (owner decision pending):** make a rebirth worth more past
+the point where eager players take it. Either the damage bonus keeps
+growing past rebirth 10, or a rebirth keeps more gear. The alternative is a
+minimum rebirth level (around 85) that stops a rebirth which costs the
+player power. Change nothing before items 1 and 2 above are explained, then
+rerun this experiment with the change.
 
 ### 0.7 Speed limits now
 
@@ -336,7 +397,10 @@ forge/potions/dungeons) are done - see section 0. Now:
    1.0.1557 (#288): a 40001 conflict retries ChangeActivity and
    Potions.Stock, and refuses any other command with "try again" instead
    of disconnecting; Login keeps the kick.
-1a. Run the rebirth experiment (0.6) and write up its comparison.
+1a. ~~Run the rebirth experiment (0.6)~~ - run 2026-11-03, results in
+    0.6.1: patient beats eager. Next: the dungeon stall at stage 3-4 and
+    the idle bot stuck at level 4 (0.6.1 defects 1-2), then the owner's
+    rebirth decision and a rerun.
 2. Casual and idle are part of the 0.6 run (their x200 defects are fixed;
    the day test showed it). A casual run at x20 would still confirm that
    the 20-minute check-in is not an artefact of speed.
