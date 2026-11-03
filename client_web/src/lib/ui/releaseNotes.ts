@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.56.2',
+    date: '2026-11-03',
+    headline: 'A tidier guild list on phones.',
+    sections: [
+      {
+        title: 'Fixes',
+        items: [
+          'Guild members show their rank as a coloured tag, and the buttons sit on their own line under the name instead of squeezing it.',
+          'The tab rows in the app no longer show a scrollbar, and the Community tabs fit on a phone.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.56.1',
     date: '2026-11-03',
     headline: 'Cleaner artwork.',
