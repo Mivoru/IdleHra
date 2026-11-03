@@ -232,7 +232,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine($"Shadow quarantine failed for player {playerId}: {ex.Message}");
                     _shadowBanRequests.TryRemove(playerId, out _);
                 }

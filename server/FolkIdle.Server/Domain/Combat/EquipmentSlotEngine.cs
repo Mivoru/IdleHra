@@ -439,21 +439,21 @@ namespace FolkIdle.Server.Domain.Combat
 
                     if (item == null || item.PlayerId != playerId)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return EquipAttemptOutcome.Rejected();
                     }
 
                     int slotIndex = ResolveSlotIndex(item.BaseItemId);
                     if (slotIndex < 0)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return EquipAttemptOutcome.Rejected();
                     }
 
                     var character = await ResolveCharacterForUpdateAsync(db, playerId, characterId);
                     if (character == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return EquipAttemptOutcome.Rejected();
                     }
 
@@ -463,7 +463,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // roster from a single drop.
                     if (await IsEquippedAnywhereAsync(db, playerId, itemInstanceId))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                     }
 
@@ -481,7 +481,7 @@ namespace FolkIdle.Server.Domain.Combat
                     var defeatedBosses = await RegionUnlockGate.LoadDefeatedBossesAsync(db, playerId);
                     if (!RegionUnlockGate.CanWearItem(item.BaseItemId, defeatedBosses))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         Console.WriteLine($"Equip rejected: player {playerId} has not unlocked the region for {item.BaseItemId} (highest unlocked {RegionUnlockGate.HighestUnlockedRegion(defeatedBosses)}).");
                         return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.RegionLocked);
                     }
@@ -511,7 +511,7 @@ namespace FolkIdle.Server.Domain.Combat
                             wearer.BaseConstitution, wearer.BaseLuck))
                     {
                         var (needed, minimum) = EquipmentAttributeGate.RequirementOf(item.BaseItemId);
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         Console.WriteLine(
                             $"Equip rejected: player {playerId} needs {minimum} {AttributeRegistry.NameOf(needed)} for {item.BaseItemId}.");
                         return EquipAttemptOutcome.Rejected(
@@ -530,7 +530,7 @@ namespace FolkIdle.Server.Domain.Combat
                             .SingleOrDefaultAsync();
                         if (lifeRegion < item.VaultLockRegion)
                         {
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
                             return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.VaultLocked);
                         }
                         item.VaultLockRegion = 0;
@@ -583,14 +583,14 @@ namespace FolkIdle.Server.Domain.Combat
 
                     if (slotIndex < 0 || slotIndex >= SlotCount)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return EquipAttemptOutcome.Rejected();
                     }
 
                     var character = await ResolveCharacterForUpdateAsync(db, playerId, characterId);
                     if (character == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return EquipAttemptOutcome.Rejected();
                     }
 

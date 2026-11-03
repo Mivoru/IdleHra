@@ -371,7 +371,7 @@ namespace FolkIdle.Server.Engine
                 if (!AffixRegistry.TryGetDefinition(affixIdToReroll, out var currentDefinition))
                 {
                     Console.WriteLine("Reroll failed: affix id is not in the registry.");
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                     return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 }
@@ -401,7 +401,7 @@ namespace FolkIdle.Server.Engine
                 if (AffixRegistry.GetLegalAffixIndices(AffixRegistry.ResolveSlot(targetItem.BaseItemId), legalProbe) == 0)
                 {
                     Console.WriteLine("Reroll failed: item slot is unrecognisable, so it has no legal affix pool.");
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                 }
@@ -437,7 +437,7 @@ namespace FolkIdle.Server.Engine
                 if (currencyRecord == null || currencyRecord.Quantity < cost)
                 {
                     Console.WriteLine($"Reroll failed: insufficient gold (need {cost}).");
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                     return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                 }
@@ -542,7 +542,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Reroll transaction aborted: {ex.Message}");
 
                 // Modul: an aborted attempt used to report NOTHING - no result

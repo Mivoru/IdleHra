@@ -74,20 +74,20 @@ namespace FolkIdle.Server.Engine
 
                 if (snapshot == null || snapshot.AttackerGuildId != request.AttackerAccountId)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return new SyncMatchStateResponseBuffer(1U, 0L);
                 }
 
                 if (lease.FencingToken <= 0L || lease.FencingToken <= snapshot.FencingToken)
                 {
                     Console.WriteLine($"[CRITICAL] Data desynchronization in Guild Matchmaking! MatchUuid: {request.MatchUuid}, Incoming Token: {lease.FencingToken}, DB Token: {snapshot.FencingToken}");
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return new SyncMatchStateResponseBuffer(4U, Math.Max(0L, snapshot.GlobalNodeRemainingHp));
                 }
 
                 if (snapshot.IsComplete || snapshot.GlobalNodeRemainingHp <= 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return new SyncMatchStateResponseBuffer(2U, Math.Max(0L, snapshot.GlobalNodeRemainingHp));
                 }
 

@@ -258,7 +258,7 @@ namespace FolkIdle.Server.Engine
 
                 if (snapshot == null || snapshot.EventState != 1)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     if (snapshot != null) RefreshLocalSnapshot(snapshot);
                     return;
                 }
@@ -278,7 +278,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"World boss maintenance failed: {ex.Message}");
             }
         }
@@ -300,7 +300,7 @@ namespace FolkIdle.Server.Engine
                     .SingleOrDefaultAsync();
                 if (snapshot == null || snapshot.EventState != 1 || snapshot.HpRevealed == 1)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
                 long now = GameClock.UtcNowOffset.ToUnixTimeSeconds();
@@ -406,7 +406,7 @@ namespace FolkIdle.Server.Engine
 
                 if (snapshot == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -462,7 +462,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"World boss event activation failed: {ex.Message}");
             }
         }
@@ -492,7 +492,7 @@ namespace FolkIdle.Server.Engine
 
                 if (snapshot == null || snapshot.EventState != 1)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -514,7 +514,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"World boss event finalization failed: {ex.Message}");
             }
         }
@@ -558,7 +558,7 @@ namespace FolkIdle.Server.Engine
 
                 if (snapshot == null || snapshot.EventState != 1)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return WorldBossAttackOutcome.NotActive;
                 }
 
@@ -603,7 +603,7 @@ namespace FolkIdle.Server.Engine
 
                 if (attempt.AttemptCount >= MaxAttemptsPerDay)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return WorldBossAttackOutcome.NoAttemptsLeft;
                 }
 
@@ -670,7 +670,7 @@ namespace FolkIdle.Server.Engine
             {
                 if (transaction != null)
                 {
-                    try { await transaction.RollbackAsync(); } catch { /* the connection may already be gone */ }
+                    try { await transaction.SafeRollbackAsync(); } catch { /* the connection may already be gone */ }
                 }
                 Console.WriteLine($"World boss attack failed for player {playerId}: {ex.Message}");
                 return WorldBossAttackOutcome.Failed;
@@ -803,7 +803,7 @@ namespace FolkIdle.Server.Engine
                 if (snapshot == null || snapshot.EventState != 1
                     || (order.EncounterEndEpoch != 0 && order.EncounterEndEpoch != snapshot.EventEndEpoch))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NotActive);
                 }
 
@@ -836,7 +836,7 @@ namespace FolkIdle.Server.Engine
                 }
                 if (attempt.AttemptCount >= MaxAttemptsPerDay)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NoAttemptsLeft);
                 }
 
@@ -902,7 +902,7 @@ namespace FolkIdle.Server.Engine
             {
                 if (transaction != null)
                 {
-                    try { await transaction.RollbackAsync(); } catch { /* the connection may already be gone */ }
+                    try { await transaction.SafeRollbackAsync(); } catch { /* the connection may already be gone */ }
                 }
                 Console.WriteLine($"World boss strike failed for player {playerId}: {ex.Message}");
                 return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed);

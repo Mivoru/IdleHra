@@ -144,7 +144,7 @@ namespace FolkIdle.Server.Domain.Economy
                 .ToListAsync();
             if (chests.Count == 0)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return opened;
             }
 

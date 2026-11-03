@@ -623,7 +623,7 @@ namespace FolkIdle.Server.Domain.Shared
                         // Split-brain vector timestamp sieve: if db epoch is strictly ahead, a concurrent node already wrote.
                         if (player.LogicEpochCounter > state.LogicEpochCounter)
                         {
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
 
                             // Modul: task 42. A flat SplitBrainCompensationGold, paid
                             // once per (PlayerId, DbEpoch) - see SplitBrainIncident.

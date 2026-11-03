@@ -158,7 +158,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Interlocked.Increment(ref _failed);
 
                     // A fresh scope: the one above may be in a bad state

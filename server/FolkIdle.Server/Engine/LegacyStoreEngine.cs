@@ -51,7 +51,7 @@ namespace FolkIdle.Server.Engine
                 if (playerId <= 0 || !isValidTarget || (!isPerkUnlock && requestedSlotIndex > MaxCitizenSlotIndex))
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 25, Value2 = 4, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -91,7 +91,7 @@ namespace FolkIdle.Server.Engine
                 if ((unlockedMask & requestedMask) != 0)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 25, Value2 = 5, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -99,7 +99,7 @@ namespace FolkIdle.Server.Engine
                 if (totalBalance < cost)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 25, Value2 = cost, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -128,7 +128,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Legacy unlock purchase failed: {ex.Message}");
                 // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
@@ -153,7 +153,7 @@ namespace FolkIdle.Server.Engine
 
             if (bitOffset < 0)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 return;
             }
 
@@ -163,7 +163,7 @@ namespace FolkIdle.Server.Engine
 
             if (player == null)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 return;
             }
 
@@ -173,7 +173,7 @@ namespace FolkIdle.Server.Engine
             if (totalBalance < cost)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 25, Value2 = cost, Timestamp = Environment.TickCount64 });
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 return;
             }
 

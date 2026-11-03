@@ -79,7 +79,7 @@ namespace FolkIdle.Server.Engine
 
                     if (owner == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.TargetNotFound);
                         return;
                     }
@@ -91,7 +91,7 @@ namespace FolkIdle.Server.Engine
                     int currentLevel = row?.Level ?? 0;
                     if (currentLevel >= InheritanceRegistry.MaxLevel)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
                         return;
                     }
@@ -99,7 +99,7 @@ namespace FolkIdle.Server.Engine
                     long cost = InheritanceRegistry.GetUpgradeCost(currentLevel);
                     if (cost <= 0L || owner.PremiumDiamonds < cost)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.InsufficientMaterials);
                         return;
                     }
@@ -146,7 +146,7 @@ namespace FolkIdle.Server.Engine
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     Console.WriteLine($"Inheritance purchase failed for player {playerId}: {ex.Message}");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
                 }

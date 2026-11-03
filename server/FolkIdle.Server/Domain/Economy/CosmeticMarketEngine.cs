@@ -102,7 +102,7 @@ namespace FolkIdle.Server.Domain.Economy
             var gate = GateTrader(seller);
             if (gate != CosmeticMarketResult.Ok)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return gate;
             }
 
@@ -111,22 +111,22 @@ namespace FolkIdle.Server.Domain.Economy
                 .SingleOrDefaultAsync();
             if (item == null || CosmeticRegistry.Find(item.DefinitionId) == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CosmeticMarketResult.NotFound;
             }
             if (item.PlayerId != sellerId)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CosmeticMarketResult.NotYours;
             }
             if (CosmeticRegistry.Find(item.DefinitionId)!.Bound)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CosmeticMarketResult.Bound;
             }
             if (item.IsListed)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CosmeticMarketResult.AlreadyListed;
             }
 
@@ -139,7 +139,7 @@ namespace FolkIdle.Server.Domain.Economy
                     c.PlayerId == sellerId && c.DefinitionId == item.DefinitionId && !c.IsListed && c.Id != item.Id);
                 if (otherCopies == 0)
                 {
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return CosmeticMarketResult.Worn;
                 }
             }
@@ -169,12 +169,12 @@ namespace FolkIdle.Server.Domain.Economy
                 .SingleOrDefaultAsync();
             if (listing == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CosmeticMarketResult.NotFound;
             }
             if (listing.SellerId != sellerId)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return CosmeticMarketResult.NotYours;
             }
 
@@ -203,12 +203,12 @@ namespace FolkIdle.Server.Domain.Economy
                 .SingleOrDefaultAsync();
             if (listing == null)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CosmeticMarketResult.NotFound, null);
             }
             if (listing.SellerId == buyerId)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CosmeticMarketResult.OwnListing, null);
             }
 
@@ -218,7 +218,7 @@ namespace FolkIdle.Server.Domain.Economy
             var gate = GateTrader(buyer);
             if (gate != CosmeticMarketResult.Ok)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (gate, null);
             }
 
@@ -227,7 +227,7 @@ namespace FolkIdle.Server.Domain.Economy
                 .SingleOrDefaultAsync();
             if (buyerGold == null || buyerGold.Quantity < listing.Price)
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return (CosmeticMarketResult.InsufficientGold, null);
             }
 

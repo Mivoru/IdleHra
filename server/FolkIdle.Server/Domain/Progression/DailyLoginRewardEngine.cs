@@ -142,7 +142,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                     if (player == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return LoginRewardResult.NotGranted;
                     }
 
@@ -154,7 +154,7 @@ namespace FolkIdle.Server.Domain.Progression
                     {
                         // Already credited for today's UTC day - a repeat
                         // login attempt, not a new reward.
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return LoginRewardResult.NotGranted;
                     }
 

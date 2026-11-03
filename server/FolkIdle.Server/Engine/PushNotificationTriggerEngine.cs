@@ -249,7 +249,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Push device registration failed for player {playerId}: {ex.Message}");
                 return false;
             }

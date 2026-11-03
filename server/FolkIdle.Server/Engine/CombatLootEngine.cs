@@ -1459,7 +1459,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 _pendingDrops.Clear();
                 _pendingDropInstances.Clear();
                 Console.WriteLine($"Combat loot drop failed: {ex.Message} - queued for retry.");

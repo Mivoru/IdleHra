@@ -147,7 +147,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (profile == null || profile.GuildId > 0)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return new GuildCreateOutcome { Refusal = GuildCreateRefusal.AlreadyInAGuild };
                     }
 
@@ -155,7 +155,7 @@ namespace FolkIdle.Server.Domain.Social
                     // universal level-20 structural gate.
                     if (profile.CurrentLevel < MinGuildInteractionLevel)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return new GuildCreateOutcome
                         {
                             Refusal = GuildCreateRefusal.LevelTooLow,
@@ -173,7 +173,7 @@ namespace FolkIdle.Server.Domain.Social
                     bool nameTaken = await context.GuildRecords.AnyAsync(g => g.Name == guildName);
                     if (nameTaken)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return new GuildCreateOutcome { Refusal = GuildCreateRefusal.NameTaken };
                     }
 
@@ -262,7 +262,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (guild == null || guild.ActiveMembers >= guild.MaxMembers)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -272,7 +272,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (profile == null || profile.GuildId > 0)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -285,7 +285,7 @@ namespace FolkIdle.Server.Domain.Social
                     int effectiveMinLevel = Math.Max(MinGuildInteractionLevel, guild.MinApplicationLevel);
                     if (profile.CurrentLevel < effectiveMinLevel)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -473,7 +473,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (membershipLookup == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return new GuildLeaveOutcome();
                     }
 
@@ -489,7 +489,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (profile == null || profile.GuildId != guildId)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return new GuildLeaveOutcome();
                     }
 
@@ -498,7 +498,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (membership == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return new GuildLeaveOutcome();
                     }
 
@@ -607,7 +607,7 @@ namespace FolkIdle.Server.Domain.Social
                     // Warden and up can kick - always someone strictly lower (below).
                     if (kickerMembership == null || kickerMembership.Role < RoleWarden)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return 0L;
                     }
 
@@ -626,14 +626,14 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (guild == null || targetMembership == null || targetProfile == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return 0L;
                     }
 
                     // Kicker must have a strictly higher rank than the target (a Warden kicks Members, an Elder Wardens too).
                     if (kickerMembership.Role <= targetMembership.Role)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return 0L;
                     }
 
@@ -701,7 +701,7 @@ namespace FolkIdle.Server.Domain.Social
                     // Warden and up handle applications (2026-11-03).
                     if (leaderMembership == null || leaderMembership.Role < RoleWarden)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return (false, 0L, 0L);
                     }
 
@@ -713,7 +713,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (application == null || application.GuildId != guildId)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return (false, 0L, 0L);
                     }
 
@@ -785,7 +785,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (leaderMembership == null || leaderMembership.Role < RoleWarden)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -795,7 +795,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (application == null || application.GuildId != leaderMembership.GuildId)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -837,7 +837,7 @@ namespace FolkIdle.Server.Domain.Social
                     // Elder and up (2026-11-03).
                     if (membership == null || membership.Role < RoleElder)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -847,7 +847,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (guild == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -895,7 +895,7 @@ namespace FolkIdle.Server.Domain.Social
                     // Elder and up (2026-11-03).
                     if (membership == null || membership.Role < RoleElder)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -905,7 +905,7 @@ namespace FolkIdle.Server.Domain.Social
 
                     if (guild == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -951,14 +951,14 @@ namespace FolkIdle.Server.Domain.Social
                     var target = actor == null ? null : await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == actor.GuildId);
                     if (actor == null || target == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
                     int to = target.Role + step;
                     if (!MayAssign(actor.Role, target.Role, to))
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 
@@ -968,7 +968,7 @@ namespace FolkIdle.Server.Domain.Social
                         int holding = await context.GuildMembers.CountAsync(m => m.GuildId == actor.GuildId && m.Role == to);
                         if (holding >= cap)
                         {
-                            await transaction.RollbackAsync();
+                            await transaction.SafeRollbackAsync();
                             return false;
                         }
                     }
@@ -1008,13 +1008,13 @@ namespace FolkIdle.Server.Domain.Social
                     var chief = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == chieftainId);
                     if (chief == null || chief.Role != RoleChieftain)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
                     var target = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == chief.GuildId);
                     if (target == null)
                     {
-                        await transaction.RollbackAsync();
+                        await transaction.SafeRollbackAsync();
                         return false;
                     }
 

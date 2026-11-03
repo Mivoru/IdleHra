@@ -499,7 +499,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Interlocked.Increment(ref _villageProductionFailures);
                 Console.WriteLine(
                     $"Village: offline production for player {playerId} failed and was rolled back - "

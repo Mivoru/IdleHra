@@ -71,7 +71,7 @@ namespace FolkIdle.Server.Domain.Progression
                     bool owned = await db.CosmeticItems.AnyAsync(c => c.PlayerId == playerId && c.DefinitionId == item.Id);
                     if (owned)
                     {
-                        await tx.RollbackAsync();
+                        await tx.SafeRollbackAsync();
                         return CommandResultCode.EventShopAlreadyOwned;
                     }
                     var def = CosmeticRegistry.Find(item.Id);
@@ -92,13 +92,13 @@ namespace FolkIdle.Server.Domain.Progression
                     // Bought, so no "a pet found you" window: the player chose it.
                     if (!await PetEngine.GrantAsync(db, playerId, item.Id, utcNow, announce: false))
                     {
-                        await tx.RollbackAsync();
+                        await tx.SafeRollbackAsync();
                         return CommandResultCode.EventShopAlreadyOwned;
                     }
                     break;
                 }
                 default:
-                    await tx.RollbackAsync();
+                    await tx.SafeRollbackAsync();
                     return CommandResultCode.GenericValidationFailure;
             }
 

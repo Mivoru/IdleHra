@@ -130,7 +130,7 @@ namespace FolkIdle.Server.Engine
 
                 if (item == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return (ChestActionResult.NotFound, 0L);
                 }
 
@@ -152,7 +152,7 @@ namespace FolkIdle.Server.Engine
 
                 if (worn)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return (ChestActionResult.Equipped, 0L);
                 }
 
@@ -161,7 +161,7 @@ namespace FolkIdle.Server.Engine
                 // as well as "cannot be rerolled or fused".
                 if (item.IsAffixLocked)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return (ChestActionResult.Locked, 0L);
                 }
 
@@ -180,7 +180,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 if (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex)) return (ChestActionResult.Busy, 0L);
                 Console.WriteLine($"Chest removal failed for player {playerId}: {ex.Message}");
                 return (ChestActionResult.NotFound, 0L);
@@ -246,7 +246,7 @@ namespace FolkIdle.Server.Engine
                 long sold = quantity - remaining;
                 if (sold <= 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return (ChestActionResult.NotFound, 0L);
                 }
 
@@ -265,7 +265,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 if (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex)) return (ChestActionResult.Busy, 0L);
                 Console.WriteLine($"Chest removal failed for player {playerId}: {ex.Message}");
                 return (ChestActionResult.NotFound, 0L);
@@ -379,7 +379,7 @@ namespace FolkIdle.Server.Engine
 
                 if (item == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return (ChestActionResult.NotFound, false);
                 }
 
@@ -390,7 +390,7 @@ namespace FolkIdle.Server.Engine
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 throw;
             }
         }
@@ -523,7 +523,7 @@ namespace FolkIdle.Server.Engine
 
                 if (doomed.Count == 0)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return new BulkRemovalOutcome { SkippedWornCount = skippedWorn };
                 }
 
@@ -568,7 +568,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 bool lostRace = FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex);
                 if (!lostRace) Console.WriteLine($"Chest sweep failed for player {playerId}: {ex.Message}");
                 return new BulkRemovalOutcome { Failed = true, LostRace = lostRace };

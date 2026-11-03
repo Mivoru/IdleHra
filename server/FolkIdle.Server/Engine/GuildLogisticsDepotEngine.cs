@@ -45,7 +45,7 @@ namespace FolkIdle.Server.Engine
                 if (guild == null)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 26, Value2 = 2, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -56,7 +56,7 @@ namespace FolkIdle.Server.Engine
                 if (player == null || player.GuildId != guildId)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 26, Value2 = 3, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -71,7 +71,7 @@ namespace FolkIdle.Server.Engine
                 if (commodity == null || commodity.Quantity < quantity)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 26, Value2 = materialKey, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -133,7 +133,7 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Guild logistics deposit failed: {ex.Message}");
             }
         }

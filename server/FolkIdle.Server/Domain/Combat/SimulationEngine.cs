@@ -1588,12 +1588,12 @@ namespace FolkIdle.Server.Domain.Combat
                                     }
                                     else
                                     {
-                                        await transaction.RollbackAsync();
+                                        await transaction.SafeRollbackAsync();
                                     }
                                 }
                                 catch
                                 {
-                                    await transaction.RollbackAsync();
+                                    await transaction.SafeRollbackAsync();
                                 }
                             });
                         }
@@ -2832,7 +2832,7 @@ namespace FolkIdle.Server.Domain.Combat
                 var requesting = characters.Find(c => c.Id == characterId);
                 if (requesting == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return Network.CommandResultCode.TargetNotFound;
                 }
 
@@ -2848,7 +2848,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 if (!CharacterSlotEngine.IsSlotUnlocked(requesting.SlotIndex, townHallLevel))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return Network.CommandResultCode.LevelTooLow;
                 }
 
@@ -2874,7 +2874,7 @@ namespace FolkIdle.Server.Domain.Combat
                 int requestingIndex = liveActivitiesBySlot != null && liveRequestingSlot >= 0 ? liveRequestingSlot : requesting.SlotIndex;
                 if (CharacterSlotEngine.IsActivityOccupiedByAnotherSlot(activeActivityIds, requestingIndex, targetActivityId))
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return Network.CommandResultCode.NodeOccupied;
                 }
 
@@ -2885,7 +2885,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 throw;
             }
         }
@@ -3050,7 +3050,7 @@ namespace FolkIdle.Server.Domain.Combat
                     .FirstOrDefaultAsync();
                 if (guild == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return;
                 }
 
@@ -3086,7 +3086,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 throw;
             }
         }
@@ -3135,7 +3135,7 @@ namespace FolkIdle.Server.Domain.Combat
                     .FirstOrDefaultAsync();
                 if (player == null)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return false;
                 }
 
@@ -3145,14 +3145,14 @@ namespace FolkIdle.Server.Domain.Combat
 
                 if (pass != null && pass.PremiumUnlocked)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry.EnqueueCommandResult(playerId, (byte)CommandResultCode.GenericValidationFailure);
                     return false;
                 }
 
                 if (player.PremiumDiamonds < ChroniclePassEconomy.PremiumPassPriceDiamonds)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     _playerRegistry.EnqueueCommandResult(playerId, (byte)CommandResultCode.InsufficientGold);
                     return false;
                 }
@@ -3210,7 +3210,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Battle pass purchase failed for player {playerId}: {ex.Message}");
                 return false;
             }
@@ -3228,7 +3228,7 @@ namespace FolkIdle.Server.Domain.Combat
                     .FirstOrDefaultAsync();
                 if (player == null || milestoneIndex >= 50)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return false;
                 }
 
@@ -3261,14 +3261,14 @@ namespace FolkIdle.Server.Domain.Combat
                 int requiredXp = checked((int)((milestoneIndex + 1U) * 1000U));
                 if (pass.AccumulatedXp < requiredXp)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return false;
                 }
 
                 ulong milestoneBit = 1UL << (int)milestoneIndex;
                 if ((pass.ClaimedMilestonesBitmask & milestoneBit) != 0UL)
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.SafeRollbackAsync();
                     return false;
                 }
 
@@ -3340,7 +3340,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Battle pass claim failed for player {playerId}: {ex.Message}");
                 return false;
             }
