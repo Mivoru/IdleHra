@@ -41,6 +41,14 @@ Filenames go under `client/Assets/Images/SpritesWeb/`, named **exactly after
 the BaseId** (an exact match wins outright, see `generate-sprites.mjs`). Keep
 the existing style: a transparent background, one object, readable at 32 px.
 
+**After adding or changing art**, run the cleanup in this order (Pillow and
+numpy; a venv is enough): `python tools/clean_sprites.py && python
+tools/polish_sprites.py`. The polish removes the generator's faint corner
+watermark and stray specks and re-crops with a proportional margin; without
+it the subject sits small and off-centre in its icon. `python
+tools/audit_sprites.py` measures every sprite (halo, specks, corners, fill,
+offset) and draws the worst on a dark backdrop - check a change against it.
+
 ## A: draw first (4)
 
 | BaseId | id | Shown as | Source | Region | Holders | Brief |
