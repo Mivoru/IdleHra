@@ -4430,6 +4430,11 @@ namespace FolkIdle.Server.Tests
                 Assert.Contains("# TYPE folkidle_database_write_queue_length gauge", body);
                 Assert.Contains("folkidle_database_write_queue_length", body);
 
+                // Modul: a bot run's summary.md reads which offline model paid
+                // the logouts from here (2026-11-03), so it must match the flag.
+                Assert.Contains("# TYPE folkidle_offline_sim gauge", body);
+                Assert.Contains("folkidle_offline_sim " + (OfflineSimulationEngine.UseCombatSimulator ? "1" : "0") + "\n", body);
+
                 // Modul: task 46 (8a - measure). No JSON session has connected
                 // in this test, so these read as pure zeros - proving the
                 // scrape still succeeds with an empty StateFrameMetrics is the
