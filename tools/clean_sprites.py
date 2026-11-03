@@ -23,7 +23,13 @@ the discriminator is variance, not colour, and a bone stays while a blank hole
 goes. The thresholds below were chosen against the two worst files
 (hunter_amulet, Malakor) and then checked not to eat anything on the rest.
 
-Run:  python tools/clean_sprites.py
+Run:  python tools/clean_sprites.py && python tools/polish_sprites.py
+
+THEN THE POLISH (2026-11-03). This script's trim() keeps a generator
+watermark and stray specks inside its crop; tools/polish_sprites.py removes
+them and re-crops every served sprite, including the ones that have no
+master here. Running this alone rewrites the master-derived files without
+that pass, so always run both, in that order.
 """
 
 from __future__ import annotations
