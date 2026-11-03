@@ -11049,7 +11049,7 @@ namespace FolkIdle.Server.Network
         // task's explicit constraint). Unauthenticated, matching the
         // existing /health/* endpoints - Prometheus scraping is expected to
         // happen from inside the cluster network, not across the public
-        // internet. TickDurationBucketCount*/TickDurationSumMs read directly
+        // internet. TickDurationBucketCount*/TickDurationSumMicros read directly
         // off SimulationEngine.GetMetrics() (a ref struct accessor, no
         // allocation) if a SimulationEngine has been registered; the write
         // queue length comes from SCARD against RedisSessionCache.
@@ -11063,7 +11063,7 @@ namespace FolkIdle.Server.Network
                 int activeSessions = _connectedClients.Count;
 
                 long tickCount = 0;
-                long tickSumMs = 0;
+                long tickSumMicros = 0;
                 long bucket10 = 0, bucket25 = 0, bucket50 = 0, bucket100 = 0, bucket250 = 0, bucketInf = 0;
                 long ticksDropped = 0, catchUpTicks = 0;
                 if (_simulationEngine != null)
@@ -11072,7 +11072,7 @@ namespace FolkIdle.Server.Network
                     tickCount = metrics.TotalTicksProcessed;
                     ticksDropped = metrics.TicksDropped;
                     catchUpTicks = metrics.CatchUpTicks;
-                    tickSumMs = metrics.TickDurationSumMs;
+                    tickSumMicros = metrics.TickDurationSumMicros;
                     bucket10 = metrics.TickDurationBucketCount10Ms;
                     bucket25 = metrics.TickDurationBucketCount25Ms;
                     bucket50 = metrics.TickDurationBucketCount50Ms;
@@ -11113,7 +11113,7 @@ namespace FolkIdle.Server.Network
                 body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"100\"} ").Append(bucket100).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"250\"} ").Append(bucket250).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"+Inf\"} ").Append(bucketInf).Append('\n');
-                body.Append("folkidle_tick_duration_milliseconds_sum ").Append(tickSumMs).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_sum ").Append((tickSumMicros / 1000.0).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_count ").Append(tickCount).Append('\n');
                 body.Append('\n');
                 body.Append("# HELP folkidle_ticks_catch_up_total Ticks started immediately because the fixed schedule was behind.\n");

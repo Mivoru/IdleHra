@@ -32,7 +32,12 @@ namespace FolkIdle.Server.Domain.Combat
         public long TickDurationBucketCount100Ms;
         public long TickDurationBucketCount250Ms;
         public long TickDurationBucketCountInf;
-        public long TickDurationSumMs;
+        // Modul: MICROSECONDS, NOT MILLISECONDS (2026-11-03). The sum used to
+        // add stopwatch.ElapsedMilliseconds, which truncates - and a tick
+        // costs 0.05-0.5 ms, so almost every tick added 0 and the exported
+        // _sum read about a tenth of the truth (lockstep P0 measured a "mean"
+        // of 0.02 ms against a p50 of 0.19). /metrics divides by 1000.
+        public long TickDurationSumMicros;
 
         // Task 43, 2d: see TickPacer.
         public long TicksDropped;
@@ -2650,7 +2655,7 @@ namespace FolkIdle.Server.Domain.Combat
                 _metrics.TotalTicksProcessed++;
                 long tickElapsedForMetricsMs = stopwatch.ElapsedMilliseconds;
                 _metrics.LastExecutionTimeMs = tickElapsedForMetricsMs;
-                _metrics.TickDurationSumMs += tickElapsedForMetricsMs;
+                _metrics.TickDurationSumMicros += tickMicros;
                 if (tickElapsedForMetricsMs <= 10) _metrics.TickDurationBucketCount10Ms++;
                 if (tickElapsedForMetricsMs <= 25) _metrics.TickDurationBucketCount25Ms++;
                 if (tickElapsedForMetricsMs <= 50) _metrics.TickDurationBucketCount50Ms++;
