@@ -2141,6 +2141,15 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Lockstep control socket (docs/design/LOCKSTEP_SIM.md): before the
+            // dev REST gate, because it signs in as no player - it carries the
+            // whole bot process. 404 unless dev tools AND lockstep are on.
+            if (requestPath == "/api/v1/dev/sim")
+            {
+                await HandleSimControlSocketAsync(context);
+                return;
+            }
+
             // Modul: dev-only tools. 404 unless FOLKIDLE_DEV_TOOLS=1,
             // so production answers exactly as if the route did not
             // exist. See HandleDevEndpoints.

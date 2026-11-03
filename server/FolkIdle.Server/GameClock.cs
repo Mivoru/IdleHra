@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace FolkIdle.Server
 {
@@ -48,10 +49,41 @@ namespace FolkIdle.Server
             _anchorUtc = DateTime.UtcNow;
             _anchorTimestamp = Stopwatch.GetTimestamp();
             _speed = Math.Max(1, speed);
+            _lockstep = false;
         }
 
         public static DateTime UtcNow
-            => _speed <= 1 ? DateTime.UtcNow : Project(_anchorUtc, Stopwatch.GetTimestamp() - _anchorTimestamp, Stopwatch.Frequency, _speed);
+            => _lockstep ? LockstepTime(_anchorUtc, Volatile.Read(ref _lockstepTick))
+             : _speed <= 1 ? DateTime.UtcNow : Project(_anchorUtc, Stopwatch.GetTimestamp() - _anchorTimestamp, Stopwatch.Frequency, _speed);
+
+        // Modul: LOCKSTEP TIME IS A TICK COUNT, NOT A STOPWATCH (2026-11-03,
+        // docs/design/LOCKSTEP_SIM.md). Under FOLKIDLE_SIM_LOCKSTEP the engine
+        // runs as fast as the CPU allows and waits for the bots, so wall time
+        // says nothing about game time; the clock is the anchor plus the ticks
+        // the engine has completed (SimConductor.Tick), 100 ms each. Speed then
+        // reads LockstepNominalSpeed for the few wall-time heuristics that
+        // divide by it (the projection cache).
+        private static bool _lockstep;
+        private static long _lockstepTick;
+        public const int LockstepNominalSpeed = 1000;
+        public const long LockstepTickTimeSpanTicks = 100 * TimeSpan.TicksPerMillisecond;
+
+        public static bool IsLockstep => _lockstep;
+
+        public static void ConfigureLockstep(DateTime anchorUtc)
+        {
+            _anchorUtc = anchorUtc;
+            _anchorTimestamp = Stopwatch.GetTimestamp();
+            Volatile.Write(ref _lockstepTick, 0);
+            _speed = LockstepNominalSpeed;
+            _lockstep = true;
+        }
+
+        /// <summary>The engine completed <paramref name="tick"/> (lockstep only).</summary>
+        public static void SetLockstepTick(long tick) => Volatile.Write(ref _lockstepTick, tick);
+
+        internal static DateTime LockstepTime(DateTime anchorUtc, long tick)
+            => anchorUtc.AddTicks(tick * LockstepTickTimeSpanTicks);
 
         public static DateTimeOffset UtcNowOffset
             => _speed <= 1 ? DateTimeOffset.UtcNow : new DateTimeOffset(UtcNow, TimeSpan.Zero);

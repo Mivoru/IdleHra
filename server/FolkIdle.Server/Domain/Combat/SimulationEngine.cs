@@ -173,6 +173,12 @@ namespace FolkIdle.Server.Domain.Combat
         private int _ticksSinceLastBroadcast = 0;
         // Ticks between snapshot broadcasts: 10 (1 Hz) times the dev tick speed.
         private int _ticksPerBroadcast = 10;
+
+        // Lockstep (docs/design/LOCKSTEP_SIM.md): the tick being run, the last
+        // tick that broadcast, and a one-tick request to broadcast.
+        private long _lockstepTick;
+        private long _lastLockstepBroadcastTick = -1;
+        private bool _forceBroadcastThisTick;
         private readonly System.Collections.Concurrent.ConcurrentQueue<TickStatePayload> _readyLogins = new();
 
         private EngineMetricsPayload _metrics;
@@ -1022,7 +1028,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Set once at startup (Program.cs) so the game clock and the
             // tick can never run at different speeds.
             int tickSpeed = GameClock.Speed;
-            if (tickSpeed > 1)
+            if (tickSpeed > 1 && SimLockstep.Conductor == null)
             {
                 Console.WriteLine($"[SimulationEngine] DEV tick speed x{tickSpeed} (FOLKIDLE_TICK_SPEED) - ticks AND GameClock run {tickSpeed}x the wall clock.");
             }
@@ -1035,6 +1041,19 @@ namespace FolkIdle.Server.Domain.Combat
             // login - with no log line, because a flood abort is silent. One
             // snapshot a wall second is also all a bot or a screen needs.
             _ticksPerBroadcast = 10 * tickSpeed;
+
+            // Modul: LOCKSTEP REPLACES THE PACER, NOT THE TICK (2026-11-03). With
+            // a conductor the engine does not sleep: it waits for the bots due
+            // before a tick, then runs it at once. The tick body is untouched -
+            // the same code production runs - and the periodic broadcast is off:
+            // a snapshot goes out only in the tick before a wake, because at
+            // lockstep speed one per game second would be a packet flood.
+            var conductor = SimLockstep.Conductor;
+            if (conductor != null)
+            {
+                _ticksPerBroadcast = int.MaxValue;
+                Console.WriteLine($"[SimulationEngine] LOCKSTEP (FOLKIDLE_SIM_LOCKSTEP) - the engine waits for the bots; wake quantum {conductor.QuantumTicks} ticks.");
+            }
 
             int benchmarkTickCount = 0;
             long benchmarkStartAllocated = 0;
@@ -1054,6 +1073,11 @@ namespace FolkIdle.Server.Domain.Combat
                     while (_networkSystem.CommandQueue.TryDequeue(out _)) { }
                     Thread.Sleep(100);
                     pacer.Reset();
+                    continue;
+                }
+
+                if (conductor != null && !LockstepBeforeTick(conductor))
+                {
                     continue;
                 }
 
@@ -2193,11 +2217,13 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                _ticksSinceLastBroadcast++;
-                if (_ticksSinceLastBroadcast >= _ticksPerBroadcast)
+                if (_ticksSinceLastBroadcast < int.MaxValue) _ticksSinceLastBroadcast++;
+                if (_ticksSinceLastBroadcast >= _ticksPerBroadcast || _forceBroadcastThisTick)
                 {
                     _metrics.ThrottledPacketsDropped = _networkSystem.GetThrottledCounter();
                     _ticksSinceLastBroadcast = 0;
+                    _forceBroadcastThisTick = false;
+                    _lastLockstepBroadcastTick = _lockstepTick;
 
                     long broadcastSnapshotStartTimestamp = Stopwatch.GetTimestamp();
                     FolkIdleEventSource.Log.BroadcastSnapshotStart(_activePlayers.Count);
@@ -2684,6 +2710,12 @@ namespace FolkIdle.Server.Domain.Combat
                 // "interval minus this tick's duration" - that lost every
                 // overrun and every oversleep for good, so live progress ran
                 // below 10 Hz whenever the box was busy. See TickPacer.
+                if (conductor != null)
+                {
+                    conductor.CompleteTick(_lockstepTick);
+                    continue;
+                }
+
                 long delay = pacer.DelayUntilNextTick(Stopwatch.GetTimestamp());
                 _metrics.TicksDropped = pacer.TicksDropped;
                 _metrics.CatchUpTicks = pacer.CatchUpTicks;
@@ -2694,6 +2726,59 @@ namespace FolkIdle.Server.Domain.Combat
                     Thread.Sleep(sleepMs);
                 }
             }
+        }
+
+        /// <summary>
+        /// Lockstep, before a tick: jump the clock if nobody is online, wake the
+        /// bots due, wait for their yields, and ask for a broadcast when a wake
+        /// is due right after this tick. False = do not run a tick now (no bots
+        /// yet, or the control socket is gone).
+        /// </summary>
+        private bool LockstepBeforeTick(SimConductor conductor)
+        {
+            (long TickToRun, IReadOnlyList<SimWake> Wakes, bool NeedsBroadcast)? prep;
+            Monitor.Enter(_activePlayers);
+            try
+            {
+                long lastCompleted = conductor.Tick;
+                prep = conductor.PrepareTick(_activePlayers.Count,
+                    playerId => _activePlayers.ContainsKey(playerId) && _lastLockstepBroadcastTick != lastCompleted);
+            }
+            finally
+            {
+                Monitor.Exit(_activePlayers);
+            }
+
+            if (prep == null)
+            {
+                // No bots yet: hold the world still rather than run ahead.
+                Thread.Sleep(10);
+                return false;
+            }
+
+            var (tick, wakes, needsBroadcast) = prep.Value;
+            // While the bots think, the game clock reads the state they see:
+            // the end of the last completed tick.
+            GameClock.SetLockstepTick(tick - 1);
+            if (wakes.Count > 0)
+            {
+                var sink = SimLockstep.WakeSink;
+                if (sink == null)
+                {
+                    Console.WriteLine("[SimulationEngine] LOCKSTEP: bots are due but no control socket is connected; dropping them.");
+                    conductor.LeaveAll();
+                    return false;
+                }
+                sink(tick, wakes);
+                while (IsRunning && !conductor.WaitForYields(TimeSpan.FromSeconds(1)))
+                {
+                }
+            }
+
+            _forceBroadcastThisTick = needsBroadcast || conductor.AnyDueBy(tick + 1);
+            _lockstepTick = tick;
+            GameClock.SetLockstepTick(tick);
+            return true;
         }
 
         // Modul: Architecture Overhaul, Part 2. Multi-character position

@@ -264,6 +264,17 @@ ContentRegistry.Initialize();
 FolkIdle.Server.GameClock.Configure(FolkIdle.Server.Domain.Shared.TickPacer.ResolveTickSpeed(
     Environment.GetEnvironmentVariable("FOLKIDLE_TICK_SPEED"),
     FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()));
+// Modul: LOCKSTEP OVERRIDES THE MULTIPLIER (docs/design/LOCKSTEP_SIM.md). Same
+// gate as FOLKIDLE_TICK_SPEED; with it the engine waits for the bot process on
+// /api/v1/dev/sim and the game clock is a tick count.
+if (FolkIdle.Server.Domain.Shared.SimLockstep.ResolveEnabled(
+        Environment.GetEnvironmentVariable("FOLKIDLE_SIM_LOCKSTEP"),
+        FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()))
+{
+    FolkIdle.Server.GameClock.ConfigureLockstep(DateTime.UtcNow);
+    FolkIdle.Server.Domain.Shared.SimLockstep.Conductor = new FolkIdle.Server.Domain.Shared.SimConductor(
+        FolkIdle.Server.Domain.Shared.SimLockstep.ResolveQuantum(Environment.GetEnvironmentVariable("FOLKIDLE_SIM_QUANTUM")));
+}
 ActiveSkillEngine.Initialize();
 
 var serviceCollection = new ServiceCollection();
