@@ -32,6 +32,11 @@ export function invalidateOwnedItems(client: QueryClient): void {
  * here - the server re-tags the session's guild channel off the membership
  * change and pushes a ReloadState.
  */
+/** A tree commit or respec changes how strong every family's affixes are. */
+export function invalidateAffixFamilies(client: QueryClient): void {
+  void client.invalidateQueries({ queryKey: queryKeys.affixFamilies });
+}
+
 export function invalidateGuildMembership(client: QueryClient): void {
   for (const queryKey of [
     queryKeys.guilds,

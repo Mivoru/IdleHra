@@ -4,15 +4,29 @@
   import { loadContent, type ContentRegistry } from '../net/content';
   import { onMount } from 'svelte';
   import { pieceTotals } from './lootCompare';
+  import { familiesQuery, indexFamilies, boostedValue, FAMILY_COLOR } from './affixFamilies';
 
   interface Props {
     affixes: AffixMap;
     baseItemId?: string;
     /** The piece's own quality tier; the base lines are scaled by it. */
     qualityTier?: number;
+    /**
+     * Show each affix's family and the viewer's tree boost (phase 5.1). Off
+     * for another player's gear: the boost is the viewer's own tree, not theirs.
+     */
+    families?: boolean;
+    /** Only the item's own base lines - for a screen that lists the affixes itself (the Forge). */
+    baseOnly?: boolean;
   }
 
-  let { affixes, baseItemId, qualityTier = 1 }: Props = $props();
+  let { affixes, baseItemId, qualityTier = 1, families = true, baseOnly = false }: Props = $props();
+
+  // Modul: THE TREE'S MARK ON THE GEAR (phase 5.1, 2026-11-03). A family chip
+  // in its column's colour on every affix, and - when the tree boosts that
+  // family - the value it actually fights with, beside the rolled one.
+  const familyData = familiesQuery();
+  const familyIndex = $derived(indexFamilies(familyData.data));
 
   let registry = $state<ContentRegistry | null>(null);
   onMount(async () => {
@@ -31,7 +45,7 @@
     'var(--rarity-9)',
     'var(--rarity-12)',
   ];
-  const rows = $derived(toDisplayAffixes(affixes));
+  const rows = $derived(baseOnly ? [] : toDisplayAffixes(affixes));
   const baseStats = $derived.by(() => {
     if (!registry || !baseItemId) return [];
     // Modul: scaled by the piece's quality exactly as EquipmentSlotEngine
@@ -57,12 +71,31 @@
       </li>
     {/each}
     {#each rows as row (row.key)}
+      {@const fam = familyIndex.byAffix.get(row.id)}
+      {@const boosted = families ? boostedValue(row.id, row.magnitude, fam) : null}
       <li>
         <span class="name" title={`${row.rarityName} affix`}>
           <i class="pip" style="background: {RARITY_COLOR[row.rarity] ?? 'var(--text-dim)'}"></i>
           {row.label}
+          {#if fam}
+            <span
+              class="fam"
+              style="--fam: {FAMILY_COLOR[fam.Key] ?? 'var(--text-dim)'}"
+              title={families && fam.BoostTenths > 0
+                ? `${fam.Name} affix: your ${fam.Column} tree makes it ${fam.BoostTenths / 10}% stronger`
+                : `${fam.Name} affix: the ${fam.Column} column's Affinity node would make it stronger`}
+              data-testid="affix-family"
+            >{fam.Name}</span>
+          {/if}
         </span>
-        <b>{row.value}</b>
+        {#if boosted}
+          <span class="val">
+            <s class="dim">{row.value}</s>
+            <b class="boosted" data-testid="affix-boosted">{boosted}</b>
+          </span>
+        {:else}
+          <b>{row.value}</b>
+        {/if}
       </li>
     {/each}
   </ul>
@@ -101,5 +134,33 @@
   .affixes b {
     color: var(--accent);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* A small tag in the family's tree-column colour. */
+  .fam {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--fam) 70%, transparent);
+    color: var(--fam);
+    background: color-mix(in srgb, var(--fam) 12%, transparent);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .val {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .val s {
+    font-size: 0.7rem;
+  }
+  .boosted {
+    color: var(--good) !important;
   }
 </style>

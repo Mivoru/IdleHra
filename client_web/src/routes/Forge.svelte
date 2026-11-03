@@ -43,6 +43,7 @@
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
   import { questSpotlight } from '../lib/stores/questSpotlight';
+  import { familiesQuery, indexFamilies, boostedValue, FAMILY_COLOR } from '../lib/ui/affixFamilies';
   import { commandResults } from '../lib/stores/game';
 
 
@@ -407,6 +408,13 @@
     return null;
   }
 
+  // Modul: SAID ONCE, NOT ON EVERY ROW (2026-11-03). "Forge level 10 needed"
+  // was printed under each item the Forge is too small for - six times the
+  // same sentence on the fixture. One line above the list says it; the rows
+  // keep only the reasons that are their own (gold).
+  const FORGE_LEVEL_REASON = /^Forge level /;
+  const forgeLimited = $derived(visibleRows.filter((r) => FORGE_LEVEL_REASON.test(rowBlocked(r) ?? '')).length);
+
   function fuseRow(row: FusionRow) {
     const next = row.next;
     if (!next) return;
@@ -513,6 +521,8 @@
   // charge for each piece - AffixRerollEngine.GoldCostFor - so there is
   // nothing here to drift.
   const rerollItem = $derived(owned.find((i) => i.Id === rerollItemId) ?? null);
+  const familyData = familiesQuery();
+  const familyIndex = $derived(indexFamilies(familyData.data));
 
   // On a phone the card sits under the whole picker, so a tap on a piece
   // changed nothing visible; bring the card into view when the layout is
@@ -657,6 +667,12 @@
           aria-label="Find an item to fuse"
         />
       {/if}
+      {#if forgeLimited > 0}
+        <p class="forgelimit small" data-testid="forge-level-limit">
+          {forgeLimited === 1 ? 'One item is' : `${forgeLimited} items are`} ready for a fusion above what
+          your Forge (level {forgeLevel}) can make. Upgrade the Forge in your <strong>Village</strong> to fuse them.
+        </p>
+      {/if}
       <ul class="fuserows" data-testid="fusion-rows">
         {#each visibleRows as row (row.baseItemId)}
           {@const blocked = rowBlocked(row)}
@@ -686,7 +702,7 @@
                   Three spare pieces at one rarity make the next one up.
                 </span>
               {/if}
-              {#if blocked && row.next}<span class="blocked tiny">{blocked}</span>{/if}
+              {#if blocked && row.next && !FORGE_LEVEL_REASON.test(blocked)}<span class="blocked tiny">{blocked}</span>{/if}
             </div>
             <div class="fuseacts">
               {#if row.next}
@@ -938,7 +954,8 @@
           {prettifyBaseId(rerollItem.BaseItemId)}
         </span>
         <span class="dim tiny">{rarityName(rerollItem.QualityTier)}</span>
-        <Affixes affixes={rerollItem.Affixes} baseItemId={rerollItem.BaseItemId} qualityTier={rerollItem.QualityTier} />
+        <!-- The affixes are the rows below, once - not a list here and again there. -->
+        <Affixes affixes={rerollItem.Affixes} baseItemId={rerollItem.BaseItemId} qualityTier={rerollItem.QualityTier} baseOnly />
       </div>
 
       {#if rerollAffixRows.length === 0}
@@ -955,11 +972,14 @@
           {#each rerollAffixRows as row, index (index)}
             {@const guard = guardFor(index)}
             {@const locked = rerollItem.IsAffixLocked}
+            {@const fam = familyIndex.byAffix.get(row.id)}
+            {@const boosted = boostedValue(row.id, row.magnitude, fam)}
             <li class="affixrow" class:selected={rerollAffixIndex === index}>
               <span class="what">
                 <span class="dim tiny">slot {index + 1}</span>
-                <span class="label">{row.label} {row.value}</span>
+                <span class="label">{row.label} {#if boosted}<s class="dim small">{row.value}</s> <span class="boostedv" title="With your {fam?.Column} tree's Affinity">{boosted}</span>{:else}{row.value}{/if}</span>
                 <span class="dim tiny">{row.rarityName}</span>
+                {#if fam}<span class="famchip" style="--fam: {FAMILY_COLOR[fam.Key] ?? 'var(--text-dim)'}">{fam.Name}</span>{/if}
               </span>
               <span class="acts">
                 {#if guard}
@@ -1388,6 +1408,16 @@
   .affixpanel .wearers {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* On a phone the worn list is two narrow columns, so eleven pieces fit on
+     about one screen instead of two. */
+  @media (max-width: 760px) {
+    .affixpanel .worn {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .affixpanel .wornrow .meta {
+      font-size: 0.68rem;
+    }
+  }
   .pickfirst {
     padding: 1rem 0;
   }
@@ -1437,6 +1467,29 @@
      affix, Refine only nudges its number. */
   .affixrow .gap {
     width: 0.75rem;
+  }
+  .forgelimit {
+    margin: 0 0 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-radius: 0.3rem;
+  }
+  .famchip {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--fam) 70%, transparent);
+    color: var(--fam);
+    background: color-mix(in srgb, var(--fam) 12%, transparent);
+    white-space: nowrap;
+  }
+  .boostedv {
+    color: var(--good);
+    font-weight: 700;
   }
   .refinebtn {
     background: transparent;

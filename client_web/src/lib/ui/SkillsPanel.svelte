@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { useQueryClient } from '@tanstack/svelte-query';
+  import { invalidateAffixFamilies } from '../net/queryClient';
   // Modul: THE SKILL TREE SCREEN, docs/design/SKILL_TREE_REWORK.md. Phase 1
   // built it on today's tree; slice 2.5 drew the War half on it: four columns
   // of five rows, forks inside a row, and bridges that join two columns.
@@ -319,6 +321,7 @@
   }
 
   let committing = $state(false);
+  const queries = useQueryClient();
 
   async function confirmDraft() {
     if (draftCount === 0 || committing) return;
@@ -329,6 +332,7 @@
         pushLocalNotice(res.Reason, 'error');
       } else {
         play('runeConfirm');
+        invalidateAffixFamilies(queries);
         // A commit answers with its own half's levels only, so the screen asks
         // for both halves again rather than dropping the other one's ranks.
         void loadState();
@@ -369,6 +373,7 @@
       const res = await respecSkillTreeRest(withGold, half);
       if (res.Reason) pushLocalNotice(res.Reason, 'error');
       else {
+        invalidateAffixFamilies(queries);
         const unit = half === 'hearth' ? 'craft point' : 'point';
         pushLocalNotice(
           `Respec done - ${res.Refunded} ${unit}${res.Refunded === 1 ? '' : 's'} back${res.GoldSpent > 0 ? ` for ${res.GoldSpent.toLocaleString()} gold` : ''}.`,
@@ -439,13 +444,16 @@
         <p class="dim small">
           Tap a rune to see what it does, hold it for a quick look. Four columns of five rows: a row
           opens once its column holds enough points, a <strong>fork</strong> lets you take only one
-          side, and a <strong>bridge</strong> joins two columns. Nothing is spent until you confirm.
+          side, and a <strong>bridge</strong> joins two columns. An <strong>affinity</strong> (the glowing
+          cut-corner rune) makes that column's affixes on your gear stronger - each affix shows its family.
+          Nothing is spent until you confirm.
         </p>
       {:else}
         <p class="dim small">
           The Hearth: gathering, the workshop and your kin. It is paid with <strong>craft points</strong>,
           one for every {def?.MasteryLevelsPerPoint ?? 10} levels of gathering mastery, never with skill
-          points, and it survives a rebirth. Runes marked "coming soon" are drawn but cannot be learned yet.
+          points, and it survives a rebirth. Toolwright, the Workshop's <strong>affinity</strong>, makes your tools'
+          affixes stronger. Runes marked "coming soon" are drawn but cannot be learned yet.
         </p>
       {/if}
     </div>
@@ -761,7 +769,13 @@
     font-size: 0.8rem;
     color: var(--hue);
   }
-  .cap { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 5.5rem; text-align: center; }
+  /* Two lines rather than an ellipsis (2026-11-03): "Perfect Seque..." and
+     "Fortune's Fav..." hid the names a player is choosing between. */
+  .cap {
+    opacity: 0.8; max-width: 6rem; text-align: center; line-height: 1.15;
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    overflow-wrap: anywhere;
+  }
 
   /* ---- a rune ---- */
   .rune {
@@ -785,7 +799,14 @@
   .rune.small { width: 3rem; height: 3rem; }
   .rune.kind-keystone { border-radius: 50%; }
   .rune.kind-bridge { border-radius: 50% 10px; }
-  .rune.kind-affinity { border-radius: 14px 2px; border-style: double; }
+  /* An Affinity reaches outside the tree into your gear: a cut-corner tile
+     with a glow in its column's colour, so it reads as a different kind. */
+  .rune.kind-affinity {
+    border-radius: 14px 2px;
+    border-style: double;
+    border-width: 3px;
+    box-shadow: 0 0 0.6rem color-mix(in srgb, var(--hue, #e8c15a) 55%, transparent);
+  }
   .rune:active { transform: scale(0.94); }
   .glyph { font-size: 1.5rem; line-height: 1; }
   /* Painted icons fill the tile; the border, badge and glow stay the client's
