@@ -45,6 +45,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await SyncLeaderboardsAsync();
                     await SyncGuildWeeklyLeaderboardsAsync();
+                    await HandOnAbandonedGuildsAsync();
                 }
                 catch (Exception ex)
                 {
@@ -53,6 +54,17 @@ namespace FolkIdle.Server.Engine
 
                 await Task.Delay(TickIntervalMs);
             }
+        }
+
+        // Modul: A GUILD WHOSE CHIEFTAIN LEFT THE GAME (owner, 2026-11-03).
+        // Riding this 5-minute loop rather than a new one: the check is one
+        // join, and a hand-over a few minutes late changes nothing.
+        private async Task HandOnAbandonedGuildsAsync()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            int changed = await FolkIdle.Server.Domain.Social.GuildManagementEngine.HandOnAbandonedGuildsAsync(db, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            if (changed > 0) Console.WriteLine($"Guilds: {changed} got a new Chieftain (none, or one away 14 days).");
         }
 
         /// <summary>One player's ranking inputs, straight off the query.</summary>

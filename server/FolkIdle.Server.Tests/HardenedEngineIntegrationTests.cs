@@ -5288,7 +5288,7 @@ namespace FolkIdle.Server.Tests
                 {
                     var creatorRow = await verifyDb.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == leaderPlayerId);
                     var joinerRow = await verifyDb.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == memberPlayerId);
-                    Assert.Equal(GuildManagementEngine.RoleLeader, creatorRow.Role);
+                    Assert.Equal(GuildManagementEngine.RoleChieftain, creatorRow.Role);
                     Assert.Equal(GuildManagementEngine.RoleMember, joinerRow.Role);
 
                     var guildRow = await verifyDb.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == guildId);
@@ -5307,7 +5307,7 @@ namespace FolkIdle.Server.Tests
                 await using (var verifyDb = await contextFactory.CreateDbContextAsync())
                 {
                     var successorRow = await verifyDb.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == memberPlayerId);
-                    Assert.Equal(GuildManagementEngine.RoleLeader, successorRow.Role);
+                    Assert.Equal(GuildManagementEngine.RoleChieftain, successorRow.Role);
                 }
 
                 // Three membership changes (create, join, leave) must have

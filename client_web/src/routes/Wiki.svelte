@@ -1527,10 +1527,16 @@
 
           <h3 id="roles">Roles</h3>
           <ul class="styled-list">
-            <li><strong>Leader</strong> — invites, kicks, promotes, demotes, sets the tax, activates buffs.</li>
-            <li><strong>Officer</strong> — invites, kicks ordinary members, activates buffs, reviews applications.</li>
+            <li><strong>Chieftain</strong> — the founder, one per guild. Everything an Elder can, plus making anyone up to Elder and handing the guild to another member.</li>
+            <li><strong>Elder</strong> — at most two. Makes Members Wardens and back, and kicks Wardens and Members.</li>
+            <li><strong>Warden</strong> — at most five. Reviews applications, activates buffs, kicks Members.</li>
             <li><strong>Member</strong> — donates and benefits. Cannot activate a buff.</li>
           </ul>
+          <p class="dim tiny">
+            Nobody can kick or demote someone of their own rank or higher. If the
+            Chieftain does not log in for 14 days, the guild passes to the highest
+            rank still playing, and the guild chat says so.
+          </p>
           <p class="dim tiny">
             Joining is by name or by application, depending on how the guild is set.
             There is no invite-and-accept flow.

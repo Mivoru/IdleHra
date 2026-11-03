@@ -2007,6 +2007,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            if (requestPath == "/api/v1/guilds/transfer" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildTransfer(context);
+                return;
+            }
+
             // Modul: UI rework. Reverse lookup of the above -
             // "?ids=1,2,3" to usernames, so chat/whisper rows can
             // show a name instead of the raw SenderPlayerId the
@@ -5329,6 +5335,16 @@ namespace FolkIdle.Server.Network
             public int Role { get; set; }
             public long ContributionPoints { get; set; }
             public bool IsOnline { get; set; }
+
+            // Modul: WHAT THE VIEWER MAY DO TO THIS MEMBER (2026-11-03). The
+            // four ranks' rules live in GuildManagementEngine.MayAssign and the
+            // caps; the client draws a button only where these say yes, so the
+            // permission table exists once. The engine still checks every
+            // action - these only decide which buttons to show.
+            public bool CanPromote { get; set; }
+            public bool CanDemote { get; set; }
+            public bool CanKick { get; set; }
+            public bool CanTransfer { get; set; }
         }
 
         // Modul: resolves the requesting player's own GuildId first (never
@@ -5386,15 +5402,27 @@ namespace FolkIdle.Server.Network
 
                 await transaction.CommitAsync();
 
+                int viewerRole = members.FirstOrDefault(m => m.PlayerId == playerId)?.Role ?? -1;
+                int elders = members.Count(m => m.Role == GuildManagementEngine.RoleElder);
+                int wardens = members.Count(m => m.Role == GuildManagementEngine.RoleWarden);
+                bool RoomFor(int role) => role == GuildManagementEngine.RoleElder ? elders < GuildManagementEngine.MaxElders
+                    : role == GuildManagementEngine.RoleWarden ? wardens < GuildManagementEngine.MaxWardens : true;
+
                 var entries = new System.Collections.Generic.List<GuildRosterEntryResponse>(members.Count);
                 foreach (var member in members)
                 {
+                    bool other = member.PlayerId != playerId;
+                    int up = member.Role + 1, down = member.Role - 1;
                     entries.Add(new GuildRosterEntryResponse
                     {
                         PlayerId = member.PlayerId,
                         Role = member.Role,
                         ContributionPoints = member.ContributionPoints,
-                        IsOnline = _connectedClients.ContainsKey(member.PlayerId)
+                        IsOnline = _connectedClients.ContainsKey(member.PlayerId),
+                        CanPromote = other && GuildManagementEngine.MayAssign(viewerRole, member.Role, up) && RoomFor(up),
+                        CanDemote = other && GuildManagementEngine.MayAssign(viewerRole, member.Role, down),
+                        CanKick = other && viewerRole >= GuildManagementEngine.RoleWarden && viewerRole > member.Role,
+                        CanTransfer = other && viewerRole == GuildManagementEngine.RoleChieftain,
                     });
                 }
 
@@ -8158,6 +8186,35 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        // Modul: THE CHIEFTAIN HANDS THE GUILD ON (owner, 2026-11-03). Same
+        // shape as promote/demote: 200 done, 403 refused (not the Chieftain, or
+        // the target is not in the guild).
+        private async Task HandleGuildTransfer(HttpListenerContext context)
+        {
+            try
+            {
+                long chieftainId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (chieftainId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
+
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
+                if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
+                long targetId = targetEl.GetInt64();
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException());
+
+                bool ok = await guildManagementEngine.TransferLeadershipAsync(chieftainId, targetId);
+                context.Response.StatusCode = ok ? 200 : 403;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild transfer error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            context.Response.Close();
+        }
+
         private async Task HandleStatsOnline(HttpListenerContext context)
         {
             try
@@ -10117,7 +10174,7 @@ namespace FolkIdle.Server.Network
                 await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
 
                 var membership = await db.GuildMembers.AsNoTracking().FirstOrDefaultAsync(m => m.PlayerId == playerId);
-                if (membership == null || membership.Role != GuildManagementEngine.RoleLeader)
+                if (membership == null || membership.Role < GuildManagementEngine.RoleWarden)
                 {
                     await transaction.CommitAsync();
                     context.Response.StatusCode = 200;

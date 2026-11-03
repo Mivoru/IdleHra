@@ -36,9 +36,39 @@ namespace FolkIdle.Server.Domain.Social
             _playerRegistry = playerRegistry;
         }
 
+        // Modul: FOUR RANKS (owner, 2026-11-03). Member, Warden, Elder and
+        // Chieftain - the founder, exactly one. The numbers are ORDERED, and
+        // every check below compares them ("strictly higher than the target"),
+        // so a rank's power is its number. Warden is the old Officer (1, kept
+        // in place); Chieftain was Leader = 2 and the migration
+        // GuildFourRanks moved those rows to 3, so nobody lost a right.
         public const int RoleMember = 0;
-        public const int RoleOfficer = 1;
-        public const int RoleLeader = 2;
+        public const int RoleWarden = 1;
+        public const int RoleElder = 2;
+        public const int RoleChieftain = 3;
+
+        /// <summary>How many Elders a guild may have (owner, 2026-11-03).</summary>
+        public const int MaxElders = 2;
+        /// <summary>How many Wardens a guild may have (owner, 2026-11-03).</summary>
+        public const int MaxWardens = 5;
+
+        /// <summary>
+        /// A Chieftain who has not logged in for this long hands the guild on
+        /// (owner, 2026-11-03: with few players an abandoned guild is a real
+        /// risk). See <see cref="HandOnAbandonedGuildsAsync"/>.
+        /// </summary>
+        public static readonly TimeSpan ChieftainInactiveAfter = TimeSpan.FromDays(14);
+
+        /// <summary>The ranks a player of <paramref name="actorRole"/> may set someone to, as promote/demote targets.</summary>
+        public static bool MayAssign(int actorRole, int fromRole, int toRole)
+        {
+            if (fromRole == toRole || toRole < RoleMember || toRole >= RoleChieftain) return false;
+            // The Chieftain moves anyone up to Elder; an Elder only between
+            // Member and Warden. Nobody touches an equal or higher rank.
+            if (actorRole == RoleChieftain) return fromRole < RoleChieftain;
+            if (actorRole == RoleElder) return fromRole <= RoleWarden && toRole <= RoleWarden;
+            return false;
+        }
 
         // Modul: Advanced Economy Refactoring, Part 3.1. Universal
         // structural unlock gate - every guild interaction (creating,
@@ -160,7 +190,7 @@ namespace FolkIdle.Server.Domain.Social
                         PlayerId = playerId,
                         GuildId = guild.Id,
                         ContributionPoints = 0,
-                        Role = RoleLeader
+                        Role = RoleChieftain
                     });
                     profile.GuildId = guild.Id;
 
@@ -376,11 +406,14 @@ namespace FolkIdle.Server.Domain.Social
         // preview ordered candidates one way and the leave another, the promise
         // would be a guess. Highest ContributionPoints, lowest PlayerId on a
         // tie, so the answer is deterministic.
+        // Rank first (2026-11-03): an Elder succeeds before a Warden, a Warden
+        // before a Member, and contribution decides within a rank.
         private static IQueryable<GuildMember> SuccessionOrder(IQueryable<GuildMember> members, long guildId, long leavingPlayerId)
         {
             return members
                 .Where(m => m.GuildId == guildId && m.PlayerId != leavingPlayerId)
-                .OrderByDescending(m => m.ContributionPoints)
+                .OrderByDescending(m => m.Role)
+                .ThenByDescending(m => m.ContributionPoints)
                 .ThenBy(m => m.PlayerId);
         }
 
@@ -402,7 +435,7 @@ namespace FolkIdle.Server.Domain.Social
                 .AsNoTracking()
                 .CountAsync(m => m.GuildId == guildId && m.PlayerId != playerId);
 
-            bool isLeader = membership.Role == RoleLeader;
+            bool isLeader = membership.Role == RoleChieftain;
             long successor = 0;
             if (isLeader && remaining > 0)
             {
@@ -469,7 +502,7 @@ namespace FolkIdle.Server.Domain.Social
                         return new GuildLeaveOutcome();
                     }
 
-                    bool wasLeader = membership.Role == RoleLeader;
+                    bool wasLeader = membership.Role == RoleChieftain;
                     context.GuildMembers.Remove(membership);
                     profile.GuildId = 0;
 
@@ -516,7 +549,7 @@ namespace FolkIdle.Server.Domain.Social
 
                                 if (successor != null)
                                 {
-                                    successor.Role = RoleLeader;
+                                    successor.Role = RoleChieftain;
                                     result.SuccessorPlayerId = successor.PlayerId;
                                 }
                             }
@@ -571,8 +604,8 @@ namespace FolkIdle.Server.Domain.Social
                     var kickerMembership = await context.GuildMembers
                         .FirstOrDefaultAsync(m => m.PlayerId == kickerPlayerId);
 
-                    // Only Leader and Officer can kick.
-                    if (kickerMembership == null || kickerMembership.Role < RoleOfficer)
+                    // Warden and up can kick - always someone strictly lower (below).
+                    if (kickerMembership == null || kickerMembership.Role < RoleWarden)
                     {
                         await transaction.RollbackAsync();
                         return 0L;
@@ -597,7 +630,7 @@ namespace FolkIdle.Server.Domain.Social
                         return 0L;
                     }
 
-                    // Kicker must have a strictly higher role than the target (e.g. Leader can kick Officer, Officer can kick Member).
+                    // Kicker must have a strictly higher rank than the target (a Warden kicks Members, an Elder Wardens too).
                     if (kickerMembership.Role <= targetMembership.Role)
                     {
                         await transaction.RollbackAsync();
@@ -665,7 +698,8 @@ namespace FolkIdle.Server.Domain.Social
                     var leaderMembership = await context.GuildMembers
                         .FirstOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
 
-                    if (leaderMembership == null || leaderMembership.Role != RoleLeader)
+                    // Warden and up handle applications (2026-11-03).
+                    if (leaderMembership == null || leaderMembership.Role < RoleWarden)
                     {
                         await transaction.RollbackAsync();
                         return (false, 0L, 0L);
@@ -749,7 +783,7 @@ namespace FolkIdle.Server.Domain.Social
                     var leaderMembership = await context.GuildMembers
                         .FirstOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
 
-                    if (leaderMembership == null || leaderMembership.Role != RoleLeader)
+                    if (leaderMembership == null || leaderMembership.Role < RoleWarden)
                     {
                         await transaction.RollbackAsync();
                         return false;
@@ -800,7 +834,8 @@ namespace FolkIdle.Server.Domain.Social
                         .AsNoTracking()
                         .SingleOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
 
-                    if (membership == null || membership.Role != RoleLeader)
+                    // Elder and up (2026-11-03).
+                    if (membership == null || membership.Role < RoleElder)
                     {
                         await transaction.RollbackAsync();
                         return false;
@@ -857,7 +892,8 @@ namespace FolkIdle.Server.Domain.Social
                         .AsNoTracking()
                         .SingleOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
 
-                    if (membership == null || membership.Role != RoleLeader)
+                    // Elder and up (2026-11-03).
+                    if (membership == null || membership.Role < RoleElder)
                     {
                         await transaction.RollbackAsync();
                         return false;
@@ -887,9 +923,19 @@ namespace FolkIdle.Server.Domain.Social
                 return false;
             }
         }
-        public async Task<bool> PromoteMemberAsync(long promoterId, long targetId)
+        /// <summary>One rank up: Member to Warden, Warden to Elder.</summary>
+        public Task<bool> PromoteMemberAsync(long promoterId, long targetId) => ChangeRankAsync(promoterId, targetId, +1);
+
+        /// <summary>One rank down: Elder to Warden, Warden to Member.</summary>
+        public Task<bool> DemoteMemberAsync(long demoterId, long targetId) => ChangeRankAsync(demoterId, targetId, -1);
+
+        // Modul: ONE RULE FOR UP AND DOWN (2026-11-03). MayAssign says who may
+        // move whom; the caps are checked against the rows in the same
+        // serializable transaction, so two Elders promoting at once cannot both
+        // fill the last Warden place.
+        private async Task<bool> ChangeRankAsync(long actorId, long targetId, int step)
         {
-            if (promoterId == targetId) return false;
+            if (actorId == targetId) return false;
 
             await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
             var strategy = context.Database.CreateExecutionStrategy();
@@ -901,21 +947,33 @@ namespace FolkIdle.Server.Domain.Social
                     context.ChangeTracker.Clear();
                     using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-                    var promoter = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == promoterId);
-                    if (promoter == null || promoter.Role != RoleLeader)
+                    var actor = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == actorId);
+                    var target = actor == null ? null : await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == actor.GuildId);
+                    if (actor == null || target == null)
                     {
                         await transaction.RollbackAsync();
-                        return false; // Only Leader can promote
+                        return false;
                     }
 
-                    var target = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == promoter.GuildId);
-                    if (target == null || target.Role >= RoleOfficer)
+                    int to = target.Role + step;
+                    if (!MayAssign(actor.Role, target.Role, to))
                     {
                         await transaction.RollbackAsync();
-                        return false; // Already officer or not in guild
+                        return false;
                     }
 
-                    target.Role = RoleOfficer;
+                    int cap = to == RoleElder ? MaxElders : to == RoleWarden ? MaxWardens : int.MaxValue;
+                    if (step > 0 && cap != int.MaxValue)
+                    {
+                        int holding = await context.GuildMembers.CountAsync(m => m.GuildId == actor.GuildId && m.Role == to);
+                        if (holding >= cap)
+                        {
+                            await transaction.RollbackAsync();
+                            return false;
+                        }
+                    }
+
+                    target.Role = to;
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
                     return true;
@@ -923,14 +981,19 @@ namespace FolkIdle.Server.Domain.Social
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Guild promote failed - PromoterId {promoterId}: {ex.Message}");
+                Console.WriteLine($"Guild rank change failed - Actor {actorId}, Target {targetId}, Step {step}: {ex.Message}");
                 return false;
             }
         }
 
-        public async Task<bool> DemoteMemberAsync(long demoterId, long targetId)
+        /// <summary>
+        /// The Chieftain hands the guild to another member, who becomes
+        /// Chieftain; the old Chieftain takes the new one's old place if it
+        /// was Elder, or Elder when there is room, else Warden, else Member.
+        /// </summary>
+        public async Task<bool> TransferLeadershipAsync(long chieftainId, long targetId)
         {
-            if (demoterId == targetId) return false;
+            if (chieftainId == targetId) return false;
 
             await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
             var strategy = context.Database.CreateExecutionStrategy();
@@ -942,21 +1005,24 @@ namespace FolkIdle.Server.Domain.Social
                     context.ChangeTracker.Clear();
                     using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-                    var demoter = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == demoterId);
-                    if (demoter == null || demoter.Role != RoleLeader)
+                    var chief = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == chieftainId);
+                    if (chief == null || chief.Role != RoleChieftain)
                     {
                         await transaction.RollbackAsync();
-                        return false; // Only Leader can demote
+                        return false;
                     }
-
-                    var target = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == demoter.GuildId);
-                    if (target == null || target.Role != RoleOfficer)
+                    var target = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == chief.GuildId);
+                    if (target == null)
                     {
                         await transaction.RollbackAsync();
-                        return false; // Not an officer or not in guild
+                        return false;
                     }
 
-                    target.Role = RoleMember;
+                    int elders = await context.GuildMembers.CountAsync(m => m.GuildId == chief.GuildId && m.Role == RoleElder && m.PlayerId != targetId);
+                    int wardens = await context.GuildMembers.CountAsync(m => m.GuildId == chief.GuildId && m.Role == RoleWarden && m.PlayerId != targetId);
+                    chief.Role = elders < MaxElders ? RoleElder : wardens < MaxWardens ? RoleWarden : RoleMember;
+                    target.Role = RoleChieftain;
+
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
                     return true;
@@ -964,9 +1030,77 @@ namespace FolkIdle.Server.Domain.Social
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Guild demote failed - DemoterId {demoterId}: {ex.Message}");
+                Console.WriteLine($"Guild leadership transfer failed - Chieftain {chieftainId}, Target {targetId}: {ex.Message}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Every guild whose Chieftain has not logged in for
+        /// <see cref="ChieftainInactiveAfter"/> passes to the next in
+        /// <see cref="SuccessionOrder"/> who HAS logged in since; the old
+        /// Chieftain stays in the guild as a Member. The guild channel gets a
+        /// line saying so. Returns how many guilds changed hands.
+        /// </summary>
+        public static async Task<int> HandOnAbandonedGuildsAsync(FolkIdleDbContext context, long nowEpochSeconds)
+        {
+            long cutoff = nowEpochSeconds - (long)ChieftainInactiveAfter.TotalSeconds;
+            int changed = 0;
+
+            // Modul: A GUILD WITH NOBODY AT THE TOP (found 2026-11-03). The one
+            // production guild had no Leader row at all - members 0, 0, 1 - and
+            // so did the dev fixture's; a leader who left before succession
+            // existed (task 94) left nobody able to promote. Such a guild gets a
+            // Chieftain by the same succession order, preferring someone active.
+            var headless = await context.GuildMembers
+                .GroupBy(m => m.GuildId)
+                .Where(g => !g.Any(m => m.Role == RoleChieftain))
+                .Select(g => g.Key)
+                .ToListAsync();
+            foreach (long guildId in headless)
+            {
+                var candidates = await (
+                    from m in SuccessionOrder(context.GuildMembers, guildId, 0)
+                    join p in context.PlayerRecords on m.PlayerId equals p.Id
+                    select new { m.PlayerId, p.Username, Active = p.LastLoginTimestamp >= cutoff }).ToListAsync();
+                var heir = candidates.FirstOrDefault(c => c.Active) ?? candidates.FirstOrDefault();
+                if (heir == null) continue;
+
+                (await context.GuildMembers.SingleAsync(m => m.PlayerId == heir.PlayerId)).Role = RoleChieftain;
+                await context.SaveChangesAsync();
+                changed++;
+                await ChatHistory.RecordAsync(context, ChatEngine.GuildChannelType, guildId, 0,
+                    $"The guild had no Chieftain. {heir.Username} now leads it.",
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            }
+
+            var abandoned = await (
+                from m in context.GuildMembers
+                join p in context.PlayerRecords on m.PlayerId equals p.Id
+                where m.Role == RoleChieftain && p.LastLoginTimestamp > 0 && p.LastLoginTimestamp < cutoff
+                select new { m.GuildId, m.PlayerId, p.Username }).ToListAsync();
+
+            foreach (var guild in abandoned)
+            {
+                var heir = await (
+                    from m in SuccessionOrder(context.GuildMembers, guild.GuildId, guild.PlayerId)
+                    join p in context.PlayerRecords on m.PlayerId equals p.Id
+                    where p.LastLoginTimestamp >= cutoff
+                    select new { m.PlayerId, p.Username }).FirstOrDefaultAsync();
+                if (heir == null) continue; // nobody active to hand it to
+
+                var oldRow = await context.GuildMembers.SingleAsync(m => m.PlayerId == guild.PlayerId);
+                var newRow = await context.GuildMembers.SingleAsync(m => m.PlayerId == heir.PlayerId);
+                oldRow.Role = RoleMember;
+                newRow.Role = RoleChieftain;
+                await context.SaveChangesAsync();
+                changed++;
+
+                await ChatHistory.RecordAsync(context, ChatEngine.GuildChannelType, guild.GuildId, 0,
+                    $"{guild.Username} has not been seen for {ChieftainInactiveAfter.TotalDays:0} days. {heir.Username} now leads the guild as Chieftain.",
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            }
+            return changed;
         }
 
     }

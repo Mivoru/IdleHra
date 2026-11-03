@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
+  import { RANK_NAMES, RANK_WARDEN } from '../lib/ui/guildRanks';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import PlayerTitle from '../lib/ui/PlayerTitle.svelte';
   import { profileLink } from '../lib/ui/profileLink';
@@ -21,6 +22,7 @@
     fetchMaterials,
     kickGuildMember,
     promoteGuildMember,
+    transferGuildLeadership,
     demoteGuildMember,
     fetchGuildLeavePreview,
     leaveGuild,
@@ -144,7 +146,7 @@
 
   let busy = $state(false);
   const myRole = $derived(members.find(m => m.PlayerId === connection.currentPlayerId)?.Role ?? 0);
-  const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
+  const ROLE_NAMES = RANK_NAMES;
 
   // Modul: task 107. The header card's numbers come from the guild directory
   // (tier, members, tax) - the one place the server already publishes them -
@@ -179,6 +181,20 @@
         pushLocalNotice('Member promoted.', 'info');
     } catch (err: any) {
         pushLocalNotice(err.message || 'Failed to promote.', 'error');
+    } finally {
+        busy = false;
+        refresh();
+    }
+  }
+
+  async function handleTransfer(id: number) {
+    if (busy) return;
+    busy = true;
+    try {
+        await transferGuildLeadership(id);
+        pushLocalNotice('You handed the guild on. You are an Elder now.', 'info');
+    } catch (err: any) {
+        pushLocalNotice(err.message || 'Failed to hand over the guild.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -220,7 +236,7 @@
       return 'You are the last member: leaving closes the guild for good, with its depot, treasury and buffs.';
     }
     if (p.IsLeader && p.SuccessorPlayerId > 0) {
-      return `${memberName(p.SuccessorPlayerId)} will lead the guild after you.`;
+      return `${memberName(p.SuccessorPlayerId)} will be Chieftain after you.`;
     }
     return 'You can join this or another guild again from the Guild tab.';
   });
@@ -527,7 +543,7 @@
 
   async function handleActivateBuff(buffType: string, tier: number, path: 'common' | 'rare') {
     if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
-    if (myRole < 1) return pushLocalNotice('Only officers and leaders can activate buffs.', 'info');
+    if (myRole < RANK_WARDEN) return pushLocalNotice('Only Wardens, Elders and the Chieftain can activate buffs.', 'info');
     
     try {
         await activateGuildBuff(buffType, tier, path);
@@ -595,14 +611,19 @@
                 
                 <span style="flex: 1;"></span>
                 
-                {#if myRole >= 1 && member.Role < myRole && member.PlayerId !== connection.currentPlayerId}
-                  {#if myRole === 2}
-                    {#if member.Role === 0}
-                      <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>Promote</button>
-                    {:else if member.Role === 1}
-                      <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>Demote</button>
-                    {/if}
-                  {/if}
+                <!-- Modul: THE SERVER SAYS WHICH BUTTONS (2026-11-03). Each roster
+                     row carries what the viewer may do to that member, from the
+                     same rule the actions are checked with. -->
+                {#if member.CanPromote}
+                  <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>To {ROLE_NAMES[member.Role + 1]}</button>
+                {/if}
+                {#if member.CanDemote}
+                  <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>To {ROLE_NAMES[member.Role - 1]}</button>
+                {/if}
+                {#if member.CanTransfer}
+                  <ConfirmButton small label="Make Chieftain" confirmLabel="Hand over the guild?" disabled={busy} onConfirm={() => handleTransfer(member.PlayerId)} />
+                {/if}
+                {#if member.CanKick}
                   <!-- Modul: two taps. Kicking was one, and a mis-tap on a phone
                        removed a guildmate with no way back. -->
                   <ConfirmButton small label="Kick" confirmLabel="Really kick?" disabled={busy} onConfirm={() => handleKick(member.PlayerId)} />
@@ -628,7 +649,7 @@
       {/if}
     </section>
 
-    {#if myRole === 2}
+    {#if myRole >= RANK_WARDEN}
       <GuildApplications />
     {/if}
 

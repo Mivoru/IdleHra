@@ -78,7 +78,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(2, guild.ActiveMembers);
             Assert.False(await db.GuildMembers.AnyAsync(m => m.PlayerId == member));
             Assert.Equal(0L, (await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == member)).GuildId);
-            Assert.Equal(GuildManagementEngine.RoleLeader, (await db.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == leader)).Role);
+            Assert.Equal(GuildManagementEngine.RoleChieftain, (await db.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == leader)).Role);
 
             // Leaving twice is a refusal, not a second success.
             Assert.False((await Engine().LeaveAsync(member)).Left);
@@ -111,7 +111,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(preview.SuccessorPlayerId, outcome.SuccessorPlayerId);
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
-            Assert.Equal(GuildManagementEngine.RoleLeader, (await verify.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == high)).Role);
+            Assert.Equal(GuildManagementEngine.RoleChieftain, (await verify.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == high)).Role);
             Assert.Equal(GuildManagementEngine.RoleMember, (await verify.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == low)).Role);
             Assert.Equal(2, (await verify.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == guildId)).ActiveMembers);
         }

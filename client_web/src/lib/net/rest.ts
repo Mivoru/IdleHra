@@ -763,6 +763,13 @@ export interface GuildMember {
   Role: number;
   ContributionPoints: number;
   IsOnline: boolean;
+  /** What the VIEWER may do to this member - the server's permission table
+   *  (GuildManagementEngine.MayAssign and the caps), so the client never
+   *  mirrors it. Absent from an older server: treat as false. */
+  CanPromote?: boolean;
+  CanDemote?: boolean;
+  CanKick?: boolean;
+  CanTransfer?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -983,6 +990,11 @@ export async function promoteGuildMember(targetPlayerId: number): Promise<void> 
 
 export async function demoteGuildMember(targetPlayerId: number): Promise<void> {
   await authedPost('/api/v1/guilds/demote', { targetPlayerId });
+}
+
+/** The Chieftain hands the guild to another member (2026-11-03). */
+export async function transferGuildLeadership(targetPlayerId: number): Promise<void> {
+  await authedPost('/api/v1/guilds/transfer', { targetPlayerId });
 }
 
 // ---------------------------------------------------------------------------

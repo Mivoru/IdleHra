@@ -37,7 +37,7 @@
   </div>
 
   <p class="dim small">
-    An officer or the leader spends
+    A Warden, an Elder or the Chieftain spends
     <strong title={numberTitle(GUILD_BUFF_COST_PER_MATERIAL)}>{formatNumber(GUILD_BUFF_COST_PER_MATERIAL)}</strong> of the wood
     <em>and</em> {formatNumber(GUILD_BUFF_COST_PER_MATERIAL)} of the ore out
     of the guild depot — {formatNumber(GUILD_BUFF_COST_PER_MATERIAL * 2)} materials
