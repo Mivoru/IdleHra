@@ -70,6 +70,9 @@ namespace FolkIdle.Server
 
         public static bool IsLockstep => _lockstep;
 
+        /// <summary>Game time zero under lockstep (tick 0); the bots read the hour of day from it.</summary>
+        public static DateTime LockstepAnchorUtc => _anchorUtc;
+
         public static void ConfigureLockstep(DateTime anchorUtc)
         {
             _anchorUtc = anchorUtc;

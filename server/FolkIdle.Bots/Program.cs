@@ -37,7 +37,12 @@ namespace FolkIdle.Bots
             using var log = new MilestoneLog(outDir, o.Speed);
             var roster = o.Roster();
             Console.WriteLine($"FolkIdle bots: {string.Join(", ", roster.GroupBy(p => p.Name).Select(g => $"{g.Count()} x {g.Key}"))}, {o.Hours} game hours at speed x{o.Speed} (~{o.Hours * 60.0 / o.Speed:0} wall minutes) -> {Path.GetFullPath(outDir)}");
-            Console.WriteLine("The server must run with FOLKIDLE_DEV_TOOLS=1 and FOLKIDLE_TICK_SPEED matching --speed.");
+            Console.WriteLine(o.Lockstep
+                ? "LOCKSTEP: the server must run with FOLKIDLE_DEV_TOOLS=1 and FOLKIDLE_SIM_LOCKSTEP=1; --speed is ignored."
+                : "The server must run with FOLKIDLE_DEV_TOOLS=1 and FOLKIDLE_TICK_SPEED matching --speed.");
+            if (Persona.SleepDisabled) Console.WriteLine("--no-sleep: optimal/patient/patientbare/eagerkit stay online 24/7.");
+
+            if (o.Lockstep) return await RunLockstepAsync(o, log, roster);
 
             using var cts = new CancellationTokenSource();
             Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
@@ -74,6 +79,59 @@ namespace FolkIdle.Bots
             var metricsAtEnd = await TickMetrics.ReadAsync(o.Server);
             log.WriteSummary(TickMetrics.Describe(metricsAtStart, metricsAtEnd, DateTime.UtcNow - wallStart, o.Speed));
             Console.WriteLine($"Done. {Path.GetFullPath(Path.Combine(outDir, "milestones.csv"))}");
+            return 0;
+        }
+
+        /// <summary>
+        /// The lockstep run (phase 2): one control socket for every bot, each bot
+        /// on its own LockstepBotTime, the run measured in GAME hours.
+        /// </summary>
+        private static async Task<int> RunLockstepAsync(Options o, MilestoneLog log, List<Persona> roster)
+        {
+            using var cts = new CancellationTokenSource();
+            Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+            await using var driver = new SimDriver();
+            await driver.ConnectAsync(o.Server, cts.Token);
+            log.Clock = () => driver.GameHours;
+            var metricsAtStart = await TickMetrics.ReadAsync(o.Server);
+            DateTime wallStart = DateTime.UtcNow;
+            string runId = DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+            Console.WriteLine($"LOCKSTEP: connected at tick {driver.Tick}, game time {driver.GameUtc:yyyy-MM-dd HH:mm} UTC, quantum {driver.Quantum} ticks.");
+
+            var tasks = roster.Select(async (persona, index) =>
+            {
+                int i = index + 1;
+                string name = $"{persona.Name}{i}";
+                string deviceId = $"{o.Prefix}-{runId}-{i}";
+                var time = driver.Join(name, reactionMinTicks: 4, reactionMaxTicks: 12);
+                var brain = new BotBrain(async t =>
+                {
+                    var client = new BotClient(o.Server, deviceId);
+                    await client.ConnectAsync(t, waitForState: false);
+                    return client;
+                }, log, seed: i * 7919 + o.Seed * 104729, name, persona, time);
+                try
+                {
+                    await brain.RunLockstepAsync(o.Hours, time, cts.Token);
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[{name}] stopped: {ex.GetType().Name}: {ex.Message}");
+                    log.Event(name, $"stopped: {ex.Message}");
+                    time.Leave();
+                }
+                if (brain.LastState is { } last) log.Summary(name, last, brain.StateFrames);
+            }).ToArray();
+
+            await Task.WhenAll(tasks);
+            var metricsAtEnd = await TickMetrics.ReadAsync(o.Server);
+            var wall = DateTime.UtcNow - wallStart;
+            double gameHours = driver.GameHours;
+            string ticksRun = metricsAtEnd is { } e && metricsAtStart is { } s0 ? (e.Ticks - s0.Ticks).ToString("N0", CultureInfo.InvariantCulture) : "?";
+            string offline = TickMetrics.Describe(metricsAtStart, metricsAtEnd, wall, 1).Split("\n\nTick metrics")[0];
+            log.WriteSummary($"Lockstep: {gameHours:0.0} game hours in {wall.TotalMinutes:0.0} wall minutes = x{gameHours * 60 / Math.Max(wall.TotalMinutes, 1e-6):0} effective; {driver.Wakes:N0} wake frames; {ticksRun} ticks actually run (the rest were jumped while nobody was online).\n\n{offline}");
+            Console.WriteLine($"Done. {gameHours:0.0} game hours in {wall.TotalMinutes:0.0} wall minutes.");
             return 0;
         }
 
@@ -145,6 +203,8 @@ namespace FolkIdle.Bots
             public string? Mix;
             /// <summary>--seed N: shifts every bot's decision dice, so a repeat of the same mix is an independent sample.</summary>
             public int Seed;
+            /// <summary>--lockstep: drive a FOLKIDLE_SIM_LOCKSTEP server through /api/v1/dev/sim (docs/design/LOCKSTEP_SIM.md).</summary>
+            public bool Lockstep;
 
             public List<Persona> Roster()
             {
@@ -177,9 +237,11 @@ namespace FolkIdle.Bots
                         case "--allow-remote": o.AllowRemote = true; break;
                         case "--mix": o.Mix = next(); break;
                         case "--seed": o.Seed = int.Parse(next(), CultureInfo.InvariantCulture); break;
+                        case "--lockstep": o.Lockstep = true; break;
+                        case "--no-sleep": Persona.SleepDisabled = true; break;
                         default:
                             Console.Error.WriteLine($"unknown argument {args[i]}");
-                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID] [--seed N]");
+                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID] [--seed N] [--lockstep] [--no-sleep]");
                             return null;
                     }
                 }

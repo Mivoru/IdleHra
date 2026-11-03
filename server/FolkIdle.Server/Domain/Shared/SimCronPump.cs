@@ -36,6 +36,7 @@ namespace FolkIdle.Server.Domain.Shared
             public long NextDue;
             public long Runs;
             public long Failures;
+            public long StopwatchTicks;
         }
 
         private readonly List<Job> _jobs = new();
@@ -61,6 +62,7 @@ namespace FolkIdle.Server.Domain.Shared
             foreach (var job in _jobs)
             {
                 if (tick < job.NextDue) continue;
+                long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 try
                 {
                     job.RunOnce().GetAwaiter().GetResult();
@@ -72,6 +74,7 @@ namespace FolkIdle.Server.Domain.Shared
                     job.Failures++;
                     Console.WriteLine($"[SimCronPump] {job.Name} cycle failed at tick {tick}: {ex.Message}");
                 }
+                job.StopwatchTicks += System.Diagnostics.Stopwatch.GetTimestamp() - started;
                 job.Runs++;
                 job.NextDue = tick + job.IntervalTicks;
                 ran++;
@@ -82,6 +85,18 @@ namespace FolkIdle.Server.Domain.Shared
         public IEnumerable<(string Name, long IntervalTicks, long Runs, long Failures)> Describe()
         {
             foreach (var j in _jobs) yield return (j.Name, j.IntervalTicks, j.Runs, j.Failures);
+        }
+
+        /// <summary>Wall seconds each cron has cost the tick thread - on /metrics under lockstep.</summary>
+        public void AppendMetrics(System.Text.StringBuilder body)
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            foreach (var j in _jobs)
+            {
+                body.Append("folkidle_sim_cron_seconds_total{cron=\"").Append(j.Name).Append("\"} ")
+                    .Append(((double)j.StopwatchTicks / System.Diagnostics.Stopwatch.Frequency).ToString("0.###", inv)).Append('\n');
+                body.Append("folkidle_sim_cron_runs_total{cron=\"").Append(j.Name).Append("\"} ").Append(j.Runs).Append('\n');
+            }
         }
     }
 }

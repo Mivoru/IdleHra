@@ -59,7 +59,10 @@ namespace FolkIdle.Bots
             _timeline.WriteLine("bot,game_hours,level,xp,region,location,gold,diamonds,activity,larder,deaths,forge,town_hall,rebirths,dungeon_best,ascension_steps");
         }
 
-        public double GameHours => (DateTime.UtcNow - _startUtc).TotalHours * _speed;
+        /// <summary>Lockstep: game hours come from the conductor's tick, not wall time x speed.</summary>
+        public Func<double>? Clock { get; set; }
+
+        public double GameHours => Clock?.Invoke() ?? (DateTime.UtcNow - _startUtc).TotalHours * _speed;
         private double WallMinutes => (DateTime.UtcNow - _startUtc).TotalMinutes;
 
         public void Observe(string bot, StateUpdatePacket s)

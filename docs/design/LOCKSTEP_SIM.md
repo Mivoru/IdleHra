@@ -6,7 +6,27 @@ on the real WebSocket/REST surface) and asked for implementation. BUILT: step 0
 engine branch, tick-driven `GameClock`) and phase 1b (`SimCronPump`: nine
 gameplay crons run on the tick at their production periods) and phase 1c
 (game-time guards, event wakes) and phase 1d (settle before each tick,
-per-route REST timing). Not built: 2, 3. The bots do
+per-route REST timing) and phase 2 (bots on the control socket, every
+persona sleeps). Not built: 3 (validation against x20, overnight).
+
+Phase 2 first runs (Release, 2 optimal + 1 casual + 1 idle, seed 1, 30 game
+hours, local Docker Postgres): **x279 effective - 30 game hours in 6.4 wall
+minutes**, 3,177 wake frames, 0.8 M ticks run, the rest jumped at night.
+Optimal L10 at 2.5 game h (x20 baseline about 2 h), region 2 at 12-22 h,
+L30 at 15-24 h; casual L20 at 24 h. Three defects found and fixed on the
+way: REST calls that wait on the tick (payload snapshots, world boss
+strikes) timed out as NoSession while the tick was parked - the parked tick
+now serves them; settling every dispatch before every tick (x33) - now only
+world-changing ones per tick, everything before a wake or a jump; and
+overdue chore timers turning into one wake per game second (95,000 wake
+frames -> 3,177).
+
+Where the wall time goes now (10 game hours, 72 s): the gameplay crons
+~41 s (codex 4.5 ms a run, achievements 7 ms, loot 2.6 ms, pending grants
+1.2 ms - real database work at production cadence), REST ~20 s, ticks
+0.5 s. `synchronous_commit=off` gained ~5%. The next step up is an owner
+decision: run the crons at a multiple of their production period under
+lockstep (a fidelity trade-off), or accept ~x300. The bots do
 not speak the control socket yet, so a lockstep server today holds still until
 a client joins - nothing runs lockstep end to end with real bots.
 
@@ -196,7 +216,7 @@ thinking, not game time); bots are exempted on dev if they bite.
 | 1b (BUILT) | Cron pump on the tick for the gameplay crons: liveops (600 ticks, run at start), codex 50, loot 30, pending grants 50, achievements 150, cosmetic chests 10, season era 3,000, leaderboards 3,000, leaderboard payout 6,000. The tick waits for each. | `SimCronPumpTests`; live smoke: 9 registered, no failures |
 | 1c (BUILT) | `GameClock.MonotonicMs` (game ms under lockstep, `Environment.TickCount64` otherwise) for the 100 ms command rule, the throttler, the token bucket, the challenge window and the macro detector; `GameClock.ReactionUtcNow` for the dungeon telegraph window. Event wakes from ONE place: `LockstepEventProbe` diffs each player's payload around `ProcessTick` (level up, death, new halt incl. full inventory, activity stopped); the engine wakes `DailyReset` subscribers when the game day turns. Telemetry timestamps stay wall. | `LockstepEventProbeTests` (mutation-checked); guard/anti-cheat/dungeon suites 154/154 |
 | 1d (BUILT) | `LockstepSettle` before every tick: all `SafeDispatchAsync` work the tick handed off (logins above all) has finished, and the checkpoint queue is at most 16 (10 s wall timeout, logged). Logout ack needed nothing new: a login already fences on that player's queued checkpoints (`WaitForPendingFlushesAsync`, task 43). `folkidle_dev_route_seconds_total{route}` on /metrics, dev tools only. | targeted suites 116/116; exercised end to end by P2 |
-| 2 | Bot on the conductor; personas as attention budgets | a 24-game-hour lockstep run finishes and logs no wall waits |
+| 2 (BUILT) | `SimDriver` + `LockstepBotTime` (every wait is a yield), `RunLockstepAsync`, `--lockstep`, `--no-sleep`; every persona sleeps 00:30-06:30 plus up to an hour either side; the parked tick serves REST orders; per-tick settle only for world-changing dispatches; `folkidle_sim_cron_seconds_total` | `BotPersonaSleepTests` (8); 30-game-hour runs above |
 | 3 | Validation: lockstep vs x20 (same mix and seed), quantum 1 vs 10, x50 vs flat out | `compare-run.py` per persona, overnight |
 
 ## Owner decisions (2026-11-03, second review)

@@ -785,14 +785,27 @@ namespace FolkIdle.Server.Domain.Combat
         private void SafeDispatchAsync(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
         {
             Interlocked.Increment(ref _inFlightDispatches);
-            _ = SafeDispatchAsyncCore(context, playerIdToDisconnectOnFailure, action);
+            bool gating = IsWorldGatingDispatch(context);
+            if (gating) Interlocked.Increment(ref _inFlightGatingDispatches);
+            _ = SafeDispatchAsyncCore(context, playerIdToDisconnectOnFailure, action, gating);
         }
+
+        // The dispatches that decide WHO and WHAT is in the world - a login, an
+        // activity change, a consumable, a node migration. Lockstep waits for
+        // these before every tick; the rest (village production writes, forge,
+        // market, mail) only before a bot wakes or the clock jumps. Waiting for
+        // all of them every tick held the first lockstep run to x33: a village
+        // production write is a database round trip on most ticks.
+        private static bool IsWorldGatingDispatch(string context)
+            => context == "Login" || context == "Character.ChangeActivity" || context == "ConsumeConsumable" || context.StartsWith("NodeMigration", StringComparison.Ordinal);
+
+        private int _inFlightGatingDispatches;
 
         // Work the tick handed to the thread pool and has not seen finish
         // (logins above all). Lockstep waits for it - see LockstepBeforeTick.
         private int _inFlightDispatches;
 
-        private async Task SafeDispatchAsyncCore(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
+        private async Task SafeDispatchAsyncCore(string context, long playerIdToDisconnectOnFailure, Func<Task> action, bool gating = false)
         {
             try
             {
@@ -826,6 +839,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
             finally
             {
+                if (gating) Interlocked.Decrement(ref _inFlightGatingDispatches);
                 Interlocked.Decrement(ref _inFlightDispatches);
             }
         }
@@ -2756,7 +2770,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         private bool LockstepBeforeTick(SimConductor conductor)
         {
-            LockstepSettle();
+            LockstepSettle(everything: false);
             (long TickToRun, IReadOnlyList<SimWake> Wakes, bool NeedsBroadcast)? prep;
             Monitor.Enter(_activePlayers);
             try
@@ -2778,6 +2792,9 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             var (tick, wakes, needsBroadcast) = prep.Value;
+            // Before anyone looks at the world, or the clock leaps over it, every
+            // piece of work the tick handed off has landed.
+            if (wakes.Count > 0 || tick > _lockstepTick + 1) LockstepSettle(everything: true);
             // While the bots think, the game clock reads the state they see:
             // the end of the last completed tick.
             GameClock.SetLockstepTick(tick - 1);
@@ -2796,15 +2813,47 @@ namespace FolkIdle.Server.Domain.Combat
                     return false;
                 }
                 sink(tick, wakes);
-                while (IsRunning && !conductor.WaitForYields(TimeSpan.FromSeconds(1)))
+                // Modul: THE TICK ANSWERS REST WHILE THE BOTS THINK (phase 2). A
+                // REST call that needs the live payload - the what-if and hunting
+                // projections, the skill tree preview, the dungeon run, a world
+                // boss strike - queues an order that only the TICK thread answers,
+                // and waits 3 wall seconds for it. In lockstep the tick is parked
+                // here while the bot thinks, so every such call timed out as
+                // NoSession: the first lockstep run's optimal bots never got a
+                // projection, never picked a fight, and each failed call cost 3
+                // wall seconds (x50). So while waiting, the parked tick thread
+                // serves exactly those orders, under the same lock the tick holds.
+                while (IsRunning && !conductor.WaitForYields(TimeSpan.FromMilliseconds(1)))
                 {
+                    ServeWaitingRestCallers();
                 }
+                ServeWaitingRestCallers();
             }
 
             _forceBroadcastThisTick = needsBroadcast || conductor.AnyDueBy(tick + 1);
             _lockstepTick = tick;
             GameClock.SetLockstepTick(tick);
             return true;
+        }
+
+        /// <summary>
+        /// The tick-side answers to REST calls that wait on the tick: payload
+        /// snapshots and world boss strikes. Same drains, same order, as the tick
+        /// head runs them; lockstep only, between ticks.
+        /// </summary>
+        private void ServeWaitingRestCallers()
+        {
+            if (_playerRegistry.PayloadSnapshotQueue.IsEmpty && _playerRegistry.WorldBossStrikeQueue.IsEmpty) return;
+            Monitor.Enter(_activePlayers);
+            try
+            {
+                WorldBossTickCoordinator.DrainStrikeOrders(_playerRegistry, _activePlayers, _worldBossEngine);
+                PayloadSnapshotTickCoordinator.Drain(_playerRegistry, _activePlayers);
+            }
+            finally
+            {
+                Monitor.Exit(_activePlayers);
+            }
         }
 
         /// <summary>Checkpoint jobs allowed in the queue before lockstep stops starting ticks.</summary>
@@ -2823,12 +2872,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// The logout-then-login order needs nothing new: a login already fences
         /// on that player's queued checkpoints (WaitForPendingFlushesAsync).
         /// </summary>
-        private void LockstepSettle()
+        private void LockstepSettle(bool everything)
         {
             var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
             var writer = _checkpointManager.Writer;
             var spin = new SpinWait();
-            while (Volatile.Read(ref _inFlightDispatches) > 0 || writer.QueueDepth > LockstepCheckpointQueueBound)
+            while (Volatile.Read(ref everything ? ref _inFlightDispatches : ref _inFlightGatingDispatches) > 0 || writer.QueueDepth > LockstepCheckpointQueueBound)
             {
                 if (Stopwatch.GetTimestamp() > deadline)
                 {

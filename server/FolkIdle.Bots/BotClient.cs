@@ -48,6 +48,11 @@ namespace FolkIdle.Bots
         /// <summary>State frames received so far (the server sends one per broadcast).</summary>
         public long StateFrames => Interlocked.Read(ref _stateFrames);
 
+        private long _commandsSent;
+
+        /// <summary>Gameplay commands sent so far - a lockstep bot that sent one wakes again after a reaction, not after its chore timers.</summary>
+        public long CommandsSent => Interlocked.Read(ref _commandsSent);
+
         public bool TryGetState(out StateUpdatePacket state)
         {
             lock (_stateLock)
@@ -57,7 +62,14 @@ namespace FolkIdle.Bots
             }
         }
 
-        public async Task ConnectAsync(CancellationToken token)
+        /// <summary>
+        /// Signs in and opens the session. Paced runs wait here (wall time) for
+        /// the first snapshot. A lockstep run must NOT: the login completes on
+        /// the server's ticks, which do not run while this bot holds its turn,
+        /// so <paramref name="waitForState"/> false returns at once and the bot
+        /// yields game time until the snapshot arrives.
+        /// </summary>
+        public async Task ConnectAsync(CancellationToken token, bool waitForState = true)
         {
             using (var response = await _http.PostAsJsonAsync("/api/v1/auth/login", new { deviceId = DeviceId }, token))
             {
@@ -82,6 +94,7 @@ namespace FolkIdle.Bots
             });
             await SendTextAsync(handshake, token);
             _ = Task.Run(() => ReceiveLoopAsync(token), token);
+            if (!waitForState) return;
 
             var deadline = DateTime.UtcNow.AddSeconds(15);
             while (!TryGetState(out _))
@@ -151,6 +164,7 @@ namespace FolkIdle.Bots
         /// <summary>Sends a command stamped with the newest epoch, as connection.ts send() does.</summary>
         public Task SendCommandAsync(ClientCommandPacket packet, CancellationToken token)
         {
+            Interlocked.Increment(ref _commandsSent);
             if (TryGetState(out var state)) packet.LogicEpochCounter = state.LogicEpochCounter;
             return SendPacketAsync(packet, token);
         }

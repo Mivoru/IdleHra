@@ -26,7 +26,7 @@ namespace FolkIdle.Server.Network
         ///                                  "WakeOn": 12, "ReactionMin": 4, "ReactionMax": 12 } ] }
         ///   { "Type": "leave", "Bot": "optimal1" }
         /// Server -> bot process:
-        ///   { "Type": "hello", "Tick": 0, "Quantum": 10, "TickMs": 100 }
+        ///   { "Type": "hello", "Tick": 0, "Quantum": 10, "TickMs": 100, "AnchorUtc": "..." }
         ///   { "Type": "wake",  "Tick": 5400, "Bots": [ { "Bot": "optimal1", "Reasons": 1 } ] }
         ///
         /// A wake frame lists every bot due at that tick; the process answers
@@ -81,7 +81,7 @@ namespace FolkIdle.Server.Network
                 }
             });
 
-            outbox.Writer.TryWrite(JsonSerializer.Serialize(new { Type = "hello", Tick = conductor.Tick, Quantum = conductor.QuantumTicks, TickMs = 100 }));
+            outbox.Writer.TryWrite(JsonSerializer.Serialize(new { Type = "hello", Tick = conductor.Tick, Quantum = conductor.QuantumTicks, TickMs = 100, AnchorUtc = GameClock.LockstepAnchorUtc }));
 
             var buffer = new byte[64 * 1024];
             var message = new StringBuilder();

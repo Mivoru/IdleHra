@@ -11155,6 +11155,7 @@ namespace FolkIdle.Server.Network
                     body.Append('\n');
                 }
                 DevRouteTiming.AppendMetrics(body);
+                FolkIdle.Server.Domain.Shared.SimLockstep.Crons?.AppendMetrics(body);
                 if (checkpointWriter != null)
                 {
                     body.Append("# HELP folkidle_checkpoint_queue_depth Checkpoint jobs queued on CheckpointWriter.\n");
