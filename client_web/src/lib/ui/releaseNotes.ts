@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.56.1',
+    date: '2026-11-03',
+    headline: 'Cleaner artwork.',
+    sections: [
+      {
+        title: 'Art',
+        items: [
+          'Monster and item pictures are cropped properly: they fill their icons and sit in the middle instead of floating small to one side.',
+          'The faint sparkle in the corner of many pictures and the stray specks around them are gone.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.56.0',
     date: '2026-11-03',
     headline: 'Affinities: the skill tree now strengthens the affixes on your gear.',
