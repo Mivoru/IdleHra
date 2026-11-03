@@ -595,6 +595,10 @@
     gap: 0.25rem;
     margin-bottom: 0.6rem;
   }
+  /* The app's WebView ignores scrollbar-width (2026-11-03). */
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
 
   .tabs button {
     flex-shrink: 0;
