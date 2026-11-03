@@ -230,6 +230,10 @@ export function describeStopCondition(minRarity: number, affixIndex: number): st
 
 export interface DisplayAffix {
   key: string;
+  /** The affix id without its rarity and stack suffixes ("crit_chance_pct"). */
+  id: string;
+  /** The raw stored number, as the payload holds it. */
+  magnitude: number;
   label: string;
   value: string;
   rarity: number;
@@ -268,6 +272,8 @@ export function toDisplayAffixes(affixes: Record<string, number>): DisplayAffix[
     const parsed = parseAffixKey(key);
     return {
       key,
+      id: parsed.id,
+      magnitude,
       label: parsed.stack > 1 ? `${affixLabel(parsed.id)} (${parsed.stack})` : affixLabel(parsed.id),
       value: formatAffixValue(parsed.id, magnitude),
       rarity: parsed.rarity,

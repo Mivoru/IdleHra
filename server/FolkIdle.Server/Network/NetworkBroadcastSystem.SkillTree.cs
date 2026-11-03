@@ -47,7 +47,58 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/skilltree/preview" && method == "POST") { await HandleSkillTreePreview(context); return true; }
             if (requestPath == "/api/v1/skilltree/commit" && method == "POST") { await HandleSkillTreeCommit(context); return true; }
             if (requestPath == "/api/v1/skilltree/respec" && method == "POST") { await HandleSkillTreeRespec(context); return true; }
+            if (requestPath == "/api/v1/skilltree/families" && method == "GET") { await HandleAffixFamilies(context); return true; }
             return false;
+        }
+
+        // Modul: WHAT THE TREE DOES TO YOUR GEAR, FROM THE SERVER (phase 5.1,
+        // 2026-11-03). Every screen that shows an affix tags it with its
+        // family and the boosted value. Both the family of each affix
+        // (AffixFamilies.FamilyOf) and the boost (the player's own ranks) are
+        // answered here, so the client mirrors neither.
+        private async Task HandleAffixFamilies(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                byte[] ranks = await SkillTreeEngine.LoadRanksAsync(db, playerId);
+                var payload = new TickStatePayload { SkillTreeVersion = WarTreeRegistry.CurrentVersion };
+                for (int i = 0; i < ranks.Length && i < SkillRankBuffer.Length; i++) payload.SkillRanks[i] = ranks[i];
+
+                var ids = new System.Collections.Generic.List<string>();
+                var definitions = AffixRegistry.Definitions.ToArray(); // a span cannot live across the awaits
+                // Retired ids too: they still sit on old items, and Totals still
+                // scales them (range/magic damage are Power).
+                foreach (var definition in definitions) ids.Add(definition.Id);
+
+                var families = new[]
+                {
+                    (Family: AffixFamily.Power, Name: "Power", Column: "Might"),
+                    (Family: AffixFamily.Precision, Name: "Precision", Column: "Precision"),
+                    (Family: AffixFamily.Guard, Name: "Guard", Column: "Guard"),
+                    (Family: AffixFamily.Fortune, Name: "Fortune", Column: "Fortune"),
+                    (Family: AffixFamily.Craft, Name: "Craft", Column: "Workshop"),
+                }.Select(f => new
+                {
+                    Key = f.Name.ToLowerInvariant(),
+                    f.Name,
+                    f.Column,
+                    BoostTenths = AffixFamilies.BoostTenths(in payload, f.Family),
+                    AffixIds = ids.Where(id => AffixFamilies.FamilyOf(id) == f.Family).ToArray(),
+                }).ToArray();
+
+                await WriteJsonAsync(context, new { Families = families });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Affix families failed: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+            finally { context.Response.Close(); }
         }
 
         private static bool IsHearthQuery(HttpListenerContext context)

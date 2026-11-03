@@ -315,7 +315,7 @@
         <ItemIcon baseItemId={piece.BaseItemId} name={label} qualityTier={piece.QualityTier} size="lg" />
         <span style:color={rarityColor(piece.QualityTier)}>{rarityName(piece.QualityTier)}</span>
       </div>
-      <Affixes affixes={piece.Affixes} baseItemId={piece.BaseItemId} qualityTier={piece.QualityTier} />
+      <Affixes affixes={piece.Affixes} baseItemId={piece.BaseItemId} qualityTier={piece.QualityTier} families={false} />
     </DetailSheet>
   {/if}
 

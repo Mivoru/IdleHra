@@ -48,6 +48,8 @@ export const queryKeys = {
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
+  /** The viewer's affix families and their tree boosts (phase 5.1). */
+  affixFamilies: ['player', 'affix-families'] as const,
   traits: ['meta', 'traits'] as const,
   ancestorsHall: ['meta', 'ancestors'] as const,
   /** Task 88: what a rebirth would keep and take, right now. */
@@ -534,6 +536,21 @@ export interface ForgeRecipe {
 export interface ForgeSnapshot {
   OwnedEquipment: ForgeEquipment[];
   Recipes: ForgeRecipe[];
+}
+
+/** One affix family: which affixes are in it and how much the viewer's tree boosts them (phase 5.1). */
+export interface AffixFamilyInfo {
+  Key: string;
+  Name: string;
+  /** The tree column whose Affinity node boosts it. */
+  Column: string;
+  /** Tenths of a percent: 100 = the affixes are 10% stronger. */
+  BoostTenths: number;
+  AffixIds: string[];
+}
+
+export function fetchAffixFamilies(): Promise<AffixFamilyInfo[]> {
+  return authedGet<{ Families: AffixFamilyInfo[] }>('/api/v1/skilltree/families').then((r) => r.Families);
 }
 
 export function fetchForge(): Promise<ForgeSnapshot> {

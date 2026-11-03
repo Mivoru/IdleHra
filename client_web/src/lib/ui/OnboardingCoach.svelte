@@ -201,7 +201,7 @@
      time. Hidden rather than unmounted, so the cue stays in the DOM for
      whatever reads it (exercise.mjs follows the steps through it). -->
 {#if cue}
-  <div class="coach" class:behind-guide={$guidedShowing} aria-hidden={$guidedShowing} bind:this={panel} role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
+  <div class="coach" class:compact={collapsed} class:behind-guide={$guidedShowing} aria-hidden={$guidedShowing} bind:this={panel} role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
     <!-- Modul: THE WHOLE HEADER IS THE TOGGLE, and that is the third attempt.
          A separate 19x18 caret button failed check:touch. Growing it to the
          44px floor then failed check:overlap - a 44px box on a panel whose
@@ -312,6 +312,40 @@
       /* Above the chat handle, the gesture bar and the tab bar. */
       bottom: calc(4.25rem + var(--sa-bottom) + var(--tabbar-h));
     }
+  }
+
+  /* Modul: COLLAPSED, IT KEEPS TO THE CORNER (owner, 2026-11-03). The
+     one-line hint sat centred at the bottom of every screen and covered the
+     middle of whatever list was there - the Forge's worn gear, the skill
+     tree's bridges. Collapsed, it is a small pill in the bottom-left corner;
+     the chat handle owns the right one. Expanded it returns to the centre,
+     because then it is what the player is reading. */
+  .coach.compact {
+    left: max(0.75rem, var(--sa-left, 0px));
+    transform: none;
+    max-width: min(22rem, calc(100vw - 6rem));
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 999px;
+  }
+  .coach.compact .head {
+    flex-wrap: nowrap;
+  }
+  /* On a phone the chat handle owns the bottom-LEFT corner, so the pill takes
+     the right one, on the same baseline - inside the 4.5rem body padding
+     (app.css) that lets the last control on a screen scroll clear of both. */
+  @media (max-width: 40rem) {
+    .coach.compact {
+      left: auto;
+      right: max(0.75rem, var(--sa-right, 0px));
+      bottom: calc(0.75rem + var(--sa-bottom) + var(--tabbar-h));
+    }
+  }
+  .coach.compact strong {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 
   .head {
