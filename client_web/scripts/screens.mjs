@@ -278,6 +278,9 @@ export async function signInAsGuest(page, { deviceId = null, fresh = false } = {
   await dismissAppPromo(page);
   await page.getByRole('button', { name: 'Play now', exact: true }).click();
   await waitForShell(page);
+  // A reused guest is a returning account: it meets the welcome-back summary
+  // and, after every version bump, What's new.
+  if (deviceId && !fresh) await dismissLoginModals(page);
   await page.waitForTimeout(500);
   // Modul: a brand-new account is FENCED by the guided first minute
   // (GuidedOverlay.svelte) - only the lit control can be pressed, so every nav
@@ -360,9 +363,24 @@ export async function signIn(page) {
   await page.locator('input[type="password"]').fill(DEV_PASSWORD);
   await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
   await waitForShell(page);
-  // The offline summary is a modal with a backdrop that swallows every click,
-  // and it ARRIVES LATE - built from the first state packet, so a single count()
-  // straight after sign-in can run before it exists.
+  await dismissLoginModals(page);
+  await dismissEventIntro(page);
+}
+
+/**
+ * Closes the welcome-back summary and the What's new window, the two modals a
+ * returning account meets at sign-in; both have a backdrop that swallows every
+ * click.
+ *
+ * Modul: THE REUSED SMOKE GUEST IS A RETURNING ACCOUNT (2026-11-03). Only the
+ * fixture sign-in closed these, so the first post-deploy smoke:screens run
+ * against production failed on every release that bumped the version - the
+ * reused guest (e2e-smoke-guest-v1) had not seen the new notes yet - and
+ * passed on the rerun, which read as a flake twice (1.54.0, 1.54.1).
+ */
+async function dismissLoginModals(page) {
+  // The offline summary ARRIVES LATE - built from the first state packet, so a
+  // single count() straight after sign-in can run before it exists.
   const deadline = Date.now() + 8000;
   while (Date.now() < deadline) {
     const cont = page.getByRole('button', { name: 'Continue', exact: true });
@@ -380,7 +398,6 @@ export async function signIn(page) {
     await notes.getByRole('button', { name: 'Close' }).first().click().catch(() => {});
     await page.waitForTimeout(300);
   }
-  await dismissEventIntro(page);
 }
 
 /**
