@@ -799,6 +799,59 @@ namespace FolkIdle.Server.Engine
         /// <summary>The production period of <see cref="RunCycleAsync"/>.</summary>
         internal const int CyclePeriodMs = 3000;
 
+        internal delegate void DropRequestVisitor(in CombatLootDropRequest request);
+
+        // Transactions this worker opened for drops (one per coalesced batch).
+        private long _batchesWritten;
+
+        /// <summary>
+        /// Takes up to <paramref name="budget"/> requests off the queue and folds
+        /// the ones that differ ONLY in Kills into one request carrying the sum.
+        ///
+        /// Modul: ONE TRANSACTION PER PLAYER AND MONSTER A CYCLE, NOT ONE PER
+        /// KILL (owner-approved, 2026-11-03). The live tick enqueues a request
+        /// per kill, and each cost a scope, a Serializable transaction and a
+        /// commit: about 8,000 a minute at 20 players, most of a lockstep run's
+        /// wall time and the same load in production. ProcessMonsterLootDropAsync
+        /// already rolls Kills = N as N independent kills inside one transaction
+        /// - the offline catch-up has relied on that since 2026-09-30 - so the
+        /// drop distribution is unchanged: materials, equipment, the boss
+        /// guarantee and the chest are all rolled once per kill in its loop.
+        /// Losing the transaction loses nothing either: its catch already writes
+        /// every resolved roll to the durable PendingGrantOutbox.
+        ///
+        /// The key is the whole request with Kills cleared, so a field added to
+        /// CombatLootDropRequest later splits batches rather than being silently
+        /// merged. Batches keep the order their first request arrived in.
+        /// </summary>
+        internal static List<CombatLootDropRequest> CoalesceDropRequests(
+            ConcurrentQueue<CombatLootDropRequest> queue, int budget, DropRequestVisitor? onTaken = null)
+        {
+            var batches = new List<CombatLootDropRequest>();
+            var index = new Dictionary<CombatLootDropRequest, int>();
+            for (int taken = 0; taken < budget && queue.TryDequeue(out var request); taken++)
+            {
+                onTaken?.Invoke(in request);
+                int kills = request.Kills <= 0 ? 1 : request.Kills; // zero means one
+                var key = request;
+                key.Kills = 0;
+                if (index.TryGetValue(key, out int at))
+                {
+                    var batch = batches[at];
+                    long sum = (long)batch.Kills + kills;
+                    batch.Kills = sum > int.MaxValue ? int.MaxValue : (int)sum;
+                    batches[at] = batch;
+                }
+                else
+                {
+                    request.Kills = kills;
+                    index[key] = batches.Count;
+                    batches.Add(request);
+                }
+            }
+            return batches;
+        }
+
         /// <summary>
         /// One drain cycle: the queued drops, the auto-fusions they asked for, the
         /// gathering grants, the throughput line. The loop below runs it every
@@ -817,14 +870,15 @@ namespace FolkIdle.Server.Engine
             // once and stopping there makes a cycle finite whatever the
             // producers are doing.
             int lootBudget = DropRequestQueue.Count;
-            for (int drained = 0; drained < lootBudget; drained++)
+            foreach (var request in CoalesceDropRequests(DropRequestQueue, lootBudget, (in CombatLootDropRequest taken) =>
+                     {
+                         _requestsDrained++;
+                         NoteOdds(in taken);
+                     }))
             {
-                if (!DropRequestQueue.TryDequeue(out var request)) break;
-
-                int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
-                _requestsDrained++;
-                NoteOdds(in request);
+                int killsThisRequest = request.Kills;
                 _killsRolled += killsThisRequest;
+                _batchesWritten++;
 
                 try
                 {
@@ -1107,7 +1161,7 @@ namespace FolkIdle.Server.Engine
             Console.WriteLine(
                 $"Loot: tick saw {Interlocked.Exchange(ref _codexKills, 0)} kills, "
                 + $"enqueued {Interlocked.Exchange(ref _killsEnqueued, 0)}, "
-                + $"worker drained {_requestsDrained} requests / {_killsRolled} kills -> "
+                + $"worker drained {_requestsDrained} requests / {_killsRolled} kills in {_batchesWritten} batches -> "
                 + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
                 + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed, "
                 + $"{DropRequestQueue.Count} still queued; "
@@ -1118,6 +1172,7 @@ namespace FolkIdle.Server.Engine
             _gatheringWrites = 0;
             _requestsFailed = 0;
             _requestsDrained = 0;
+            _batchesWritten = 0;
             _killsRolled = 0;
             _equipmentWritten = 0;
             _materialsGranted = 0;
