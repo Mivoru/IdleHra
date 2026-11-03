@@ -443,6 +443,46 @@ namespace FolkIdle.Server.Tests
             checkpoints.DrainWriter(TimeSpan.FromSeconds(10));
         }
 
+        /// <summary>
+        /// Lockstep (docs/design/LOCKSTEP_SIM.md): the tick is parked while a bot
+        /// thinks, so a rebirth asked for over REST would wait for a tick that
+        /// waits for the bot. The parked tick's LockstepRestService takes the
+        /// request; the REST call must complete with NO tick run at all.
+        /// </summary>
+        [Fact]
+        public async Task UnderLockstepTheParkedTickAnswersARebirthWithoutRunningATick()
+        {
+            var me = await SeedAsync(950_088_951L, level: 66, hallMembers: 2);
+            await ActiveEraAsync();
+
+            var checkpoints = new StateCheckpointManager(_fixture.ServiceProvider);
+            var registry = new PlayerSessionRegistry();
+            var live = await checkpoints.LoadPlayerState(me.PlayerId);
+            var activePlayers = new Dictionary<long, TickStatePayload> { [me.PlayerId] = live };
+
+            var request = new RebirthRequest
+            {
+                PlayerId = me.PlayerId,
+                ExpectedRebirthCount = 0,
+                Engine = new RebirthEngine(_fixture.ServiceProvider),
+            };
+            registry.RebirthRequestQueue.Enqueue(request);
+            var snapshot = new FolkIdle.Server.Domain.Combat.PayloadSnapshotOrder { PlayerId = me.PlayerId };
+            registry.PayloadSnapshotQueue.Enqueue(snapshot);
+            Assert.True(FolkIdle.Server.Domain.Combat.LockstepRestService.HasWaitingCallers(registry));
+
+            FolkIdle.Server.Domain.Combat.LockstepRestService.Serve(registry, activePlayers, worldBossEngine: null, checkpoints);
+
+            Assert.False(FolkIdle.Server.Domain.Combat.LockstepRestService.HasWaitingCallers(registry));
+            var served = await snapshot.Completion.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.NotNull(served);
+            var outcome = await request.Completion.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Equal(RebirthResult.Ok, outcome!.Value.Result);
+            Assert.True(registry.StateReloadQueue.TryDequeue(out var reloaded));
+            Assert.Equal(1, reloaded.CurrentLevel);
+            checkpoints.DrainWriter(TimeSpan.FromSeconds(10));
+        }
+
         [Fact]
         public async Task ARebirthPurgesTheRedisFrameThatWouldWriteTheOldLevelBack()
         {

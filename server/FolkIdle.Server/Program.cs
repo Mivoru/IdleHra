@@ -618,6 +618,7 @@ mailboxEngine.StartCleanupCron();
 // (telemetry, funnel, push, stat sampler, guild wars) keep their wall loops.
 var simCrons = FolkIdle.Server.Domain.Shared.SimLockstep.Conductor != null ? new FolkIdle.Server.Domain.Shared.SimCronPump() : null;
 FolkIdle.Server.Domain.Shared.SimLockstep.Crons = simCrons;
+int simCronScale = FolkIdle.Server.Domain.Shared.SimLockstep.ResolveCronScale(Environment.GetEnvironmentVariable("FOLKIDLE_SIM_CRON_SCALE"));
 if (simCrons == null) liveOpsTickEngine.StartCron();
 else simCrons.Register("liveops", LiveOpsTickEngine.CyclePeriodMs, liveOpsTickEngine.RunCycleAsync, runAtStart: true);
 pushNotificationTriggerEngine.StartCron();
@@ -651,10 +652,10 @@ if (simCrons == null)
 }
 else
 {
-    simCrons.Register("codex", 5000, () => codexSvc.ProcessKillBatchAsync(CancellationToken.None));
-    simCrons.Register("loot", CombatLootEngine.CyclePeriodMs, combatLootEngine.RunCycleAsync);
-    simCrons.Register("pending-grants", 5000, pendingGrantDrainEngine.DrainOneCycleAsync);
-    simCrons.Register("achievements", 15000, () => achSvc.SweepOnceAsync(CancellationToken.None));
+    simCrons.Register("codex", 5000 * simCronScale, () => codexSvc.ProcessKillBatchAsync(CancellationToken.None));
+    simCrons.Register("loot", CombatLootEngine.CyclePeriodMs * simCronScale, combatLootEngine.RunCycleAsync);
+    simCrons.Register("pending-grants", 5000 * simCronScale, pendingGrantDrainEngine.DrainOneCycleAsync);
+    simCrons.Register("achievements", 15000 * simCronScale, () => achSvc.SweepOnceAsync(CancellationToken.None));
     simCrons.Register("season-era", 300_000, () => seasonEraSvc.ExecuteEraCheckAsync(CancellationToken.None), runAtStart: true);
 }
 offlineCapNotifier.StartCron();
@@ -670,7 +671,7 @@ statSampler.StartCron();
 // Task 54: the level chest, one per five levels. Producers only enqueue.
 var cosmeticGrantEngine = new CosmeticGrantEngine(serviceProvider, playerRegistry);
 if (simCrons == null) cosmeticGrantEngine.StartCron();
-else simCrons.Register("cosmetic-chests", 1000, cosmeticGrantEngine.DrainOneCycleAsync);
+else simCrons.Register("cosmetic-chests", 1000 * simCronScale, cosmeticGrantEngine.DrainOneCycleAsync);
 // The world-first claim is settled in Redis, off the simulation tick - see
 // BossFirstClearAnnouncer for why the tick cannot ask the question itself.
 FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;
@@ -689,7 +690,7 @@ else
 {
     simCrons.Register("leaderboards", LeaderboardCronEngine.CyclePeriodMs, leaderboardCronEngine.RunCycleAsync, runAtStart: true);
     simCrons.Register("leaderboard-payout", LeaderboardPayoutEngine.CyclePeriodMs, () => leaderboardPayoutEngine.PayCurrentWeekAsync(FolkIdle.Server.GameClock.UtcNow), runAtStart: true);
-    Console.WriteLine($"[SimCronPump] LOCKSTEP: {simCrons.Count} gameplay crons run on the tick, at their production periods.");
+    Console.WriteLine($"[SimCronPump] LOCKSTEP: {simCrons.Count} gameplay crons run on the tick; codex/loot/grants/achievements/chests at {simCronScale}x their production period (FOLKIDLE_SIM_CRON_SCALE).");
 }
 
 AppDomain.CurrentDomain.ProcessExit += (s, e) => 

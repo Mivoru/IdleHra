@@ -2838,23 +2838,12 @@ namespace FolkIdle.Server.Domain.Combat
 
         /// <summary>
         /// The tick-side answers to REST calls that wait on the tick: payload
-        /// snapshots and world boss strikes. Same drains, same order, as the tick
+        /// snapshots, world boss strikes and rebirth requests (every REST route
+        /// that awaits a tick-set Completion, 2026-11-03). Same drains, same order, as the tick
         /// head runs them; lockstep only, between ticks.
         /// </summary>
         private void ServeWaitingRestCallers()
-        {
-            if (_playerRegistry.PayloadSnapshotQueue.IsEmpty && _playerRegistry.WorldBossStrikeQueue.IsEmpty) return;
-            Monitor.Enter(_activePlayers);
-            try
-            {
-                WorldBossTickCoordinator.DrainStrikeOrders(_playerRegistry, _activePlayers, _worldBossEngine);
-                PayloadSnapshotTickCoordinator.Drain(_playerRegistry, _activePlayers);
-            }
-            finally
-            {
-                Monitor.Exit(_activePlayers);
-            }
-        }
+            => LockstepRestService.Serve(_playerRegistry, _activePlayers, _worldBossEngine, _checkpointManager);
 
         /// <summary>Checkpoint jobs allowed in the queue before lockstep stops starting ticks.</summary>
         internal const int LockstepCheckpointQueueBound = 16;
