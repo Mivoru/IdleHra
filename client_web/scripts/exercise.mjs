@@ -898,30 +898,36 @@ await go('Combat');
 }
 if (want('forge')) {
 await go('Forge');
+// Modul: THE FORGE HAS TWO TABS (2026-11-03). Affixes and Fusion are no longer
+// both on screen, so each check opens its tab first; forgeTab() is the one way
+// this script does that.
+async function forgeTab(name) {
+  await page.getByTestId(`forge-tab-${name}`).click().catch(() => {});
+  await page.waitForTimeout(400);
+}
 {
-  const text = await page.evaluate(() => document.body.innerText);
+  await forgeTab('fusion');
+  const fusionText = await page.evaluate(() => document.body.innerText);
+  await forgeTab('affixes');
+  const text = fusionText + ' ' + (await page.evaluate(() => document.body.innerText));
   // Modul: NO MORE "Forge stock". That panel listed the equipment recipes,
   // and equipment is monster loot now - the Forge fuses and rerolls what you
   // looted, and recipes live on the Crafting screen with the tool tree.
   // Asserted on the panel headings rather than on item names, because which
   // items exist is content that legitimately changes.
-  record('forge shows fusion and reroll', /Fusion/.test(text) && /Affix reroll/.test(text));
+  record('forge shows fusion and affixes tabs', /Fusion/.test(fusionText) && /Refine/.test(text) && /Affixes/.test(text));
   record(
     'the forge no longer offers to craft equipment',
     !/Forge stock/.test(text),
     'equipment is a drop',
   );
 
-  // Reroll needs an item and an affix picked. The screen's selects are the
-  // only way to know which affix index the command should carry.
-  const selects = page.locator('select');
-  const count = await selects.count();
-  record('forge exposes selects for fusion and reroll', count >= 3, `${count} selects`);
-
   // Task 100: one row per item, each with its own Fuse. The fixture holds
   // thousands of identical pieces, so an empty list here is the old chip
   // panel's failure (or a fixture that lost its stock - re-seed).
+  await forgeTab('fusion');
   const rows = await page.locator('[data-testid="fusion-row"]').count();
+  await forgeTab('affixes');
   record('the forge lists one fusion row per item', rows > 0, `${rows} rows`);
 }
 
@@ -935,13 +941,15 @@ await go('Forge');
   const refineSpent = async () =>
     ((await apiGet('/api/v1/player/gold-ledger').catch(() => null))?.Categories ?? [])
       .filter((c) => c.Category === 'Refine').reduce((a, c) => a + (c.SinceRecorded ?? 0), 0);
+  await forgeTab('affixes');
   const firstRow = page.locator('[data-guide="forge-reroll-item"] [data-item-id]').first();
   await firstRow.waitFor({ timeout: 10000 }).catch(() => {});
   const itemId = Number(await firstRow.getAttribute('data-item-id').catch(() => 0));
   await firstRow.click().catch(() => {});
   const before = itemId > 0 ? await apiPost('/api/v1/dev/item/payload', { Id: itemId }).catch(() => null) : null;
   const spentBefore = await refineSpent();
-  const button = page.getByTestId('forge-refine');
+  // One Refine per affix row now; the first refines slot 1.
+  const button = page.getByTestId('forge-refine').first();
   let enabled = false;
   for (let t = 0; t < 20 && !enabled; t++) {
     enabled = await button.isEnabled({ timeout: 500 }).catch(() => false);
@@ -984,6 +992,7 @@ await go('Forge');
     await dismissOfflineSummary(3000);
     await go('Forge');
     await page.waitForTimeout(1200);
+    await forgeTab('fusion');
 
     // Task 100: the chips are gone. The row for the item carries a Stack
     // button that points the whole-stack section at its lowest rarity; the
@@ -1044,6 +1053,7 @@ await go('Forge');
       await dismissOfflineSummary(3000);
       await go('Forge');
       await page.waitForTimeout(1200);
+      await forgeTab('fusion');
       const find = page.getByPlaceholder('Find an item...');
       if ((await find.count()) > 0) await find.fill('Doom Gorget');
       const fuseBtn = page

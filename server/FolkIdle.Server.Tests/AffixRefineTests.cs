@@ -79,7 +79,7 @@ namespace FolkIdle.Server.Tests
             Assert.InRange(refined, 48, 72);
 
             int region = ContentRegistry.ItemDefinitions.ToArray().First(d => ContentRegistry.GetItemBaseId(d.Id) == weapon).RegionTier;
-            long expected = AffixRerollEngine.RefineCost(AffixRegistry.CalculateRerollGoldCost(region, 0, rerollStatType: false));
+            long expected = AffixRerollEngine.RefineCost(AffixRegistry.CalculateRerollGoldCost(region, 0, rerollStatType: false, itemQualityTier: 6));
             long gold = (await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == playerId && c.ItemId == "gold")).Quantity;
             Assert.Equal(1_000_000L - expected, gold);
             Assert.True(await verify.GoldSpendDaily.AnyAsync(g => g.PlayerId == playerId && g.Category == (short)GoldSpendCategory.Refine && g.Amount == expected));

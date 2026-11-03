@@ -129,6 +129,24 @@ namespace FolkIdle.Server.Tests
             Assert.InRange(extreme, 1L, AffixRegistry.RerollGoldMaxCost);
         }
 
+        // The owner's table (2026-11-03): region base x the ITEM's rarity -
+        // Normal to Uncommon x1, Rare x2, Epic x4, Legendary x8, Mythic x20,
+        // Relic and above x50. Refine stays a quarter of the reroll.
+        [Theory]
+        [InlineData(1, 1, 1_000L)]
+        [InlineData(1, 3, 1_000L)]
+        [InlineData(2, 4, 4_000L)]
+        [InlineData(3, 6, 16_000L)]
+        [InlineData(4, 7, 40_000L)]
+        [InlineData(5, 8, 200_000L)]
+        [InlineData(5, 9, 500_000L)]
+        [InlineData(5, 14, 500_000L)]
+        public void RerollGoldCost_IsRegionTimesTheItemsRarity(int region, int itemTier, long expected)
+        {
+            Assert.Equal(expected, AffixRegistry.CalculateRerollGoldCost(region, 0, false, itemQualityTier: itemTier));
+            Assert.Equal((expected + 3) / 4, AffixRerollEngine.RefineCost(expected));
+        }
+
         [Fact]
         public void RarityUpgrade_CostsDiamonds_AndIsZeroAtLegendary()
         {

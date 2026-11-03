@@ -724,7 +724,28 @@ namespace FolkIdle.Server.Engine
         // rarity - every equippable piece in items.json is RegionTier 1-5, and
         // the default arm below exists for the non-equippable content that
         // reaches tier 10 and can never be rerolled anyway.
-        public static long CalculateRerollGoldCost(int regionTier, int consecutiveAttempts, bool rerollStatType)
+        // Modul: THE ITEM'S RARITY MULTIPLIES THE PRICE (owner, 2026-11-03).
+        // The region table alone made a reroll worth seconds of income at the
+        // top: measured over 14 days of production, rerolls were 0.24-0.38% of
+        // what the three players earned (1,600-8,600 gold a second), so the
+        // price decided nothing. A beginner's Normal and Common pieces cost
+        // what they did; a Legendary x8, Mythic x20, Relic and above x50 - a
+        // region-5 Relic reroll is 500,000, a few minutes of endgame income,
+        // and a chase for a Legendary affix (1 in 100) is hours. Indexed by the
+        // 14 quality tiers (RarityTier), 1-based.
+        public static readonly int[] RerollRarityFactor =
+        {
+            1,                  // (unused 0)
+            1, 1, 1,            // Normal, Common, Uncommon
+            2, 3, 4,            // Rare, Ultra Rare, Epic
+            8, 20,              // Legendary, Mythic
+            50, 50, 50, 50, 50, 50, // Relic, Ancient, Divine, Demonic, Godly, Transcendent
+        };
+
+        public static int RerollRarityFactorFor(int itemQualityTier)
+            => RerollRarityFactor[Math.Clamp(itemQualityTier, 1, RerollRarityFactor.Length - 1)];
+
+        public static long CalculateRerollGoldCost(int regionTier, int consecutiveAttempts, bool rerollStatType, int itemQualityTier = 1)
         {
             if (consecutiveAttempts < 0) consecutiveAttempts = 0;
 
@@ -738,7 +759,7 @@ namespace FolkIdle.Server.Engine
                 _ => 10000L
             };
 
-            double cost = baseCost * Math.Pow(RerollGoldStreakGrowth, consecutiveAttempts);
+            double cost = baseCost * RerollRarityFactorFor(itemQualityTier) * Math.Pow(RerollGoldStreakGrowth, consecutiveAttempts);
 
             if (rerollStatType) cost *= RerollStatTypeMultiplier;
 

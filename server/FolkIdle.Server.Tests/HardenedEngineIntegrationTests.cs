@@ -12063,7 +12063,7 @@ namespace FolkIdle.Server.Tests
                 long goldRemaining = await db.CommodityRecords.AsNoTracking()
                     .Where(c => c.PlayerId == testPlayerId && c.ItemId == "gold")
                     .Select(c => c.Quantity).FirstAsync();
-                Assert.Equal(50_000_000L - AffixRegistry.CalculateRerollGoldCost(1, 0, rerollStatType: false), goldRemaining);
+                Assert.Equal(50_000_000L - AffixRegistry.CalculateRerollGoldCost(1, 0, rerollStatType: false, itemQualityTier: rarityTier), goldRemaining);
 
                 long diamondsRemaining = await db.CommodityRecords.AsNoTracking()
                     .Where(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond")

@@ -9,8 +9,8 @@
   import { raceName } from '../lib/ui/races';
   import { EQUIPMENT_SLOTS } from '../lib/ui/slots';
   import { summarizeAffixes } from '../lib/ui/itemRow';
-  import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
-  import { executeForgeFusion, fuseStack, rerollAffix, refineCost, REFINE_OPERATION, REROLL_OPERATIONS, MAX_FORGE_LEVEL } from '../lib/net/commands';
+  import { prettifyBaseId } from '../lib/net/content';
+  import { executeForgeFusion, fuseStack, rerollAffix, refineCost, REFINE_OPERATION, MAX_FORGE_LEVEL } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
@@ -42,12 +42,9 @@
   import QueryError from '../lib/ui/QueryError.svelte';
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
+  import { questSpotlight } from '../lib/stores/questSpotlight';
   import { commandResults } from '../lib/stores/game';
 
-  let content: ContentRegistry | null = $state(null);
-  $effect(() => {
-    loadContent().then((c) => (content = c));
-  });
 
   const client = useQueryClient();
   const forge = createQuery(() => ({ queryKey: queryKeys.forge, queryFn: fetchForge }));
@@ -490,6 +487,7 @@
   });
   let rerollOperation = $state(0);
   let autoReroll = $state(false);
+  let autoOpen = $state(false);
   let autoAttempts = $state(10);
   let stopMinRarity = $state(4);
   let stopAffixIndex = $state(0);
@@ -509,27 +507,55 @@
     }
   });
 
-  function getRerollCost(regionTier: number): number {
-    switch (regionTier) {
-      case 1: return 1000;
-      case 2: return 2000;
-      case 3: return 4000;
-      case 4: return 5000;
-      case 5: return 10000;
-      default: return 10000;
+  // Modul: THE PRICE IS THE SERVER'S (2026-11-03). This screen kept its own
+  // copy of the region table; the price now also follows the item's rarity
+  // (owner: rarity x region), and the inventory says what the engine will
+  // charge for each piece - AffixRerollEngine.GoldCostFor - so there is
+  // nothing here to drift.
+  const rerollItem = $derived(owned.find((i) => i.Id === rerollItemId) ?? null);
+
+  // On a phone the card sits under the whole picker, so a tap on a piece
+  // changed nothing visible; bring the card into view when the layout is
+  // stacked (the same 760px break as .affixlayout).
+  let cardCol: HTMLElement | null = $state(null);
+  function pickItem(id: number) {
+    rerollItemId = id;
+    rerollAffixIndex = 0;
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches) {
+      requestAnimationFrame(() => cardCol?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     }
   }
+  const rerollFee = $derived(rerollItem?.RerollGoldCost ?? 0);
+  const refineFee = $derived(rerollItem?.RefineGoldCost ?? refineCost(rerollFee));
 
-  const rerollItem = $derived(owned.find((i) => i.Id === rerollItemId) ?? null);
-  const rerollFee = $derived.by(() => {
-    if (!rerollItem || !content) return 0;
-    const def = content.itemsByBaseId.get(rerollItem.BaseItemId);
-    const regionTier = def?.RegionTier ?? 1;
-    return getRerollCost(regionTier);
+  // Modul: TWO TABS, NOT TWO PANELS (owner, 2026-11-03: "the Forge is
+  // confusing"). Affixes and Fusion were side by side, each a long column; a
+  // tab shows one job at a time. The choice is remembered per browser, and a
+  // quest step that lights a control on the other tab switches to it - the
+  // spotlight cannot ring a button that is not drawn.
+  type ForgeTab = 'affixes' | 'fusion';
+  const TAB_STORAGE_KEY = 'folkidle.forgeTab';
+  function readTab(): ForgeTab {
+    try {
+      return localStorage.getItem(TAB_STORAGE_KEY) === 'fusion' ? 'fusion' : 'affixes';
+    } catch {
+      return 'affixes';
+    }
+  }
+  let tab = $state<ForgeTab>(readTab());
+  $effect(() => {
+    try {
+      localStorage.setItem(TAB_STORAGE_KEY, tab);
+    } catch {
+      // A browser refusing storage only forgets the tab.
+    }
   });
-  const refineFee = $derived(refineCost(rerollFee));
+  $effect(() => {
+    const targets = $questSpotlight?.targets ?? [];
+    if (targets.some((t) => t.startsWith('forge-fuse'))) tab = 'fusion';
+    else if (targets.some((t) => t.startsWith('forge-reroll'))) tab = 'affixes';
+  });
   const rerollAffixRows = $derived(rerollItem ? toDisplayAffixes(rerollItem.Affixes) : []);
-  const selectedOperation = $derived(REROLL_OPERATIONS[rerollOperation] ?? REROLL_OPERATIONS[0]);
 
   // Modul: THE FORGE GAVE NO SIGN IT HAD DONE ANYTHING.
   //
@@ -553,8 +579,8 @@
   // turns the button into a two-tap ConfirmButton and says, before the first
   // tap, what is at stake. The affix ABOUT TO BE DESTROYED, not the one that
   // will replace it.
-  const rerollGuard = $derived.by(() => {
-    const current = rerollAffixRows[rerollAffixIndex];
+  function guardFor(index: number) {
+    const current = rerollAffixRows[index];
     if (!current || current.rarity < guardRarity) return null;
     return {
       what: `${current.rarityName} ${current.label} ${current.value}`,
@@ -562,21 +588,23 @@
         ? `Auto-reroll will keep rolling this slot up to ${autoAttempts} times, so it is gone on the first attempt.`
         : 'A reroll replaces it outright - it can come out worse.',
     };
-  });
+  }
 
   // Refine (roadmap 3.4): the affix keeps its stat and rarity; only the
   // number moves, up to 20% either way, for a quarter of the price. Nothing
   // is destroyed, so it needs no guard.
-  function doRefine() {
-    const outcome = rerollAffix(rerollItemId, rerollAffixIndex, REFINE_OPERATION);
+  function doRefine(index: number) {
+    rerollAffixIndex = index;
+    const outcome = rerollAffix(rerollItemId, index, REFINE_OPERATION);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     rerollFlash++;
     play('forgeReroll');
     refresh();
   }
 
-  function doReroll() {
-    const outcome = rerollAffix(rerollItemId, rerollAffixIndex, rerollOperation, {
+  function doReroll(index: number) {
+    rerollAffixIndex = index;
+    const outcome = rerollAffix(rerollItemId, index, rerollOperation, {
       maxAttempts: autoReroll ? autoAttempts : 0,
       stopMinRarity,
       stopAffixIndex,
@@ -588,7 +616,14 @@
   }
 </script>
 
-<div class="grid">
+<div class="tabs" role="tablist" aria-label="Forge">
+  <button role="tab" class="tab" class:active={tab === 'affixes'} aria-selected={tab === 'affixes'} data-testid="forge-tab-affixes" onclick={() => (tab = 'affixes')}>Affixes</button>
+  <button role="tab" class="tab" class:active={tab === 'fusion'} aria-selected={tab === 'fusion'} data-testid="forge-tab-fusion" onclick={() => (tab = 'fusion')}>Fusion</button>
+  <span class="purse dim small">You have <Money amount={gold} /></span>
+</div>
+
+<div class="grid single">
+  {#if tab === 'fusion'}
   <section class="panel">
     <h2>Fusion</h2>
 
@@ -812,27 +847,18 @@
       {/key}
     {/if}
   </section>
-
-  <section class="panel">
-    <h2>Affix reroll</h2>
+  {:else}
+  <section class="panel affixpanel">
+    <h2>Affixes</h2>
     <p class="dim small">
-      Rerolls one affix on one item, for gold. Its stat, its rarity and its
-      value are all rolled fresh together - so it can come out worse. The other
-      affixes on the item are untouched.
+      <b>Reroll</b> rolls one affix fresh - stat, rarity and value - and it can
+      come out worse. <b>Refine</b> keeps the stat and its rarity and moves only
+      the value, up to 20% either way, for a quarter of the price. The price
+      follows the item's region and rarity, never how many times you tried.
     </p>
 
-    {#if rerollItem}
-      <p class="price">
-        This reroll costs
-        <b class:blocked={gold < rerollFee}><Money amount={rerollFee} available={gold} /></b>.
-        You have <Money amount={gold} />.
-        <span class="dim tiny">
-          The price follows the item's rarity, not how many times you have
-          tried - a run of poor rolls does not get more expensive.
-        </span>
-      </p>
-    {/if}
-
+    <div class="affixlayout">
+    <div class="picker">
     <div class="pickhead">
       <h3>{showAllForReroll ? 'Everything you own' : 'What you are wearing'}</h3>
       <button class="tiny-btn" onclick={() => (showAllForReroll = !showAllForReroll)}>
@@ -854,10 +880,7 @@
           emptyText={showAllForReroll
             ? 'Nothing to reroll.'
             : 'Nothing equipped. Dress a character on the Character screen, or show all.'}
-          onselect={(item) => {
-            rerollItemId = item.Id;
-            rerollAffixIndex = 0;
-          }}
+          onselect={(item) => pickItem(item.Id)}
         />
       {:else}
         <div class="wearers" data-testid="forge-wearers">
@@ -874,10 +897,7 @@
                         class="wornrow"
                         class:selected={item.Id === rerollItemId}
                         data-item-id={item.Id}
-                        onclick={() => {
-                          rerollItemId = item.Id;
-                          rerollAffixIndex = 0;
-                        }}
+                        onclick={() => pickItem(item.Id)}
                       >
                         <ItemIcon baseItemId={item.BaseItemId} name={prettifyBaseId(item.BaseItemId)} qualityTier={item.QualityTier} size="sm" />
                         <span class="text">
@@ -899,160 +919,142 @@
       {/if}
     </div>
 
-    {#if rerollItem}
+    </div>
+
+    <div class="cardcol" bind:this={cardCol}>
+    {#if !rerollItem}
+      <p class="dim small pickfirst">Pick a piece on the left to see its affixes.</p>
+    {:else}
       {#if rerollItem.IsAffixLocked}
         <p class="warn">This item's affixes are locked.</p>
       {/if}
 
       <div class="itemcard">
         <span
+          class="cardname"
           style="color: {rarityColor(rerollItem.QualityTier)}"
           class:rarity-glow={shouldGlow(rerollItem.QualityTier)}
         >
           {prettifyBaseId(rerollItem.BaseItemId)}
         </span>
+        <span class="dim tiny">{rarityName(rerollItem.QualityTier)}</span>
         <Affixes affixes={rerollItem.Affixes} baseItemId={rerollItem.BaseItemId} qualityTier={rerollItem.QualityTier} />
       </div>
 
       {#if rerollAffixRows.length === 0}
         <p class="dim">This item has no affixes to reroll.</p>
       {:else}
-        <!-- Modul: A LIST OF SLOTS, not a dropdown of affixes.
-             Reported twice as affixes "jumping". Two real bugs caused it - the
-             server appended the rerolled affix to the end of the item instead
-             of substituting it in place, and this screen counted a payload key
-             the server skips, so the index the player picked and the index the
-             server rerolled were off by one.
-             Both are fixed, but a dropdown hides the thing that makes the
-             remaining behaviour legible: the SLOT stays and its contents
-             change. Shown as numbered slots so a reroll visibly rewrites the
-             one that is highlighted and touches nothing else. -->
-        <p class="dim small">Pick the slot to reroll. It stays where it is - only what is in it changes.</p>
-        <ul class="slots">
-          {#each rerollAffixRows as row, index}
-            <li>
-              <button
-                class="slot"
-                class:selected={rerollAffixIndex === index}
-                onclick={() => (rerollAffixIndex = index)}
-              >
+        <!-- Modul: ONE ROW PER AFFIX, WITH ITS OWN BUTTONS (owner, 2026-11-03).
+             It was a list of slots to pick and two look-alike buttons side by
+             side at the bottom; Refine sat flush against Reroll and was pressed
+             by mistake. Each affix now carries Reroll on the left and Refine on
+             the right, apart and styled differently, with the price on each.
+             The SLOT still stays where it is - only what is in it changes (the
+             "jumping affixes" reports, fixed server-side). -->
+        <ul class="affixrows" data-testid="forge-affix-rows">
+          {#each rerollAffixRows as row, index (index)}
+            {@const guard = guardFor(index)}
+            {@const locked = rerollItem.IsAffixLocked}
+            <li class="affixrow" class:selected={rerollAffixIndex === index}>
+              <span class="what">
                 <span class="dim tiny">slot {index + 1}</span>
                 <span class="label">{row.label} {row.value}</span>
                 <span class="dim tiny">{row.rarityName}</span>
-              </button>
+              </span>
+              <span class="acts">
+                {#if guard}
+                  {#key `${rerollItemId}:${index}:${autoReroll}`}
+                    <ConfirmButton
+                      small
+                      label="{autoReroll ? `Auto ×${autoAttempts}` : 'Reroll'} · {formatGold(rerollFee)}"
+                      guide={index === 0 ? 'forge-reroll' : undefined}
+                      confirmLabel="Destroy {guard.what}?"
+                      disabled={locked || gold < rerollFee}
+                      onConfirm={() => doReroll(index)}
+                    />
+                  {/key}
+                {:else}
+                  <button
+                    class="tiny-btn rerollbtn"
+                    data-guide={index === 0 ? 'forge-reroll' : undefined}
+                    data-testid="forge-reroll"
+                    disabled={locked || gold < rerollFee}
+                    onclick={() => doReroll(index)}
+                  >
+                    {autoReroll ? `Auto ×${autoAttempts}` : 'Reroll'} · {formatGold(rerollFee)}
+                  </button>
+                {/if}
+                <span class="gap" aria-hidden="true"></span>
+                <button
+                  class="tiny-btn refinebtn"
+                  data-testid="forge-refine"
+                  disabled={locked || autoReroll || gold < refineFee}
+                  title="Keeps the stat and its rarity; rerolls only the value, up to 20% up or down."
+                  onclick={() => doRefine(index)}
+                >
+                  Refine ±20% · {formatGold(refineFee)}
+                </button>
+              </span>
             </li>
           {/each}
         </ul>
+        {#if guardRarity !== GUARD_OFF}
+          <p class="dim tiny hint">A Reroll on {guardRarity === 5 ? 'a Legendary' : 'an Epic or Legendary'} affix asks first.</p>
+        {/if}
       {/if}
 
-      <!-- Modul: the operation picker is gone. There is one reroll and it
-           costs gold, so a dropdown with a single entry would be asking the
-           player to choose between one thing - see REROLL_OPERATIONS. The hint
-           stays, because what the reroll actually does to the affix is the part
-           worth saying. -->
-      <p class="dim tiny hint">{selectedOperation.hint}</p>
+      <details class="autopanel" bind:open={autoOpen}>
+        <summary>Auto-reroll and safety</summary>
+        <label class="guard">
+          Ask before rerolling
+          <select bind:value={guardRarity}>
+            <option value={5}>Legendary affixes</option>
+            <option value={4}>Epic and Legendary</option>
+            <option value={GUARD_OFF}>Never ask</option>
+          </select>
+        </label>
 
-      <label class="guard">
-        Ask before rerolling
-        <select bind:value={guardRarity}>
-          <option value={5}>Legendary affixes</option>
-          <option value={4}>Epic and Legendary</option>
-          <option value={GUARD_OFF}>Never ask</option>
-        </select>
-      </label>
+        <label class="check">
+          <input type="checkbox" bind:checked={autoReroll} />
+          Reroll buttons keep rolling until a stop condition is met
+        </label>
 
-      <label class="check">
-        <input type="checkbox" bind:checked={autoReroll} />
-        Auto-reroll until a stop condition is met
-      </label>
-
-      {#if autoReroll}
-        <div class="auto">
-          <label>
-            Max attempts
-            <input type="number" min="1" max="1000" bind:value={autoAttempts} />
-          </label>
-          <label>
-            Stop at rarity
-            <select bind:value={stopMinRarity}>
-              {#each [1, 2, 3, 4, 5] as rarity}
-                <option value={rarity}>{AFFIX_RARITY_NAMES[rarity]} or better</option>
-              {/each}
-            </select>
-          </label>
-          <label>
-            Stop on stat
-            <select bind:value={stopAffixIndex}>
-              <option value={0}>Any stat</option>
-              {#each KNOWN_AFFIX_IDS as id, index}
-                <!-- 1-BASED index into AffixRegistry.Definitions; 0 means
-                     "any stat". Sent as an index rather than a string because
-                     the packet is fixed-layout, and the registry order is the
-                     same authority on both sides.
-
-                     The VALUE is the index and the LABEL is a readable name:
-                     the list used to render raw ids like "crit_chance_pct",
-                     which is the id this file has to send, not a thing to show
-                     a player. -->
-                {#if !RETIRED_AFFIX_IDS.has(id)}
-                  <option value={index + 1}>{affixLabel(id)}</option>
-                {/if}
-              {/each}
-            </select>
-          </label>
-        </div>
-        <!-- Modul: SAY WHAT THE RUN WILL DO. The two conditions combine with
-             AND and nothing on screen said so, so a player could not tell
-             whether "Legendary" plus "Flat HP" meant a Legendary of any stat.
-             It never did. The panel simply never claimed it. -->
-        <p class="dim tiny hint">{describeStopCondition(stopMinRarity, stopAffixIndex)}</p>
-        <p class="dim tiny hint">
-          You pay per roll actually made, so a run that stops on its fifth
-          attempt costs five. The attempt count is a request, not a limit - the
-          server clamps it.
-        </p>
-      {/if}
-
-      <!-- Modul: THE PRICE IS ON THE BUTTON.
-           It was stated in a paragraph above, which is where a player does not
-           look at the moment they commit. A charge belongs on the thing that
-           charges - and this is the button that quietly took a night's income
-           over five presses. -->
-      {#if rerollGuard}
-        <p class="dim tiny hint">
-          Guarded: this destroys your {rerollGuard.what}. {rerollGuard.scope}
-        </p>
-        {#key `${rerollItemId}:${rerollAffixIndex}`}
-          <ConfirmButton
-            label="{autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'} · {formatGold(rerollFee)}{autoReroll ? ' each' : ''}"
-            guide="forge-reroll"
-            confirmLabel="Really reroll {rerollGuard.what}?"
-            disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
-            onConfirm={doReroll}
-          />
-        {/key}
-      {:else}
-        <button
-          data-guide="forge-reroll"
-          onclick={doReroll}
-          disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
-        >
-          {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
-          &middot; {formatGold(rerollFee)}{autoReroll ? ' each' : ''}
-        </button>
-      {/if}
-
-      {#if !autoReroll}
-        <button
-          class="refine"
-          data-testid="forge-refine"
-          onclick={doRefine}
-          disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < refineFee}
-          title="Keeps the stat and its rarity; rerolls only the value, up to 20% up or down."
-        >
-          Refine value ±20% &middot; {formatGold(refineFee)}
-        </button>
-      {/if}
+        {#if autoReroll}
+          <div class="auto">
+            <label>
+              Max attempts
+              <input type="number" min="1" max="1000" bind:value={autoAttempts} />
+            </label>
+            <label>
+              Stop at rarity
+              <select bind:value={stopMinRarity}>
+                {#each [1, 2, 3, 4, 5] as rarity}
+                  <option value={rarity}>{AFFIX_RARITY_NAMES[rarity]} or better</option>
+                {/each}
+              </select>
+            </label>
+            <label>
+              Stop on stat
+              <select bind:value={stopAffixIndex}>
+                <option value={0}>Any stat</option>
+                {#each KNOWN_AFFIX_IDS as id, index}
+                  <!-- 1-BASED index into AffixRegistry.Definitions; 0 means
+                       "any stat". Sent as an index because the packet is
+                       fixed-layout (serverMirrors.test.ts guards the order). -->
+                  {#if !RETIRED_AFFIX_IDS.has(id)}
+                    <option value={index + 1}>{affixLabel(id)}</option>
+                  {/if}
+                {/each}
+              </select>
+            </label>
+          </div>
+          <p class="dim tiny hint">{describeStopCondition(stopMinRarity, stopAffixIndex)}</p>
+          <p class="dim tiny hint">
+            You pay per roll actually made: a run that stops on its fifth attempt
+            costs five. Refine is off while auto-reroll is on.
+          </p>
+        {/if}
+      </details>
 
       {#if rerollFlash > 0}
         {#key rerollFlash}
@@ -1062,11 +1064,14 @@
       {/if}
       {#if gold < rerollFee}
         <p class="dim tiny">
-          You have <Money amount={gold} /> and this costs <Money amount={rerollFee} />.
+          You have <Money amount={gold} /> and a reroll of this piece costs <Money amount={rerollFee} />.
         </p>
       {/if}
     {/if}
+    </div>
+    </div>
   </section>
+  {/if}
 
   <!-- Modul: the "Forge stock" list is gone with the recipes behind it.
        Equipment is monster loot and tools are crafted, and nothing is both -
@@ -1336,6 +1341,121 @@
     gap: 1rem;
     padding: 1rem;
     align-items: start;
+  }
+  .grid.single {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 0.5rem;
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0;
+  }
+  .tab {
+    min-height: 44px;
+    padding: 0 1.1rem;
+    font-weight: 700;
+  }
+  .tab.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .purse {
+    margin-left: auto;
+  }
+
+  /* Picker on the left, the item and its affixes on the right; stacked on a
+     phone. The picker keeps its own scroll so a long chest does not push the
+     card off the screen. */
+  .affixlayout {
+    display: grid;
+    grid-template-columns: minmax(16rem, 2fr) minmax(0, 3fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .affixlayout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .picker,
+  .cardcol {
+    min-width: 0;
+  }
+  .affixpanel .wearers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pickfirst {
+    padding: 1rem 0;
+  }
+  .cardname {
+    font-weight: 700;
+    margin-right: 0.4rem;
+  }
+
+  .affixrows {
+    list-style: none;
+    margin: 0.75rem 0 0.25rem;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .affixrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem 0.75rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+  }
+  .affixrow.selected {
+    border-color: var(--accent);
+  }
+  .affixrow .what {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.5rem;
+    min-width: 0;
+  }
+  .affixrow .label {
+    font-weight: 700;
+  }
+  .affixrow .acts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+  /* The two actions are kept APART and look different: Reroll destroys the
+     affix, Refine only nudges its number. */
+  .affixrow .gap {
+    width: 0.75rem;
+  }
+  .refinebtn {
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    border-style: dashed;
+  }
+
+  .autopanel {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+  }
+  .autopanel summary {
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
   }
 
   h2 {

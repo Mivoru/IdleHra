@@ -64,6 +64,7 @@
   import { FIRST_CLEAR_HP_MULTIPLIERS, FIRST_CLEAR_ATTACK_MULTIPLIERS, BOSS_REQUIRED_QUALITY_TIER } from '../lib/ui/victories';
   import {
     REROLL_GOLD_BY_REGION,
+    REROLL_RARITY_FACTOR,
     AFFIX_COUNT_BANDS,
     AFFIX_RARITIES,
     AFFIX_POOL,
@@ -814,7 +815,7 @@
               <thead>
                 <tr>
                   <th>Region</th>
-                  <th class="num">Gold a reroll</th>
+                  <th class="num">Gold a reroll (Normal-Uncommon)</th>
                   <th class="num">Average kill in that region</th>
                   <th class="num">Kills to pay for it</th>
                 </tr>
@@ -831,8 +832,16 @@
               </tbody>
             </table>
           </div>
+          <p class="small">
+            The price is then multiplied by the <b>item's</b> rarity:
+            Normal to Uncommon &times;{REROLL_RARITY_FACTOR[1]}, Rare &times;{REROLL_RARITY_FACTOR[4]},
+            Ultra Rare &times;{REROLL_RARITY_FACTOR[5]}, Epic &times;{REROLL_RARITY_FACTOR[6]},
+            Legendary &times;{REROLL_RARITY_FACTOR[7]}, Mythic &times;{REROLL_RARITY_FACTOR[8]},
+            Relic and above &times;{REROLL_RARITY_FACTOR[9]}. A Refine costs a quarter of the
+            reroll. The Forge shows each piece's exact price on its buttons.
+          </p>
           <p class="dim tiny">
-            Worked example: a reroll on a Scorched Wasteland item costs
+            Worked example: a reroll on a Normal Scorched Wasteland item costs
             {formatNumber(REROLL_GOLD_BY_REGION[3])} gold, which is about
             {rerollInKills[2] ?? '—'} kills of an average Scorched Wasteland
             regular — a few minutes. The chase for a Legendary affix is measured in

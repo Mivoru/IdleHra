@@ -81,14 +81,6 @@ function after(source: string, marker: string, what: string): string {
   return source.slice(at, at + 1200);
 }
 
-/** Every `key -> value` pair `pattern` finds, as numbers. */
-function table(source: string, pattern: RegExp): Map<number, number> {
-  const out = new Map<number, number>();
-  for (const m of source.matchAll(pattern)) out.set(Number(m[1]), Number(m[2]));
-  if (out.size === 0) throw new Error('matched no table rows - the pattern needs updating, not deleting');
-  return out;
-}
-
 /**
  * The numbers out of a C# array initialiser - `{ 3.0f, 4.0f, ... }` - so a
  * client table can be compared element by element against the server's own
@@ -121,24 +113,18 @@ describe('the numbers the client mirrors still match the server', () => {
   // region table, entry by entry. Note the two are keyed on regionTier (1-5,
   // via AffixRerollEngine.ResolveRegionTier), NOT on the fourteen-step item
   // rarity - the names in the old constants were the misleading part.
-  it('reroll: the per-region gold table', () => {
+  // Modul: THE FORGE NO LONGER MIRRORS THE PRICE (2026-11-03). Its copy of
+  // the region table was deleted when the server started sending each piece's
+  // price (AffixRerollEngine.GoldCostFor); the region table's remaining copy is
+  // the Wiki's, compared in wiki.test.ts. The rarity factor is new and is
+  // compared here, entry by entry.
+  it('reroll: the item-rarity factor', () => {
     const affixes = read(serverRoot, 'Engine', 'AffixRegistry.cs');
-    const forge = read(clientRoot, 'routes', 'Forge.svelte');
-
-    // Both tables are sliced out of their own function first. Bare
-    // `N => NNNNL` and `case N: return NNNN` shapes appear in other switches in
-    // both files, and a mirror test that matches the wrong switch is worse than
-    // no mirror test.
-    const serverBody = after(affixes, 'public static long CalculateRerollGoldCost', 'server reroll function');
-    const clientBody = after(forge, 'function getRerollCost', 'client reroll function');
-
-    const serverTable = table(serverBody, /(\d) => (\d+)L/g);
-    const clientTable = table(clientBody, /case (\d): return (\d+);/g);
-
-    expect([...clientTable.keys()].sort()).toEqual([1, 2, 3, 4, 5]);
-    for (const tier of [1, 2, 3, 4, 5]) {
-      expect(clientTable.get(tier), `region ${tier} reroll price`).toBe(serverTable.get(tier));
-    }
+    const body = after(affixes, 'public static readonly int[] RerollRarityFactor', 'server rarity factor');
+    const array = body.slice(body.indexOf('{') + 1, body.indexOf('};'));
+    const server = [...array.replace(/\/\/.*$/gm, '').matchAll(/\d+/g)].map((m) => Number(m[0]));
+    expect(server.length).toBe(15);
+    expect([...wiki.REROLL_RARITY_FACTOR]).toEqual(server);
   });
 
   it('fusion: base fee and growth per quality tier', () => {
