@@ -4,8 +4,8 @@ Status, 2026-11-03: owner approved the lockstep approach (P0 -> P3, bots stay
 on the real WebSocket/REST surface) and asked for implementation. BUILT: step 0
 (PR #313) and phase 1a (`SimConductor`, `SimLockstep`, the control socket, the
 engine branch, tick-driven `GameClock`) and phase 1b (`SimCronPump`: nine
-gameplay crons run on the tick at their production periods). Not built: 1c,
-1d, 2, 3. The bots do
+gameplay crons run on the tick at their production periods) and phase 1c
+(game-time guards, event wakes). Not built: 1d, 2, 3. The bots do
 not speak the control socket yet, so a lockstep server today holds still until
 a client joins - nothing runs lockstep end to end with real bots.
 
@@ -99,8 +99,10 @@ quantum (default 10 ticks = 1 game second).
 - `nextWakeTick` is the bot's own plan: its next chore timer, its next
   check-in, or "a reaction from now" when it has a command queued.
 - `wakeOn` is a mask of events that cut the sleep short: death, activity
-  halted (empty larder, full chest), level up, a dungeon telegraph, the world
-  boss reveal, the daily reset.
+  halted (empty larder, full inventory, activity stopped), level up, the
+  daily reset. A dungeon telegraph needs no event - the bot reads it from the
+  REST reply and yields for its own reaction; the world boss has no live
+  window (one strike per game day), so the daily reset covers it.
 - The reaction is sampled BY THE CONDUCTOR from the bot's own range. A bot
   woken at `eventTick` would otherwise call REST at that very tick with zero
   human delay. Woken at `eventTick + reaction`, it sees the state at the
@@ -187,7 +189,7 @@ thinking, not game time); bots are exempted on dev if they bite.
 | 0 | Release build for overnight runs; precise tick sum | PR #313 |
 | 1a (BUILT) | `SimConductor`, tick-driven `GameClock`, control socket, wake/yield, quantum, clock jump at zero sessions | `SimConductorTests`; live control-socket smoke |
 | 1b (BUILT) | Cron pump on the tick for the gameplay crons: liveops (600 ticks, run at start), codex 50, loot 30, pending grants 50, achievements 150, cosmetic chests 10, season era 3,000, leaderboards 3,000, leaderboard payout 6,000. The tick waits for each. | `SimCronPumpTests`; live smoke: 9 registered, no failures |
-| 1c | Game-time guards (throttler, validator, macro detector, dungeon window); event notifications into `SimConductor.Notify` (death, halt, level up, telegraph, reveal, daily reset) | existing guard tests pass at speed 1; new lockstep cases |
+| 1c (BUILT) | `GameClock.MonotonicMs` (game ms under lockstep, `Environment.TickCount64` otherwise) for the 100 ms command rule, the throttler, the token bucket, the challenge window and the macro detector; `GameClock.ReactionUtcNow` for the dungeon telegraph window. Event wakes from ONE place: `LockstepEventProbe` diffs each player's payload around `ProcessTick` (level up, death, new halt incl. full inventory, activity stopped); the engine wakes `DailyReset` subscribers when the game day turns. Telemetry timestamps stay wall. | `LockstepEventProbeTests` (mutation-checked); guard/anti-cheat/dungeon suites 154/154 |
 | 1d | Checkpoint back-pressure, logout ack, per-route REST timing | staged logout-then-login race test |
 | 2 | Bot on the conductor; personas as attention budgets | a 24-game-hour lockstep run finishes and logs no wall waits |
 | 3 | Validation: lockstep vs x20 (same mix and seed), quantum 1 vs 10, x50 vs flat out | `compare-run.py` per persona, overnight |

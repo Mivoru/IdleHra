@@ -79,6 +79,37 @@ namespace FolkIdle.Server
             _lockstep = true;
         }
 
+        /// <summary>
+        /// The anti-cheat and throttling clock: <c>Environment.TickCount64</c>,
+        /// except under lockstep, where it is game time in milliseconds.
+        ///
+        /// Modul: THE GUARDS MUST SEE THE TIME THE BOT LIVES IN (phase 1c). The
+        /// 100 ms command rule, the 5-in-100-ms throttler, the token bucket, the
+        /// challenge window and the macro detector all measured wall time. In
+        /// lockstep a bot's whole turn happens in frozen game time and its turns
+        /// are game seconds apart but wall MICROSECONDS apart - so on the wall
+        /// clock a careful bot looks like a flood, and its reaction spacing
+        /// (what the macro detector judges) would be the CPU's, not the
+        /// persona's. Offset by a large base so a "0 = never" sentinel in the
+        /// guards still means never at tick 0.
+        /// </summary>
+        public static long MonotonicMs
+            => _lockstep ? LockstepMonotonicBaseMs + Volatile.Read(ref _lockstepTick) * 100 : Environment.TickCount64;
+
+        /// <summary>
+        /// The clock for HUMAN reaction windows (the dungeon telegraph): the wall
+        /// clock, because reaction time does not speed up at x200 - except under
+        /// lockstep, where the bot's reaction is game ticks the conductor waits
+        /// out, so the window must be judged in game time too (phase 1c).
+        /// </summary>
+        public static DateTime ReactionUtcNow => _lockstep ? UtcNow : DateTime.UtcNow;
+
+        /// <summary><see cref="MonotonicMs"/> in Stopwatch units, for the token bucket.</summary>
+        public static long MonotonicStopwatchTimestamp
+            => _lockstep ? MonotonicMs * (Stopwatch.Frequency / 1000) : Stopwatch.GetTimestamp();
+
+        public const long LockstepMonotonicBaseMs = 1_000_000_000;
+
         /// <summary>The engine completed <paramref name="tick"/> (lockstep only).</summary>
         public static void SetLockstepTick(long tick) => Volatile.Write(ref _lockstepTick, tick);
 

@@ -179,6 +179,7 @@ namespace FolkIdle.Server.Domain.Combat
         private long _lockstepTick;
         private long _lastLockstepBroadcastTick = -1;
         private bool _forceBroadcastThisTick;
+        private DateTime _lockstepLastDay;
         private readonly System.Collections.Concurrent.ConcurrentQueue<TickStatePayload> _readyLogins = new();
 
         private EngineMetricsPayload _metrics;
@@ -1787,7 +1788,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 }
                                 else
                                 {
-                                    long nowMs = Environment.TickCount64;
+                                    long nowMs = GameClock.MonotonicMs;
                                     AntiCheatTelemetryEngine.LogChallengeRun(
                                         routingPlayerId, 3,
                                         nowMs - currentPayload.LastClientCommandAtMs,
@@ -2085,7 +2086,7 @@ namespace FolkIdle.Server.Domain.Combat
                         // still reaches within about a minute.
                         if (currentPayload.ActiveChallengeSeed != 0 &&
                             currentPayload.ActiveChallengeAnswered == 0 &&
-                            Environment.TickCount64 - currentPayload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
+                            GameClock.MonotonicMs - currentPayload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
                         {
                             // Marked answered so the next broadcast issues a
                             // fresh challenge rather than re-counting this one.
@@ -2117,7 +2118,7 @@ namespace FolkIdle.Server.Domain.Combat
                             // codebase has already shipped one anti-cheat that
                             // punished people for how they play.
                             bool clientWasTalking =
-                                Environment.TickCount64 - currentPayload.LastClientCommandAtMs
+                                GameClock.MonotonicMs - currentPayload.LastClientCommandAtMs
                                     <= AntiCheatTelemetryEngine.ChallengeResponseWindowMs;
 
                             if (!clientWasTalking)
@@ -2135,7 +2136,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 }
                                 else
                                 {
-                                    long nowMs = Environment.TickCount64;
+                                    long nowMs = GameClock.MonotonicMs;
                                     AntiCheatTelemetryEngine.LogChallengeRun(
                                         currentPayload.PlayerId, 4,
                                         nowMs - currentPayload.LastClientCommandAtMs,
@@ -2204,8 +2205,10 @@ namespace FolkIdle.Server.Domain.Combat
                         // so it is safe to call mid-enumeration too.
                         try
                         {
+                            var eventsBefore = LockstepEventProbe.Capture(in currentPayload);
                             ProcessTick(ref currentPayload);
                             _checkpointManager.TrackState(ref currentPayload);
+                            SimLockstep.Conductor?.NotifyAll(currentPayload.PlayerId, LockstepEventProbe.Diff(eventsBefore, in currentPayload), _lockstepTick);
                         }
                         catch (Exception tickException)
                         {
@@ -2236,7 +2239,7 @@ namespace FolkIdle.Server.Domain.Combat
                             if (currentPayload.ActiveChallengeSeed == 0 || currentPayload.ActiveChallengeAnswered != 0)
                             {
                                 currentPayload.ActiveChallengeSeed = AntiCheatTelemetryEngine.GenerateChallengeSeed(currentPayload.PlayerId, currentPayload.LogicEpochCounter, _metrics.TotalTicksProcessed);
-                                currentPayload.ActiveChallengeIssuedAtMs = Environment.TickCount64;
+                                currentPayload.ActiveChallengeIssuedAtMs = GameClock.MonotonicMs;
 
                                 // Pinned so the answer is judged against the
                                 // state the client was actually shown.
@@ -2713,6 +2716,14 @@ namespace FolkIdle.Server.Domain.Combat
                 if (conductor != null)
                 {
                     conductor.CompleteTick(_lockstepTick);
+                    // The game day turned during this tick (or during the jump
+                    // that led to it): wake whoever asked for the daily reset.
+                    var gameDay = GameClock.UtcNow.Date;
+                    if (gameDay != _lockstepLastDay)
+                    {
+                        if (_lockstepLastDay != default) conductor.NotifyEveryone(SimWakeReason.DailyReset, _lockstepTick);
+                        _lockstepLastDay = gameDay;
+                    }
                     continue;
                 }
 

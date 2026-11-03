@@ -222,7 +222,7 @@ namespace FolkIdle.Server.Engine
             // Only validate state commands that affect gameplay.
             if (commandType == 1 || commandType == 2 || commandType == 8 || commandType == 24 || commandType == 25 || commandType == 26 || commandType == 27 || commandType == 28 || commandType == 29 || commandType == 30 || commandType == 33 || commandType == 47 || commandType == 48 || commandType == 49 || commandType == 50 || commandType == 51 || commandType == 52)
             {
-                long currentTick = Environment.TickCount64;
+                long currentTick = GameClock.MonotonicMs;
 
                 // 1. Static 100ms ceiling regardless of acceleration.
                 if (payload.LastCommandTimestamp != 0 && (currentTick - payload.LastCommandTimestamp) < 100)
@@ -311,7 +311,7 @@ namespace FolkIdle.Server.Engine
                 return ChallengeAnswerVerdict.Rejected;
             }
 
-            long nowMs = Environment.TickCount64;
+            long nowMs = GameClock.MonotonicMs;
             if (payload.ActiveChallengeSeed == 0 || payload.ActiveChallengeAnswered != 0 || nowMs - payload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 31, Value2 = 2, Timestamp = nowMs });
@@ -346,7 +346,7 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            long now = Environment.TickCount64;
+            long now = GameClock.MonotonicMs;
             // Modul: challenge response policy. Shares the issue-side window
             // constant rather than repeating a literal - a validator stricter
             // than the issuer would reject answers the engine still considers

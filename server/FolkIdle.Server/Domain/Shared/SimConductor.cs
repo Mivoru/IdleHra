@@ -15,9 +15,10 @@ namespace FolkIdle.Server.Domain.Shared
         Death = 4,
         ActivityHalted = 8,
         LevelUp = 16,
-        DungeonTelegraph = 32,
-        WorldBossReveal = 64,
-        DailyReset = 128,
+        // A game-day boundary passed: dungeon tickets, today's world boss
+        // strike, the login bonus. (A dungeon telegraph needs no event: the bot
+        // reads it from the REST reply and yields for its own reaction.)
+        DailyReset = 32,
     }
 
     /// <summary>One bot due at a wake: who, and why.</summary>
@@ -199,6 +200,32 @@ namespace FolkIdle.Server.Domain.Shared
                 }
                 if (at < p.NextWake) p.NextWake = at;
                 if (at <= p.NextWake) p.Pending |= kind;
+            }
+        }
+
+        /// <summary>A world-wide event (the day turned): every bot that asked for it, bound or not.</summary>
+        public void NotifyEveryone(SimWakeReason kind, long eventTick)
+        {
+            lock (_gate)
+            {
+                foreach (var p in _bots.Values)
+                {
+                    if (p.Awake || (p.WakeOn & kind) == 0) continue;
+                    int reaction = p.ReactionMin + _rng.Next(p.ReactionMax - p.ReactionMin + 1);
+                    long at = Math.Max(QuantizeUp(eventTick + reaction), _tick + 1);
+                    if (at < p.NextWake) p.NextWake = at;
+                    if (at <= p.NextWake) p.Pending |= kind;
+                }
+            }
+        }
+
+        /// <summary>Notify for each reason set in <paramref name="kinds"/>; a no-op for None.</summary>
+        public void NotifyAll(long playerId, SimWakeReason kinds, long eventTick)
+        {
+            if (kinds == SimWakeReason.None) return;
+            foreach (SimWakeReason kind in Enum.GetValues<SimWakeReason>())
+            {
+                if (kind != SimWakeReason.None && (kinds & kind) != 0) Notify(playerId, kind, eventTick);
             }
         }
 

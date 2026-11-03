@@ -67,7 +67,7 @@ namespace FolkIdle.Server.Network
                 var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
                 if (player == null) { context.Response.StatusCode = 404; return; }
                 var stale = DungeonLiveRuns.Current(playerId);
-                if (stale != null && DateTime.UtcNow - stale.TouchedUtc > DungeonLiveRuns.AbandonAfter) await SettleAbandonedAsync(stale);
+                if (stale != null && GameClock.ReactionUtcNow - stale.TouchedUtc > DungeonLiveRuns.AbandonAfter) await SettleAbandonedAsync(stale);
 
                 var rows = await DungeonEngine.LoadAsync(db, playerId, GameClock.UtcNow);
                 await db.SaveChangesAsync();
@@ -293,7 +293,7 @@ namespace FolkIdle.Server.Network
                 object? reply = null;
                 lock (run.Gate)
                 {
-                    run.TouchedUtc = DateTime.UtcNow;
+                    run.TouchedUtc = GameClock.ReactionUtcNow;
                     var runner = run.Runner;
                     bool advance = false;
                     switch (action)
@@ -303,13 +303,13 @@ namespace FolkIdle.Server.Network
                             {
                                 run.Telegraph = DungeonPerks.Telegraph(run.Stage, runner.PausedOnBoss, run.Rng);
                                 run.WindowMs = DungeonPerks.WindowMs(run.Stage, runner.PausedOnBoss, runner.Mods.QuickstepPct);
-                                run.IssuedUtc = DateTime.UtcNow;
+                                run.IssuedUtc = GameClock.ReactionUtcNow;
                             }
-                            double used = (DateTime.UtcNow - run.IssuedUtc).TotalMilliseconds;
+                            double used = (GameClock.ReactionUtcNow - run.IssuedUtc).TotalMilliseconds;
                             reply = new { Outcome = "Ok", Dirs = run.Telegraph, WindowMs = Math.Max(0, run.WindowMs - (int)used) };
                             break;
                         case "answer" when runner.Paused && run.Telegraph != null && run.Offer == null:
-                            double elapsed = (DateTime.UtcNow - run.IssuedUtc).TotalMilliseconds;
+                            double elapsed = (GameClock.ReactionUtcNow - run.IssuedUtc).TotalMilliseconds;
                             bool clean = DungeonPerks.Judge(run.Telegraph, dirs, run.WindowMs, elapsed);
                             run.Telegraph = null;
                             if (clean)

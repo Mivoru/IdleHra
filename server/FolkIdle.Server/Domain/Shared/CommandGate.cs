@@ -79,7 +79,7 @@ namespace FolkIdle.Server.Domain.Shared
             // client look busy at exactly the wrong moment.
             if (!isInternalCommand)
             {
-                currentPayload.LastClientCommandAtMs = Environment.TickCount64;
+                currentPayload.LastClientCommandAtMs = GameClock.MonotonicMs;
             }
 
             // Epoch interception gate: reject commands from desynchronized clients.
