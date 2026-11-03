@@ -428,7 +428,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RollbackQuietlyAsync(transaction);
                 Console.WriteLine($"Recruit villager failed: {ex.Message}");
                 // Modul: a catch that answered nothing left the button waiting for its timeout; a lost race now says "try again" (TransientDbConflict.RefusalFor).
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
@@ -668,7 +668,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RollbackQuietlyAsync(transaction);
                 Console.WriteLine($"Village upgrade failed: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }
@@ -794,7 +794,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RollbackQuietlyAsync(transaction);
                 Console.WriteLine($"Village eviction failed: {ex.Message}");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Domain.Shared.TransientDbConflict.RefusalFor(ex));
             }

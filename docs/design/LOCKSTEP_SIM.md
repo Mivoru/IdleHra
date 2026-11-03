@@ -219,6 +219,31 @@ thinking, not game time); bots are exempted on dev if they bite.
 | 2 (BUILT) | `SimDriver` + `LockstepBotTime` (every wait is a yield), `RunLockstepAsync`, `--lockstep`, `--no-sleep`; every persona sleeps 00:30-06:30 plus up to an hour either side; the parked tick serves REST orders; per-tick settle only for world-changing dispatches; `folkidle_sim_cron_seconds_total` | `BotPersonaSleepTests` (8); 30-game-hour runs above |
 | 3 | Validation: lockstep vs x20 (same mix and seed), quantum 1 vs 10, x50 vs flat out | `compare-run.py` per persona, overnight |
 
+## 20-bot smoke (2026-11-03, late)
+
+`-Mix optimal:5,patientbare:5,eagerkit:5,patient:5`, 10 game hours,
+`FOLKIDLE_SIM_CRON_SCALE=4` (owner option B), quantum 1: x130, 4.6 wall
+minutes; 19-20 of 20 bots reach L10 (median 2.3 h). Wall time: loot cron
+48 s (gathering grants scale with players), codex 12 s, achievements 10 s,
+REST most of the rest; ticks 4 s.
+
+Found and fixed on the way:
+- **A production defect:** a Serializable commit that loses (40001) leaves
+  the transaction complete, and `catch { await transaction.RollbackAsync();
+  throw; }` then threw "This NpgsqlTransaction has completed", REPLACING the
+  40001 - no retry, no refusal, and SafeDispatchAsync kicked the player (13
+  kicks in one run). `TransientDbConflict.RollbackQuietlyAsync` now does the
+  catch-block rollback on the two paths that showed it (activity change,
+  village upgrade): 0 kicks, 16 polite refusals. About 60 other catch blocks
+  have the same pattern and were NOT changed (separate, reviewed change).
+- The default wake quantum is 1 tick: a 10-tick quantum rounded every
+  reaction to one boundary, so 20 bots' commands hit one tick together.
+- Before a wake the checkpoint writer must be idle (it was "at most 16").
+
+Open: 7 sockets closed by the server without a log line around game hour
+2.0, each shortly after a potion brew/shelf action. Not yet diagnosed;
+earlier paced runs also reconnected.
+
 ## Owner decisions (2026-11-03, second review)
 
 - **Every persona sleeps.** optimal, patient, patientbare and eagerkit go

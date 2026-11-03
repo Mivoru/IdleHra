@@ -2866,7 +2866,11 @@ namespace FolkIdle.Server.Domain.Combat
             var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
             var writer = _checkpointManager.Writer;
             var spin = new SpinWait();
-            while (Volatile.Read(ref everything ? ref _inFlightDispatches : ref _inFlightGatingDispatches) > 0 || writer.QueueDepth > LockstepCheckpointQueueBound)
+            // Before a wake the writer must be idle too: a bot's REST write that
+            // races a checkpoint of the same player is a 40001 and, for some
+            // routes, a kick (20-bot smoke, 2026-11-03: 21 sockets lost).
+            long queueBound = everything ? 0 : LockstepCheckpointQueueBound;
+            while (Volatile.Read(ref everything ? ref _inFlightDispatches : ref _inFlightGatingDispatches) > 0 || writer.QueueDepth > queueBound)
             {
                 if (Stopwatch.GetTimestamp() > deadline)
                 {
@@ -3061,7 +3065,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await TransientDbConflict.RollbackQuietlyAsync(transaction);
                 throw;
             }
         }

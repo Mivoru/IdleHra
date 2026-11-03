@@ -44,7 +44,12 @@ namespace FolkIdle.Server.Domain.Shared
     /// </summary>
     public sealed class SimConductor
     {
-        public const int DefaultQuantumTicks = 10;
+        // Modul: ONE TICK, NOT ONE GAME SECOND (20-bot smoke, 2026-11-03). A
+        // 10-tick quantum rounded every 4-12-tick reaction up to the same
+        // boundary, so twenty bots' commands landed on one tick and fought each
+        // other's Serializable transactions (40001 -> kicks) - a crowd no real
+        // population makes. A 1-tick quantum keeps the reactions spread.
+        public const int DefaultQuantumTicks = 1;
         public const int DefaultReactionMinTicks = 4;
         public const int DefaultReactionMaxTicks = 12;
 

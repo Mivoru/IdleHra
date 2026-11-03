@@ -76,6 +76,31 @@ namespace FolkIdle.Server.Domain.Shared
             }
         }
 
+        /// <summary>
+        /// Rolls back in a catch block without hiding why we are there.
+        ///
+        /// Modul: A FAILED COMMIT LEAVES NOTHING TO ROLL BACK (20-bot lockstep
+        /// smoke, 2026-11-03). A Serializable transaction that loses at COMMIT
+        /// throws 40001 from CommitAsync, and the transaction is then complete.
+        /// The usual catch { await transaction.RollbackAsync(); throw; } then threw
+        /// InvalidOperationException ("This NpgsqlTransaction has completed")
+        /// from inside the catch - replacing the 40001, so RetryAsync did not
+        /// retry, RefusalFor did not refuse, and SafeDispatchAsync KICKED the
+        /// player: 11 activity changes and 2 village upgrades in one 20-bot run.
+        /// Production has the same path. Use this in catch blocks.
+        /// </summary>
+        public static async Task RollbackQuietlyAsync(Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction)
+        {
+            try
+            {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
+                // Already completed (a commit that failed): nothing to undo.
+            }
+        }
+
         public static Task RetryAsync(Func<Task> attempt, int attempts = DefaultAttempts)
             => RetryAsync(async () => { await attempt().ConfigureAwait(false); return true; }, attempts);
     }
