@@ -200,6 +200,8 @@
     Fork: 'Fork (one side only)',
     Bridge: 'Bridge (two columns)',
     Keystone: 'Keystone',
+    // Phase 5.1: makes the column's affix family on your gear stronger.
+    Affinity: 'Affinity (boosts your gear)',
   };
 
   // ---- selection, hold and hover --------------------------------------------
@@ -783,6 +785,7 @@
   .rune.small { width: 3rem; height: 3rem; }
   .rune.kind-keystone { border-radius: 50%; }
   .rune.kind-bridge { border-radius: 50% 10px; }
+  .rune.kind-affinity { border-radius: 14px 2px; border-style: double; }
   .rune:active { transform: scale(0.94); }
   .glyph { font-size: 1.5rem; line-height: 1; }
   /* Painted icons fill the tile; the border, badge and glow stay the client's

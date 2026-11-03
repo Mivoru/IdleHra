@@ -43,6 +43,8 @@ namespace FolkIdle.Server.Engine
         MoonlitCatch,
         Masterwork,
         BloodlineMemory,
+        /// <summary>Phase 5.1: the gathering tools' affixes are this share stronger, in tenths of a percent. Read by AffixFamilies.</summary>
+        FamilyCraftPct,
     }
 
     /// <summary>
@@ -96,6 +98,8 @@ namespace FolkIdle.Server.Engine
         public const int PatientLine = 64, GreenThumb = 65, GoodWaters = 66, StillWater = 67, KeenAngler = 68, Netmaker = 69, FullNet = 70, MoonlitCatch = 71;
         public const int QuickHands = 72, Thrifty = 73, Ledger = 74, BatchWork = 75, FineWork = 76, Salvager = 77, Patron = 78, Masterwork = 79;
         public const int Studious = 80, Homebody = 81, LongAbsence = 82, Matchmaker = 83, StrongBlood = 84, Nursery = 85, Mentor = 86, BloodlineMemory = 87;
+        /// <summary>Phase 5.1 (2026-11-03): the Craft affix-family node, after the War family nodes 88-91.</summary>
+        public const int CraftAffinity = 92;
 
         /// <summary>The table, indexed by rank-buffer slot; null where no Hearth node sits.</summary>
         public static readonly HearthNodeDef?[] Nodes = Build();
@@ -144,6 +148,8 @@ namespace FolkIdle.Server.Engine
             Add(QuickHands, "Quick Hands", "quick_hands", ColumnWorkshop, 0, 0, "Minor", 5, 1, HearthEffect.CraftTimePct, 20, "-{0}% craft time");
             Add(Thrifty, "Thrifty", "thrifty", ColumnWorkshop, 0, 1, "Minor", 5, 1, HearthEffect.KeepMaterialsPct, 20, "{0}% chance a craft keeps its materials");
             Add(Ledger, "Ledger", "ledger", ColumnWorkshop, 1, -1, "Notable", 3, 2, HearthEffect.CommissionMaterialsPct, 0, "-{0}% commission materials", ranks: new[] { 50, 100, 150 });
+            // Phase 5.1: the Craft family - the tools the Workshop makes gather better.
+            Add(CraftAffinity, "Toolwright", "col_workshop", ColumnWorkshop, 1, 0, "Affinity", 3, 2, HearthEffect.FamilyCraftPct, 0, "Your tool affixes (gather speed, yield, rare find) are {0}% stronger", ranks: new[] { 30, 60, 100 });
             Add(BatchWork, "Batch Work", "batch_work", ColumnWorkshop, 2, 0, "Fork", 5, 1, HearthEffect.CraftTimePct, 12, "-{0}% craft time", fork: FineWork);
             Add(FineWork, "Fine Work", "fine_work", ColumnWorkshop, 2, 1, "Fork", 5, 1, HearthEffect.CraftRarityPct, 10, "{0}% chance a crafted item rolls one rarity higher", fork: BatchWork);
             Add(Salvager, "Salvager", "salvager", ColumnWorkshop, 3, 0, "Minor", 5, 1, HearthEffect.SalvageGoldPct, 30, "+{0}% auto-salvage gold");
@@ -179,6 +185,7 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         private static readonly HashSet<HearthEffect> Wired = new()
         {
+            HearthEffect.FamilyCraftPct,
             HearthEffect.SpeedWood, HearthEffect.SpeedMine, HearthEffect.SpeedFish, HearthEffect.SpeedHerb,
             HearthEffect.SpeedWoodMine, HearthEffect.SpeedFishHerb,
             HearthEffect.YieldWoodMine, HearthEffect.YieldFishHerb,

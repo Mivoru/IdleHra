@@ -112,7 +112,7 @@ namespace FolkIdle.Server.Domain.Combat
                 uint.MaxValue,
                 (double)serverAttack
                     // The striking character's pet (PetRegistry).
-                    * (1.0 + currentPayload.CachedAffixTotals.WorldBossDamageTenthsPct / 1000.0)
+                    * (1.0 + AffixFamilies.Totals(in currentPayload).WorldBossDamageTenthsPct / 1000.0)
                     // Boss-bane Philtre counts against the world boss too.
                     * (1.0 + Domain.Shared.PotionRegistry.MagnitudeOf(currentPayload.ActiveDefensivePotionId, Domain.Shared.PotionKind.Bossbane) / 100.0));
         }

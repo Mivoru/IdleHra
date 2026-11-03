@@ -79,7 +79,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         internal static double ThornsFractionFor(in TickStatePayload payload, in CombatStats stats)
             => (stats.SetThornsReflectionActive ? ThornsReflectionFraction : 0.0)
-               + Math.Max(0, payload.CachedAffixTotals.ThornsTenthsPct) / 1000.0;
+               + Math.Max(0, AffixFamilies.Totals(in payload).ThornsTenthsPct) / 1000.0;
 
         // The Eternal Dreadnought 4-piece's cooldown reduction. Applied to the
         // cooldown stamped after a successful cast.
@@ -3794,7 +3794,7 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId,
                     regenAgePhase, payload.CompletedAreaFlags,
                     regenRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel,
-                    payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation,
+                    payload.DraugrMasteryLevel, AffixFamilies.Totals(in payload), payload.IsEpicMutation,
                     TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
 
                 int regenMaxHp = 100000 + (regenStats.MaxHp * 1000);
@@ -3894,7 +3894,7 @@ namespace FolkIdle.Server.Domain.Combat
         internal static CombatStats LiveCombatStats(in TickStatePayload payload)
         {
             int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            CombatStats stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+            CombatStats stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, AffixFamilies.Totals(in payload), payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
             ApplyTreeStats(ref stats, in payload);
             // The inheritance milestones' combat half (crit chance, crit damage,
             // armour): here, so the live tick, the away projection, the dungeon
@@ -5784,7 +5784,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // HuntingProjection takes the same terms as an expectation, and
                 // WarMechanicParityTests holds the two together.
                 var warHit = WarTreeRegistry.Resolve(in payload);
-                double crushChance = warHit.CrushingChanceWith(in payload.CachedAffixTotals);
+                double crushChance = warHit.CrushingChanceWith(AffixFamilies.Totals(in payload));
                 bool crushed = crushChance > 0 && rng.NextDouble() < crushChance;
                 // "First" is a monster still at full health: no field to
                 // remember, and the projection can price exactly that.
@@ -6439,7 +6439,7 @@ namespace FolkIdle.Server.Domain.Combat
                 gatherActiveAgePhase = payload.Slot1_AgePhase;
                 gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
-            var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+            var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, AffixFamilies.Totals(in payload), payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
 
             int monolithLevel = gatheringNode.ProfessionType switch
             {
@@ -6547,31 +6547,31 @@ namespace FolkIdle.Server.Domain.Combat
         }
 
         /// <summary>The worn tool's speed affix for a profession, in WHOLE percent (the tooltip shows it so since TASK_BOARD 121).</summary>
-        internal static int ToolSpeedPctFor(in TickStatePayload payload, int professionType) => professionType switch
+        internal static int ToolSpeedPctFor(in TickStatePayload payload, int professionType) => AffixFamilies.CraftScaled(in payload, professionType switch
         {
             0 => payload.ToolAxeSpeedPct,
             1 => payload.ToolPickaxeSpeedPct,
             2 => payload.ToolRodSpeedPct,
             _ => 0,
-        };
+        });
 
         /// <summary>The worn tool's yield affix for a profession: axe woodcutting, pickaxe mining, rod fishing.</summary>
-        internal static int ToolYieldPctFor(in TickStatePayload payload, int professionType) => professionType switch
+        internal static int ToolYieldPctFor(in TickStatePayload payload, int professionType) => AffixFamilies.CraftScaled(in payload, professionType switch
         {
             0 => payload.ToolAxeYieldPct,
             1 => payload.ToolPickaxeYieldPct,
             2 => payload.ToolRodYieldPct,
             _ => 0,
-        };
+        });
 
         /// <summary>The worn tool's rare-find affix for a profession, as ToolYieldPctFor.</summary>
-        internal static int ToolRareFindPctFor(in TickStatePayload payload, int professionType) => professionType switch
+        internal static int ToolRareFindPctFor(in TickStatePayload payload, int professionType) => AffixFamilies.CraftScaled(in payload, professionType switch
         {
             0 => payload.ToolAxeRareFindPct,
             1 => payload.ToolPickaxeRareFindPct,
             2 => payload.ToolRodRareFindPct,
             _ => 0,
-        };
+        });
 
         /// <summary>The entry with the lowest weight - the "rare table" a Hearth keystone rolls - or -1 for an empty table.</summary>
         internal static int RarestEntryIndex(ReadOnlySpan<LootTableEntry> table)

@@ -45,11 +45,21 @@ namespace FolkIdle.Server.Tests
         // The probe
         // ------------------------------------------------------------------
 
-        private static TickStatePayload Baseline() => new TickStatePayload
+        // Modul: ONE AFFIX OF EVERY COMBAT FAMILY (phase 5.1, 2026-11-03).
+        // An affix-family node scales what the gear's affixes put in; a probe
+        // wearing no affixes would read every family node as "moves nothing".
+        private static TickStatePayload Baseline()
         {
-            CurrentLevel = 40, STR = 60, DEX = 60, CON = 60, LCK = 30,
-            CachedCodexYieldMultiplier = 1f, CachedCodexDamageMultiplier = 1f,
-        };
+            var p = new TickStatePayload
+            {
+                CurrentLevel = 40, STR = 60, DEX = 60, CON = 60, LCK = 30,
+                CachedCodexYieldMultiplier = 1f, CachedCodexDamageMultiplier = 1f,
+            };
+            EquipmentSlotEngine.AddAffixTotals(
+                "{\"melee_dmg_pct@1\":100,\"crit_chance_pct@2\":50,\"flat_hp@3\":200,\"gold_find_pct@4\":100}",
+                ref p.CachedAffixTotals);
+            return p;
+        }
 
         private static TickStatePayload WithRace(byte raceId, int mastery)
         {
@@ -244,11 +254,19 @@ namespace FolkIdle.Server.Tests
             // The Hearth half (step 4.3). Pending nodes cannot be bought, so
             // they are skipped here and refused by IsPending.
             var failures = new List<string>();
-            var before = Probe(Baseline());
+            // Worn tools with a speed affix, so the Craft affinity (phase 5.1)
+            // has something to scale.
+            static TickStatePayload Tooled()
+            {
+                var t = Baseline();
+                t.ToolAxeSpeedPct = 20; t.ToolPickaxeSpeedPct = 20; t.ToolRodSpeedPct = 20;
+                return t;
+            }
+            var before = Probe(Tooled());
             foreach (var node in HearthTreeRegistry.All())
             {
                 if (HearthTreeRegistry.IsPending(node.Id)) continue;
-                var p = Baseline();
+                var p = Tooled();
                 p.SkillRanks[node.Id] = (byte)node.MaxLevel;
                 AssertMovesOrIsListed($"hearth:{node.Icon}", before, Probe(p), failures);
             }

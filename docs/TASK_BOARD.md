@@ -168,7 +168,9 @@ unlocks Bleed, Momentum and similar mechanics.
 
 ### 135. Phase 5 - affix families and signature affixes - BUILD (roadmap 8)
 
-Needs phase 3, and is best after 2b.
+Needs phase 3, and is best after 2b. **2026-11-03: 5.1 families built (roadmap
+8.2 status); the owner picked signatures S1-S8 + S10 (5.2), built after 2b.5
+with the four stateful mechanics.**
 
 ### 37. The Deep - measure the retune (PAST DUE since 2026-10-14, roadmap 3.1)
 
