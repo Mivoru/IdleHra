@@ -1235,6 +1235,21 @@
     overflow-x: auto;
     scrollbar-width: none;
   }
+  /* Modul: THE APP'S WEBVIEW IGNORES scrollbar-width (owner screenshot,
+     2026-11-03): Android's WebView drew a scrollbar under the tab row that
+     scrolls sideways. The WebKit pseudo-element hides it there. */
+  .screen-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  /* On a phone the four tabs fit without scrolling at a slimmer padding. */
+  @media (max-width: 420px) {
+    .screen-tabs {
+      gap: 0.3rem;
+    }
+    .screen-tabs > button {
+      padding: 0.4rem 0.6rem;
+    }
+  }
   .screen-tabs button {
     flex-shrink: 0;
     min-height: 44px;

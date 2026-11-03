@@ -114,6 +114,12 @@
     border-bottom: 1px solid var(--line);
     scrollbar-width: none;
   }
+  /* Modul: THE APP'S WEBVIEW IGNORES scrollbar-width (owner screenshot,
+     2026-11-03): Android's WebView drew a scrollbar under the tab row that
+     scrolls sideways. The WebKit pseudo-element hides it there. */
+  .underline::-webkit-scrollbar {
+    display: none;
+  }
 
   .underline button {
     border: 0;

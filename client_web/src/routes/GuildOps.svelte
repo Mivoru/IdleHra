@@ -592,8 +592,14 @@
       {:else}
         <ul class="members">
           {#each members as member (member.PlayerId)}
-            <li>
-              <span class="who" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+            <!-- Modul: TWO PARTS, NOT ONE FLEX LINE (owner, 2026-11-03). Name, rank
+                 and buttons shared one row, so on a phone the buttons won and
+                 "[Member]" stood one letter per line beside a name broken in
+                 two. Who the member is sits on top; what you may do to them is
+                 its own row that wraps - beside the name on a wide screen,
+                 under it on a phone. -->
+            <li class="member">
+              <span class="who">
                 <PlayerAvatar playerId={member.PlayerId} size="sm" />
                 <!-- A name opens the profile, as it does in chat and Friends. -->
                 <button
@@ -604,31 +610,33 @@
                   {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
                 </button>
                 <PlayerTitle playerId={member.PlayerId} />
-                <span class="dim tiny">[{ROLE_NAMES[member.Role] ?? 'Unknown'}]</span>
+                <span class="rank rank-{member.Role}" data-testid="guild-member-rank">{ROLE_NAMES[member.Role] ?? 'Member'}</span>
                 {#if member.PlayerId === connection.currentPlayerId}
                   <span class="dim tiny">you</span>
                 {/if}
-                
-                <span style="flex: 1;"></span>
-                
+              </span>
+
+              {#if member.CanPromote || member.CanDemote || member.CanTransfer || member.CanKick}
                 <!-- Modul: THE SERVER SAYS WHICH BUTTONS (2026-11-03). Each roster
                      row carries what the viewer may do to that member, from the
                      same rule the actions are checked with. -->
-                {#if member.CanPromote}
-                  <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>To {ROLE_NAMES[member.Role + 1]}</button>
-                {/if}
-                {#if member.CanDemote}
-                  <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>To {ROLE_NAMES[member.Role - 1]}</button>
-                {/if}
-                {#if member.CanTransfer}
-                  <ConfirmButton small label="Make Chieftain" confirmLabel="Hand over the guild?" disabled={busy} onConfirm={() => handleTransfer(member.PlayerId)} />
-                {/if}
-                {#if member.CanKick}
-                  <!-- Modul: two taps. Kicking was one, and a mis-tap on a phone
-                       removed a guildmate with no way back. -->
-                  <ConfirmButton small label="Kick" confirmLabel="Really kick?" disabled={busy} onConfirm={() => handleKick(member.PlayerId)} />
-                {/if}
-              </span>
+                <span class="acts">
+                  {#if member.CanPromote}
+                    <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>To {ROLE_NAMES[member.Role + 1]}</button>
+                  {/if}
+                  {#if member.CanDemote}
+                    <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>To {ROLE_NAMES[member.Role - 1]}</button>
+                  {/if}
+                  {#if member.CanTransfer}
+                    <ConfirmButton small label="Make Chieftain" confirmLabel="Hand over the guild?" disabled={busy} onConfirm={() => handleTransfer(member.PlayerId)} />
+                  {/if}
+                  {#if member.CanKick}
+                    <!-- Modul: two taps. Kicking was one, and a mis-tap on a phone
+                         removed a guildmate with no way back. -->
+                    <ConfirmButton small label="Kick" confirmLabel="Really kick?" disabled={busy} onConfirm={() => handleKick(member.PlayerId)} />
+                  {/if}
+                </span>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -1370,12 +1378,64 @@
 
   .members li {
     display: flex;
-    align-items: baseline;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.35rem 0.75rem;
     padding: 0.35rem 0;
     border-bottom: 1px solid var(--line);
   }
+
+  .members .who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    min-width: 0;
+    flex: 1 1 14rem;
+  }
+
+  .members .name-link {
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .members .acts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+
+  /* On a phone the actions take their own line under the name. */
+  @media (max-width: 560px) {
+    .members .acts {
+      flex-basis: 100%;
+      justify-content: flex-start;
+      margin-left: 2.6rem;
+    }
+  }
+
+  /* A rank is a small coloured pill, not "[Member]" in brackets. */
+  .rank {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .rank-3 { color: #e8c15a; border-color: #e8c15a; background: color-mix(in srgb, #e8c15a 12%, transparent); }
+  .rank-2 { color: #c47fa6; border-color: #c47fa6; background: color-mix(in srgb, #c47fa6 12%, transparent); }
+  .rank-1 { color: #57c7e3; border-color: #57c7e3; background: color-mix(in srgb, #57c7e3 12%, transparent); }
 
   .leave {
     margin-top: 0.9rem;
