@@ -128,12 +128,15 @@ x200 run (63 game days): region 4 at 4.5 days, region 5 at 31, 16 rebirths
 in 61, dungeon pushes stalling at stage 5-8.
 `docs/architecture/PLAYTEST_BOTS_REPORT.md` section 0 has it all.
 
-**Open:** the rebirth experiment (eager vs patient, report 0.6) is built on
-branch `claude/bot-rebirth-experiment` (merged as #289) and NOT run - it was
-cancelled with the local stack. Run it with
-`server/FolkIdle.Bots/run-overnight.ps1 -StartAt 00:00 -EndAt 08:55`, then
-compare and recommend rebirth changes. Design reads waiting for the owner:
-dungeon stall at stage 5-8, region 5 after a month.
+**Update 2026-11-03:** the rebirth experiment (eager vs patient, report 0.6)
+RAN overnight at x200 (61.7 game days, old offline model - see 0.6.1). The
+patient combination (later rebirth + whole kit kept) beat eager on every
+axis, but timing and gear are confounded, so no rebirth rule changes.
+Read from its logs: the dungeon stall at stage 3-4 is the region gate
+(stage N needs the region-N boss), not a regression; the idle bot stuck at
+level 4 was the bot's login spending 5 of a check-in's 6 wall seconds
+waiting (fixed). Next nights: a casual + idle run at x20, then the controlled
+2x2 experiment (report 0.6.2; personas and `--seed` are built).
 
 ---
 

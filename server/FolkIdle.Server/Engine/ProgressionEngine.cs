@@ -195,6 +195,23 @@ namespace FolkIdle.Server.Engine
             return (long)Math.Ceiling(LevelCurveBase * Math.Pow(LevelCurveGrowth, currentLevel) * opening);
         }
 
+        /// <summary>
+        /// XP counted from level 1: every finished level's cost plus the
+        /// progress into the current one. The difference of two readings is the
+        /// XP earned between them even when levels were gained in between -
+        /// which CurrentXp alone cannot say, because a level-up subtracts the
+        /// level's cost from it.
+        /// </summary>
+        public static long CumulativeXp(int level, long currentXp)
+        {
+            long total = currentXp;
+            for (int l = 1; l < level; l++)
+            {
+                total += GetRequiredXpForLevel(l);
+            }
+            return total;
+        }
+
         // Static read-only span of available lineages
         //
         // Modul: NO TANK (TASK_BOARD 125, owner 2026-10-29). Id 2 was "Tank",

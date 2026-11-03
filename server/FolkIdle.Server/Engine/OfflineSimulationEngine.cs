@@ -197,7 +197,15 @@ namespace FolkIdle.Server.Engine
             // OfflineGoldEarned/OfflineXpEarned/OfflineMaterialDropsGranted's
             // own doc comments on TickStatePayload.
             long goldBeforeOfflineCatchUp = payload.CurrentGold;
-            long xpBeforeOfflineCatchUp = payload.CurrentXp;
+            // Modul: XP IS COUNTED ACROSS LEVELS (2026-11-03). CurrentXp is the
+            // progress INTO the current level and drops by the level's cost at
+            // every level-up, so "CurrentXp after - CurrentXp before" read 0 (or
+            // less, clamped to 0) whenever the time away paid a level. Found by
+            // the bots: an idle account went from level 4 to 16 overnight and
+            // its summary said "+0 XP" - and with no gold either, the client's
+            // "earned nothing" warning would have told that player their night
+            // was wasted. ProgressionEngine.CumulativeXp counts the levels too.
+            long xpBeforeOfflineCatchUp = ProgressionEngine.CumulativeXp(payload.CurrentLevel, payload.CurrentXp);
             int materialDropsGrantedThisCatchUp = 0;
 
             // Modul: EVERY CHARACTER CATCHES UP, not just slot 1.
@@ -260,7 +268,7 @@ namespace FolkIdle.Server.Engine
                     }
 
                     long slotGoldBefore = payload.CurrentGold;
-                    long slotXpBefore = payload.CurrentXp;
+                    long slotXpBefore = ProgressionEngine.CumulativeXp(payload.CurrentLevel, payload.CurrentXp);
                     int slotDrops = 0;
 
                     if (isCraftingJob)
@@ -294,7 +302,7 @@ namespace FolkIdle.Server.Engine
                     }
 
                     int slotGold = ClampToInt(payload.CurrentGold - slotGoldBefore);
-                    int slotXp = ClampToInt(payload.CurrentXp - slotXpBefore);
+                    int slotXp = ClampToInt(ProgressionEngine.CumulativeXp(payload.CurrentLevel, payload.CurrentXp) - slotXpBefore);
                     materialDropsGrantedThisCatchUp += slotDrops;
 
                     // Summed across the stretches, written once below.
@@ -327,7 +335,7 @@ namespace FolkIdle.Server.Engine
 
             payload.OfflineElapsedSeconds = elapsedSeconds;
             payload.OfflineGoldEarned = Math.Max(0L, payload.CurrentGold - goldBeforeOfflineCatchUp);
-            payload.OfflineXpEarned = Math.Max(0L, payload.CurrentXp - xpBeforeOfflineCatchUp);
+            payload.OfflineXpEarned = Math.Max(0L, ProgressionEngine.CumulativeXp(payload.CurrentLevel, payload.CurrentXp) - xpBeforeOfflineCatchUp);
             payload.OfflineMaterialDropsGranted = materialDropsGrantedThisCatchUp;
             payload.OfflineSummaryTick = unchecked((byte)(payload.OfflineSummaryTick + 1));
 

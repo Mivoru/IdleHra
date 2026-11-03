@@ -126,7 +126,7 @@ after the run).
    so casual bots were reborn at level 50 nine times and ended at level 1.
    For a persona that logs out the threshold is three check-in intervals.
 
-### 0.6 Rebirth experiment: eager vs patient (prepared, NOT run yet)
+### 0.6 Rebirth experiment: eager vs patient (RUN 2026-11-03, results below)
 
 The owner's question (2026-11-02): is a rebirth every ~4 game days fine (the
 owner thinks so - it makes players play more), would real players rebirth
@@ -142,7 +142,7 @@ Prepared on branch `claude/bot-rebirth-experiment`:
 - `run-overnight.ps1` runs it unattended. The owner asked for it to start at
   midnight; it was scheduled for 2026-11-03 00:00 and then cancelled when
   the local stack was shut down. Start it with
-  `.\server\FolkIdle.Botsun-overnight.ps1 -StartAt 00:00 -EndAt 08:55`.
+  `.\server\FolkIdle.Bots\run-overnight.ps1 -StartAt 00:00 -EndAt 08:55`.
 
 A 240-game-hour day test of that build (x200, 1 bot each) passed: optimal
 reborn at 150.8 h (level 73, dungeon best 3, 20 Ascension steps), patient
@@ -154,6 +154,150 @@ level, region, rebirths, best dungeon stage, Ascension steps, and the boss
 kill time in the region being pushed. Then a recommendation for rebirth
 (for instance larger rewards for rebirths 11-20, whose damage bonus is
 flat at 13% today, or a rebirth that pays more for kept gear).
+
+#### 0.6.1 Results (run 2026-11-03 01:30-08:55)
+
+Main at `0d114a25`, x200, default mix (3 optimal = eager, 3 patient, 2
+casual, 2 idle), 1,481 game hours = 61.7 game days. 53.3 million ticks in
+444 wall minutes, x199.9 effective, 34,292 dropped (0.06%). Output:
+`bot-runs/overnight-20261103-0130` (not committed; `summary.md`,
+`timeline.csv`, `milestones.csv`, `events.log`).
+
+**Offline model:** `run-overnight.ps1` did not set `FOLKIDLE_OFFLINE_SIM`,
+and the launching shell had no value for it (process, user and machine
+scope all empty). So every logout in this run was paid by the OLD offline
+model, not the per-swing simulator that production switched on with #298.
+The script now sets it explicitly (`-OfflineSim`, default on) and
+`summary.md` records it.
+
+Per persona at the end of the run (ranges over the three bots):
+
+| | eager (optimal) | patient |
+|---|---|---|
+| rebirths | 12-17 | 2-4 |
+| best region | 4 (none reached 5) | 5 (2 of 3, median 972 h = 40.5 days) |
+| best level in any life | 74-84 | 88-95 |
+| Ascension steps | 19-25 | 28-30 |
+| best dungeon stage | 3 | 4 |
+
+The asked-for checkpoints (level now / best so far, region, rebirths):
+
+| day | eager | patient |
+|---|---|---|
+| 10 | lvl 1-66 (best 66-69), r3-r4, 1-2 rebirths, gold 0.3-24M | lvl 73-78, r4, 0 rebirths, gold 42-118M |
+| 30 | best 72-74, r3-r4, 4-6 rebirths | best 79-90, r4, 1-2 rebirths |
+| 60 | best 74-84, r4, 12-17 rebirths | best 87-95, r4-r5, 2-4 rebirths |
+
+Milestones (median game hours; eager / patient): level 50 at 38.6 / 37.8,
+region 3 at 27.3 / 27.2, region 4 at 313 / 103, region 5 never / 972.
+The first eager rebirth came at 103 h, the first patient one at 444 h.
+
+**What the two personas actually differ in** (`BotBrain.Lineage.cs`):
+
+| | eager (optimal) | patient |
+|---|---|---|
+| when | 6 game hours without a level | a game day without progress of any kind |
+| gear kept | the weapon at most, and only if it costs at most half the gold | waits for gold to keep every worn combat piece; after 72 h keeps what it can afford |
+
+**Reading:**
+- **The patient COMBINATION - later rebirth plus keeping the whole combat
+  kit - beat the eager one.** From day 4 on the eager bots loop: a rebirth
+  every 4-5 game days, back to level ~70, and the region-4 boss never
+  falls. The patient bots keep growing and are stronger on every axis
+  measured - level, region, Ascension, dungeon, gold.
+- **The run does NOT show that waiting alone is better.** Timing and gear
+  kept change together, so it cannot tell whether the later rebirth, the
+  kept gear, or both carry the result. Section 0.6.2 is the experiment that
+  separates them.
+- This disagrees with the 0.4 run, where eager bots reached region 5 at 31
+  days with 16 rebirths. The bot changed in between (projection-based
+  decisions, #287), and each persona is 3 bots, so the direction is clear
+  but the size is not.
+- The rebirth damage bonus is flat at 13% from rebirth 10. Every eager bot
+  passed rebirth 10 by day 47 and gained nothing measurable after it.
+
+**What the run exposed, and what each turned out to be** (read from the
+run's `events.log`, 2026-11-03, no new run):
+1. **Dungeon pushes stop at stage 3-4: NOT a defect - the region gate.**
+   `DungeonEngine.StageLockedReason` opens stage N only once the region-N
+   boss is beaten, and the bot sweeps while the next stage is locked. The
+   pushes themselves almost always won (64 wins, 7 losses across six bots);
+   patient5 made no push between 122 h and 989 h because stage 4 stayed
+   locked until its region-4 boss fell at 972 h. Eager bots never beat that
+   boss, so they never saw stage 4. The 0.4 run reached stages 5-8 because
+   its bots reached region 5. The dungeon ceiling is the region-4 boss.
+2. **An idle player stuck at level 4 for all 61 days (idle9): mostly a BOT
+   defect at x200.** A daily check-in is 20 game minutes = 6 wall seconds.
+   The login path spent about 5 of them waiting - 3 s before the first
+   connect attempt (a backoff meant for a dropped socket) and a fixed 2 s for
+   the first snapshot - so idle9 logged in 19 game minutes into its window
+   (log: check-in from 24.00 h, "logged in" at 24.32 h, "logged out" at
+   24.36 h) and rarely got the fight restarted before it logged out again.
+   idle10 escaped at 552 h on the one login where the fight command went
+   through, and then levelled normally (level 16 the next day, 61 at the
+   end). Fixed in the bot: a login connects at once, waits only for the
+   first state frame, sends the fight before attributes and food, and logs
+   how much of the check-in was already gone. A 34-game-hour check at x200
+   (1 idle + 1 casual, 2026-11-03) logged in 1.6-4.9 game minutes into the
+   window instead of 19, and the idle bot restarted its fight on its first
+   login. Still open: why a level 1-4 character dies offline to the Field
+   Mouse at all (the starter larder running out is the likely reading) -
+   for the x20 casual/idle run.
+3. **"+0 XP" on a login that gained levels: a GAME defect, fixed.**
+   `OfflineXpEarned` (and the per-character `OfflineSlotNXp`) was
+   "CurrentXp after - CurrentXp before", but CurrentXp is the progress into
+   the current level and drops at every level-up, so a night that paid
+   levels read 0 (idle10: level 4 to 16, "+0 XP"). With no gold either, the
+   client's "earned nothing" warning would tell such a player the night was
+   wasted. Now counted with `ProgressionEngine.CumulativeXp`;
+   `Test_OfflineSummary_CountsTheXpOfLevelsGainedAway` fails on the old code.
+4. **Casual bots never left region 1** in 60 days (level 61-66 at best,
+   three rebirths each). This run is NOT evidence for that: at x200 a
+   20-minute check-in is 6 wall seconds, and with 0.4-1.2 s between bot
+   commands a whole check-in is a handful to ~15 commands. Confirm at x20
+   (as section 5 already asked) before deciding the region-2 unlock (2.2).
+
+The idle defect cannot be diagnosed from this report alone: it may be the
+old offline model, food, or the bot's choices after login. The run's
+`events.log` and `timeline.csv` stay on the dev box (`bot-runs/` is
+ignored), so the next step is a reproduction, not a reading of this file.
+
+**Recommendation: change no rebirth rule on this run.** The rules it would
+touch are deliberate. `RebirthRules.RewardedRebirths` stops skill points,
+damage bonus (13%) and the other rewards at rebirth 10 so veterans do not
+pull away from newcomers, and rebirths 11-20 pay only the bloodline
+ceiling. A rebirth is allowed at any level, and Renown is tied to level 50.
+Do not raise the bonus past 10, add a minimum rebirth level, retune the
+dungeon multipliers from bot losses, or speed up casual progression from an
+x200 run. First tell game defects, bot defects and real balance apart.
+
+#### 0.6.2 Next: a controlled rebirth experiment
+
+This comes after the idle and dungeon defects above are explained. It
+crosses the two factors the first run mixed:
+
+| variant | rebirth timing | gear kept |
+|---|---|---|
+| A | eager | the same rule for all |
+| B | patient | the same rule for all |
+| C | eager | better gear keeping |
+| D | patient | better gear keeping |
+
+Use 5-10 bots per variant and repeat with different random seeds. Keep the
+same starting state, the same bot build and an explicit `FOLKIDLE_OFFLINE_SIM`
+for every variant. The bot has it now: personas `optimal` (A), `patientbare`
+(B), `eagerkit` (C) and `patient` (D), split into `Persona.PatientRebirth`
+(timing) and `Persona.KeepWholeKit` (gear), and `--seed N` / `-Seed N`
+shifts every bot's dice. One night:
+
+    .\server\FolkIdle.Bots\run-overnight.ps1 -StartAt 00:00 -EndAt 08:55 -Mix optimal:5,patientbare:5,eagerkit:5,patient:5 -Seed 1
+
+20 bots at x200 is twice the 0.6.1 load (p99 0.41 ms against 0.5 ms of
+budget at 10 bots), so check `summary.md`'s effective speed; if it falls
+behind, run x100 or split the variants over two nights.
+ Track region, level, rebirths, gear strength, time
+stalled, dungeon and Ascension. The answer says whether the rewards need to
+change, or only the economy of keeping gear.
 
 ### 0.7 Speed limits now
 
@@ -336,7 +480,15 @@ forge/potions/dungeons) are done - see section 0. Now:
    1.0.1557 (#288): a 40001 conflict retries ChangeActivity and
    Potions.Stock, and refuses any other command with "try again" instead
    of disconnecting; Login keeps the kick.
-1a. Run the rebirth experiment (0.6) and write up its comparison.
+1a. ~~Run the rebirth experiment (0.6)~~ - run 2026-11-03, results in
+    0.6.1: the patient combination (later rebirth + whole kit kept) beats
+    eager, but timing and gear are confounded. Next, in order: reproduce
+    the idle bot stuck at level 4 (level 4, 12 h offline, death to the
+    Field Mouse, next login - record HP, food, activity, stop reason, XP;
+    add a test for repeated logins and the fight restarting); analyse the
+    dungeon stall (explained: the region gate, 0.6.1 item 1); the idle
+    login (bot defect fixed, 0.6.1 item 2); next nights: a casual + idle run
+    at x20 (`-Speed 20 -Mix casual:3,idle:3`), then the 2x2 (0.6.2).
 2. Casual and idle are part of the 0.6 run (their x200 defects are fixed;
    the day test showed it). A casual run at x20 would still confirm that
    the 20-minute check-in is not an artefact of speed.

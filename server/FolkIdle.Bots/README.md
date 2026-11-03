@@ -41,10 +41,12 @@ Results go to `bot-runs/<timestamp>/` (or `--out DIR`):
 |---|---|
 | `optimal` | Plays without pause; reborn when Renown rises and no level for 6 game hours ("eager") |
 | `patient` | Plays without pause; reborn only after a game day with no progress (level, best dungeon stage, Ascension steps) and with gold to keep every worn combat piece - after three days without progress it goes anyway |
+| `patientbare` | Like `patient` in timing, but keeps only what `optimal` keeps (the weapon, when it costs at most half the gold) - rebirth experiment 0.6.2, variant B |
+| `eagerkit` | Like `optimal` in timing, but keeps every worn combat piece it can afford at that moment - variant C |
 | `casual` | Checks in every 8 game hours for 20 minutes |
 | `idle` | Checks in every 24 game hours for 20 minutes |
 
-All four make the same decisions while checked in (only the rebirth rule differs for `patient`). Between check-ins a bot
+All of them make the same decisions while checked in (only the rebirth rule differs: `Persona.PatientRebirth` is the timing, `Persona.KeepWholeKit` the gear kept). `--seed N` shifts every bot's dice, so a repeated mix is an independent sample. Between check-ins a bot
 is LOGGED OUT: the server's own offline catch-up and offline cap decide what
 the time away earned, and `events.log` records each login's offline hours,
 XP and gold.

@@ -56,7 +56,7 @@ namespace FolkIdle.Bots
                     var client = new BotClient(o.Server, deviceId);
                     await client.ConnectAsync(t);
                     return client;
-                }, log, seed: i * 7919, name, persona);
+                }, log, seed: i * 7919 + o.Seed * 104729, name, persona);
                 try
                 {
                     await brain.RunAsync(stopAt, cts.Token);
@@ -87,15 +87,15 @@ namespace FolkIdle.Bots
         /// </summary>
         private static class TickMetrics
         {
-            public static async Task<(long Ticks, long Dropped)?> ReadAsync(string server)
+            public static async Task<(long Ticks, long Dropped, long OfflineSim)?> ReadAsync(string server)
             {
                 try
                 {
                     using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                     string text = await http.GetStringAsync(server.TrimEnd('/') + "/metrics");
-                    long Read(string name) => text.Split('\n').Where(l => l.StartsWith(name + " ", StringComparison.Ordinal))
-                        .Select(l => long.TryParse(l.Split(' ')[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long v) ? v : 0).FirstOrDefault();
-                    return (Read("folkidle_tick_duration_milliseconds_count"), Read("folkidle_ticks_dropped_total"));
+                    long Read(string name, long missing = 0) => text.Split('\n').Where(l => l.StartsWith(name + " ", StringComparison.Ordinal))
+                        .Select(l => long.TryParse(l.Split(' ')[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long v) ? v : missing).DefaultIfEmpty(missing).First();
+                    return (Read("folkidle_tick_duration_milliseconds_count"), Read("folkidle_ticks_dropped_total"), Read("folkidle_offline_sim", -1));
                 }
                 catch (Exception)
                 {
@@ -103,11 +103,20 @@ namespace FolkIdle.Bots
                 }
             }
 
-            public static string Describe((long Ticks, long Dropped)? start, (long Ticks, long Dropped)? end, TimeSpan wall, int speed)
+            public static string Describe((long Ticks, long Dropped, long OfflineSim)? start, (long Ticks, long Dropped, long OfflineSim)? end, TimeSpan wall, int speed)
             {
                 if (start is not { } a || end is not { } b || wall.TotalSeconds < 1) return "Tick metrics: /metrics was not readable.";
                 double effective = (b.Ticks - a.Ticks) / (wall.TotalSeconds * 10.0);
-                return $"Tick metrics: {b.Ticks - a.Ticks:N0} ticks in {wall.TotalMinutes:0.0} wall minutes = x{effective:0.0} effective (asked x{speed}); {b.Dropped - a.Dropped:N0} ticks dropped. Game hours above assume x{speed}; at x{effective:0.0} they are {effective / speed * 100:0.0}% of what they say.";
+                // Modul: THE OFFLINE MODEL IS PART OF A RUN'S CONFIGURATION
+                // (2026-11-03). The first rebirth experiment ran on the old model
+                // and nothing in its output said so; the server now reports it.
+                string offline = b.OfflineSim switch
+                {
+                    1 => "per-swing simulator (FOLKIDLE_OFFLINE_SIM=1)",
+                    0 => "OLD expected-value model (FOLKIDLE_OFFLINE_SIM not 1)",
+                    _ => "unknown (the server predates the folkidle_offline_sim metric)",
+                };
+                return $"Offline combat: {offline}.\n\nTick metrics: {b.Ticks - a.Ticks:N0} ticks in {wall.TotalMinutes:0.0} wall minutes = x{effective:0.0} effective (asked x{speed}); {b.Dropped - a.Dropped:N0} ticks dropped. Game hours above assume x{speed}; at x{effective:0.0} they are {effective / speed * 100:0.0}% of what they say.";
             }
         }
 
@@ -134,6 +143,8 @@ namespace FolkIdle.Bots
             public bool AllowRemote;
             /// <summary>--mix optimal:2,casual:1,idle:1; without it, --bots N optimal bots.</summary>
             public string? Mix;
+            /// <summary>--seed N: shifts every bot's decision dice, so a repeat of the same mix is an independent sample.</summary>
+            public int Seed;
 
             public List<Persona> Roster()
             {
@@ -142,7 +153,7 @@ namespace FolkIdle.Bots
                 foreach (string part in Mix.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 {
                     string[] kv = part.Split(':');
-                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, patient, casual, idle)");
+                    var persona = Persona.Parse(kv[0]) ?? throw new ArgumentException($"unknown persona '{kv[0]}' (optimal, patient, patientbare, eagerkit, casual, idle)");
                     int count = kv.Length > 1 ? int.Parse(kv[1], CultureInfo.InvariantCulture) : 1;
                     roster.AddRange(Enumerable.Repeat(persona, Math.Clamp(count, 1, 50)));
                 }
@@ -165,9 +176,10 @@ namespace FolkIdle.Bots
                         case "--prefix": o.Prefix = next(); break;
                         case "--allow-remote": o.AllowRemote = true; break;
                         case "--mix": o.Mix = next(); break;
+                        case "--seed": o.Seed = int.Parse(next(), CultureInfo.InvariantCulture); break;
                         default:
                             Console.Error.WriteLine($"unknown argument {args[i]}");
-                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID]");
+                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID] [--seed N]");
                             return null;
                     }
                 }

@@ -183,28 +183,39 @@ namespace FolkIdle.Bots
             var keep = new List<long>();
             string why;
 
+            // WHEN (Persona.PatientRebirth).
             if (_persona.PatientRebirth)
             {
                 // Modul: THE PATIENT PLAYER (rebirth experiment, 2026-11-02). No
                 // progress of any kind - level, dungeon stage, Ascension step -
-                // for a game day, AND gold to keep every worn combat piece; after
-                // three days without progress it goes anyway, keeping what it
-                // can afford, best first.
+                // for a game day. With the whole kit it also waits for gold to
+                // keep every worn combat piece; after three days without
+                // progress it goes anyway, keeping what it can afford.
                 double sinceProgress = Now - Math.Max(_lastProgressAt, _lastLevelUpAt);
                 long keepAll = worn.Sum(x => prices[x.Tier]);
                 bool canKeepAll = worn.Count > 0 && keepAll <= _state.Gold;
-                if (sinceProgress < 24 || (!canKeepAll && sinceProgress < 72)) return;
-                long budget = _state.Gold;
-                foreach (var piece in worn.OrderByDescending(x => x.Tier))
-                    if (prices[piece.Tier] <= budget) { keep.Add(piece.Id); budget -= prices[piece.Tier]; }
-                why = $"no progress {sinceProgress:0} h, keeping {keep.Count}/{worn.Count} worn pieces for {_state.Gold - budget} gold";
+                if (sinceProgress < 24) return;
+                if (_persona.KeepWholeKit && !canKeepAll && sinceProgress < 72) return;
+                why = $"no progress {sinceProgress:0} h";
             }
             else
             {
                 if (!stalled && _state.CurrentLevel < 100) return;
+                why = stalled ? $"stalled {stallHours:0} h" : "level 100";
+            }
+
+            // WHAT is kept (Persona.KeepWholeKit).
+            if (_persona.KeepWholeKit)
+            {
+                long budget = _state.Gold;
+                foreach (var piece in worn.OrderByDescending(x => x.Tier))
+                    if (prices[piece.Tier] <= budget) { keep.Add(piece.Id); budget -= prices[piece.Tier]; }
+                why += $", keeping {keep.Count}/{worn.Count} worn pieces for {_state.Gold - budget} gold";
+            }
+            else
+            {
                 var weapon = worn.FirstOrDefault(x => x.InSlot == 0);
                 if (weapon != null && prices[weapon.Tier] * 2 <= _state.Gold) keep.Add(weapon.Id);
-                why = stalled ? $"stalled {stallHours:0} h" : "level 100";
             }
 
             var (status, body) = await _client.PostAsync("/api/v1/rebirth", new { ExpectedRebirthCount = p.Int("RebirthCount"), Confirm = "REBIRTH", KeepEquipmentIds = keep }, token);

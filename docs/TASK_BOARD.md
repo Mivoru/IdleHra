@@ -26,6 +26,11 @@ the old one reached 420 KB and three contradictory START HERE blocks.
   playtest bots (backlog, 2026-10-31 to 2026-11-02).
 - **What is next** is 134 (phase 2b, the per-swing simulator) and 135 (affix
   families and signatures), plus the measurement batch.
+- **Update 2026-11-03:** the rebirth experiment ran (PLAYTEST_BOTS_REPORT.md
+  0.6.1). The dungeon stall is the region gate and the stuck idle bot was a
+  bot login defect (fixed). Still to run, overnight: casual + idle at x20,
+  then the controlled rebirth experiment (0.6.2). No rebirth rule changes
+  until then.
 
 ## State on 2026-10-30
 

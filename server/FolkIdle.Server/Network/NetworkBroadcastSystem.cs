@@ -11045,6 +11045,14 @@ namespace FolkIdle.Server.Network
                 body.Append("# HELP folkidle_ticks_dropped_total Ticks owed beyond the catch-up cap and never run.\n");
                 body.Append("# TYPE folkidle_ticks_dropped_total counter\n");
                 body.Append("folkidle_ticks_dropped_total ").Append(ticksDropped).Append('\n');
+                // Modul: WHICH OFFLINE MODEL PAID THE LOGOUTS (2026-11-03). The
+                // first rebirth experiment ran on the old expected-value model
+                // because nothing set FOLKIDLE_OFFLINE_SIM, and nothing could
+                // tell afterwards. The server reports what it actually uses,
+                // so a bot run's summary.md states it instead of assuming it.
+                body.Append("# HELP folkidle_offline_sim 1 when away combat is fought by the per-swing simulator (FOLKIDLE_OFFLINE_SIM=1), 0 for the old model.\n");
+                body.Append("# TYPE folkidle_offline_sim gauge\n");
+                body.Append("folkidle_offline_sim ").Append(FolkIdle.Server.Engine.OfflineSimulationEngine.UseCombatSimulator ? 1 : 0).Append('\n');
                 body.Append('\n');
                 if (recentTicks is { } rt)
                 {

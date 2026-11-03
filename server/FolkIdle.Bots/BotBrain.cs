@@ -115,17 +115,29 @@ namespace FolkIdle.Bots
                 }
                 else if (checkedIn && !connected)
                 {
-                    _client = await ReconnectAsync(token);
+                    // Modul: A CHECK-IN IS SHORT IN WALL TIME (rebirth experiment,
+                    // 2026-11-03). At x200 a 20-game-minute check-in is 6 wall
+                    // seconds, and this path used to spend ~5 of them waiting: 3 s
+                    // before the first connect attempt (a backoff meant for a
+                    // dropped socket, not for a login hours after the last
+                    // session closed) and a fixed 2 s for the first snapshot. An
+                    // idle bot logged in 19 game minutes into its 20, never
+                    // restarted the fight, and sat at level 4 for 61 game days.
+                    // Connect at once, wait only until the first state frame, and
+                    // log how far into the check-in the bot really got.
+                    _client = await ReconnectAsync(token, waitBeforeFirstAttempt: false);
                     connected = true;
                     // Fresh eyes: everything is looked at again.
                     _nextDue.Clear();
                     _queue.Clear();
                     _pendingActivity = 0;
                     _needFightAfterLogin = true;
-                    await Task.Delay(2000, token); // the login snapshot carries the offline summary
+                    var settleUntil = DateTime.UtcNow.AddSeconds(2); // the login snapshot carries the offline summary
+                    while (_client.StateFrames == 0 && DateTime.UtcNow < settleUntil) await Task.Delay(50, token);
                     if (_client.TryGetState(out var back))
                     {
-                        Event($"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}");
+                        double lateMinutes = (Now % _persona.CheckInEveryGameHours) * 60.0;
+                        Event($"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}, {lateMinutes:0.#} of {_persona.CheckInGameMinutes:0} check-in game min already gone");
                         Count("logins");
                         if (back.OfflineCapSeconds > 0 && back.OfflineElapsedSeconds >= back.OfflineCapSeconds) Count("offline_caps_hit");
                     }
@@ -195,11 +207,14 @@ namespace FolkIdle.Bots
         }
 
         /// <summary>A fresh connection after a pause, retried with a growing wait instead of ending the bot.</summary>
-        private async Task<BotClient> ReconnectAsync(CancellationToken token)
+        private async Task<BotClient> ReconnectAsync(CancellationToken token, bool waitBeforeFirstAttempt = true)
         {
             for (int attempt = 1; ; attempt++)
             {
-                await Task.Delay(TimeSpan.FromSeconds(Math.Min(30, 3 * attempt)), token);
+                // The wait before the first attempt lets a dropped session's
+                // teardown finish (see SessionLooksDead); a login after a logout
+                // has nothing to wait for.
+                if (attempt > 1 || waitBeforeFirstAttempt) await Task.Delay(TimeSpan.FromSeconds(Math.Min(30, 3 * attempt)), token);
                 try
                 {
                     var client = await _connect(token);
@@ -254,6 +269,14 @@ namespace FolkIdle.Bots
 
         private async Task OneCommandAsync(CancellationToken token)
         {
+            // Right after a login the fight goes before attributes and food: a
+            // check-in can be a second of wall time, and a character left dead
+            // earns nothing until the next one.
+            if (_needFightAfterLogin && TryFightCommand(out var restart))
+            {
+                await _client.SendCommandAsync(restart, token);
+                return;
+            }
             if (_state.UnspentAttributePoints > 0 && TryAttributeCommand(out var attribute))
             {
                 await _client.SendCommandAsync(attribute, token);
