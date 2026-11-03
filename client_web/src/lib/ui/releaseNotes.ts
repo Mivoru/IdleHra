@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.54.1',
+    date: '2026-11-03',
+    headline: 'The welcome-back summary counts XP correctly again.',
+    sections: [
+      {
+        title: 'Fixes',
+        items: [
+          'If your characters gained a level while you were away, the welcome-back summary could show +0 XP, or even say you earned nothing. It now shows all the XP you earned, including the levels it paid for.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.54.0',
     date: '2026-11-02',
     headline: "Malakor's ascension climbs more steeply, and a few rare stuck states are gone.",
