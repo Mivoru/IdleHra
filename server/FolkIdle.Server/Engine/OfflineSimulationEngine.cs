@@ -743,8 +743,20 @@ namespace FolkIdle.Server.Engine
             return legs;
         }
 
+        /// <summary>
+        /// Phase 2b.4: away combat fought by <see cref="CombatSimulator"/> (the
+        /// live tick, swing by swing) instead of the expected-value model.
+        /// Read from FOLKIDLE_OFFLINE_SIM=1 once; tests set it directly.
+        /// </summary>
+        internal static bool UseCombatSimulator { get; set; } =
+            Environment.GetEnvironmentVariable("FOLKIDLE_OFFLINE_SIM") == "1";
+
         private static LootProjection CalculateCombatProjection(ref TickStatePayload payload, long elapsedSeconds, out long secondsFought)
         {
+            if (UseCombatSimulator)
+            {
+                return CalculateSimulatedCombatProjection(ref payload, elapsedSeconds, Random.Shared, out secondsFought);
+            }
             secondsFought = elapsedSeconds;
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
             if (fallbackId <= 0 || fallbackId > ContentRegistry.Monsters.Length)
@@ -774,6 +786,130 @@ namespace FolkIdle.Server.Engine
             // ProjectCombatLoot. The kill COUNT is this method's; what each
             // kill pays is the live kill's.
             return ProjectCombatLoot(ref payload, in combatStats, fallbackId, outcome.PaidKills, Random.Shared);
+        }
+
+        /// <summary>
+        /// One combat leg fought by the live tick itself (phase 2b.4). The tick
+        /// applies to the payload everything it applies live - gold, XP and
+        /// levels, food and rations, diamonds, the Golden Fleece counter,
+        /// quests, a death and the automation rules - and hands this method,
+        /// through the simulator's Tally, what it would have sent elsewhere.
+        /// What differs from a live kill is only what the away window has
+        /// always done differently: gold is recorded as CombatAway, the
+        /// Experience 5 milestone's away XP is added, event currency is paid at
+        /// the event's offline rate, and the loot goes as one Offline request
+        /// per monster and rarity bonus with its materials rolled here, so the
+        /// welcome-back card can count them.
+        /// </summary>
+        internal static LootProjection CalculateSimulatedCombatProjection(ref TickStatePayload payload, long elapsedSeconds, Random rng, out long secondsFought)
+        {
+            secondsFought = elapsedSeconds;
+            int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
+            if (fallbackId <= 0 || fallbackId > ContentRegistry.Monsters.Length)
+            {
+                return new LootProjection(false);
+            }
+            // The same refusal as the model: a character who cannot hurt the
+            // monster earns nothing and does not spend the window's ticks.
+            if (!HuntingProjection.FightSetup.For(in payload, fallbackId, timedEffects: true).CanDamage)
+            {
+                return new LootProjection(false);
+            }
+
+            int levelBefore = payload.CurrentLevel;
+            long xpBefore = payload.CurrentXp;
+            long combatGoldBefore = payload.PendingGoldIncome.Combat;
+
+            CombatSimulator.Outcome outcome = CombatSimulator.Run(ref payload, Math.Max(0L, elapsedSeconds) * 10L, rng);
+            CombatSimulator.Tally tally = outcome.Tally;
+            secondsFought = (outcome.TicksRun + 9) / 10;
+
+            // Gold: the tick tallied it as watched combat; it was earned away.
+            long awayGold = payload.PendingGoldIncome.Combat - combatGoldBefore;
+            if (awayGold > 0)
+            {
+                payload.PendingGoldIncome.Combat -= awayGold;
+                payload.PendingGoldIncome.CombatAway += awayGold;
+            }
+
+            // XP: the Experience 5 milestone pays away XP only. The tick paid
+            // the live figure; the bonus on top is the same share of it.
+            long xpGained = XpGainedBetween(levelBefore, xpBefore, payload.CurrentLevel, payload.CurrentXp);
+            ApplyCombatXp(ref payload, InheritanceMilestones.AwayXp(in payload, xpGained) - xpGained);
+
+            // Funnel step 2 needs nothing here: ProcessMonsterDeath records it on the kill.
+            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, tally.PaidKills, elapsedSeconds);
+
+            foreach (string petId in tally.PetDrops) PetEngine.Drops.Enqueue(new PetDropNote(payload.PlayerId, petId));
+            foreach (var note in tally.BossKillNotes)
+                CosmeticGrantEngine.NoteBossKill(payload.PlayerId, note.Region, note.MonsterId, note.Level, note.Ate, note.FightTenths);
+            foreach (var note in tally.AscensionNotes)
+                BossAscensionEngine.NoteClear(payload.PlayerId, note.Region, note.Step, note.MonsterId);
+            foreach (var note in tally.SeasonalBossNotes) SeasonalBossEngine.Clears.Enqueue(note);
+
+            // Codex: one event per monster, as the model's window sends.
+            var codex = new Dictionary<(int MonsterId, int RaceId), KillEvent>();
+            foreach (KillEvent kill in tally.CodexKills)
+            {
+                var key = (kill.MonsterId, kill.RaceId);
+                if (codex.TryGetValue(key, out KillEvent sum))
+                {
+                    sum.Kills += kill.Kills;
+                    sum.GainedXp += kill.GainedXp;
+                    codex[key] = sum;
+                }
+                else codex[key] = kill;
+            }
+            foreach (KillEvent kill in codex.Values) CodexEngine.KillEventQueue.Enqueue(kill);
+
+            // Loot: the tick built one request per kill; merge them per monster
+            // and rarity bonus (plain and Golden Fleece), keeping the latest
+            // request's luck - the character as it ends the window.
+            var merged = new Dictionary<(int MonsterId, int Bonus), CombatLootDropRequest>();
+            foreach (CombatLootDropRequest request in tally.DropRequests)
+            {
+                var key = (request.MonsterId, request.BonusRarityTiers);
+                long kills = request.Kills + (merged.TryGetValue(key, out var sum) ? sum.Kills : 0);
+                var next = request;
+                next.Kills = (int)Math.Min(kills, MaxOfflineKillsPerSlot);
+                merged[key] = next;
+            }
+            var materialDeltas = new Dictionary<string, long>();
+            int materialDrops = 0;
+            long lootKills = 0;
+            foreach (CombatLootDropRequest request in merged.Values)
+            {
+                var offline = request;
+                offline.SkipMaterialRoll = true;
+                offline.Source = DropSource.Offline;
+                if (offline.Kills <= 0) continue;
+                CombatLootEngine.DropRequestQueue.Enqueue(offline);
+                materialDrops += CombatLootEngine.RollMaterialsForKills(rng, offline.MonsterId, offline.Kills, offline.MaterialQuantityPct, materialDeltas);
+                lootKills += offline.Kills;
+            }
+
+            if (!outcome.Died && !outcome.LeftTheFight)
+            {
+                // As the model leaves it: the fight in progress is not carried
+                // across the login - the character is back on the bar it had,
+                // against a fresh monster.
+                payload.CurrentMonsterId = 0;
+                payload.CurrentMonsterHp = 0;
+                payload.CombatTargetTickAccumulator = 0;
+            }
+            payload.IsDirty = true;
+            return new LootProjection(true, materialDeltas, materialDrops, lootKills);
+        }
+
+        /// <summary>XP gained between two (level, XP into the level) points, level-ups included.</summary>
+        internal static long XpGainedBetween(int levelBefore, long xpBefore, int levelAfter, long xpAfter)
+        {
+            long gained = xpAfter - xpBefore;
+            for (int level = levelBefore; level < levelAfter; level++)
+            {
+                gained += ProgressionEngine.GetRequiredXpForLevel(level);
+            }
+            return Math.Max(0L, gained);
         }
 
         /// <summary>

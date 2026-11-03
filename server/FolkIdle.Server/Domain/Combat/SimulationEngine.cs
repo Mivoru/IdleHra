@@ -5326,7 +5326,12 @@ namespace FolkIdle.Server.Domain.Combat
                 var simulating = Simulating;
                 if (clearedBossRegion > 0)
                 {
-                    if (simulating != null) simulating.BossKills++;
+                    if (simulating != null)
+                    {
+                        simulating.BossKills++;
+                        simulating.BossKillNotes.Add((clearedBossRegion, activeMonster.Id, levelAtKill, payload.AteThisFight,
+                            (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator)));
+                    }
                     else CosmeticGrantEngine.NoteBossKill(payload.PlayerId, clearedBossRegion, activeMonster.Id,
                         levelAtKill, payload.AteThisFight, (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator));
                 }
@@ -5345,7 +5350,11 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         int clearedStep = payload.AscensionStep;
                         payload.BossAscensionPacked = BossAscensionRegistry.WithHighestStep(payload.BossAscensionPacked, clearedBossRegion, clearedStep);
-                        if (simulating != null) simulating.AscensionClears++;
+                        if (simulating != null)
+                        {
+                            simulating.AscensionClears++;
+                            simulating.AscensionNotes.Add((clearedBossRegion, clearedStep, activeMonster.Id));
+                        }
                         else BossAscensionEngine.NoteClear(payload.PlayerId, clearedBossRegion, clearedStep, activeMonster.Id);
                         // No result here: "cleared" is announced by the worker AFTER
                         // the reward commits, so the ladder the client refetches on
@@ -5382,8 +5391,9 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             payload.SeasonalBossClearedMask = SeasonalBossRegistry.WithCleared(payload.SeasonalBossClearedMask, wonTier.Tier);
                             Domain.Progression.SeasonalEventEarning.Grant(ref payload, wonTier.Currency, nowSeconds);
-                            if (simulating != null) simulating.SeasonalBossClears++;
-                            else SeasonalBossEngine.Clears.Enqueue(new SeasonalBossClearNote(payload.PlayerId, seasonalEvent.Id, wonTier.Tier));
+                            var clearNote = new SeasonalBossClearNote(payload.PlayerId, seasonalEvent.Id, wonTier.Tier);
+                            if (simulating != null) { simulating.SeasonalBossClears++; simulating.SeasonalBossNotes.Add(clearNote); }
+                            else SeasonalBossEngine.Clears.Enqueue(clearNote);
                             DisarmAscension(ref payload);
                         }
                     }
@@ -5565,9 +5575,15 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Seasonal event currency: a chance per paid kill, under the
                 // daily cap. Bosses count like any kill - the cap is the bound.
-                Domain.Progression.SeasonalEventEarning.Roll(
-                    ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, paidKills,
-                    GameClock.UtcNowOffset.ToUnixTimeSeconds(), rng);
+                // Modul: not in a simulated away window (phase 2b.4). The window
+                // runs at login, so "now" here is the login for every kill of it,
+                // and the event's offline rate and its start inside the window
+                // would both be lost; OfflineSimulationEngine pays the window's
+                // paid kills through OfflineEventCurrency instead, as before.
+                if (simulating == null)
+                    Domain.Progression.SeasonalEventEarning.Roll(
+                        ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, paidKills,
+                        GameClock.UtcNowOffset.ToUnixTimeSeconds(), rng);
 
                 // A monster pet: a chance on every kill, no event needed.
                 Domain.Progression.PetRegistry.RollMonsterPets(payload.PlayerId, paidKills, rng);

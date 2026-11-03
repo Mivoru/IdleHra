@@ -142,9 +142,14 @@ namespace FolkIdle.Server.Tests
 
                 Assert.True(plain.OfflineGoldEarned > 0, "the offline window killed nothing");
                 Assert.Equal(0L, plain.OfflineGoldEarned % plainPerKill);
+                // Modul: per run, not across runs (phase 2b.4). With
+                // FOLKIDLE_OFFLINE_SIM=1 each window is a real fight with its
+                // own dice, so the two count kills a few apart; each must still
+                // be paid PerKill for every kill, and the counts must agree.
+                Assert.Equal(0L, buffed.OfflineGoldEarned % buffedPerKill);
                 long kills = plain.OfflineGoldEarned / plainPerKill;
-
-                Assert.Equal(kills * buffedPerKill, buffed.OfflineGoldEarned);
+                long buffedKills = buffed.OfflineGoldEarned / buffedPerKill;
+                Assert.True(Math.Abs(buffedKills - kills) <= Math.Max(2L, kills / 50), $"kills {kills} plain, {buffedKills} buffed");
             }
             finally
             {
