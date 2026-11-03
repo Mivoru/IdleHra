@@ -35,6 +35,34 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.56.0',
+    date: '2026-11-03',
+    headline: 'Affinities: the skill tree now strengthens the affixes on your gear.',
+    sections: [
+      {
+        title: 'Skill tree',
+        items: [
+          "Every War column has a new Affinity rune: Tempered Steel (Might), Honed Edge (Precision), Warded Plate (Guard) and Fortune's Favour (Fortune). The Hearth Workshop has Toolwright for your tools. Each makes the affixes of its family on your gear 3%, 6% or 10% stronger.",
+          "Only the affixes grow, never an item's own attack or armour.",
+          'Rune names no longer get cut off.',
+        ],
+      },
+      {
+        title: 'Gear',
+        items: [
+          'Every affix shows its family (Power, Precision, Guard, Fortune or Craft) in its tree colour. When your tree boosts it, you see the value it really fights with.',
+          'The Forge lists each affix once, says the Forge level limit once instead of on every item, and fits your worn gear on one phone screen.',
+        ],
+      },
+      {
+        title: 'Interface',
+        items: [
+          'The "Do this next" hint folds into a small pill in the corner instead of sitting over the middle of the screen.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.55.0',
     date: '2026-11-03',
     headline: 'A clearer Forge, guild ranks, and fairer reroll prices.',
