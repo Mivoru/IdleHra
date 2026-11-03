@@ -111,6 +111,19 @@ namespace FolkIdle.Server.Engine
         // the same GetItemBaseId identity space every other resolution in this
         // codebase uses. Linear over a bounded static table, and only on the
         // reroll command path, never on a tick.
+        /// <summary>
+        /// What one reroll (or, with <paramref name="refine"/>, one Refine) of
+        /// this piece costs - the number the engine charges, for screens to
+        /// show instead of computing their own (the Forge used to mirror the
+        /// region table by hand).
+        /// </summary>
+        public static long GoldCostFor(string baseItemId, int qualityTier, bool refine)
+        {
+            int regionTier = ContentRegistry.TryGetItemDefinitionByBaseId(baseItemId, out var def) && def.RegionTier > 0 ? def.RegionTier : 1;
+            long cost = AffixRegistry.CalculateRerollGoldCost(regionTier, 0, rerollStatType: false, itemQualityTier: qualityTier);
+            return refine ? RefineCost(cost) : cost;
+        }
+
         private static int ResolveRegionTier(string baseItemId)
         {
             if (string.IsNullOrEmpty(baseItemId)) return 1;
@@ -413,7 +426,8 @@ namespace FolkIdle.Server.Engine
                 long cost = AffixRegistry.CalculateRerollGoldCost(
                     regionTier,
                     consecutiveAttempts,
-                    rerollStatType: false);
+                    rerollStatType: false,
+                    itemQualityTier: targetItem.QualityTier);
                 bool refine = operation == RerollOperation.Refine;
                 if (refine) cost = RefineCost(cost);
 

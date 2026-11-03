@@ -2526,6 +2526,9 @@ namespace FolkIdle.Server.Network
             public int EquippedByCharacterSlot { get; set; } = -1;
             /// <summary>Which of the eleven equipment slots it is worn in, or -1 - orders a character's column like its paper doll.</summary>
             public int EquippedInSlotIndex { get; set; } = -1;
+            /// <summary>What one reroll / one Refine of this piece costs - AffixRerollEngine.GoldCostFor, the engine's own price (2026-11-03).</summary>
+            public long RerollGoldCost { get; set; }
+            public long RefineGoldCost { get; set; }
             public System.Collections.Generic.Dictionary<string, int> Affixes { get; set; } = new();
         }
 
@@ -5169,6 +5172,8 @@ namespace FolkIdle.Server.Network
                         IsEquipped = wornBy.ContainsKey(item.Id),
                         EquippedByCharacterSlot = wornBy.TryGetValue(item.Id, out var wearer) ? wearer.CharacterSlot : -1,
                         EquippedInSlotIndex = wornBy.TryGetValue(item.Id, out var worn) ? worn.EquipSlot : -1,
+                        RerollGoldCost = AffixRerollEngine.GoldCostFor(item.BaseItemId, item.QualityTier, refine: false),
+                        RefineGoldCost = AffixRerollEngine.GoldCostFor(item.BaseItemId, item.QualityTier, refine: true),
                         Affixes = affixes
                     });
                 }

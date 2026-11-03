@@ -515,6 +515,10 @@ export interface ForgeEquipment {
   EquippedByCharacterSlot?: number;
   /** Which of the eleven equipment slots it is worn in, or -1. */
   EquippedInSlotIndex?: number;
+  /** What one reroll / one Refine of this piece costs - the engine's own price
+   *  (AffixRerollEngine.GoldCostFor: region x item rarity, 2026-11-03). */
+  RerollGoldCost?: number;
+  RefineGoldCost?: number;
   Affixes: AffixMap;
 }
 

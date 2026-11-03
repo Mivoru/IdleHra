@@ -231,6 +231,14 @@ export function villageCostRow(costKind: VillageCostKind, currentLevel: number) 
  */
 export const REROLL_GOLD_BY_REGION: readonly number[] = [0, 1000, 2000, 4000, 5000, 10000];
 
+/**
+ * AffixRegistry.RerollRarityFactor (2026-11-03): the region price is
+ * multiplied by the ITEM's rarity - indexed by the 14 quality tiers, 1-based.
+ * The Forge shows the server's own price per piece; this copy is the Wiki's,
+ * and serverMirrors.test.ts compares it element by element.
+ */
+export const REROLL_RARITY_FACTOR: readonly number[] = [1, 1, 1, 1, 2, 3, 4, 8, 20, 50, 50, 50, 50, 50, 50];
+
 /** AffixRegistry.MaxAffixCount, and RarityTier.GetAffixCount's bands. */
 export const AFFIX_COUNT_BANDS: readonly { tiers: string; count: number }[] = [
   { tiers: 'T1-T3', count: 1 },
