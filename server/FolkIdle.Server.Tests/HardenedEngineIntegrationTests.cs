@@ -6271,7 +6271,47 @@ namespace FolkIdle.Server.Tests
             // 0 and were mutated by this same call, so the Offline* fields
             // must equal exactly what those counters increased by.
             Assert.Equal(payload.CurrentGold, payload.OfflineGoldEarned);
-            Assert.Equal(payload.CurrentXp, payload.OfflineXpEarned);
+            // XP counted across levels: from level 1 with 0 XP, that is every
+            // finished level's cost plus the progress into the current one.
+            Assert.Equal(ProgressionEngine.CumulativeXp(payload.CurrentLevel, payload.CurrentXp), payload.OfflineXpEarned);
+        }
+
+        // Modul: THE SUMMARY OF A NIGHT THAT PAID LEVELS (2026-11-03). CurrentXp
+        // is the progress into the current level, so the old "after - before"
+        // read 0 whenever a level was gained away - the bots saw "+0 XP" on a
+        // login that took an account from level 4 to 16. Starting just short
+        // of a level, one hour away must gain at least one level AND report
+        // the XP that paid for it.
+        [Fact]
+        public async Task Test_OfflineSummary_CountsTheXpOfLevelsGainedAway()
+        {
+            const long elapsedOfflineSeconds = 3600L;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            const int startLevel = 4;
+            long startXp = ProgressionEngine.GetRequiredXpForLevel(startLevel) - 1;
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = 970001602L,
+                LastLogoutTimestamp = now - elapsedOfflineSeconds,
+                ActiveActivityId = 91, // Field Mouse
+                CurrentLevel = startLevel,
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
+                AutoEatThreshold = FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct,
+                CurrentXp = startXp,
+                InventorySpaceRemaining = 1000,
+                Food1_ItemId = FirstEdibleItemId(),
+                Food1_Count = 100000
+            };
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, now);
+
+            Assert.True(payload.CurrentLevel > startLevel, $"an hour on the Field Mouse from one XP short of level {startLevel + 1} gained no level");
+            long earned = ProgressionEngine.CumulativeXp(payload.CurrentLevel, payload.CurrentXp) - ProgressionEngine.CumulativeXp(startLevel, startXp);
+            Assert.True(earned > 0);
+            Assert.Equal(earned, payload.OfflineXpEarned);
+            Assert.Equal(earned, (long)payload.OfflineSlot1Xp);
         }
 
         // Modul: Phase - Full-Stack Production Polish, Part 4.1. Proves the
