@@ -784,8 +784,13 @@ namespace FolkIdle.Server.Domain.Combat
         // than requiring a hand match of nested braces at every one.
         private void SafeDispatchAsync(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
         {
+            Interlocked.Increment(ref _inFlightDispatches);
             _ = SafeDispatchAsyncCore(context, playerIdToDisconnectOnFailure, action);
         }
+
+        // Work the tick handed to the thread pool and has not seen finish
+        // (logins above all). Lockstep waits for it - see LockstepBeforeTick.
+        private int _inFlightDispatches;
 
         private async Task SafeDispatchAsyncCore(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
         {
@@ -818,6 +823,10 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     _networkSystem.ForceDisconnect(playerIdToDisconnectOnFailure);
                 }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _inFlightDispatches);
             }
         }
 
@@ -2747,6 +2756,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         private bool LockstepBeforeTick(SimConductor conductor)
         {
+            LockstepSettle();
             (long TickToRun, IReadOnlyList<SimWake> Wakes, bool NeedsBroadcast)? prep;
             Monitor.Enter(_activePlayers);
             try
@@ -2795,6 +2805,38 @@ namespace FolkIdle.Server.Domain.Combat
             _lockstepTick = tick;
             GameClock.SetLockstepTick(tick);
             return true;
+        }
+
+        /// <summary>Checkpoint jobs allowed in the queue before lockstep stops starting ticks.</summary>
+        internal const int LockstepCheckpointQueueBound = 16;
+
+        /// <summary>
+        /// Modul: LOCKSTEP WAITS FOR THE WORK THE TICK STARTED (phase 1d). In
+        /// paced mode a login's database load (SafeDispatchAsync) takes a few
+        /// ms of a 100 ms tick; in lockstep the tick runs flat out, so the player
+        /// would enter the world at whatever tick the thread pool happened to
+        /// finish on - a result that depends on the CPU, which is exactly what
+        /// lockstep exists to remove. So before each tick: every dispatch the
+        /// tick handed off has finished, and the checkpoint writer is under its
+        /// bound (the P0 login wave queued 47). Bounded by a wall timeout, logged,
+        /// so a dispatch that itself waits on the tick cannot freeze the world.
+        /// The logout-then-login order needs nothing new: a login already fences
+        /// on that player's queued checkpoints (WaitForPendingFlushesAsync).
+        /// </summary>
+        private void LockstepSettle()
+        {
+            var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
+            var writer = _checkpointManager.Writer;
+            var spin = new SpinWait();
+            while (Volatile.Read(ref _inFlightDispatches) > 0 || writer.QueueDepth > LockstepCheckpointQueueBound)
+            {
+                if (Stopwatch.GetTimestamp() > deadline)
+                {
+                    Console.WriteLine($"[SimulationEngine] LOCKSTEP: settle timed out ({Volatile.Read(ref _inFlightDispatches)} dispatches in flight, checkpoint queue {writer.QueueDepth}); running the tick anyway.");
+                    return;
+                }
+                spin.SpinOnce(sleep1Threshold: 50);
+            }
         }
 
         // Modul: Architecture Overhaul, Part 2. Multi-character position

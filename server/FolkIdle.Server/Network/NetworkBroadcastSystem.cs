@@ -1112,6 +1112,7 @@ namespace FolkIdle.Server.Network
             using var deadline = new CancellationTokenSource(RequestDeadline);
             var scope = new RequestScope { Aborted = deadline.Token };
             _currentRequest.Value = scope;
+            long routeStarted = DevRouteTiming.Enabled ? Stopwatch.GetTimestamp() : 0;
             try
             {
                 await RouteCoreAsync(context);
@@ -1146,6 +1147,7 @@ namespace FolkIdle.Server.Network
             {
                 scope.Stripe?.Release();
                 scope.Stripe = null;
+                if (routeStarted != 0) DevRouteTiming.Record(context.Request.Url?.AbsolutePath, Stopwatch.GetTimestamp() - routeStarted);
             }
         }
 
@@ -11152,6 +11154,7 @@ namespace FolkIdle.Server.Network
                     body.Append("folkidle_tick_duration_recent_milliseconds_count ").Append(rt.Samples).Append('\n');
                     body.Append('\n');
                 }
+                DevRouteTiming.AppendMetrics(body);
                 if (checkpointWriter != null)
                 {
                     body.Append("# HELP folkidle_checkpoint_queue_depth Checkpoint jobs queued on CheckpointWriter.\n");

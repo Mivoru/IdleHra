@@ -5,7 +5,8 @@ on the real WebSocket/REST surface) and asked for implementation. BUILT: step 0
 (PR #313) and phase 1a (`SimConductor`, `SimLockstep`, the control socket, the
 engine branch, tick-driven `GameClock`) and phase 1b (`SimCronPump`: nine
 gameplay crons run on the tick at their production periods) and phase 1c
-(game-time guards, event wakes). Not built: 1d, 2, 3. The bots do
+(game-time guards, event wakes) and phase 1d (settle before each tick,
+per-route REST timing). Not built: 2, 3. The bots do
 not speak the control socket yet, so a lockstep server today holds still until
 a client joins - nothing runs lockstep end to end with real bots.
 
@@ -165,10 +166,14 @@ thinking, not game time); bots are exempted on dev if they bite.
   `CheckpointWriter.QueueDepth` is above a bound (16). At x1000 with 20
   online players the steady rate is ~67 checkpoints per wall second, which
   Postgres handles; the bound only catches bursts like P0's login wave.
-- Logout ack: a bot's login wake is held until the writer has committed
-  that player's logout flush. The writer is already FIFO per player
-  (`playerId % 4` partitions); what is missing is the wait. The offline
-  catch-up then always reads the state the session left.
+- Logout ack: already there. A login awaits `WaitForPendingFlushesAsync`
+  for that player before it reads the row (task 43), so the offline catch-up
+  always reads the state the session left.
+- Found while building 1d: a login's database load runs on the thread pool
+  (`SafeDispatchAsync`). Paced, it costs a few ms of a 100 ms tick; in
+  lockstep the player would enter the world at whatever tick the pool
+  finished on. The engine now waits for every in-flight dispatch before the
+  next tick (`LockstepSettle`).
 - The throwaway DB runs with `synchronous_commit=off`.
 
 ### 8. What the bot changes (P2)
@@ -190,7 +195,7 @@ thinking, not game time); bots are exempted on dev if they bite.
 | 1a (BUILT) | `SimConductor`, tick-driven `GameClock`, control socket, wake/yield, quantum, clock jump at zero sessions | `SimConductorTests`; live control-socket smoke |
 | 1b (BUILT) | Cron pump on the tick for the gameplay crons: liveops (600 ticks, run at start), codex 50, loot 30, pending grants 50, achievements 150, cosmetic chests 10, season era 3,000, leaderboards 3,000, leaderboard payout 6,000. The tick waits for each. | `SimCronPumpTests`; live smoke: 9 registered, no failures |
 | 1c (BUILT) | `GameClock.MonotonicMs` (game ms under lockstep, `Environment.TickCount64` otherwise) for the 100 ms command rule, the throttler, the token bucket, the challenge window and the macro detector; `GameClock.ReactionUtcNow` for the dungeon telegraph window. Event wakes from ONE place: `LockstepEventProbe` diffs each player's payload around `ProcessTick` (level up, death, new halt incl. full inventory, activity stopped); the engine wakes `DailyReset` subscribers when the game day turns. Telemetry timestamps stay wall. | `LockstepEventProbeTests` (mutation-checked); guard/anti-cheat/dungeon suites 154/154 |
-| 1d | Checkpoint back-pressure, logout ack, per-route REST timing | staged logout-then-login race test |
+| 1d (BUILT) | `LockstepSettle` before every tick: all `SafeDispatchAsync` work the tick handed off (logins above all) has finished, and the checkpoint queue is at most 16 (10 s wall timeout, logged). Logout ack needed nothing new: a login already fences on that player's queued checkpoints (`WaitForPendingFlushesAsync`, task 43). `folkidle_dev_route_seconds_total{route}` on /metrics, dev tools only. | targeted suites 116/116; exercised end to end by P2 |
 | 2 | Bot on the conductor; personas as attention budgets | a 24-game-hour lockstep run finishes and logs no wall waits |
 | 3 | Validation: lockstep vs x20 (same mix and seed), quantum 1 vs 10, x50 vs flat out | `compare-run.py` per persona, overnight |
 
