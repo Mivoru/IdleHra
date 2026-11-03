@@ -4,7 +4,11 @@
   import { play } from '../lib/ui/audio';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
-  import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
+  import { queryKeys, fetchForge, fetchForgeStackPreview, fetchBreedingRoster, type ForgeEquipment } from '../lib/net/rest';
+  import { workersOf, workerName } from '../lib/ui/workers';
+  import { raceName } from '../lib/ui/races';
+  import { EQUIPMENT_SLOTS } from '../lib/ui/slots';
+  import { summarizeAffixes } from '../lib/ui/itemRow';
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
   import { executeForgeFusion, fuseStack, rerollAffix, refineCost, REFINE_OPERATION, REROLL_OPERATIONS, MAX_FORGE_LEVEL } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
@@ -323,6 +327,31 @@
   const rerollChoices = $derived(
     showAllForReroll ? owned : owned.filter((i: { Id: number }) => equippedIds.has(Number(i.Id))),
   );
+
+  // Modul: ONE COLUMN PER CHARACTER (owner, 2026-11-03). "In the Forge I only
+  // ever see the gear on one character; with several I want to reroll theirs
+  // without hunting through everything, and see which piece is on whom." The
+  // server now says who wears a piece and in which slot
+  // (EquippedByCharacterSlot / EquippedInSlotIndex), so worn gear - tools
+  // included, which the wire cannot name - is grouped by character and
+  // ordered like the paper doll. "Show all" still lists everything.
+  const roster = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
+  const nameById = $derived(new Map((roster.data ?? []).map((c) => [c.CharacterId, c.Name])));
+  const wornByCharacter = $derived.by(() => {
+    const groups = workersOf(snap).map((worker) => {
+      const name = workerName(worker, nameById);
+      const race = worker.raceId > 0 ? raceName(worker.raceId) : '';
+      return {
+        slot: worker.slot,
+        title: race && race !== name ? `${name} (${race})` : name,
+        items: owned
+          .filter((i) => (i.EquippedByCharacterSlot ?? -1) === worker.slot - 1)
+          .sort((a, b) => (a.EquippedInSlotIndex ?? 99) - (b.EquippedInSlotIndex ?? 99)),
+      };
+    });
+    return groups;
+  });
+  const slotNameOf = (index: number | undefined) => EQUIPMENT_SLOTS.find((s) => s.index === index)?.label ?? '';
 
   // --- one row per item (task 100) ------------------------------------------
   //
@@ -807,7 +836,7 @@
     <div class="pickhead">
       <h3>{showAllForReroll ? 'Everything you own' : 'What you are wearing'}</h3>
       <button class="tiny-btn" onclick={() => (showAllForReroll = !showAllForReroll)}>
-        {showAllForReroll ? 'Only equipped' : 'Show all (tools too)'}
+        {showAllForReroll ? 'Only equipped' : 'Show all'}
       </button>
     </div>
     {#if forge.isError && forge.data === undefined}
@@ -817,18 +846,57 @@
          QuestLineRegistry): before an item is picked there is no Reroll button
          to light, so the picker is what it points at. -->
     <div data-guide="forge-reroll-item">
-      <ItemBrowser
-        items={rerollChoices}
-        selectedId={rerollItemId}
-        compact
-        emptyText={showAllForReroll
-          ? 'Nothing to reroll.'
-          : 'Nothing equipped. Dress a character on the Character screen, or show all.'}
-        onselect={(item) => {
-          rerollItemId = item.Id;
-          rerollAffixIndex = 0;
-        }}
-      />
+      {#if showAllForReroll || wornByCharacter.every((g) => g.items.length === 0)}
+        <ItemBrowser
+          items={showAllForReroll ? owned : rerollChoices}
+          selectedId={rerollItemId}
+          compact
+          emptyText={showAllForReroll
+            ? 'Nothing to reroll.'
+            : 'Nothing equipped. Dress a character on the Character screen, or show all.'}
+          onselect={(item) => {
+            rerollItemId = item.Id;
+            rerollAffixIndex = 0;
+          }}
+        />
+      {:else}
+        <div class="wearers" data-testid="forge-wearers">
+          {#each wornByCharacter as group (group.slot)}
+            <section class="wearer">
+              <h4>{group.title}</h4>
+              {#if group.items.length === 0}
+                <p class="dim tiny">Wears nothing.</p>
+              {:else}
+                <ul class="worn">
+                  {#each group.items as item (item.Id)}
+                    <li>
+                      <button
+                        class="wornrow"
+                        class:selected={item.Id === rerollItemId}
+                        data-item-id={item.Id}
+                        onclick={() => {
+                          rerollItemId = item.Id;
+                          rerollAffixIndex = 0;
+                        }}
+                      >
+                        <ItemIcon baseItemId={item.BaseItemId} name={prettifyBaseId(item.BaseItemId)} qualityTier={item.QualityTier} size="sm" />
+                        <span class="text">
+                          <span class="name">{prettifyBaseId(item.BaseItemId)}</span>
+                          <span class="meta dim tiny">
+                            <span style="color: {rarityColor(item.QualityTier)}">{rarityName(item.QualityTier)}</span>
+                            &middot; {slotNameOf(item.EquippedInSlotIndex)}{#if summarizeAffixes(item.Affixes, 1)}
+                              &middot; {summarizeAffixes(item.Affixes, 1)}{/if}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </section>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     {#if rerollItem}
@@ -1038,6 +1106,61 @@
     margin: 0.4rem 0;
   }
 
+  /* One column per character on a wide screen, stacked on a phone. */
+  .wearers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+  }
+  .wearer {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.5rem;
+  }
+  .wearer h4 {
+    margin: 0 0 0.3rem;
+    font-size: 0.9rem;
+  }
+  .worn {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+  .wornrow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.25rem 0.4rem;
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    border: 1px solid transparent;
+    border-radius: 0.35rem;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+  }
+  .wornrow:hover {
+    border-color: var(--border);
+  }
+  .wornrow.selected {
+    border-color: var(--accent);
+  }
+  .wornrow .text {
+    display: grid;
+    min-width: 0;
+  }
+  .wornrow .name,
+  .wornrow .meta {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
   .slots {
     list-style: none;
     margin: 0.3rem 0;

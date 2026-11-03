@@ -2516,6 +2516,16 @@ namespace FolkIdle.Server.Network
             /// again on the next tap.
             /// </summary>
             public bool IsEquipped { get; set; }
+            /// <summary>
+            /// Which character slot (0-2) wears it, or -1. Owner, 2026-11-03:
+            /// the reroll picker showed only the active character's gear, so a
+            /// player with three characters had to dig through everything they
+            /// own to reroll the second one's ring. The Forge groups worn gear
+            /// by character with this.
+            /// </summary>
+            public int EquippedByCharacterSlot { get; set; } = -1;
+            /// <summary>Which of the eleven equipment slots it is worn in, or -1 - orders a character's column like its paper doll.</summary>
+            public int EquippedInSlotIndex { get; set; } = -1;
             public System.Collections.Generic.Dictionary<string, int> Affixes { get; set; } = new();
         }
 
@@ -5103,17 +5113,20 @@ namespace FolkIdle.Server.Network
 
                 await transaction.CommitAsync();
 
-                var wornIds = new System.Collections.Generic.HashSet<long>();
+                // Item id -> (character slot, equipment slot). The array is in
+                // equipment-slot order: eight combat slots, then the three tools.
+                var wornBy = new System.Collections.Generic.Dictionary<long, (int CharacterSlot, int EquipSlot)>();
                 foreach (var c in wornLoadouts)
                 {
-                    foreach (var id in new[]
+                    var loadout = new[]
                     {
                         c.EquippedWeaponId, c.EquippedHelmetId, c.EquippedChestId, c.EquippedGlovesId,
                         c.EquippedLeggingsId, c.EquippedBootsId, c.EquippedAmuletId, c.EquippedRingId,
                         c.EquippedAxeId, c.EquippedPickaxeId, c.EquippedRodId,
-                    })
+                    };
+                    for (int equipSlot = 0; equipSlot < loadout.Length; equipSlot++)
                     {
-                        if (id.HasValue) wornIds.Add(id.Value);
+                        if (loadout[equipSlot] is long id) wornBy[id] = (c.SlotIndex, equipSlot);
                     }
                 }
 
@@ -5153,7 +5166,9 @@ namespace FolkIdle.Server.Network
                         BaseItemId = item.BaseItemId,
                         QualityTier = item.QualityTier,
                         IsAffixLocked = item.IsAffixLocked || jsonLockFlag,
-                        IsEquipped = wornIds.Contains(item.Id),
+                        IsEquipped = wornBy.ContainsKey(item.Id),
+                        EquippedByCharacterSlot = wornBy.TryGetValue(item.Id, out var wearer) ? wearer.CharacterSlot : -1,
+                        EquippedInSlotIndex = wornBy.TryGetValue(item.Id, out var worn) ? worn.EquipSlot : -1,
                         Affixes = affixes
                     });
                 }

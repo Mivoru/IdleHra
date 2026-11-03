@@ -1508,9 +1508,15 @@
        outline. The BUTTON keeps the 44px touch floor (check:touch measures
        it); only the drawn pill inside it is slimmer - a ::before inset from
        the top and bottom carries the border and the fill. */
+    /* Modul: THE STRIP WRAPS (owner, 2026-11-03). With three potions running
+       beside the event chip the row was wider than a phone and the last
+       countdown ran off the screen. It breaks onto a second line instead. */
     .event-strip {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       justify-content: flex-start;
+      column-gap: 0.25rem;
       padding: 0.2rem 1rem;
     }
 
