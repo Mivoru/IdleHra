@@ -26,8 +26,12 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void ThirtyTwoNodesAtIds56To87_InsideTheBuffer_ApartFromWar()
         {
-            var nodes = HearthTreeRegistry.All().ToList();
+            // The Craft affinity (phase 5.1) sits apart at CraftAffinity, after
+            // the War family nodes; the column nodes keep 56-87.
+            var nodes = HearthTreeRegistry.All().Where(n => n.Id != HearthTreeRegistry.CraftAffinity).ToList();
             Assert.Equal(HearthTreeRegistry.Count, nodes.Count);
+            Assert.NotNull(HearthTreeRegistry.Get(HearthTreeRegistry.CraftAffinity));
+            Assert.Null(WarTreeRegistry.Get(HearthTreeRegistry.CraftAffinity));
             Assert.All(nodes, n => Assert.InRange(n.Id, HearthTreeRegistry.FirstId, HearthTreeRegistry.FirstId + HearthTreeRegistry.Count - 1));
             Assert.All(nodes, n => Assert.True(n.Id < SkillRankBuffer.Length));
             Assert.All(nodes, n => Assert.Null(WarTreeRegistry.Get(n.Id)));
@@ -38,7 +42,7 @@ namespace FolkIdle.Server.Tests
         {
             for (int column = 0; column < HearthTreeRegistry.ColumnCount; column++)
             {
-                var col = HearthTreeRegistry.All().Where(n => n.Column == column).ToList();
+                var col = HearthTreeRegistry.All().Where(n => n.Column == column && n.Kind != "Affinity").ToList();
                 Assert.Equal(8, col.Count);
                 Assert.Equal(3, col.Count(n => n.Kind == "Minor"));
                 Assert.Equal(2, col.Count(n => n.Kind == "Notable"));
@@ -98,6 +102,7 @@ namespace FolkIdle.Server.Tests
                 HearthTreeRegistry.QuickHands, HearthTreeRegistry.BatchWork, HearthTreeRegistry.Salvager,
                 HearthTreeRegistry.Matchmaker, HearthTreeRegistry.StrongBlood, HearthTreeRegistry.Patron, HearthTreeRegistry.Nursery,
                 HearthTreeRegistry.Mentor, HearthTreeRegistry.BloodlineMemory, HearthTreeRegistry.Ledger,
+                HearthTreeRegistry.CraftAffinity,
             };
             foreach (var n in HearthTreeRegistry.All())
                 Assert.Equal(!wired.Contains(n.Id), HearthTreeRegistry.IsPending(n.Id));

@@ -71,7 +71,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: inheritance. A permanent, season-crossing multiplier.
                 1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f,
                 // The character's pet (PetRegistry), on the active slot's totals.
-                1.0f + payload.CachedAffixTotals.GoldTenthsPct / 1000f,
+                1.0f + AffixFamilies.Totals(in payload).GoldTenthsPct / 1000f,
                 // The War half's Golden Touch.
                 1.0f + WarTreeRegistry.Resolve(in payload).GoldTenthsPct / 1000f);
     }

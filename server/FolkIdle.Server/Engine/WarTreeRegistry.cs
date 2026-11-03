@@ -56,6 +56,11 @@ namespace FolkIdle.Server.Engine
         CodexBonusPct,
         /// <summary>Crit chance from defence: tenths of a percent of the dodge plus block points.</summary>
         CounterstrokeOfDefence,
+        /// <summary>Phase 5.1: the column's affix family is this share stronger, in tenths of a percent. Read by AffixFamilies, not Resolve.</summary>
+        FamilyPowerPct,
+        FamilyPrecisionPct,
+        FamilyGuardPct,
+        FamilyFortunePct,
         /// <summary>Damage and gold, in tenths of a percent, against monsters of the highest unlocked region.</summary>
         KnowYourPreyPct,
     }
@@ -106,6 +111,9 @@ namespace FolkIdle.Server.Engine
         public const int KeenEye = 36, CruelEdge = 37, Relentless = 38, Echo = 39, Frenzy = 40, SteadyHand = 41, DoubleStrike = 42, PerfectSequence = 43;
         public const int Vitality = 44, Ironhide = 45, Bloodthirst = 46, Evasion = 47, ShieldWall = 48, Riposte = 49, LastStand = 50, LivingFortress = 51;
         public const int KnowYourPrey = 52, PiercingCrit = 53, Counterstroke = 54;
+        // Phase 5.1 (2026-11-03): the affix-family nodes, at free rank-buffer
+        // ids after the Hearth half (56-87).
+        public const int PowerAffinity = 88, PrecisionAffinity = 89, GuardAffinity = 90, FortuneAffinity = 91;
 
         /// <summary>The table, indexed by rank-buffer slot; null where no War node sits.</summary>
         public static readonly WarNodeDef?[] Nodes = Build();
@@ -153,6 +161,14 @@ namespace FolkIdle.Server.Engine
             Add(CodexScholar, "Codex Scholar", "codex_scholar", ColumnFortune, 3, 1, "Notable", 3, 2, WarEffect.CodexBonusPct, 0, "Your codex damage bonus is {0}% larger", ranks: new[] { 10, 20, 30 });
             Add(GoldenFleece, "Golden Fleece", "golden_fleece", ColumnFortune, 4, -1, "Keystone", 1, 5, WarEffect.GoldenFleece, 1, "Every 100th kill drops an item two tiers up");
 
+            // ---- Affix families (phase 5.1, 2026-11-03) -------------------------
+            // Modul: THE LINK BETWEEN TREE AND GEAR. One node per column, row 1
+            // beside its Notable: the column's affixes on your gear are this
+            // much stronger (only the affix part - never an item's own base
+            // power or a pet). +3/6/10%, the roadmap's values; the tree harness
+            // keeps the best build within 0.95-1.05x of today's best.
+            Add(FortuneAffinity, "Fortune's Favour", "col_fortune", ColumnFortune, 1, 0, "Affinity", 3, 2, WarEffect.FamilyFortunePct, 0, "Your Fortune affixes (loot luck, gold find) are {0}% stronger", ranks: new[] { 30, 60, 100 });
+
             // ---- Might: hits hard, breaks armour, kills bosses ----------------
             Add(Edge, "Edge", "edge", ColumnMight, 0, 0, "Minor", 5, 1, WarEffect.DamagePct, 4, "+{0}% damage");
             // Modul: NOT ARMOUR (owner, 2026-10-29). Breach cut monster armour and
@@ -175,6 +191,7 @@ namespace FolkIdle.Server.Engine
             Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 2, "+{0}% damage");
             Add(Thunderer, "Thunderer", "thunderer", ColumnMight, 3, 1, "Notable", 3, 2, WarEffect.ThundererPct, 0, "Opens a boss fight with a blow at {0}% weapon damage", ranks: new[] { 1500, 3000, 5000 });
             Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Ruin, 1, "Every 8th hit lands for x1.7; attack speed counts 85%");
+            Add(PowerAffinity, "Tempered Steel", "col_might", ColumnMight, 1, 0, "Affinity", 3, 2, WarEffect.FamilyPowerPct, 0, "Your Power affixes (damage, armour pen, crushing blow, boss damage) are {0}% stronger", ranks: new[] { 30, 60, 100 });
 
             // ---- Precision: crits, tempo, repeated hits ------------------------
             Add(KeenEye, "Keen Eye", "keen_eye", ColumnPrecision, 0, 0, "Minor", 5, 1, WarEffect.CritChancePoints, 3, "+{0} crit chance");
@@ -191,6 +208,7 @@ namespace FolkIdle.Server.Engine
             Add(SteadyHand, "Steady Hand", "steady_hand", ColumnPrecision, 3, 0, "Minor", 5, 1, WarEffect.AccuracyPoints, 15, "+{0} accuracy");
             Add(DoubleStrike, "Double Strike", "double_strike", ColumnPrecision, 3, 1, "Notable", 3, 2, WarEffect.DoubleStrikeChance, 0, "{0}% chance a critical hit lands twice", ranks: new[] { 25, 50, 80 });
             Add(PerfectSequence, "Perfect Sequence", "perfect_sequence", ColumnPrecision, 4, -1, "Keystone", 1, 5, WarEffect.PerfectSequence, 1, "Every 12th swing that lands is a crit with +20% crit damage; other crit chance stops at 50%");
+            Add(PrecisionAffinity, "Honed Edge", "col_precision", ColumnPrecision, 1, 0, "Affinity", 3, 2, WarEffect.FamilyPrecisionPct, 0, "Your Precision affixes (crit chance, crit damage, attack speed) are {0}% stronger", ranks: new[] { 30, 60, 100 });
 
             // ---- Guard: survives, and turns defence into damage ----------------
             Add(Vitality, "Vitality", "vitality", ColumnGuard, 0, 0, "Minor", 5, 1, WarEffect.MaxHpPct, 25, "+{0}% max health");
@@ -201,6 +219,7 @@ namespace FolkIdle.Server.Engine
             Add(Riposte, "Riposte", "riposte", ColumnGuard, 3, 0, "Notable", 3, 2, WarEffect.RipostePct, 0, "A dodged or blocked blow answers at {0}% weapon damage", ranks: new[] { 10, 15, 20 });
             Add(LastStand, "Last Stand", "last_stand", ColumnGuard, 3, 1, "Notable", 1, 3, WarEffect.LastStand, 1, "Once an hour, a killing blow leaves you at 1 health");
             Add(LivingFortress, "Living Fortress", "living_fortress", ColumnGuard, 4, -1, "Keystone", 1, 5, WarEffect.LivingFortress, 1, "Crit chance becomes block and the block cap rises to 85%; you never crit");
+            Add(GuardAffinity, "Warded Plate", "col_guard", ColumnGuard, 1, 0, "Affinity", 3, 2, WarEffect.FamilyGuardPct, 0, "Your Guard affixes (health, armour, dodge, block, lifesteal, thorns) are {0}% stronger", ranks: new[] { 30, 60, 100 });
 
             // ---- Bridges: 10 points in both columns they join ------------------
             // Modul: THE BRIDGES WERE REDESIGNED BEFORE THEY WERE BUILT (owner,
@@ -240,6 +259,7 @@ namespace FolkIdle.Server.Engine
             WarEffect.LootLuckPct, WarEffect.GoldPct, WarEffect.MaterialStackPct, WarEffect.RarityElevationPct, WarEffect.XpPct,
             WarEffect.TrophyGoldPct, WarEffect.CodexBonusPct,
             WarEffect.CounterstrokeOfDefence, WarEffect.KnowYourPreyPct,
+            WarEffect.FamilyPowerPct, WarEffect.FamilyPrecisionPct, WarEffect.FamilyGuardPct, WarEffect.FamilyFortunePct,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);

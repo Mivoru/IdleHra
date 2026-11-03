@@ -1057,17 +1057,17 @@ namespace FolkIdle.Server.Domain.Combat
                 switch (kvp.Key)
                 {
                     case "1": totals.FlatAttack += magnitude; continue;
-                    case "2": totals.FlatDefense += magnitude; continue;
-                    case "3": totals.CritChanceTenthsPct += magnitude * 10; continue;
-                    case "4": totals.LootLuckTenthsPct += magnitude * 10; continue;
-                    case "5": totals.FlatHp += magnitude; continue;
+                    case "2": totals.FlatDefense += magnitude; totals.AffixPart.FlatDefense += magnitude; continue;
+                    case "3": totals.CritChanceTenthsPct += magnitude * 10; totals.AffixPart.CritChanceTenthsPct += magnitude * 10; continue;
+                    case "4": totals.LootLuckTenthsPct += magnitude * 10; totals.AffixPart.LootLuckTenthsPct += magnitude * 10; continue;
+                    case "5": totals.FlatHp += magnitude; totals.AffixPart.FlatHp += magnitude; continue;
                 }
 
                 switch (AffixRegistry.StripStackSuffix(kvp.Key))
                 {
-                    case "flat_hp": totals.FlatHp += magnitude; break;
-                    case "flat_armor": totals.FlatDefense += magnitude; break;
-                    case "armor_pen_flat": totals.FlatArmorPenetration += magnitude; break;
+                    case "flat_hp": totals.FlatHp += magnitude; totals.AffixPart.FlatHp += magnitude; break;
+                    case "flat_armor": totals.FlatDefense += magnitude; totals.AffixPart.FlatDefense += magnitude; break;
+                    case "armor_pen_flat": totals.FlatArmorPenetration += magnitude; totals.AffixPart.FlatArmorPenetration += magnitude; break;
 
                     // The three damage-type percentages all raise the same
                     // effective attack in this combat model - there is one
@@ -1076,19 +1076,19 @@ namespace FolkIdle.Server.Domain.Combat
                     // three independent stats.
                     case "melee_dmg_pct":
                     case "range_dmg_pct":
-                    case "magic_dmg_pct": totals.DamageTenthsPct += magnitude; break;
+                    case "magic_dmg_pct": totals.DamageTenthsPct += magnitude; totals.AffixPart.DamageTenthsPct += magnitude; break;
 
-                    case "attack_speed_pct": totals.AttackSpeedTenthsPct += magnitude; break;
-                    case "crit_chance_pct": totals.CritChanceTenthsPct += magnitude; break;
-                    case "crit_dmg_pct": totals.CritDamageTenthsPct += magnitude; break;
-                    case "lifesteal_pct": totals.LifestealTenthsPct += magnitude; break;
-                    case "dodge_chance_pct": totals.DodgeTenthsPct += magnitude; break;
-                    case "block_chance_pct": totals.BlockTenthsPct += magnitude; break;
-                    case "boss_dmg_pct": totals.WorldBossDamageTenthsPct += magnitude; break;
-                    case "loot_luck_pct": totals.LootLuckTenthsPct += magnitude; break;
-                    case "gold_find_pct": totals.GoldTenthsPct += magnitude; break;
-                    case "crushing_blow_pct": totals.CrushingChanceTenthsPct += magnitude; break;
-                    case "thorns_pct": totals.ThornsTenthsPct += magnitude; break;
+                    case "attack_speed_pct": totals.AttackSpeedTenthsPct += magnitude; totals.AffixPart.AttackSpeedTenthsPct += magnitude; break;
+                    case "crit_chance_pct": totals.CritChanceTenthsPct += magnitude; totals.AffixPart.CritChanceTenthsPct += magnitude; break;
+                    case "crit_dmg_pct": totals.CritDamageTenthsPct += magnitude; totals.AffixPart.CritDamageTenthsPct += magnitude; break;
+                    case "lifesteal_pct": totals.LifestealTenthsPct += magnitude; totals.AffixPart.LifestealTenthsPct += magnitude; break;
+                    case "dodge_chance_pct": totals.DodgeTenthsPct += magnitude; totals.AffixPart.DodgeTenthsPct += magnitude; break;
+                    case "block_chance_pct": totals.BlockTenthsPct += magnitude; totals.AffixPart.BlockTenthsPct += magnitude; break;
+                    case "boss_dmg_pct": totals.WorldBossDamageTenthsPct += magnitude; totals.AffixPart.WorldBossDamageTenthsPct += magnitude; break;
+                    case "loot_luck_pct": totals.LootLuckTenthsPct += magnitude; totals.AffixPart.LootLuckTenthsPct += magnitude; break;
+                    case "gold_find_pct": totals.GoldTenthsPct += magnitude; totals.AffixPart.GoldTenthsPct += magnitude; break;
+                    case "crushing_blow_pct": totals.CrushingChanceTenthsPct += magnitude; totals.AffixPart.CrushingChanceTenthsPct += magnitude; break;
+                    case "thorns_pct": totals.ThornsTenthsPct += magnitude; totals.AffixPart.ThornsTenthsPct += magnitude; break;
                 }
             }
         }

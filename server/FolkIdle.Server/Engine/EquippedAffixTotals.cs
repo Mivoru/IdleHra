@@ -53,5 +53,32 @@ namespace FolkIdle.Server.Engine
         public int HpTenthsPct;
         public int ArmourTenthsPct;
         public int GatherYieldTenthsPct;
+
+        /// <summary>
+        /// What the AFFIXES alone put into each family field - no base item
+        /// power, no pets. AffixFamilies.Totals scales only this part
+        /// (phase 5.1, 2026-11-03). Written by EquipmentSlotEngine.AddAffixTotals.
+        /// </summary>
+        public AffixFamilyPart AffixPart;
+    }
+
+    /// <summary>The affix-only share of the family-scaled fields of <see cref="EquippedAffixTotals"/>.</summary>
+    public struct AffixFamilyPart
+    {
+        public int DamageTenthsPct;
+        public int FlatArmorPenetration;
+        public int CrushingChanceTenthsPct;
+        public int WorldBossDamageTenthsPct;
+        public int CritChanceTenthsPct;
+        public int CritDamageTenthsPct;
+        public int AttackSpeedTenthsPct;
+        public int FlatHp;
+        public int FlatDefense;
+        public int DodgeTenthsPct;
+        public int BlockTenthsPct;
+        public int LifestealTenthsPct;
+        public int ThornsTenthsPct;
+        public int LootLuckTenthsPct;
+        public int GoldTenthsPct;
     }
 }

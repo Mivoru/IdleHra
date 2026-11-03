@@ -124,7 +124,7 @@ namespace FolkIdle.Server.Domain.Combat
             });
             offence.Rows.Add(new StatSheetRow
             {
-                Key = "world_boss", Label = "World boss damage", Value = payload.CachedAffixTotals.WorldBossDamageTenthsPct / 10.0, Unit = "pct",
+                Key = "world_boss", Label = "World boss damage", Value = AffixFamilies.Totals(in payload).WorldBossDamageTenthsPct / 10.0, Unit = "pct",
             });
 
             var defence = new StatSheetSection { Title = "Defence" };
