@@ -511,6 +511,10 @@ export interface ForgeEquipment {
   IsAffixLocked: boolean;
   /** Worn by any of the player's characters (task 100). */
   IsEquipped?: boolean;
+  /** Which character slot (0-2) wears it, or -1. */
+  EquippedByCharacterSlot?: number;
+  /** Which of the eleven equipment slots it is worn in, or -1. */
+  EquippedInSlotIndex?: number;
   Affixes: AffixMap;
 }
 

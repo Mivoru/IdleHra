@@ -48,10 +48,15 @@
 {/if}
 
 <style>
+  /* Three running potions must fit a 320px phone: the countdowns wrap
+     inside the chip rather than push the row past the screen edge. */
   .potion-timers {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.15rem 0.5rem;
     min-height: 44px;
     padding: 0 0.5rem;
     background: transparent;
@@ -63,6 +68,7 @@
   }
   .one {
     display: inline-flex;
+    white-space: nowrap;
     align-items: center;
     gap: 0.2rem;
   }
