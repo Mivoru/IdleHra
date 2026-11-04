@@ -51,7 +51,10 @@ namespace FolkIdle.Bots
     public sealed class WallBotTime : IBotTime
     {
         private readonly MilestoneLog _log;
-        private readonly DateTime _startUtc = DateTime.UtcNow;
+        /// <summary>--start-utc: the game time of hour zero, matching the server's FOLKIDLE_SIM_START_UTC.</summary>
+        public static DateTime? GameStartUtc { get; set; }
+
+        private readonly DateTime _startUtc = GameStartUtc ?? DateTime.UtcNow;
         private readonly int _speed;
 
         public WallBotTime(MilestoneLog log, int speed)

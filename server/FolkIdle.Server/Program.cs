@@ -261,9 +261,13 @@ ContentRegistry.Initialize();
 // Modul: the game clock and the tick multiplier share one gate and one number
 // (TickPacer.ResolveTickSpeed): dev tools on and not Production, else 1x. Set
 // before any engine starts so nothing reads the clock at the old speed.
+var simStartUtc = FolkIdle.Server.GameClock.ResolveStartUtc(
+    Environment.GetEnvironmentVariable("FOLKIDLE_SIM_START_UTC"),
+    FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled());
 FolkIdle.Server.GameClock.Configure(FolkIdle.Server.Domain.Shared.TickPacer.ResolveTickSpeed(
     Environment.GetEnvironmentVariable("FOLKIDLE_TICK_SPEED"),
-    FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()));
+    FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()), simStartUtc);
+if (simStartUtc is { } simStart) Console.WriteLine($"[sim] game time starts at {simStart:yyyy-MM-dd HH:mm:ss} UTC (FOLKIDLE_SIM_START_UTC; ignored at speed 1 outside lockstep)");
 // Modul: LOCKSTEP OVERRIDES THE MULTIPLIER (docs/design/LOCKSTEP_SIM.md). Same
 // gate as FOLKIDLE_TICK_SPEED; with it the engine waits for the bot process on
 // /api/v1/dev/sim and the game clock is a tick count.
@@ -271,7 +275,7 @@ if (FolkIdle.Server.Domain.Shared.SimLockstep.ResolveEnabled(
         Environment.GetEnvironmentVariable("FOLKIDLE_SIM_LOCKSTEP"),
         FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled()))
 {
-    FolkIdle.Server.GameClock.ConfigureLockstep(DateTime.UtcNow);
+    FolkIdle.Server.GameClock.ConfigureLockstep(simStartUtc ?? DateTime.UtcNow);
     FolkIdle.Server.Domain.Shared.SimLockstep.Conductor = new FolkIdle.Server.Domain.Shared.SimConductor(
         FolkIdle.Server.Domain.Shared.SimLockstep.ResolveQuantum(Environment.GetEnvironmentVariable("FOLKIDLE_SIM_QUANTUM")));
 }

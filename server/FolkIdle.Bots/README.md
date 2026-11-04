@@ -67,8 +67,18 @@ FolkIdle.Bots.exe --lockstep --mix optimal:5,patientbare:5,eagerkit:5,patient:5 
 ```
 
 - `night-lockstep-validation.ps1` - a whole night: paced x20 vs lockstep
-  scale 1 vs scale 4 on the same seed (`compare-validation.py` writes
-  `validation.md`), then a long lockstep run.
+  scale 1 (and scale 4 when it fits before `-FinishBy`) on the same seed and
+  the same game start time (`-StartUtc`, default 07:00 UTC today), one run
+  after another. It stops after the reference if the reference lost a bot.
+  `compare-validation.py` writes `validation.md` and exits 2 when the runs
+  are not comparable.
+- **Every run writes `run.json`**: mode, speed, cron scale, mix, seed, hours,
+  sleep rule, game start time, bots expected / started / stopped. A
+  validation compares those before it compares a milestone, and counts each
+  bot's hours from its own first login.
+- `--start-utc ISO` (paced) and `FOLKIDLE_SIM_START_UTC` (server, dev tools
+  only, ignored at speed 1) put game time zero at a chosen instant, so a
+  paced and a lockstep run read the same hour of the day.
 - `docker/run-lockstep.sh` - the same inside Docker next to Postgres (publish
   `-r linux-x64` first). Slower today; see the design doc.
 - **Every persona sleeps.** The four all-day personas log out from 00:30

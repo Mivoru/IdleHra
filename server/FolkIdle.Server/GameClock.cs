@@ -44,12 +44,31 @@ namespace FolkIdle.Server
         /// Set once at startup, from TickPacer.ResolveTickSpeed - the same gate
         /// as the tick multiplier, so the two cannot disagree.
         /// </summary>
-        public static void Configure(int speed)
+        public static void Configure(int speed, DateTime? startUtc = null)
         {
-            _anchorUtc = DateTime.UtcNow;
-            _anchorTimestamp = Stopwatch.GetTimestamp();
             _speed = Math.Max(1, speed);
+            // A start time only moves a FAST clock: at speed 1 the game clock is
+            // the wall clock, full stop (production).
+            _anchorUtc = _speed > 1 && startUtc is { } start ? start : DateTime.UtcNow;
+            _anchorTimestamp = Stopwatch.GetTimestamp();
             _lockstep = false;
+        }
+
+        /// <summary>
+        /// Modul: BOTH SIDES OF A VALIDATION START AT THE SAME GAME HOUR
+        /// (night 2026-11-04). The paced reference started at 23:00 UTC and the
+        /// lockstep runs at 02:36 and 05:03, inside the sleepers' shared
+        /// 00:30-06:30 core, so lockstep bots began playing four game hours
+        /// "late" and every milestone compared a different day. FOLKIDLE_SIM_START_UTC
+        /// (an ISO UTC time, dev tools only, ignored at speed 1) puts game time
+        /// zero at the same instant for every run. Null when unset or unreadable.
+        /// </summary>
+        public static DateTime? ResolveStartUtc(string? raw, bool devToolsEnabled)
+        {
+            if (!devToolsEnabled || string.IsNullOrWhiteSpace(raw)) return null;
+            return DateTime.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var t)
+                ? DateTime.SpecifyKind(t, DateTimeKind.Utc) : null;
         }
 
         public static DateTime UtcNow
