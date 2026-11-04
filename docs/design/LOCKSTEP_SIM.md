@@ -51,8 +51,23 @@ Night runs (Windows Task Scheduler, from the frozen worktree
 - The old tasks "night1 casual x20" and "night2 rebirth 2x2" (frozen
   pre-#313 worktree, Debug, x200) are DISABLED.
 
-Next, in order: read `validation.md` (does lockstep match x20, and does scale
-4 match scale 1); NoDelay in Docker; then P5 below.
+**Result of 2026-11-04: the validation was INVALID, not failed.** The
+lockstep runs were healthy (20/20 bots, no kicks, ~L60 at 72 h), but the
+paced reference was broken: 5 of 20 bots ended on `429 Too Many Requests` at
+login (AuthThrottle, 15 auth requests a minute per address), and 8 more stood
+at level 1-5 for 71 game hours (one fight refused, the other four monsters
+"left until the next level" after two deaths each, and no fight left to reach
+it). The lockstep runs also started inside the sleepers' 00:30-06:30 core, so
+their bots began ~4 game hours later than the reference's. Measured from each
+bot's own login, scale 1 and scale 4 agree closely (eagerkit level 50: 47.7 vs
+48.3 h), which says nothing yet about parity with the paced path. Fixes: bot
+recovery and login retry (PR "bot-recovery"), a validation that checks run
+conditions, aligns the start time and measures from login (PR
+"validation-fix"). The 240-game-hour deep run of the same night went to
+region 4 and two rebirths; it is not a parity proof.
+
+Next, in order: re-run the validation with the fixes (x20 vs scale 1 first;
+scale 4 only if it fits the night); NoDelay in Docker; then P5 below.
 
 ### P5 - strategy cohorts and an endgame scoreboard (owner spec, not built)
 

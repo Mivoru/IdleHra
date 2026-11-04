@@ -51,6 +51,7 @@ namespace FolkIdle.Bots
             DateTime wallStart = DateTime.UtcNow;
             string runId = DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
 
+            int stopped = 0;
             var tasks = roster.Select(async (persona, index) =>
             {
                 int i = index + 1;
@@ -71,6 +72,7 @@ namespace FolkIdle.Bots
                 {
                     Console.Error.WriteLine($"[{name}] stopped: {ex.GetType().Name}: {ex.Message}");
                     log.Event(name, $"stopped: {ex.Message}");
+                    Interlocked.Increment(ref stopped);
                 }
                 if (brain.LastState is { } last) log.Summary(name, last, brain.StateFrames);
             }).ToArray();
@@ -78,6 +80,7 @@ namespace FolkIdle.Bots
             await Task.WhenAll(tasks);
             var metricsAtEnd = await TickMetrics.ReadAsync(o.Server);
             log.WriteSummary(TickMetrics.Describe(metricsAtStart, metricsAtEnd, DateTime.UtcNow - wallStart, o.Speed));
+            log.WriteRunInfo(o.RunInfo("paced", WallBotTime.GameStartUtc ?? wallStart, roster.Count, log.StartedBots, stopped, log.GameHours));
             Console.WriteLine($"Done. {Path.GetFullPath(Path.Combine(outDir, "milestones.csv"))}");
             return 0;
         }
@@ -97,6 +100,8 @@ namespace FolkIdle.Bots
             DateTime wallStart = DateTime.UtcNow;
             string runId = DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
             Console.WriteLine($"LOCKSTEP: connected at tick {driver.Tick}, game time {driver.GameUtc:yyyy-MM-dd HH:mm} UTC, quantum {driver.Quantum} ticks.");
+            DateTime gameStart = driver.GameUtc;
+            int stopped = 0;
 
             var tasks = roster.Select(async (persona, index) =>
             {
@@ -119,6 +124,7 @@ namespace FolkIdle.Bots
                 {
                     Console.Error.WriteLine($"[{name}] stopped: {ex.GetType().Name}: {ex.Message}");
                     log.Event(name, $"stopped: {ex.Message}");
+                    Interlocked.Increment(ref stopped);
                     time.Leave();
                 }
                 if (brain.LastState is { } last) log.Summary(name, last, brain.StateFrames);
@@ -131,6 +137,7 @@ namespace FolkIdle.Bots
             string ticksRun = metricsAtEnd is { } e && metricsAtStart is { } s0 ? (e.Ticks - s0.Ticks).ToString("N0", CultureInfo.InvariantCulture) : "?";
             string offline = TickMetrics.Describe(metricsAtStart, metricsAtEnd, wall, 1).Split("\n\nTick metrics")[0];
             log.WriteSummary($"Lockstep: {gameHours:0.0} game hours in {wall.TotalMinutes:0.0} wall minutes = x{gameHours * 60 / Math.Max(wall.TotalMinutes, 1e-6):0} effective; {driver.Wakes:N0} wake frames; {ticksRun} ticks actually run (the rest were jumped while nobody was online).\n\n{offline}");
+            log.WriteRunInfo(o.RunInfo("lockstep", gameStart, roster.Count, log.StartedBots, stopped, gameHours));
             Console.WriteLine($"Done. {gameHours:0.0} game hours in {wall.TotalMinutes:0.0} wall minutes.");
             return 0;
         }
@@ -206,6 +213,23 @@ namespace FolkIdle.Bots
             /// <summary>--lockstep: drive a FOLKIDLE_SIM_LOCKSTEP server through /api/v1/dev/sim (docs/design/LOCKSTEP_SIM.md).</summary>
             public bool Lockstep;
 
+            /// <summary>What run.json records: everything a validation compares before it compares a milestone.</summary>
+            public object RunInfo(string mode, DateTime gameStartUtc, int botsExpected, int botsStarted, int botsStopped, double gameHoursRun) => new
+            {
+                Mode = mode,
+                Speed = mode == "lockstep" ? 0 : Speed,
+                CronScale = Environment.GetEnvironmentVariable("FOLKIDLE_SIM_CRON_SCALE") ?? "1",
+                Mix,
+                Seed,
+                Hours,
+                NoSleep = Persona.SleepDisabled,
+                GameStartUtc = gameStartUtc.ToString("o", CultureInfo.InvariantCulture),
+                BotsExpected = botsExpected,
+                BotsStarted = botsStarted,
+                BotsStopped = botsStopped,
+                GameHoursRun = gameHoursRun,
+            };
+
             public List<Persona> Roster()
             {
                 if (string.IsNullOrWhiteSpace(Mix)) return Enumerable.Repeat(Persona.Optimal, Bots).ToList();
@@ -239,9 +263,10 @@ namespace FolkIdle.Bots
                         case "--seed": o.Seed = int.Parse(next(), CultureInfo.InvariantCulture); break;
                         case "--lockstep": o.Lockstep = true; break;
                         case "--no-sleep": Persona.SleepDisabled = true; break;
+                        case "--start-utc": WallBotTime.GameStartUtc = DateTime.Parse(next(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal); break;
                         default:
                             Console.Error.WriteLine($"unknown argument {args[i]}");
-                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID] [--seed N] [--lockstep] [--no-sleep]");
+                            Console.Error.WriteLine("usage: (--bots N | --mix optimal:1,casual:1,idle:1) --hours GAME_HOURS --speed N [--server URL] [--out DIR] [--prefix ID] [--seed N] [--lockstep] [--no-sleep] [--start-utc ISO_UTC]");
                             return null;
                     }
                 }

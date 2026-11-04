@@ -63,6 +63,17 @@ namespace FolkIdle.Bots
         public Func<double>? Clock { get; set; }
 
         public double GameHours => Clock?.Invoke() ?? (DateTime.UtcNow - _startUtc).TotalHours * _speed;
+
+        /// <summary>Bots that got a first state frame - a login that really went through.</summary>
+        public int StartedBots { get { lock (_lock) return _progress.Count; } }
+
+        /// <summary>
+        /// run.json: the conditions this run played under, so a validation can
+        /// refuse to compare two runs that did not play the same game.
+        /// </summary>
+        public void WriteRunInfo(object info)
+            => File.WriteAllText(Path.Combine(_directory, "run.json"),
+                System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
         private double WallMinutes => (DateTime.UtcNow - _startUtc).TotalMinutes;
 
         public void Observe(string bot, StateUpdatePacket s)
