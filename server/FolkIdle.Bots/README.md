@@ -39,7 +39,7 @@ Results go to `bot-runs/<timestamp>/` (or `--out DIR`):
 
 | Persona | Attention |
 |---|---|
-| `optimal` | Plays without pause; reborn when Renown rises and no level for 6 game hours ("eager") |
+| `optimal` | Plays all day, sleeps 6-8 game hours a night (below); reborn when Renown rises and no level for 6 game hours ("eager") |
 | `patient` | Plays without pause; reborn only after a game day with no progress (level, best dungeon stage, Ascension steps) and with gold to keep every worn combat piece - after three days without progress it goes anyway |
 | `patientbare` | Like `patient` in timing, but keeps only what `optimal` keeps (the weapon, when it costs at most half the gold) - rebirth experiment 0.6.2, variant B |
 | `eagerkit` | Like `optimal` in timing, but keeps every worn combat piece it can afford at that moment - variant C |
@@ -50,6 +50,31 @@ All of them make the same decisions while checked in (only the rebirth rule diff
 is LOGGED OUT: the server's own offline catch-up and offline cap decide what
 the time away earned, and `events.log` records each login's offline hours,
 XP and gold.
+
+## Lockstep (the fast, speed-independent mode)
+
+Read `docs/design/LOCKSTEP_SIM.md` first. The server waits for the bots
+instead of the bots racing a fast clock, so a run's results do not depend on
+how fast it went.
+
+```powershell
+dotnet build -c Release server/FolkIdle.Bots/FolkIdle.Bots.csproj
+# server: a fresh database, then
+$env:FOLKIDLE_DEV_TOOLS='1'; $env:FOLKIDLE_SIM_LOCKSTEP='1'
+$env:FOLKIDLE_SIM_CRON_SCALE='4'   # optional: codex/loot/grants/achievements/chests at 4x their period
+# bots: --speed is ignored
+FolkIdle.Bots.exe --lockstep --mix optimal:5,patientbare:5,eagerkit:5,patient:5 --hours 72 --seed 1
+```
+
+- `night-lockstep-validation.ps1` - a whole night: paced x20 vs lockstep
+  scale 1 vs scale 4 on the same seed (`compare-validation.py` writes
+  `validation.md`), then a long lockstep run.
+- `docker/run-lockstep.sh` - the same inside Docker next to Postgres (publish
+  `-r linux-x64` first). Slower today; see the design doc.
+- **Every persona sleeps.** The four all-day personas log out from 00:30
+  minus up to an hour to 06:30 plus up to an hour of game UTC, jittered per
+  bot per night, so the conductor jumps the shared core. `--no-sleep` keeps
+  them online 24/7.
 
 ## An unattended run
 
