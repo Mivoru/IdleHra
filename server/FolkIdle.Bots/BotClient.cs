@@ -63,6 +63,31 @@ namespace FolkIdle.Bots
         }
 
         /// <summary>
+        /// Modul: A THROTTLED LOGIN IS RETRIED, THE THROTTLE IS NOT BYPASSED
+        /// (night 2026-11-04, val-x20). Twenty bots signing in in the same
+        /// second met AuthThrottle (15 auth requests a minute per address) and
+        /// five of them ended on "429 Too Many Requests" before their first
+        /// fight, so the reference run had 15 bots. The throttle is a real
+        /// production defence and stays on in dev; the bot honours Retry-After
+        /// instead, with an exponential backoff and jitter so the retries spread
+        /// out rather than arriving together again. Waits are WALL time: the
+        /// budget is wall time. Under lockstep the bot holds its turn while it
+        /// waits, so no game time passes and the run's results do not move.
+        /// </summary>
+        public const int LoginAttempts = 8;
+
+        /// <summary>Logins this client retried after a 429.</summary>
+        public int LoginRetries { get; private set; }
+
+        /// <summary>The larger of Retry-After and 2^(attempt-1) s, at most 120 s, plus up to 25% jitter.</summary>
+        public static TimeSpan LoginBackoff(int attempt, TimeSpan? retryAfter, double jitter01)
+        {
+            double exponential = Math.Min(120, Math.Pow(2, Math.Max(0, attempt - 1)));
+            double seconds = Math.Max(retryAfter?.TotalSeconds ?? 1, exponential);
+            return TimeSpan.FromSeconds(seconds * (1 + 0.25 * Math.Clamp(jitter01, 0, 1)));
+        }
+
+        /// <summary>
         /// Signs in and opens the session. Paced runs wait here (wall time) for
         /// the first snapshot. A lockstep run must NOT: the login completes on
         /// the server's ticks, which do not run while this bot holds its turn,
@@ -71,11 +96,22 @@ namespace FolkIdle.Bots
         /// </summary>
         public async Task ConnectAsync(CancellationToken token, bool waitForState = true)
         {
-            using (var response = await _http.PostAsJsonAsync("/api/v1/auth/login", new { deviceId = DeviceId }, token))
+            for (int attempt = 1; ; attempt++)
             {
+                using var response = await _http.PostAsJsonAsync("/api/v1/auth/login", new { deviceId = DeviceId }, token);
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && attempt < LoginAttempts)
+                {
+                    TimeSpan? retryAfter = response.Headers.RetryAfter?.Delta;
+                    TimeSpan wait = LoginBackoff(attempt, retryAfter, Random.Shared.NextDouble());
+                    LoginRetries++;
+                    Console.WriteLine($"[{DeviceId}] login throttled (429, Retry-After {retryAfter?.TotalSeconds.ToString("0") ?? "none"} s): attempt {attempt} of {LoginAttempts}, next in {wait.TotalSeconds:0.#} wall s");
+                    await Task.Delay(wait, token);
+                    continue;
+                }
                 response.EnsureSuccessStatusCode();
                 using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
                 Token = body.RootElement.GetProperty("Token").GetString() ?? throw new InvalidOperationException("login returned no token");
+                break;
             }
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
 

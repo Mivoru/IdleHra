@@ -27,11 +27,28 @@ namespace FolkIdle.Bots
         /// Modul: A REFUSAL IS FORGOTTEN WHEN THE CHARACTER CHANGES (bot
         /// mistake 4.1.6). A node refused because its location was not reached
         /// yet stayed banned for the rest of the run after it opened. A refusal
-        /// now holds only while level, region and location are what they were.
+        /// now holds only while level, region, location and the death count are
+        /// what they were, and only for a cooldown (RefusalMemory).
         /// </summary>
-        private readonly Dictionary<long, (int Level, int Location, int Region)> _refused = new();
+        private readonly RefusalMemory _refused = new();
         private long _pendingActivity;
         private double _pendingActivityAtHours;
+        private int _deathsSeen;
+        private int _allSetAsideLoggedAtLevel = -1;
+
+        private RefusalConditions RefusalNow
+            => new(_state.CurrentLevel, _state.HighestLocationReached, _state.HighestUnlockedRegion, _deathsSeen);
+
+        /// <summary>Records a refusal with its reason and makes the next turn re-read the inventory and the fight offer.</summary>
+        private void MarkRefused(long key, string what)
+        {
+            double? cooldown = _refused.Mark(key, RefusalNow, Now);
+            _projectionDirty = _inventoryDirty = true;
+            Count("refusals");
+            Event(cooldown is double h
+                ? $"{what} was refused (halt {_state.ActivityHaltReason}, result {_state.CommandResult0_Code}); strike {_refused.Strikes(key)}, retry in {h * 60:0.#} game min"
+                : $"{what} was refused (halt {_state.ActivityHaltReason}, result {_state.CommandResult0_Code}); strike {_refused.Strikes(key)} of {RefusalMemory.MaxStrikes}, no retry until level, location, region or a death changes");
+        }
 
         private int _deathsAtLevel;
         private int _deathLevel = -1;
@@ -57,13 +74,7 @@ namespace FolkIdle.Bots
             TrackDeaths();
         }
 
-        private bool IsRefused(long activityId)
-        {
-            if (!_refused.TryGetValue(activityId, out var at)) return false;
-            if (at.Level == _state.CurrentLevel && at.Location == _state.HighestLocationReached && at.Region == _state.HighestUnlockedRegion) return true;
-            _refused.Remove(activityId);
-            return false;
-        }
+        private bool IsRefused(long activityId) => _refused.IsRefused(activityId, RefusalNow, Now);
 
         /// <summary>Two deaths to one monster at one level: leave it until the next level.</summary>
         private void TrackDeaths()
@@ -71,6 +82,10 @@ namespace FolkIdle.Bots
             if (_state.LastDeathTick == _lastDeathTick) return;
             bool first = _lastDeathTick == 0 && _deathLevel < 0;
             _lastDeathTick = _state.LastDeathTick;
+            // A death (and the respawn after it) forgets every refusal: the
+            // offer is looked at again from scratch.
+            _deathsSeen++;
+            _projectionDirty = true;
             if (first) return;
             long monster = _state.LastDeathMonsterId;
             if (_deathLevel != _state.CurrentLevel || _lastDeathMonster != monster)
@@ -298,8 +313,7 @@ namespace FolkIdle.Bots
                     // Not taken. A death also clears the activity, and is not a refusal.
                     if (_state.ActivityHaltReason != ActivityHaltReason.Died)
                     {
-                        _refused[_pendingActivity] = (_state.CurrentLevel, _state.HighestLocationReached, _state.HighestUnlockedRegion);
-                        Event($"activity {_pendingActivity} was refused (halt {_state.ActivityHaltReason}, result {_state.CommandResult0_Code}); skipping it until something changes");
+                        MarkRefused(_pendingActivity, $"activity {_pendingActivity}");
                         if (_trip != null && _trip.NodeId == _pendingActivity) EndTrip("refused");
                     }
                     _pendingActivity = 0;
@@ -481,7 +495,30 @@ namespace FolkIdle.Bots
             // Nothing holds. With food in hand the easiest monster still pays
             // (and the deaths column shows the cost); without it, 0 sends the
             // bot fishing.
-            return hasFood ? estimates.Where(e => e.CanDamage).OrderBy(e => e.Id).Select(e => e.Id).FirstOrDefault() : 0;
+            long easiest = hasFood ? estimates.Where(e => e.CanDamage).OrderBy(e => e.Id).Select(e => e.Id).FirstOrDefault() : 0;
+            if (easiest > 0 || estimates.Any(e => e.CanDamage)) return easiest;
+
+            // Modul: NEVER SET EVERY FIGHT ASIDE (night 2026-11-04, val-x20).
+            // "Died twice: leave it until the next level" for every monster in
+            // reach, plus one refused fight, left no fight at all - and the next
+            // level needs a fight, so eight bots stood idle for 71 game hours.
+            // When the deaths rule has set aside everything in reach that is not
+            // in a refusal cooldown, the easiest of those comes back: dying to
+            // it is a cost the deaths column shows, standing still is a dead
+            // run. A fight still in its refusal cooldown waits for the cooldown.
+            var setAside = proj.Arr("Monsters")
+                .Select(e => (Id: (long)e.Int("MonsterId"), CanDamage: e.Bool("CanDamage"), Safe: e.Bool("SurvivesWithoutFood"), WithFood: e.Bool("SurvivesWithFood")))
+                .Where(e => e.CanDamage && Avoided(e.Id) && !IsRefused(e.Id) && MonsterRegion(e.Id) is > 0 and var r && r <= region)
+                .OrderByDescending(e => e.Safe || (hasFood && e.WithFood)).ThenBy(e => e.Id)
+                .ToList();
+            if (setAside.Count == 0 || (!hasFood && !setAside[0].Safe)) return 0;
+            if (_allSetAsideLoggedAtLevel != _state.CurrentLevel)
+            {
+                _allSetAsideLoggedAtLevel = _state.CurrentLevel;
+                Count("all_fights_set_aside");
+                Event($"every fight in reach is set aside or refused at level {_state.CurrentLevel}: back to {MonsterName(setAside[0].Id)} rather than standing still");
+            }
+            return setAside[0].Id;
         }
 
         private bool AnySafeFight()
