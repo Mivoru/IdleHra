@@ -38,6 +38,7 @@ MILESTONES = ["level_5", "level_10", "level_15", "level_20", "level_25", "level_
               "region_3_open", "boss_r2_defeated", "region_4_open", "first_death"]
 START_TOLERANCE_HOURS = 0.5
 BROKEN_FRACTION = 0.5  # final level below half the persona median (all runs pooled) = broken
+BROKEN_MIN_MEDIAN = 10  # a run too short to reach level 10 cannot tell slow from stuck
 SAME = ["Mix", "Seed", "Hours", "NoSleep"]
 
 
@@ -121,7 +122,7 @@ def pooled_medians(runs):
 
 def broken_bots(run, medians):
     return {bot: (level, medians[persona_of(bot)]) for bot, level in run["final"].items()
-            if level < BROKEN_FRACTION * medians[persona_of(bot)]}
+            if medians[persona_of(bot)] >= BROKEN_MIN_MEDIAN and level < BROKEN_FRACTION * medians[persona_of(bot)]}
 
 
 def main():
