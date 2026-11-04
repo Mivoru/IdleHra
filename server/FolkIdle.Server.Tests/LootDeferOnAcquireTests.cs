@@ -57,6 +57,26 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task ABatchWhoseBeginTransactionFailsIsKeptWhole()
+        {
+            // The scope and the DbContext are fine; the connection BeginTransactionAsync
+            // opens is refused (nothing listens on port 1). This is the other half of
+            // the acquire: the provider test above refuses the scope itself.
+            var services = new ServiceCollection();
+            services.AddDbContext<FolkIdle.Server.Models.FolkIdleDbContext>(o => Microsoft.EntityFrameworkCore.NpgsqlDbContextOptionsBuilderExtensions
+                .UseNpgsql(o, "Host=127.0.0.1;Port=1;Database=none;Username=none;Password=none;Timeout=2"));
+            using var provider = services.BuildServiceProvider();
+            var engine = new CombatLootEngine(provider, new PlayerSessionRegistry());
+            var queue = new ConcurrentQueue<CombatLootDropRequest>(Enumerable.Repeat(Kill(950_316_002, 91), 12));
+
+            await engine.DrainDropRequestsAsync(queue);
+
+            var kept = Assert.Single(engine.DeferredBatches);
+            Assert.Equal(12, kept.Kills);
+            Assert.Equal(950_316_002, kept.PlayerId);
+        }
+
+        [Fact]
         public void CarriedOverBatchesComeFirstAndKeepTheirCounts()
         {
             var queue = new ConcurrentQueue<CombatLootDropRequest>(new[] { Kill(2, 91), Kill(1, 91) });
