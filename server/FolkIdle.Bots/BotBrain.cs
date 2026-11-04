@@ -92,6 +92,13 @@ namespace FolkIdle.Bots
         private void Event(string text) => _log.Event(_name, text);
         private void Count(string counter) => _log.Count(_name, counter);
 
+        private void NoteLoginRetries(BotClient client)
+        {
+            if (client.LoginRetries == 0) return;
+            for (int i = 0; i < client.LoginRetries; i++) Count("login_retries");
+            Event($"login throttled {client.LoginRetries} time(s) (429) before it went through");
+        }
+
         /// <summary>
         /// Modul: A REAL LOGOUT BETWEEN CHECK-INS (2026-11-01). Casual and idle
         /// bots disconnect when their check-in ends and log in again at the
@@ -103,7 +110,10 @@ namespace FolkIdle.Bots
         /// </summary>
         public async Task RunAsync(DateTime stopAtUtc, CancellationToken token)
         {
-            _client = await _connect(token);
+            // The first login goes through the same retry as every later one:
+            // a 429 or a dropped socket on it used to end the bot (val-x20,
+            // 2026-11-04: five of twenty bots never played).
+            _client = await ReconnectAsync(token, waitBeforeFirstAttempt: false);
             if (_state.PlayerId == 0 && _client.TryGetState(out var first)) _time.Bind(first.PlayerId);
             bool connected = true;
             while (!token.IsCancellationRequested && DateTime.UtcNow < stopAtUtc)
@@ -257,6 +267,7 @@ namespace FolkIdle.Bots
                         try
                         {
                             _client = await _connect(token);
+                            NoteLoginRetries(_client);
                         }
                         catch (Exception ex) when (ex is TimeoutException or HttpRequestException or System.Net.WebSockets.WebSocketException)
                         {
@@ -365,6 +376,7 @@ namespace FolkIdle.Bots
                 try
                 {
                     var client = await _connect(token);
+                    NoteLoginRetries(client);
                     _framesSeen = 0;
                     _framesSeenAt = DateTime.UtcNow;
                     return client;

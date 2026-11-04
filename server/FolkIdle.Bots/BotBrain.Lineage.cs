@@ -102,7 +102,7 @@ namespace FolkIdle.Bots
                 if (node <= 0 || node == activity || IsRefused(node + characterId.GetHashCode())) continue;
                 Enqueue(new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = node, TargetGuid = characterId },
                     $"roster: character {characterId.ToString()[..8]} to {(profession == ProfessionWoodcutting ? "woodcutting" : "mining")} at node {node}", 35,
-                    () => _refused[node + characterId.GetHashCode()] = (_state.CurrentLevel, _state.HighestLocationReached, _state.HighestUnlockedRegion));
+                    () => MarkRefused(node + characterId.GetHashCode(), $"roster job at node {node} for {characterId.ToString()[..8]}"));
                 return;
             }
         }
