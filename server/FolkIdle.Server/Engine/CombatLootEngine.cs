@@ -825,13 +825,27 @@ namespace FolkIdle.Server.Engine
         /// merged. Batches keep the order their first request arrived in.
         /// </summary>
         internal static List<CombatLootDropRequest> CoalesceDropRequests(
-            ConcurrentQueue<CombatLootDropRequest> queue, int budget, DropRequestVisitor? onTaken = null)
+            ConcurrentQueue<CombatLootDropRequest> queue, int budget, DropRequestVisitor? onTaken = null,
+            IEnumerable<CombatLootDropRequest>? carriedOver = null)
         {
             var batches = new List<CombatLootDropRequest>();
             var index = new Dictionary<CombatLootDropRequest, int>();
+            // Batches kept from a cycle that could not get a transaction come
+            // first and absorb this cycle's kills of the same key, so an outage
+            // grows the kill counts, not the number of batches.
+            foreach (var kept in carriedOver ?? Array.Empty<CombatLootDropRequest>())
+            {
+                Fold(kept);
+            }
             for (int taken = 0; taken < budget && queue.TryDequeue(out var request); taken++)
             {
                 onTaken?.Invoke(in request);
+                Fold(request);
+            }
+            return batches;
+
+            void Fold(CombatLootDropRequest request)
+            {
                 int kills = request.Kills <= 0 ? 1 : request.Kills; // zero means one
                 var key = request;
                 key.Kills = 0;
@@ -849,7 +863,6 @@ namespace FolkIdle.Server.Engine
                     batches.Add(request);
                 }
             }
-            return batches;
         }
 
         /// <summary>
@@ -869,12 +882,44 @@ namespace FolkIdle.Server.Engine
             // for everyone with a gatherer online. Reading the depth
             // once and stopping there makes a cycle finite whatever the
             // producers are doing.
-            int lootBudget = DropRequestQueue.Count;
-            foreach (var request in CoalesceDropRequests(DropRequestQueue, lootBudget, (in CombatLootDropRequest taken) =>
+            await DrainDropRequestsAsync(DropRequestQueue);
+
+            // Task 85: after the drops, before the gathering drain - one
+            // fusion pass per player whose drops this cycle asked for one.
+            await RunAutoFusionsAsync();
+
+            await DrainGatheringGrantsAsync();
+
+            // Reported at the END of a cycle, so its queue depths
+            // describe what this cycle could not finish rather than what
+            // it had not started.
+            ReportLootThroughput();
+        }
+
+        /// <summary>Batches that could not get a transaction, retried first next cycle.</summary>
+        private readonly List<CombatLootDropRequest> _deferredBatches = new();
+        private long _batchesDeferred;
+
+        internal int DeferredBatchCount => _deferredBatches.Count;
+        internal IReadOnlyList<CombatLootDropRequest> DeferredBatches => _deferredBatches;
+
+        /// <summary>
+        /// The drop half of a cycle: last cycle's deferred batches, then this
+        /// cycle's queue, coalesced. Its own method so a test can drive it with
+        /// its own queue and a service provider that refuses connections.
+        /// </summary>
+        internal async Task DrainDropRequestsAsync(ConcurrentQueue<CombatLootDropRequest> queue)
+        {
+            var carriedOver = _deferredBatches.ToArray();
+            _deferredBatches.Clear();
+            int lootBudget = queue.Count;
+            var batches = CoalesceDropRequests(queue, lootBudget, (in CombatLootDropRequest taken) =>
                      {
                          _requestsDrained++;
                          NoteOdds(in taken);
-                     }))
+                     }, carriedOver);
+            int deferredThisCycle = 0;
+            foreach (var request in batches)
             {
                 int killsThisRequest = request.Kills;
                 _killsRolled += killsThisRequest;
@@ -898,6 +943,19 @@ namespace FolkIdle.Server.Engine
                         NoteAutoFuse(request.PlayerId, request.AutoFuseToTier, _requestCommittedBaseIds);
                     }
                 }
+                catch (LootTransactionUnavailableException ex)
+                {
+                    // Nothing was rolled: keep the batch whole for next cycle.
+                    _killsRolled -= killsThisRequest;
+                    _batchesWritten--;
+                    _batchesDeferred++;
+                    _deferredBatches.Add(request);
+                    if (deferredThisCycle++ == 0)
+                    {
+                        Console.WriteLine(
+                            $"Loot: no database transaction for player {request.PlayerId} (monster {request.MonsterId}, {killsThisRequest} kills): {ex.InnerException?.Message ?? ex.Message}; batch kept for the next cycle");
+                    }
+                }
                 catch (Exception ex)
                 {
                     _requestsFailed++;
@@ -905,17 +963,10 @@ namespace FolkIdle.Server.Engine
                         $"Loot: drop request for player {request.PlayerId} (monster {request.MonsterId}) failed: {ex.Message}");
                 }
             }
-
-            // Task 85: after the drops, before the gathering drain - one
-            // fusion pass per player whose drops this cycle asked for one.
-            await RunAutoFusionsAsync();
-
-            await DrainGatheringGrantsAsync();
-
-            // Reported at the END of a cycle, so its queue depths
-            // describe what this cycle could not finish rather than what
-            // it had not started.
-            ReportLootThroughput();
+            if (deferredThisCycle > 1)
+            {
+                Console.WriteLine($"Loot: {deferredThisCycle} batches kept for the next cycle (no database transaction)");
+            }
         }
 
         // Modul: ONE FAILED REQUEST USED TO KILL LOOT FOR THE WHOLE PROCESS.
@@ -1163,7 +1214,7 @@ namespace FolkIdle.Server.Engine
                 + $"enqueued {Interlocked.Exchange(ref _killsEnqueued, 0)}, "
                 + $"worker drained {_requestsDrained} requests / {_killsRolled} kills in {_batchesWritten} batches -> "
                 + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
-                + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed, "
+                + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed, {_batchesDeferred} deferred ({_deferredBatches.Count} waiting), "
                 + $"{DropRequestQueue.Count} still queued; "
                 + $"gathering {_gatheringGrantsCoalesced} grants -> {_gatheringWrites} writes, "
                 + $"{GatheringGrantQueue.Count} still queued");
@@ -1173,6 +1224,7 @@ namespace FolkIdle.Server.Engine
             _requestsFailed = 0;
             _requestsDrained = 0;
             _batchesWritten = 0;
+            _batchesDeferred = 0;
             _killsRolled = 0;
             _equipmentWritten = 0;
             _materialsGranted = 0;
@@ -1269,9 +1321,32 @@ namespace FolkIdle.Server.Engine
             // that method for what it cost.
             bool isRegionalBoss = ContentRegistry.IsRegionalBoss(monsterId);
 
-            using var scope = _serviceProvider.CreateScope();
+            // Modul: A BATCH THAT NEVER GOT A TRANSACTION IS STILL QUEUED, NOT
+            // LOST (review of #316, 2026-11-04). The scope and the transaction
+            // are acquired before the try below, so a refused connection (the
+            // pooler's EMAXCONNSESSION, a restart of Postgres) throws before a
+            // single roll is made - nothing is resolved, so there is nothing
+            // for the PendingGrantOutbox to keep. Before #316 that cost one
+            // kill; a coalesced batch carries every kill of a player on a
+            // monster for the cycle. The acquire failure is therefore its own
+            // exception, and RunCycleAsync puts the batch back for the next
+            // cycle instead of counting it failed.
+            IServiceScope? acquiredScope = null;
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction acquiredTransaction;
+            try
+            {
+                acquiredScope = _serviceProvider.CreateScope();
+                acquiredTransaction = await acquiredScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>()
+                    .Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            }
+            catch (Exception ex)
+            {
+                acquiredScope?.Dispose();
+                throw new LootTransactionUnavailableException(ex);
+            }
+            using var scope = acquiredScope;
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            using var transaction = acquiredTransaction;
 
             // Modul: Loot Event Feed. Drops are staged here and only
             // published once the transaction actually commits - announcing a
