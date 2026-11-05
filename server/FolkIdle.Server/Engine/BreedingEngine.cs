@@ -100,7 +100,7 @@ namespace FolkIdle.Server.Engine
             // except refusals, which return normally and are not retried.
             try
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => BreedOnceAsync(playerId, paternalId, maternalId, selectionMask));
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => BreedOnceAsync(playerId, paternalId, maternalId, selectionMask), operation: "Breeding");
             }
             catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
@@ -351,7 +351,7 @@ namespace FolkIdle.Server.Engine
             // except refusals, which return normally and are not retried.
             try
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => BreedHeroVillagerOnceAsync(playerId, heroId, newcomerId, selectionMask));
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => BreedHeroVillagerOnceAsync(playerId, heroId, newcomerId, selectionMask), operation: "Hero-villager breeding");
             }
             catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {

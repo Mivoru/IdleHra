@@ -390,7 +390,7 @@ namespace FolkIdle.Server.Domain.Progression
             // lockstep scale 1 lost 8 recruits to 40001 on 2026-11-05.
             try
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => RecruitVillagerOnceAsync(playerId));
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => RecruitVillagerOnceAsync(playerId), operation: "Recruit villager");
             }
             catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
@@ -496,7 +496,7 @@ namespace FolkIdle.Server.Domain.Progression
         {
             try
             {
-                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => UpgradeBuildingOnceAsync(playerId, targetBuildingId));
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => UpgradeBuildingOnceAsync(playerId, targetBuildingId), operation: "Village upgrade");
             }
             catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
