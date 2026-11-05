@@ -107,9 +107,43 @@ persona (optimal level 50: 40.5 h x20, 39.6 h scale 1; eagerkit 47.7 / 47.7 /
   (33.7 vs 28.1 h) and level 50 (47.2 vs 39.6 h); one night is not enough to
   call it.
 
-Next, in order: re-run the validation with the two bot fixes (2026-11-05,
-daytime window approved by the owner until 19:00); the village race (owner
-decision, production code); NoDelay in Docker; then P5 below.
+**Re-run with the bot fixes (2026-11-05 daytime): VALID, and the region-1
+gap is gone.** From `../IdleHra-night5` (main at #321, Release). x20
+reference `bot-runs/day-20261105/val-x20` (216 wall min). The lockstep runs
+in the same pass failed at their first `DROP DATABASE`: a Docker overlay2
+I/O error (recovered with `docker desktop stop`, `wsl --shutdown`, start).
+The runner exited 3 and wrote an INVALID report, as designed. The x20
+server log's 55 "transient failure" cycles all come after the bots finished,
+from the same incident. Lockstep re-ran against that reference with the new
+`-ReferenceFrom` switch (PR #322): `bot-runs/day2-20261105/`, scale 1 128
+wall min, scale 4 97 min. 20/20 bots started and none stopped in every run;
+no broken bots; bots.err and server.err empty. 64 of 97 comparable medians
+fall inside the reference's spread.
+- Region 2 opens at 4.4-8.6 h in x20 and 5.3-9.9 h in lockstep for every
+  persona (x20 optimal was 23.7 h before the fix). Region 3 opens at
+  26.6-30.8 h in all three runs. Level 50: 47.5-48.0 h x20, 47.2-48.5 h
+  scale 1, 41.1-48.2 h scale 4.
+- "refused (halt 0, result 0)": x20 61 (was 394), scale 1 57, scale 4 74.
+  The 43 that remain at x20 are roster jobs: `BotBrain.Lineage.cs` calls
+  `MarkRefused` right after sending, as a cooldown, and the paced
+  slot-state lag makes it send again. Log noise only; not fixed.
+- Larder top-ups ("larder low"): x20 66, scale 1 39, scale 4 42; no loops.
+- Most OUT rows are small differences on small numbers: `level_5`
+  (0.5 h vs 1.0 h, early bot choices) and region 2 (a few hours either
+  way). Scale 4 against scale 1 is noise: optimal level 50 is now 41.1 vs
+  47.2 h, the opposite way from the night (47.2 vs 39.6 h).
+- Production races, amplified by lockstep: "Village upgrade failed" x20 20,
+  scale 1 214, scale 4 244; also "Hero-villager breeding failed" (40P01
+  deadlock, 40001 serialization) and "Recruit villager failed" in scale 1.
+  Not changed here; owner decision.
+
+Conclusion: within one seed, lockstep scale 1 and scale 4 reproduce the
+paced x20 path's level and region pacing. Parity for single milestones
+under 1 game hour, and for reaction-time effects such as `first_death`, is
+not claimed.
+
+Next, in order: the village/breeding races (owner decision, production
+code); NoDelay in Docker; then P5 below.
 
 ### P5 - strategy cohorts and an endgame scoreboard (owner spec, not built)
 
