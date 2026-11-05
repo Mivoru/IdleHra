@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
 using FolkIdle.Server.Domain.Social;
 using FolkIdle.Server.Engine;
@@ -334,6 +335,169 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(VillageChestEngine.ChestActionResult.Busy, outcome.Result);
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
             Assert.True(await verify.EquipmentInstances.AsNoTracking().AnyAsync(e => e.Id == equipmentId));
+        }
+
+        // Lockstep validation 2026-11-05: 214-244 village upgrades and 8
+        // recruits per 72-game-hour run of 20 bots lost a race like these and
+        // answered "try again". They are retried now.
+
+        private static long HumanGenome()
+        {
+            var genome = new GeneticVector(0);
+            genome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+            return genome.RawValue;
+        }
+
+        private async Task SeedBreederAsync(FolkIdleDbContext db, long playerId)
+        {
+            db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = playerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
+            db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 10_000L });
+            await Task.CompletedTask;
+        }
+
+        private Task RaceAgainstAGoldUpdateAsync(long playerId, Func<Task> engineCall)
+            => RaceAgainstSqlAsync(
+                "UPDATE \"CommodityRecords\" SET \"Quantity\" = \"Quantity\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold'",
+                new object[] { playerId },
+                "%CommodityRecords%FOR UPDATE%",
+                engineCall);
+
+        // The tick's checkpoint flush writes the gold row; lockstep scale 1 lost
+        // 18 hero-villager breedings to 40001/40P01 on 2026-11-05.
+        [Fact]
+        public async Task AHeroVillagerBreedingThatLosesARace_IsRetried_AndBearsOneChild()
+        {
+            long playerId = await CreatePlayerAsync("hvrace");
+            Guid hero = Guid.NewGuid();
+            long villagerId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await SeedBreederAsync(db, playerId);
+                db.CharacterRecords.Add(new CharacterRecord { Id = hero, PlayerId = playerId, AgePhase = 1, SlotIndex = 0, IsFemale = false });
+                var lineage = new CharacterLineageRegistry { CharacterId = hero, GenerationIndex = 2, GeneticVector = HumanGenome() };
+                lineage.SetAptitudeVector(new[] { 4, 4, 4, 4 });
+                db.CharacterLineages.Add(lineage);
+                var newcomer = new VillageNewcomer { PlayerId = playerId, RaceId = RaceIds.Human, IsFemale = true };
+                newcomer.SetAptitudeVector(new[] { 6, 6, 6, 6 });
+                db.VillageNewcomers.Add(newcomer);
+                await db.SaveChangesAsync();
+                villagerId = newcomer.Id;
+            }
+            var registry = new PlayerSessionRegistry();
+            var engine = new BreedingEngine(_fixture.ServiceProvider, registry);
+
+            await RaceAgainstAGoldUpdateAsync(playerId, () => engine.ExecuteHeroVillagerBreedingAsync(playerId, hero, villagerId));
+
+            Assert.True(registry.BirthNotificationQueue.TryDequeue(out var birth), "the breeding was lost to the race instead of retried");
+            Assert.False(registry.BirthNotificationQueue.TryDequeue(out _));
+            Assert.Equal(new[] { (byte)CommandResultCode.BreedingSucceeded }, registry.CommandResultQueue.Select(r => r.ResultCode).ToArray());
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            Assert.Equal(1, await verify.CharacterLineages.CountAsync(l => l.ParentPaternalId == hero));
+            Assert.Equal(10_000L - birth.GoldSpent, await GoldOfAsync(playerId));
+        }
+
+        [Fact]
+        public async Task ABreedingThatLosesARace_IsRetried_AndBearsOneChild()
+        {
+            long playerId = await CreatePlayerAsync("brrace");
+            Guid father = Guid.NewGuid();
+            Guid mother = Guid.NewGuid();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await SeedBreederAsync(db, playerId);
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = father, PlayerId = playerId, AgePhase = 1, SlotIndex = 0, IsFemale = false },
+                    new CharacterRecord { Id = mother, PlayerId = playerId, AgePhase = 1, SlotIndex = 1, IsFemale = true });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = father, GenerationIndex = 0, GeneticVector = HumanGenome() },
+                    new CharacterLineageRegistry { CharacterId = mother, GenerationIndex = 0, GeneticVector = HumanGenome() });
+                await db.SaveChangesAsync();
+            }
+            var registry = new PlayerSessionRegistry();
+            var engine = new BreedingEngine(_fixture.ServiceProvider, registry);
+
+            await RaceAgainstAGoldUpdateAsync(playerId, () => engine.ExecuteBreedingAsync(playerId, father, mother));
+
+            Assert.True(registry.BirthNotificationQueue.TryDequeue(out var birth), "the breeding was lost to the race instead of retried");
+            Assert.False(registry.BirthNotificationQueue.TryDequeue(out _));
+            Assert.Equal(new[] { (byte)CommandResultCode.BreedingSucceeded }, registry.CommandResultQueue.Select(r => r.ResultCode).ToArray());
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            Assert.Equal(1, await verify.CharacterLineages.CountAsync(l => l.ParentPaternalId == father && l.ParentMaternalId == mother));
+            Assert.Equal(10_000L - birth.GoldSpent, await GoldOfAsync(playerId));
+        }
+
+        [Fact]
+        public async Task AVillageUpgradeThatLosesARace_IsRetried_AndStarts()
+        {
+            long playerId = await CreatePlayerAsync("upgrace");
+            var tier = VillageManagementEngine.GetTierMaterials(0);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = playerId,
+                    BuildingId = (int)VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = playerId, ItemId = tier.Log, Quantity = 100_000L },
+                    new CommodityRecord { PlayerId = playerId, ItemId = tier.Ore, Quantity = 100_000L },
+                    new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 1_000_000_000L });
+                await db.SaveChangesAsync();
+            }
+            var registry = new PlayerSessionRegistry();
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+
+            await RaceAgainstSqlAsync(
+                "UPDATE \"VillageInfrastructures\" SET \"CurrentLevel\" = \"CurrentLevel\" WHERE \"PlayerId\" = {0} AND \"BuildingId\" = {1}",
+                new object[] { playerId, (int)VillageManagementEngine.LumberjackBuildingId },
+                "%VillageInfrastructures%",
+                () => engine.ExecuteUpgradeBuildingAsync(playerId, VillageManagementEngine.LumberjackBuildingId));
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var row = await verify.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == playerId && v.BuildingId == (int)VillageManagementEngine.LumberjackBuildingId);
+            Assert.Equal(1, row.UpgradeTargetLevel);
+            Assert.True(registry.InfrastructureUpdateQueue.TryDequeue(out _), "the upgrade was lost to the race instead of retried");
+            Assert.False(registry.InfrastructureUpdateQueue.TryDequeue(out _));
+
+            // Paid exactly once: the lost attempt was rolled back whole.
+            var quote = VillageManagementEngine.QuoteUpgrade((int)VillageManagementEngine.LumberjackBuildingId, 0);
+            long Owed(string item) => quote.Where(l => l.ItemId == item).Sum(l => (long)l.Quantity);
+            async Task<long> Held(string item) => await verify.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == playerId && c.ItemId == item).Select(c => c.Quantity).SingleAsync();
+            Assert.Equal(100_000L - Owed(tier.Log), await Held(tier.Log));
+            Assert.Equal(100_000L - Owed(tier.Ore), await Held(tier.Ore));
+            Assert.Equal(1_000_000_000L - Owed("gold"), await Held("gold"));
+            Assert.False(registry.CommandResultQueue.TryDequeue(out var result), $"a retried upgrade still answered {result.ResultCode}");
+        }
+
+        [Fact]
+        public async Task ARecruitThatLosesARace_IsRetried_AndChargesOnce()
+        {
+            long playerId = await CreatePlayerAsync("recrace");
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = playerId,
+                    BuildingId = (int)VillageManagementEngine.InnBuildingId,
+                    CurrentLevel = 5
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 1_000_000L });
+                await db.SaveChangesAsync();
+            }
+            var registry = new PlayerSessionRegistry();
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+
+            await RaceAgainstAnUpdateAsync("PlayerRecords", playerId, "CurrentLevel",
+                () => engine.ExecuteRecruitVillagerAsync(playerId));
+
+            long cost = VillagerArrivalRules.RecruitCostGold(0);
+            Assert.True(registry.VillagerRecruitmentUpdateQueue.TryDequeue(out var notification), "the recruit was lost to the race instead of retried");
+            Assert.Equal(cost, notification.GoldSpent);
+            Assert.False(registry.VillagerRecruitmentUpdateQueue.TryDequeue(out _));
+            Assert.Equal(1_000_000L - cost, await GoldOfAsync(playerId));
         }
 
         [Fact]

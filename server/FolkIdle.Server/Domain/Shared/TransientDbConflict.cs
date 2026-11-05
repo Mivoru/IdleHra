@@ -61,22 +61,46 @@ namespace FolkIdle.Server.Domain.Shared
         /// its commit. A conflict rolls the whole attempt back, so a rerun starts
         /// from what is committed.
         /// </summary>
-        public static async Task<T> RetryAsync<T>(Func<Task<T>> attempt, int attempts = DefaultAttempts)
+        /// <remarks>
+        /// Modul: a named <paramref name="operation"/> logs every retry and the
+        /// attempt that finally committed. Without it a run shows only the
+        /// conflicts that outlived every attempt, so 200 races resolved on the
+        /// second try and 0 races look the same (lockstep validation, 2026-11-05).
+        /// </remarks>
+        public static async Task<T> RetryAsync<T>(Func<Task<T>> attempt, int attempts = DefaultAttempts, string? operation = null)
         {
             for (int i = 1; ; i++)
             {
                 try
                 {
-                    return await attempt().ConfigureAwait(false);
+                    T result = await attempt().ConfigureAwait(false);
+                    if (i > 1 && operation != null)
+                    {
+                        Console.WriteLine($"DB conflict resolved: {operation} on attempt {i}");
+                    }
+                    return result;
                 }
                 catch (Exception ex) when (i < attempts && IsConflict(ex))
                 {
+                    if (operation != null)
+                    {
+                        Console.WriteLine($"DB conflict retried: {operation} attempt {i} ({SqlStateOf(ex)})");
+                    }
                     await Task.Delay(Random.Shared.Next(20, 80) * i).ConfigureAwait(false);
                 }
             }
         }
 
-        public static Task RetryAsync(Func<Task> attempt, int attempts = DefaultAttempts)
-            => RetryAsync(async () => { await attempt().ConfigureAwait(false); return true; }, attempts);
+        public static Task RetryAsync(Func<Task> attempt, int attempts = DefaultAttempts, string? operation = null)
+            => RetryAsync(async () => { await attempt().ConfigureAwait(false); return true; }, attempts, operation);
+
+        private static string SqlStateOf(Exception ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (e is PostgresException pg) return pg.SqlState;
+            }
+            return "?";
+        }
     }
 }

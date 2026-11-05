@@ -94,6 +94,23 @@ namespace FolkIdle.Server.Engine
 
         public async Task ExecuteBreedingAsync(long playerId, Guid paternalId, Guid maternalId, int selectionMask = 0)
         {
+            // Modul: retried on a lost race (40001/40P01), the same answer as
+            // ExecuteHeroVillagerBreedingAsync below. The attempt opens its
+            // own scope and transaction and answers nothing before its commit
+            // except refusals, which return normally and are not retried.
+            try
+            {
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => BreedOnceAsync(playerId, paternalId, maternalId, selectionMask), operation: "Breeding");
+            }
+            catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
+            {
+                Console.WriteLine($"Breeding failed: {ex.Message}");
+                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+            }
+        }
+
+        private async Task BreedOnceAsync(long playerId, Guid paternalId, Guid maternalId, int selectionMask)
+        {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
@@ -299,7 +316,7 @@ namespace FolkIdle.Server.Engine
                     GoldSpent = breedingCost
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
                 await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Breeding failed: {ex}");
@@ -327,6 +344,23 @@ namespace FolkIdle.Server.Engine
         /// which is double the grind for the same child.
         /// </summary>
         public async Task ExecuteHeroVillagerBreedingAsync(long playerId, Guid heroId, long newcomerId, int selectionMask = 0)
+        {
+            // Modul: retried on a lost race (40001/40P01); lockstep scale 1 lost
+            // 18 hero-villager breedings to it on 2026-11-05. The attempt opens its
+            // own scope and transaction and answers nothing before its commit
+            // except refusals, which return normally and are not retried.
+            try
+            {
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => BreedHeroVillagerOnceAsync(playerId, heroId, newcomerId, selectionMask), operation: "Hero-villager breeding");
+            }
+            catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
+            {
+                Console.WriteLine($"Hero-villager breeding failed: {ex.Message}");
+                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+            }
+        }
+
+        private async Task BreedHeroVillagerOnceAsync(long playerId, Guid heroId, long newcomerId, int selectionMask)
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -523,7 +557,7 @@ namespace FolkIdle.Server.Engine
                     GoldSpent = breedingCost
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
                 await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Hero-villager breeding failed: {ex}");

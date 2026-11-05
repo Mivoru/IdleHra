@@ -386,6 +386,21 @@ namespace FolkIdle.Server.Domain.Progression
         /// </summary>
         public async Task ExecuteRecruitVillagerAsync(long playerId)
         {
+            // Modul: retried on a lost race like ExecuteUpgradeBuildingAsync;
+            // lockstep scale 1 lost 8 recruits to 40001 on 2026-11-05.
+            try
+            {
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => RecruitVillagerOnceAsync(playerId), operation: "Recruit villager");
+            }
+            catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
+            {
+                Console.WriteLine($"Recruit villager failed: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+            }
+        }
+
+        private async Task RecruitVillagerOnceAsync(long playerId)
+        {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
@@ -426,7 +441,7 @@ namespace FolkIdle.Server.Domain.Progression
                     GoldSpent = goldSpent
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
                 await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Recruit villager failed: {ex.Message}");
@@ -464,7 +479,33 @@ namespace FolkIdle.Server.Domain.Progression
             }
         }
 
+        /// <summary>
+        /// Starts an upgrade, trying again when the transaction loses a race.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A LOST RACE IS RETRIED, NOT REPORTED (lockstep validation,
+        /// 2026-11-05). The upgrade is Serializable and live village production
+        /// writes the same rows, so it failed with 40001 "could not serialize
+        /// access" 20 times in a 72-game-hour x20 run of 20 bots and 214-244
+        /// times in lockstep, where many players act in the same instant. Each
+        /// one answered "try again" and the player had to press the button
+        /// again. The attempt opens its own scope and transaction and enqueues
+        /// nothing before its commit, so a rerun starts from what is committed.
+        /// </remarks>
         public async Task ExecuteUpgradeBuildingAsync(long playerId, uint targetBuildingId)
+        {
+            try
+            {
+                await FolkIdle.Server.Domain.Shared.TransientDbConflict.RetryAsync(() => UpgradeBuildingOnceAsync(playerId, targetBuildingId), operation: "Village upgrade");
+            }
+            catch (Exception ex) when (FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
+            {
+                Console.WriteLine($"Village upgrade failed: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+            }
+        }
+
+        private async Task UpgradeBuildingOnceAsync(long playerId, uint targetBuildingId)
         {
             if (!IsValidBuildingId(targetBuildingId))
             {
@@ -666,7 +707,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                 _playerRegistry.InfrastructureUpdateQueue.Enqueue(notification);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!FolkIdle.Server.Domain.Shared.TransientDbConflict.IsConflict(ex))
             {
                 await transaction.SafeRollbackAsync();
                 Console.WriteLine($"Village upgrade failed: {ex.Message}");
