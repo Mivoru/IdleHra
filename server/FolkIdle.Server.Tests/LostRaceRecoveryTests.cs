@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
 using FolkIdle.Server.Domain.Social;
 using FolkIdle.Server.Engine;
@@ -334,6 +335,74 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(VillageChestEngine.ChestActionResult.Busy, outcome.Result);
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
             Assert.True(await verify.EquipmentInstances.AsNoTracking().AnyAsync(e => e.Id == equipmentId));
+        }
+
+        // Lockstep validation 2026-11-05: 214-244 village upgrades and 8
+        // recruits per 72-game-hour run of 20 bots lost a race like these and
+        // answered "try again". They are retried now.
+
+        [Fact]
+        public async Task AVillageUpgradeThatLosesARace_IsRetried_AndStarts()
+        {
+            long playerId = await CreatePlayerAsync("upgrace");
+            var tier = VillageManagementEngine.GetTierMaterials(0);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = playerId,
+                    BuildingId = (int)VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = playerId, ItemId = tier.Log, Quantity = 100_000L },
+                    new CommodityRecord { PlayerId = playerId, ItemId = tier.Ore, Quantity = 100_000L },
+                    new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 1_000_000_000L });
+                await db.SaveChangesAsync();
+            }
+            var registry = new PlayerSessionRegistry();
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+
+            await RaceAgainstSqlAsync(
+                "UPDATE \"VillageInfrastructures\" SET \"CurrentLevel\" = \"CurrentLevel\" WHERE \"PlayerId\" = {0} AND \"BuildingId\" = {1}",
+                new object[] { playerId, (int)VillageManagementEngine.LumberjackBuildingId },
+                "%VillageInfrastructures%",
+                () => engine.ExecuteUpgradeBuildingAsync(playerId, VillageManagementEngine.LumberjackBuildingId));
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var row = await verify.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == playerId && v.BuildingId == (int)VillageManagementEngine.LumberjackBuildingId);
+            Assert.Equal(1, row.UpgradeTargetLevel);
+            Assert.True(registry.InfrastructureUpdateQueue.TryDequeue(out _), "the upgrade was lost to the race instead of retried");
+            Assert.False(registry.CommandResultQueue.TryDequeue(out var result), $"a retried upgrade still answered {result.ResultCode}");
+        }
+
+        [Fact]
+        public async Task ARecruitThatLosesARace_IsRetried_AndChargesOnce()
+        {
+            long playerId = await CreatePlayerAsync("recrace");
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = playerId,
+                    BuildingId = (int)VillageManagementEngine.InnBuildingId,
+                    CurrentLevel = 5
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 1_000_000L });
+                await db.SaveChangesAsync();
+            }
+            var registry = new PlayerSessionRegistry();
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+
+            await RaceAgainstAnUpdateAsync("PlayerRecords", playerId, "CurrentLevel",
+                () => engine.ExecuteRecruitVillagerAsync(playerId));
+
+            long cost = VillagerArrivalRules.RecruitCostGold(0);
+            Assert.True(registry.VillagerRecruitmentUpdateQueue.TryDequeue(out var notification), "the recruit was lost to the race instead of retried");
+            Assert.Equal(cost, notification.GoldSpent);
+            Assert.False(registry.VillagerRecruitmentUpdateQueue.TryDequeue(out _));
+            Assert.Equal(1_000_000L - cost, await GoldOfAsync(playerId));
         }
 
         [Fact]
