@@ -36,6 +36,12 @@ from datetime import datetime
 MILESTONES = ["level_5", "level_10", "level_15", "level_20", "level_25", "level_30",
               "level_40", "level_50", "level_60", "region_2_open", "boss_r1_defeated",
               "region_3_open", "boss_r2_defeated", "region_4_open", "first_death"]
+# Night 2026-11-05: a paced bot decides once per 0.4-1.2 wall seconds, which
+# is 8-24 game seconds at x20, so it reacts to an emptied larder later than a
+# lockstep bot, and x20 bots died within minutes of their first fight (median
+# 0.06 h) where lockstep ones died hours later. These milestones measure the
+# bot's reaction time, not the sim: shown, but left out of the in/OUT count.
+REACTION_MILESTONES = {"first_death"}
 START_TOLERANCE_HOURS = 0.5
 BROKEN_FRACTION = 0.5  # final level below half the persona median (all runs pooled) = broken
 BROKEN_MIN_MEDIAN = 10  # a run too short to reach level 10 cannot tell slow from stuck
@@ -200,6 +206,9 @@ def main():
                     ratios.append("-")
                     continue
                 inside = min(ref_vals) <= med <= max(ref_vals)
+                if m in REACTION_MILESTONES:
+                    ratios.append(f"{med / ref_med:.2f} (reaction, not counted)")
+                    continue
                 total += 1
                 agree += inside
                 ratios.append(f"{med / ref_med:.2f} {'in' if inside else 'OUT'}")
