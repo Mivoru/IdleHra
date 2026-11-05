@@ -33,7 +33,18 @@ namespace FolkIdle.Bots
         private readonly RefusalMemory _refused = new();
         private long _pendingActivity;
         private double _pendingActivityAtHours;
+        private DateTime _pendingActivityAtWall;
+        private long _pendingActivityAtFrame;
         private int _deathsSeen;
+
+        private bool PendingActivityTimedOut()
+        {
+            long frames = _client.StateFrames;
+            // A reconnect starts a new client whose frame count begins at zero.
+            if (frames < _pendingActivityAtFrame) _pendingActivityAtFrame = 0;
+            return BotRules.ConfirmationWindowOver(_time.IsLockstep, (Now - _pendingActivityAtHours) * 3600,
+                (DateTime.UtcNow - _pendingActivityAtWall).TotalSeconds, frames - _pendingActivityAtFrame);
+        }
         private int _allSetAsideLoggedAtLevel = -1;
 
         private RefusalConditions RefusalNow
@@ -287,6 +298,13 @@ namespace FolkIdle.Bots
             if (_projection is { } proj)
                 foreach (var e in proj.Arr("Monsters"))
                     if (e.Int("MonsterId") == monster) perHour = e.Num("FoodPerHour");
+            // Modul: NOT FIGHTING IS NOT "EATS NOTHING" (night 2026-11-05).
+            // The out-of-food trip starts when the fight has just stopped, so
+            // the active activity is often 0 and the target fell to the 150
+            // floor: x20 optimal1 caught 396 fish at 0.09 h where lockstep's
+            // caught 2,316, and the run went on with a larder of 2-8. Use the
+            // fight the food is for: the best one that holds with food.
+            if (perHour <= 0 && FoodFight() is { } food) perHour = food.FoodPerHour;
             int interval = FoodRegistry.RationIntervalTicks(region);
             double rations = interval > 0 ? 36000.0 / interval : 0;
             return (int)Math.Clamp((perHour + rations) * 3, 150, 3000);
@@ -308,7 +326,7 @@ namespace FolkIdle.Bots
                 {
                     _pendingActivity = 0; // confirmed
                 }
-                else if (Now - _pendingActivityAtHours > 8.0 / 3600)
+                else if (PendingActivityTimedOut())
                 {
                     // Not taken. A death also clears the activity, and is not a refusal.
                     if (_state.ActivityHaltReason != ActivityHaltReason.Died)
@@ -329,6 +347,8 @@ namespace FolkIdle.Bots
 
             _pendingActivity = target;
             _pendingActivityAtHours = Now;
+            _pendingActivityAtWall = DateTime.UtcNow;
+            _pendingActivityAtFrame = _client.StateFrames;
             packet = new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = target, TargetGuid = _state.Slot1_CharacterId };
             Event(_trip != null
                 ? $"{_trip.Purpose} at node {target}"
@@ -380,6 +400,21 @@ namespace FolkIdle.Bots
             {
                 long material = MaterialTrip();
                 if (material > 0) return material;
+            }
+
+            // Modul: TOP THE LARDER UP BEFORE IT IS EMPTY (night 2026-11-05).
+            // Fishing used to start only at a larder of exactly 0, while auto-eat
+            // leaves a few fish: the val-x20 optimal bots fought region 1's
+            // no-food fights on a larder of 1-8 from hour 8 to hour 24, never
+            // fishing, and met the region-1 boss at 23.9 h against 5.5 h in
+            // lockstep (where a lucky first trip had filled the larder). A
+            // player whose better fight eats food goes fishing when the larder
+            // holds less than half an hour of it.
+            if (!LeavingSoon && newRiver > 0 && FoodFight() is { } foodFight
+                && BotRules.NeedsFoodTopUp(larder + carried, foodFight.XpPerHour, BestSafeXpPerHour(), FishingTarget() / 3.0))
+            {
+                StartTrip(new Trip(newRiver, $"fishing (larder low: {larder + carried} for {MonsterName(foodFight.Id)})", 0, FishingTarget(), Now, 90));
+                return newRiver;
             }
 
             // A bot about to be away for hours with no fight that holds without
@@ -524,6 +559,29 @@ namespace FolkIdle.Bots
         private bool AnySafeFight()
             => _projection is { } p && p.Arr("Monsters").Any(e => e.Bool("CanDamage") && e.Bool("SurvivesWithoutFood")
                    && MonsterRegion(e.Int("MonsterId")) <= Math.Max(1, (int)_state.HighestUnlockedRegion));
+
+        /// <summary>The best-XP fight in reach that holds only because of food, or null when none does.</summary>
+        private (long Id, double XpPerHour, double FoodPerHour)? FoodFight()
+        {
+            if (_projection is not { } p) return null;
+            int region = Math.Max(1, (int)_state.HighestUnlockedRegion);
+            var best = p.Arr("Monsters")
+                .Where(e => e.Bool("CanDamage") && e.Bool("SurvivesWithFood") && !e.Bool("SurvivesWithoutFood")
+                         && MonsterRegion(e.Int("MonsterId")) is > 0 and var r && r <= region
+                         && !Avoided(e.Int("MonsterId")) && !IsRefused(e.Int("MonsterId")))
+                .OrderByDescending(e => e.Num("XpPerHour"))
+                .Select(e => ((long)e.Int("MonsterId"), e.Num("XpPerHour"), e.Num("FoodPerHour")))
+                .ToList();
+            return best.Count == 0 ? null : best[0];
+        }
+
+        /// <summary>XP/h of the best fight in reach that holds without food (0 when none does).</summary>
+        private double BestSafeXpPerHour()
+            => _projection is { } p
+                ? p.Arr("Monsters").Where(e => e.Bool("CanDamage") && e.Bool("SurvivesWithoutFood")
+                        && MonsterRegion(e.Int("MonsterId")) <= Math.Max(1, (int)_state.HighestUnlockedRegion))
+                    .Select(e => e.Num("XpPerHour")).DefaultIfEmpty(0).Max()
+                : 0;
 
         /// <summary>Food for the offline window ahead: the current fight's use per hour times the hours until the next check-in, capped at the offline cap (12 h).</summary>
         private int AbsenceFood()

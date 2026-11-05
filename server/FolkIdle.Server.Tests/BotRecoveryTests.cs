@@ -25,6 +25,31 @@ namespace FolkIdle.Server.Tests
             Assert.False(memory.IsRefused(91, Level3, 0.41 + 1.01 / 60));
         }
 
+        [Theory]
+        // x20: 8 game seconds is 0.4 wall seconds - no answer can have arrived.
+        [InlineData(false, 9.0, 0.45, 0, false)]
+        [InlineData(false, 40.0, 2.0, 1, false)]
+        [InlineData(false, 40.0, 2.0, 2, true)]
+        [InlineData(false, 200.0, 10.0, 0, true)]
+        // x1: game and wall seconds are the same, and frames arrive.
+        [InlineData(false, 9.0, 9.0, 9, true)]
+        [InlineData(false, 7.9, 7.9, 9, false)]
+        // Lockstep keeps the game-time rule.
+        [InlineData(true, 9.0, 0.01, 0, true)]
+        [InlineData(true, 7.0, 0.01, 0, false)]
+        public void AFightIsRefusedOnlyAfterTheServerCouldHaveAnswered(bool lockstep, double gameSeconds, double wallSeconds, long frames, bool over)
+            => Assert.Equal(over, BotRules.ConfirmationWindowOver(lockstep, gameSeconds, wallSeconds, frames));
+
+        [Theory]
+        // val-x20 optimal1 at 12 h: larder 2, a food fight worth more than the safe one.
+        [InlineData(2, 900, 600, 760, true)]
+        [InlineData(500, 900, 600, 760, false)]
+        // The safe fight is as good: no reason to fish.
+        [InlineData(2, 600, 600, 760, false)]
+        [InlineData(0, 900, 600, 0, false)]
+        public void TheLarderIsToppedUpBeforeItIsEmpty(int held, double foodXp, double safeXp, double perHour, bool fish)
+            => Assert.Equal(fish, BotRules.NeedsFoodTopUp(held, foodXp, safeXp, perHour));
+
         [Fact]
         public void ARepeatedRefusalWaitsLongerEachTime_UpToTwoGameHours()
         {

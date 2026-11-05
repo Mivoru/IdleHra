@@ -1,6 +1,6 @@
 # Lockstep simulation for the playtest bots
 
-## Read this first - state on 2026-11-03, end of day
+## Read this first - state on 2026-11-05 (results of two validation nights below)
 
 **Phases 0-2 are BUILT and MERGED to main; none of it is DEPLOYED. Phase 3 (validation) runs the night of 2026-11-04; P5 is a spec only.**
 PRs: #313 (Release overnight runs, precise tick sum), #314 (lockstep, phases
@@ -66,8 +66,50 @@ conditions, aligns the start time and measures from login (PR
 "validation-fix"). The 240-game-hour deep run of the same night went to
 region 4 and two rebirths; it is not a parity proof.
 
-Next, in order: re-run the validation with the fixes (x20 vs scale 1 first;
-scale 4 only if it fits the night); NoDelay in Docker; then P5 below.
+**Result of 2026-11-05: VALID, and level pacing agrees; two bot defects
+explain the large gaps.** From `../IdleHra-night4` (main at #319, Release),
+`bot-runs/night-20261105/`: x20 216 wall min, lockstep scale 1 154 min (x28),
+scale 4 108 min (x40). 20/20 bots started and none stopped in all three runs;
+no broken bots; the loot worker reported 0 failed batches in every run. 84 of
+110 medians fell inside the reference's spread (81 of 102 once `first_death`
+is left out, see below). Levels 10-50 agree within about 10% for every
+persona (optimal level 50: 40.5 h x20, 39.6 h scale 1; eagerkit 47.7 / 47.7 /
+47.8 h). The gaps, and what they are:
+- **Region-1 boss, x20 23.7 h vs lockstep 5.3-6.1 h (optimal, eagerkit): a
+  bot defect, in both modes.** The bot went fishing only at a larder of
+  exactly 0, and auto-eat leaves a few fish, so after its first trip it
+  fought region 1's no-food fights on a larder of 1-8 until region 2 opened
+  (x20 optimal1: larder 4 at 8 h, 2 at 12 h, 1 at 16 h). The first trip's
+  size decided the run: its target read the food rate of the ACTIVE fight,
+  which is often 0 just after the fight stopped, so it fell to the 150
+  floor (x20 optimal1 396 fish) or got three hours of food (lockstep 2,316).
+  Lockstep's optimal5 hit the same trap (larder 8 at 12 h, region 2 at
+  ~16 h). Fixed in the bot: the target falls back to the best fight that
+  holds with food, and the bot tops the larder up when it holds less than
+  half an hour of a food fight that beats every no-food fight.
+- **Refusals, x20 394 vs lockstep 56 "refused (halt 0, result 0)"; 153 vs
+  17 trips ended as refused: a bot defect, paced only.** The confirmation
+  window was 8 game seconds = 0.4 wall seconds at x20, shorter than the
+  round trip plus the next snapshot. Paced, it now also waits 2 wall
+  seconds and 2 state frames (10 s at most); lockstep is unchanged.
+- **`first_death`, x20 0.06-0.47 h vs lockstep 1.2-27 h: reaction time, not
+  the sim.** A paced bot decides every 0.4-1.2 wall seconds = 8-24 game
+  seconds at x20, so it is slower to leave a fight whose food ran out. A
+  real x1 player is closer to lockstep here. `compare-validation.py` now
+  shows it as "reaction, not counted".
+- **Village upgrades: 191 serialization failures in scale 1 vs 17 in x20**
+  ("could not serialize access due to concurrent update / read/write
+  dependencies"). Lockstep sends many players' commands in the same instant
+  as village production, so it amplifies a real server race (the upgrade
+  and live production both write the village rows). Production server code:
+  noted for the owner, not changed here.
+- Scale 4 against scale 1: the same within noise except optimal region 3
+  (33.7 vs 28.1 h) and level 50 (47.2 vs 39.6 h); one night is not enough to
+  call it.
+
+Next, in order: re-run the validation with the two bot fixes (2026-11-05,
+daytime window approved by the owner until 19:00); the village race (owner
+decision, production code); NoDelay in Docker; then P5 below.
 
 ### P5 - strategy cohorts and an endgame scoreboard (owner spec, not built)
 
