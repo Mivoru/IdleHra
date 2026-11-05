@@ -37,7 +37,12 @@ param(
     [string]$BotsExe = "",
     [int]$ReadyTimeoutSeconds = 90,
     # A lockstep 72-game-hour run took 101-147 wall min on 2026-11-04.
-    [double]$LockstepMaxWallMinutes = 360
+    [double]$LockstepMaxWallMinutes = 360,
+    # A finished reference run's bots folder (val-x20\bots) to compare against
+    # instead of running x20 again: 2026-11-05 a Docker I/O error killed the
+    # runner after a healthy 216-minute reference, and re-running it would not
+    # have fitted the window. Its run.json is still checked like a fresh one.
+    [string]$ReferenceFrom = ""
 )
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path "$PSScriptRoot\..\..").Path
@@ -166,7 +171,12 @@ function Write-Validation([string[]]$Dirs) {
 $exitCode = 0
 try {
     Say "night start (game start $($start.ToString('u')), finish by $($finish.ToString('HH:mm')))"
-    $ref = Run 'val-x20' '20' 1 $ValidationHours
+    if ($ReferenceFrom) {
+        $ref = (Resolve-Path $ReferenceFrom).Path
+        Say "reference reused from $ref"
+    } else {
+        $ref = Run 'val-x20' '20' 1 $ValidationHours
+    }
     if (-not (Healthy $ref)) {
         Say "the reference is not usable; stopping - lockstep has nothing to be compared against"
         Write-Invalid "The reference run $ref did not start all $expected bots or lost some; nothing was compared."
