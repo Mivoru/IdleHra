@@ -1,6 +1,6 @@
 # Lockstep simulation for the playtest bots
 
-## Read this first - state on 2026-11-05 (results of two validation nights below)
+## Read this first - state on 2026-11-06 (results of three validation nights below)
 
 **Phases 0-2 are BUILT and MERGED to main; none of it is DEPLOYED. Phase 3 (validation) runs the night of 2026-11-04; P5 is a spec only.**
 PRs: #313 (Release overnight runs, precise tick sum), #314 (lockstep, phases
@@ -142,8 +142,45 @@ paced x20 path's level and region pacing. Parity for single milestones
 under 1 game hour, and for reaction-time effects such as `first_death`, is
 not claimed.
 
-Next, in order: the village/breeding races (owner decision, production
-code); NoDelay in Docker; then P5 below.
+**Night 2026-11-06 after the race fix #324: VALID, and every village,
+recruit and breeding race is resolved.** From `../IdleHra-night6` (main at
+f97e886e, Release), `bot-runs/night-20261106/`, seed 1, game start
+2026-11-05 07:00Z, fresh x20 reference: x20 216 wall min, scale 1 154 min,
+scale 4 106 min. 20/20 bots started and none stopped in every run; no broken
+bots; bots.err and server.err empty. 70 of 101 comparable medians fall inside
+the reference's spread.
+- Region 2 opens at 4.1-8.1 h x20, 4.7-6.2 h scale 1, 4.1-9.1 h scale 4.
+  Region 3: 26.7-29.6 / 28.4-30.7 / 27.6-31.7 h. Level 50: 47.6-48.0 h x20,
+  47.6-48.1 h scale 4; scale 1 47.3-47.7 h for eagerkit/patientbare but
+  38.3 h (optimal) and 39.0 h (patient). The 11-05 night had optimal at
+  ~40 h in x20 (40.5) and scale 1 (39.6) alike, and the daytime run at 47 h,
+  so a ~39 h branch exists in both modes; one seed cannot say whether scale 1
+  takes it more often. More seeds will tell.
+- "Village upgrade failed" 0 / 0 / 0 (was 20 / 214 / 244), and no recruit or
+  breeding failure. The new retry log (operation, attempt, SQLSTATE):
+
+  | run | retries | resolved (ops) | of them on attempt 3 | 40P01 | exhausted |
+  |---|---|---|---|---|---|
+  | x20 | 37 | 36 | 1 | 0 | 0 |
+  | scale 1 | 200 | 194 | 6 | 1 | 0 |
+  | scale 4 | 189 | 180 | 9 | 3 | 0 |
+
+  Village upgrade is ~85% of them (34 / 163 / 162 retries), then recruit
+  (2 / 21 / 18) and hero-villager breeding (1 / 16 / 9). Retries exceed
+  resolved operations by exactly the operations that needed a third attempt.
+- Races still unhandled (all production code, each a few per run): "Skill
+  tree commit error" (3 / 6 / 5, the REST commit answers 500), "Loot:
+  gathering grant ... failed" (7 / 1 / 5), "Village: live production ...
+  rolled back - queued for retry" (0 / 3 / 1, already retried), "Inheritance
+  purchase failed" (0 / 0 / 2, answers GenericValidationFailure). **The
+  gathering grant one loses materials:** `DrainGatheringGrantsAsync`
+  dequeues and coalesces the grants, then only logs a failed player's
+  batch, so that batch is never written.
+
+Next, in order: the gathering grant loss and the skill tree / inheritance
+races (production code, owner decision); more seeds (2 and 3 at 24 h, then
+72 h); cron profiling and NoDelay; the CRON_SCALE 1/2/4/8 experiment against
+scale 1; then P5 below.
 
 ### P5 - strategy cohorts and an endgame scoreboard (owner spec, not built)
 
