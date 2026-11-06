@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using FolkIdle.Server.Domain.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FolkIdle.Server.Engine
@@ -319,7 +320,39 @@ namespace FolkIdle.Server.Engine
         ///
         /// Result.Reason is null on success, or says why nothing was bought.
         /// </remarks>
-        public async Task<SkillTreeCommitResult> CommitAsync(long playerId, byte[] target)
+        public Task<SkillTreeCommitResult> CommitAsync(long playerId, byte[] target)
+            => CommitRetryingAsync(() => CommitOnceAsync(playerId, target), "Skill tree commit", playerId);
+
+        /// <summary>Attempts for one commit against a lost race; a test sets 1 to exhaust them.</summary>
+        internal int ConflictAttempts { get; set; } = TransientDbConflict.DefaultAttempts;
+
+        internal const string BusyReason = "The server was busy and nothing was bought. Try again.";
+
+        /// <remarks>
+        /// Modul: A LOST RACE IS RETRIED, NOT ANSWERED WITH A 500 (lockstep
+        /// validation, 2026-11-06: 3 / 6 / 5 commits per 72-game-hour run of 20
+        /// bots, all 40001 - the checkpoint flush writes the same PlayerRecords
+        /// and player_skill_tree rows). Each attempt is a whole CommitOnceAsync:
+        /// its own scope and Serializable transaction, and the sync queue is
+        /// written only after its commit, so a rolled-back attempt leaves
+        /// nothing behind. A refusal is a normal return and is never retried.
+        /// A race that outlives every attempt says so in Reason, with nothing
+        /// spent, instead of failing the request.
+        /// </remarks>
+        private async Task<SkillTreeCommitResult> CommitRetryingAsync(Func<Task<SkillTreeCommitResult>> attempt, string operation, long playerId)
+        {
+            try
+            {
+                return await TransientDbConflict.RetryAsync(attempt, ConflictAttempts, operation);
+            }
+            catch (Exception ex) when (TransientDbConflict.IsConflict(ex))
+            {
+                Console.WriteLine($"DB conflict exhausted: {operation} for player {playerId} after {ConflictAttempts} attempts: {ex.Message}");
+                return new SkillTreeCommitResult { Reason = BusyReason };
+            }
+        }
+
+        private async Task<SkillTreeCommitResult> CommitOnceAsync(long playerId, byte[] target)
         {
             var result = new SkillTreeCommitResult { Reason = "Skill tree not loaded." };
             if (target.Length != WarTreeRegistry.Slots) return result;
@@ -428,7 +461,10 @@ namespace FolkIdle.Server.Engine
         /// payload at most, which can only under-count. War slots in the target
         /// are ignored, as Hearth slots are in the War half's CommitAsync.
         /// </remarks>
-        public async Task<SkillTreeCommitResult> CommitHearthAsync(long playerId, byte[] target)
+        public Task<SkillTreeCommitResult> CommitHearthAsync(long playerId, byte[] target)
+            => CommitRetryingAsync(() => CommitHearthOnceAsync(playerId, target), "Hearth commit", playerId);
+
+        private async Task<SkillTreeCommitResult> CommitHearthOnceAsync(long playerId, byte[] target)
         {
             var result = new SkillTreeCommitResult { Reason = "Skill tree not loaded." };
             if (target.Length != WarTreeRegistry.Slots) return result;

@@ -93,6 +93,42 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
+        /// Writes an already-resolved set of commodity deltas to the outbox
+        /// BEFORE the grant is attempted, hidden from the drain worker for
+        /// <paramref name="holdMs"/>, and returns the row's id. The caller then
+        /// applies the deltas and deletes this row in one transaction; if that
+        /// never commits, the row is still here and the drain applies it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE ROW IS THE IDEMPOTENCY KEY (lockstep validation,
+        /// 2026-11-06). Enqueuing only after a failed write cannot tell "the
+        /// commit failed" from "the commit landed but its answer was lost" - a
+        /// connection dropped during COMMIT - so the outbox would grant the
+        /// second case twice. With the row written first, the grant and the
+        /// row's removal commit together or not at all: whichever of the inline
+        /// write and the drain deletes the row is the one that grants.
+        /// </remarks>
+        public static async Task<long> ReserveCommodityDeltasAsync(
+            FolkIdleDbContext db, long playerId, int sourceType, IReadOnlyDictionary<string, long> deltas, long holdMs)
+        {
+            await EnsureSeededAsync(db, sourceType);
+
+            long sequence = NextSourceSequence(sourceType);
+            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            string payloadJson = JsonSerializer.Serialize(deltas);
+
+            var ids = await db.Database.SqlQuery<long>($@"
+                INSERT INTO pending_grants
+                    (""PlayerId"", ""SourceType"", ""SourceSequence"", ""PayloadKind"", ""PayloadJson"",
+                     ""CreatedAtEpochMs"", ""NextAttemptAtEpochMs"", ""AttemptCount"")
+                VALUES
+                    ({playerId}, {sourceType}, {sequence}, {PendingGrantPayloadKind.CommodityDeltas}, {payloadJson},
+                     {nowMs}, {nowMs + holdMs}, 0)
+                RETURNING ""Id"" AS ""Value""").ToListAsync();
+            return ids.Single();
+        }
+
+        /// <summary>
         /// Persists an already-resolved equipment drop for retry. Same shape
         /// as EnqueueCommodityDeltasAsync - see PendingGrantPayloadKind.EquipmentGrant.
         /// </summary>
