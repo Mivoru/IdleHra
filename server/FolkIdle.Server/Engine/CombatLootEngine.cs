@@ -1065,7 +1065,9 @@ namespace FolkIdle.Server.Engine
             while (taken < budget && queue.TryDequeue(out var grant))
             {
                 taken++;
-                if (grant.ItemId <= 0 || grant.Quantity <= 0) continue;
+                if (grant.Quantity <= 0) continue;
+                GatheringGrantLedger.NoteTaken(grant.Quantity);
+                if (grant.ItemId <= 0) { GatheringGrantLedger.NoteUnnamed(grant.Quantity); continue; }
 
                 var key = (grant.PlayerId, grant.ItemId);
                 into.TryGetValue(key, out var total);
@@ -1073,6 +1075,7 @@ namespace FolkIdle.Server.Engine
                 // 70x yield multiplier is genuinely capable of overflowing an
                 // int, and a negative quantity would be written to the chest.
                 long summed = (long)total.Quantity + grant.Quantity;
+                if (summed > int.MaxValue) GatheringGrantLedger.NoteClipped(summed - int.MaxValue);
                 total.Quantity = summed > int.MaxValue ? int.MaxValue : (int)summed;
                 total.ActivityId = grant.ActivityId;
                 into[key] = total;
@@ -1191,6 +1194,7 @@ namespace FolkIdle.Server.Engine
                             Quantity = grant.Value.Quantity,
                         });
                     }
+                    GatheringGrantLedger.NoteRequeued(player.Sum(g => (long)g.Value.Quantity));
                     Console.WriteLine(
                         $"Loot: gathering grant for player {player.Key} failed ({ex.Message}); batch put back on the queue");
                 }
@@ -1233,6 +1237,7 @@ namespace FolkIdle.Server.Engine
                 + $"{DropRequestQueue.Count} still queued; "
                 + $"gathering {_gatheringGrantsCoalesced} grants -> {_gatheringWrites} writes, "
                 + $"{GatheringGrantQueue.Count} still queued");
+            Console.WriteLine(GatheringGrantLedger.Report(GatheringGrantQueue.Count));
 
             _gatheringGrantsCoalesced = 0;
             _gatheringWrites = 0;
@@ -2100,10 +2105,11 @@ namespace FolkIdle.Server.Engine
             {
                 if (grant.Value.Quantity <= 0) continue;
                 string materialItemId = ContentRegistry.GetItemBaseId(grant.Key.ItemId);
-                if (string.IsNullOrEmpty(materialItemId)) continue;
+                if (string.IsNullOrEmpty(materialItemId)) { GatheringGrantLedger.NoteUnnamed(grant.Value.Quantity); continue; }
 
                 byMaterial.TryGetValue(materialItemId, out var existing);
                 long summed = (long)existing.Quantity + grant.Value.Quantity;
+                if (summed > int.MaxValue) GatheringGrantLedger.NoteClipped(summed - int.MaxValue);
                 byMaterial[materialItemId] = (
                     grant.Key.ItemId,
                     grant.Value.ActivityId,
@@ -2122,6 +2128,7 @@ namespace FolkIdle.Server.Engine
             // the grant deletes it in its own transaction - see
             // PendingGrantOutbox.ReserveCommodityDeltasAsync.
             var deltas = byMaterial.ToDictionary(m => m.Key, m => (long)m.Value.Quantity);
+            long batchQuantity = deltas.Values.Sum();
             long reservationId;
             try
             {
@@ -2129,6 +2136,7 @@ namespace FolkIdle.Server.Engine
                 var reserveDb = reserveScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 reservationId = await PendingGrantOutbox.ReserveCommodityDeltasAsync(
                     reserveDb, playerId, PendingGrantSourceType.Gathering, deltas, GatheringReservationHoldMs);
+                GatheringGrantLedger.NoteReserved();
             }
             catch (Exception ex)
             {
@@ -2144,6 +2152,7 @@ namespace FolkIdle.Server.Engine
                         Quantity = material.Quantity,
                     });
                 }
+                GatheringGrantLedger.NoteRequeued(batchQuantity);
                 Console.WriteLine($"Loot: gathering grant for player {playerId} could not be reserved ({SqlStateOf(ex)}: {ex.Message}); batch put back on the queue");
                 return GatheringGrantOutcome.Requeued;
             }
@@ -2161,13 +2170,19 @@ namespace FolkIdle.Server.Engine
                 // The grant rolled back and the reservation is still in the
                 // outbox: hand it to the drain now instead of after the hold.
                 await ReleaseGatheringReservationAsync(reservationId, ex);
+                GatheringGrantLedger.NoteLeftToDrain(batchQuantity);
                 Console.WriteLine($"Loot: gathering grant for player {playerId} kept in the outbox as pending grant {reservationId} ({SqlStateOf(ex)}: {ex.Message})");
                 return GatheringGrantOutcome.KeptInOutbox;
             }
 
             // false: the drain worker applied this reservation first (the hold
             // ran out), so it is granted - once - and the feed line is skipped.
-            if (!granted) return GatheringGrantOutcome.AppliedByOutbox;
+            if (!granted)
+            {
+                GatheringGrantLedger.NoteLeftToDrain(batchQuantity);
+                return GatheringGrantOutcome.AppliedByOutbox;
+            }
+            GatheringGrantLedger.NoteCreditedInline(batchQuantity);
 
             foreach (var material in byMaterial)
             {

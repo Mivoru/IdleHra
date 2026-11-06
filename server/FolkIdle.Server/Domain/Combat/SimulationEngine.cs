@@ -6444,13 +6444,15 @@ namespace FolkIdle.Server.Domain.Combat
                     int rarest = RarestEntryIndex(lootTable);
                     if (rarest >= 0)
                     {
+                        int rareQuantity = RollGatherQuantity(Random.Shared, in lootTable[rarest]);
                         CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
                         {
                             PlayerId = payload.PlayerId,
                             ActivityId = payload.ActiveActivityId,
                             ItemId = lootTable[rarest].ItemId,
-                            Quantity = RollGatherQuantity(Random.Shared, in lootTable[rarest]),
+                            Quantity = rareQuantity,
                         });
+                        GatheringGrantLedger.NoteEnqueued(rareQuantity);
                     }
                 }
 
@@ -6506,6 +6508,7 @@ namespace FolkIdle.Server.Domain.Combat
                                         ItemId = lootTable[i].ItemId,
                                         Quantity = grantQuantity
                                     });
+                                    GatheringGrantLedger.NoteEnqueued(grantQuantity);
                                     break;
                                 }
                             }
