@@ -8,8 +8,10 @@
 #   .\server\FolkIdle.Bots\night-lockstep-validation.ps1 [-Out bot-runs\night-X] [-Seed 1]
 #       [-StartUtc 2026-11-05T07:00:00Z] [-FinishBy 07:30] [-DeepHours 0]
 #
-# Order: val-x20 (reference), val-ls-scale1, then val-ls-scale4 only if its
-# estimated length still ends before -FinishBy (local time). The run STOPS
+# Order: val-x20 (reference), then one lockstep run per -Scales entry
+# (default "1,4"). The first scale always runs; each later one only if its
+# estimated length (-Scale4EstimateMinutes) still ends before -FinishBy
+# (local time). -Scales "1,2,4,8" is the CRON_SCALE experiment. The run STOPS
 # after the reference if the reference itself is invalid (a bot that never
 # logged in or stopped) - nothing can be compared against it. validation.md
 # is written by compare-validation.py, whose exit code 2 means INVALID.
@@ -33,6 +35,8 @@ param(
     [string]$StartUtc = "",
     [string]$FinishBy = "07:30",
     [double]$Scale4EstimateMinutes = 110,
+    # Lockstep cron scales to run after the reference, in order (2026-11-07).
+    [string]$Scales = "1,4",
     [string]$ServerExe = "",
     [string]$BotsExe = "",
     [int]$ReadyTimeoutSeconds = 90,
@@ -182,11 +186,15 @@ try {
         Write-Invalid "The reference run $ref did not start all $expected bots or lost some; nothing was compared."
         $exitCode = 2
     } else {
-        $dirs = @($ref, (Run 'val-ls-scale1' 'lockstep' 1 $ValidationHours))
-        if ((Get-Date).AddMinutes($Scale4EstimateMinutes) -lt $finish) {
-            $dirs += Run 'val-ls-scale4' 'lockstep' 4 $ValidationHours
-        } else {
-            Say "val-ls-scale4 skipped: ~$Scale4EstimateMinutes min would end after $($finish.ToString('HH:mm'))"
+        $scaleList = @($Scales -split ',' | ForEach-Object { [int]$_.Trim() })
+        $dirs = @($ref)
+        for ($k = 0; $k -lt $scaleList.Count; $k++) {
+            $sc = $scaleList[$k]
+            if ($k -eq 0 -or (Get-Date).AddMinutes($Scale4EstimateMinutes) -lt $finish) {
+                $dirs += Run "val-ls-scale$sc" 'lockstep' $sc $ValidationHours
+            } else {
+                Say "val-ls-scale$sc skipped: ~$Scale4EstimateMinutes min would end after $($finish.ToString('HH:mm'))"
+            }
         }
         $exitCode = Write-Validation $dirs
         if ($DeepHours -gt 0) { Run "deep-$($DeepHours)h" 'lockstep' 4 $DeepHours | Out-Null }
