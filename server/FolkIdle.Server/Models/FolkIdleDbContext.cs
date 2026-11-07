@@ -62,6 +62,7 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerCraftingSlot> PlayerCraftingSlots { get; set; }
         public DbSet<LootChest> LootChests { get; set; }
         public DbSet<LootChestWeek> LootChestWeeks { get; set; }
+        public DbSet<BuildPreset> BuildPresets { get; set; }
         public DbSet<DungeonProgress> DungeonProgress { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
@@ -506,6 +507,14 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<LootChestWeek>()
                 .HasKey(w => w.PlayerId);
+
+            modelBuilder.Entity<BuildPreset>(b =>
+            {
+                b.ToTable("player_build_presets");
+                b.HasKey(p => new { p.PlayerId, p.Slot });
+                b.Property(p => p.Name).HasMaxLength(24);
+                b.Property(p => p.WarRanks).HasMaxLength(1024);
+            });
 
             modelBuilder.Entity<DungeonProgress>()
                 .HasKey(d => new { d.PlayerId, d.Kind });

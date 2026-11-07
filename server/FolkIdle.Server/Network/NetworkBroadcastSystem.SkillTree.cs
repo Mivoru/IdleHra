@@ -48,6 +48,10 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/skilltree/commit" && method == "POST") { await HandleSkillTreeCommit(context); return true; }
             if (requestPath == "/api/v1/skilltree/respec" && method == "POST") { await HandleSkillTreeRespec(context); return true; }
             if (requestPath == "/api/v1/skilltree/families" && method == "GET") { await HandleAffixFamilies(context); return true; }
+            if (requestPath == "/api/v1/skilltree/presets" && method == "GET") { await HandleBuildPresetList(context); return true; }
+            if (requestPath == "/api/v1/skilltree/presets/save" && method == "POST") { await HandleBuildPresetSave(context); return true; }
+            if (requestPath == "/api/v1/skilltree/presets/delete" && method == "POST") { await HandleBuildPresetDelete(context); return true; }
+            if (requestPath == "/api/v1/skilltree/presets/apply" && method == "POST") { await HandleBuildPresetApply(context); return true; }
             return false;
         }
 
