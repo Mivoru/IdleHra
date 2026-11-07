@@ -772,7 +772,7 @@ namespace FolkIdle.Server.Engine
         public void StartCron()
         {
             _cts = new CancellationTokenSource();
-            Task.Run(() => ExecuteAsync(_cts.Token));
+            _worker = Task.Run(() => ExecuteAsync(_cts.Token));
 
             // Said out loud so "loot is not being granted" can be told from
             // "the worker never started" without attaching a debugger to a
@@ -795,6 +795,51 @@ namespace FolkIdle.Server.Engine
         {
             _cts.Cancel();
         }
+
+        private Task? _worker;
+
+        /// <summary>
+        /// Stops the worker and writes what is still queued - drops, deferred
+        /// batches and gathering grants - for at most <paramref name="budget"/>.
+        /// Call it once the tick has stopped, so nothing new is enqueued.
+        /// Returns true when every queue is empty.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A SHUTDOWN USED TO THROW THE QUEUES AWAY (2026-11-07). Both
+        /// queues are in memory, and the process exited with whatever the last
+        /// three-second cycle had not reached. The gathering ledger showed it
+        /// at the end of two bot runs: 16 and 29 grants still queued when the
+        /// server stopped, so every deploy dropped the last seconds of loot
+        /// and gathering of everyone online. The worker is stopped first and
+        /// awaited, because a cycle is not safe to run twice at once.
+        /// </remarks>
+        public async Task<bool> DrainForShutdownAsync(TimeSpan budget)
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            _cts?.Cancel();
+            if (_worker != null)
+            {
+                try { await _worker.WaitAsync(budget); }
+                catch (Exception) { /* the worker's own stop, or the budget; the drain below still runs */ }
+            }
+
+            int cycles = 0;
+            while (clock.Elapsed < budget && HasQueuedWork)
+            {
+                await RunCycleAsync();
+                cycles++;
+            }
+
+            bool empty = !HasQueuedWork;
+            Console.WriteLine(empty
+                ? $"Loot: queues drained for shutdown in {cycles} cycles ({clock.ElapsedMilliseconds} ms)."
+                : $"Loot: shutdown drain ran out of time after {cycles} cycles - {DropRequestQueue.Count} drop requests, "
+                  + $"{_deferredBatches.Count} deferred batches and {GatheringGrantQueue.Count} gathering grants were not written.");
+            return empty;
+        }
+
+        private bool HasQueuedWork
+            => !DropRequestQueue.IsEmpty || _deferredBatches.Count > 0 || !GatheringGrantQueue.IsEmpty;
 
         /// <summary>The production period of <see cref="RunCycleAsync"/>.</summary>
         internal const int CyclePeriodMs = 3000;
