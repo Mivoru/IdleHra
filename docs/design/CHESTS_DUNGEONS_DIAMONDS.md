@@ -82,6 +82,24 @@ Proposed contents (weights per tier are numbers to measure, not final):
 | Diamonds | - | very rare, 1-3 | rare, 2-5 | 5-10 |
 | Dungeon ticket (section 2) | - | rare | uncommon | common |
 
+**Equipment, as built (2026-11-07, owner):** Bronze holds a piece 50% of the
+time, Silver and up always. The piece comes from the player's highest region,
+at its own rarity table (`LootChestRules.RarityOdds`). The old tables rolled the
+kill ladder above a floor, and kills already pay ~69 Epic, 29 Legendary and 14
+Mythic pieces a player a day, so a chest piece was worth nothing.
+
+| Rarity | Bronze | Silver | Gold | Ancient |
+|---|---|---|---|---|
+| Epic | 55% | - | - | - |
+| Legendary | 30% | 55% | - | - |
+| Mythic | 12% | 36% | 61% | - |
+| Relic | 2.4% | 7.05% | 30% | 61% |
+| Ancient | 0.45% | 1.5% | 6.75% | 30% |
+| Divine | 0.12% | 0.36% | 1.65% | 6% |
+| Demonic | 0.0255% | 0.075% | 0.45% | 2.1% |
+| Godly | 0.00375% | 0.0135% | 0.12% | 0.75% |
+| Transcendent | 0.00075% | 0.0015% | 0.03% | 0.15% |
+
 **Gold is priced in minutes of the player's own income**, not in a flat
 number. A flat number is either worthless at the top or a fortune at the
 bottom, which is the same trap the Delve's gate fell into.
