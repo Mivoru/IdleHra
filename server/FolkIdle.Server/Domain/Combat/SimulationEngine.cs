@@ -3656,16 +3656,19 @@ namespace FolkIdle.Server.Domain.Combat
             // asks VillageManagementEngine for the rate, the exact integer
             // accrual and the rare share - the functions the offline window
             // calls - and hands the units to VillageProductionQueue, whose
-            // drain writes them under the Warehouse cap with the material
-            // ledger, exactly as the offline grant does.
+            // drain writes them with the material ledger, as the offline grant
+            // does. Live production is not capped: the Warehouse stores only
+            // what is made away (2026-11-07).
             //
             // Scholar is a rate here too (ScholarRate): every stream below
             // accrues at 1000 + its permille of the hourly rate.
             long ticks = (long)Math.Round(deltaTimeSeconds * 10.0);
             int ratePermille = 1000 + ScholarRate.BonusPermille(in payload);
+            // The Warehouse's bonus is on the buildings' material, not on gold.
+            int materialPermille = ratePermille + VillageManagementEngine.WarehouseBonusPermille(payload.WarehouseLevel);
 
             long logs = VillageManagementEngine.AccrueProduction(ref payload.LumberjackProductionAccumulator,
-                VillageManagementEngine.ProductionRatePerHour(payload.LumberjackLevel), ticks, ratePermille);
+                VillageManagementEngine.ProductionRatePerHour(payload.LumberjackLevel), ticks, materialPermille);
             if (logs > 0)
             {
                 long rare = VillageManagementEngine.RareShareOf(payload.VillageLogUnitsProduced, logs);
@@ -3675,7 +3678,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             long ores = VillageManagementEngine.AccrueProduction(ref payload.MineProductionAccumulator,
-                VillageManagementEngine.ProductionRatePerHour(payload.MineLevel), ticks, ratePermille);
+                VillageManagementEngine.ProductionRatePerHour(payload.MineLevel), ticks, materialPermille);
             if (ores > 0)
             {
                 long rare = VillageManagementEngine.RareShareOf(payload.VillageOreUnitsProduced, ores);

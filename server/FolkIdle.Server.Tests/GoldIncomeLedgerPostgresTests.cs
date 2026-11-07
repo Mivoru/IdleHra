@@ -329,9 +329,9 @@ namespace FolkIdle.Server.Tests
         // ------------------------------------------------------------------
 
         // Same arithmetic as OfflineVillageProductionOverflowTests: ten hours
-        // at level 1 is 2,000 of each raw, the level-1 Warehouse (1,000) cuts
-        // the window to 1,000, the 90/10 split makes that 900 common + 100
-        // rare, and 990 already stored leaves room for 10 common.
+        // at level 1, +5% for the level-1 Warehouse, is 2,100 raw: 1,890
+        // common and 210 rare. The Warehouse holds 1,000 of each for the
+        // window whatever the chest already has, so 890 common are lost.
         [Fact]
         public async Task OfflineProduction_RecordsTownHallGold_Gathered_AndWhatTheWarehouseCapThrewAway()
         {
@@ -346,19 +346,18 @@ namespace FolkIdle.Server.Tests
             {
                 long overflow = await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
                     db, player.Id, lumberjackLevel: 1, mineLevel: 0, warehouseLevel: 1, townHallLevel: 1, elapsedSeconds: 36000L);
-                Assert.Equal(1_790L, overflow);
+                Assert.Equal(890L, overflow);
             }
 
             long expectedGold = 36000L * VillageManagementEngine.GetTownHallGoldRatePerHour(1) / 3600L;
             Assert.True(expectedGold > 0);
             Assert.Equal(expectedGold, (await IncomeAsync(player.Id))[GoldIncomeSource.TownHall]);
 
-            Assert.Equal(10, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.Gathered));
-            Assert.Equal(200, await FlowAsync(player.Id, "golden_birch_log", MaterialFlowDirection.Gathered));
-            // 2,000 produced, 200 of it rare: of the 1,800 common only 10 fit.
-            // (Before 2026-09-30 a window ceiling also cut 1,000 first - a
-            // second cap the live building never had, since removed.)
-            Assert.Equal(1_790, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.LostToWarehouseCap));
+            Assert.Equal(1_000, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.Gathered));
+            Assert.Equal(210, await FlowAsync(player.Id, "golden_birch_log", MaterialFlowDirection.Gathered));
+            // 1,890 common produced, 1,000 stored (the 990 in the chest no
+            // longer counts against the Warehouse, 2026-11-07).
+            Assert.Equal(890, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.LostToWarehouseCap));
             Assert.Equal(0, await FlowAsync(player.Id, "golden_birch_log", MaterialFlowDirection.LostToWarehouseCap));
         }
 

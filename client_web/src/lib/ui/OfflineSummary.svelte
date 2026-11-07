@@ -100,7 +100,7 @@
           <p class="warn-line lost">
             Your warehouse was full - {formatNumber(summary.materialsLostToFullWarehouse)}
             more material{summary.materialsLostToFullWarehouse === 1 ? '' : 's'} were produced but had nowhere
-            to go. Upgrade the Warehouse or spend down your stock.
+            to go. Upgrade the Warehouse to store more while you are away.
           </p>
         {/if}
 

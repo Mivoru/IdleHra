@@ -2253,10 +2253,11 @@ namespace FolkIdle.Server.Tests
             }
             foreach (var other in others) SimulationEngine.VillageProductionQueue.Enqueue(other);
 
-            // Lumberjack 5 = 600 an hour: 100 s is 16.67, so 16 whole units,
-            // and the tenth unit was rare. Mine 2 = 300 an hour: 8 units, none
-            // rare yet.
-            Assert.Equal(15L, log);
+            // Lumberjack 5 = 600 an hour, +5% for the level-1 Warehouse = 630
+            // (2026-11-07): 100 s is 17.5, so 17 whole units, and the tenth
+            // unit was rare. Mine 2 = 300 +5% = 315 an hour: 8.75, so 8 units,
+            // none rare yet. The Warehouse caps only what is made away.
+            Assert.Equal(16L, log);
             Assert.Equal(1L, rareLog);
             Assert.Equal(8L, ore);
             Assert.Equal(0L, rareOre);
@@ -2547,8 +2548,12 @@ namespace FolkIdle.Server.Tests
             // offline window first clamped the whole 6,000 to one Warehouse
             // and then split it. The live building never had that second cap,
             // and the live tick now runs this same rule, so it went.
+            //
+            // Modul: 2026-11-07 - the Warehouse also adds 5% a level, so mine 4
+            // makes 525 an hour: 6,300 in 12 hours, 5,670 common (capped at
+            // 1,000) and 630 rare.
             const long expectedOreGain = 1000L;
-            const long expectedRareOreGain = 600L;
+            const long expectedRareOreGain = 630L;
 
             // Which commodity a tier produces is asserted by
             // Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially;
@@ -3865,8 +3870,11 @@ namespace FolkIdle.Server.Tests
             // what is measured here stays the OFFLINE cap.
             // 2,400 produced over the capped twelve hours, a tenth of which
             // arrives as the tier's rare log.
-            const long expectedWood = 2_160L;
-            const long expectedRareWood = 240L;
+            // Modul: 2026-11-07 - the level-4 Warehouse adds 20%, so 240 an
+            // hour: 2,880 in 12 hours, 2,592 common and 288 rare, still under
+            // the 4,000 it stores.
+            const long expectedWood = 2_592L;
+            const long expectedRareWood = 288L;
             string logId = VillageManagementEngine.GetTierMaterials(1).Log;
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();

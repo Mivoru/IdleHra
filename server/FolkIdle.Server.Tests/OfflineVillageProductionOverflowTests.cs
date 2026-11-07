@@ -58,22 +58,17 @@ namespace FolkIdle.Server.Tests
             return record?.Quantity ?? 0L;
         }
 
-        // Modul: near-full on BOTH the common log and the common ore, at
-        // tier 0 (lumberjackLevel/mineLevel = 1 both round down to
+        // Modul: THE WAREHOUSE IS ITS OWN STORE (2026-11-07). Tier 0
+        // (lumberjackLevel/mineLevel = 1 both round down to
         // GetTierMaterials(0): birch_log/copper_ore common,
-        // golden_birch_log/malachite_ore rare). Ten hours at level 1
-        // (200/hour each) against a level-1 warehouse (1,000 cap) produces
-        // 2,000 of each: 1,800 common and 200 rare. With 990 of each common
-        // material already stored, only 10 more of each fits: 1,790 lost per
-        // common material, 0 lost on the rares (fresh rows, plenty of
-        // headroom).
-        //
-        // Modul: 2026-09-30 - there is no window-ceiling clamp any more (it
-        // capped the whole window at one Warehouse before the split, a
-        // second cap the live building never had; the live tick now runs this
-        // rule). This read 890 lost per common and 100 of each rare.
+        // golden_birch_log/malachite_ore rare). Ten hours at level 1 (200 an
+        // hour, +5% for the level-1 Warehouse = 210) is 2,100 of each: 1,890
+        // common and 210 rare. The Warehouse holds 1,000 of each material for
+        // the window, so 890 of each common is lost and the rares fit. The 990
+        // already in the chest does NOT count any more - before, it left room
+        // for 10 and 1,790 of each common was thrown away.
         [Fact]
-        public async Task NearFullWarehouse_SumsOverflowAcrossAllFourMaterials()
+        public async Task FullWarehouse_CapsTheWindow_NotTheChest()
         {
             var player = await CreatePlayerAsync();
 
@@ -90,16 +85,15 @@ namespace FolkIdle.Server.Tests
                 townHallLevel: 0,
                 elapsedSeconds: 36000L);
 
-            Assert.Equal(3580L, overflow);
+            Assert.Equal(1780L, overflow);
 
-            // Both commons landed exactly at the warehouse cap, not above it -
-            // the clamp did its job; only the OVERFLOW REPORTING was missing.
-            Assert.Equal(1000L, await QuantityAsync(player.Id, "birch_log"));
-            Assert.Equal(1000L, await QuantityAsync(player.Id, "copper_ore"));
+            // A full Warehouse's worth of each common landed on top of the stack.
+            Assert.Equal(1990L, await QuantityAsync(player.Id, "birch_log"));
+            Assert.Equal(1990L, await QuantityAsync(player.Id, "copper_ore"));
 
-            // The rares had room for the whole grant.
-            Assert.Equal(200L, await QuantityAsync(player.Id, "golden_birch_log"));
-            Assert.Equal(200L, await QuantityAsync(player.Id, "malachite_ore"));
+            // The rares fit whole.
+            Assert.Equal(210L, await QuantityAsync(player.Id, "golden_birch_log"));
+            Assert.Equal(210L, await QuantityAsync(player.Id, "malachite_ore"));
         }
 
         // The other half of the guard: a warehouse with headroom must report
@@ -121,10 +115,11 @@ namespace FolkIdle.Server.Tests
 
             Assert.Equal(0L, overflow);
 
-            // 1 hour at level 1 (200/hour), 90/10 split: 180 common + 20 rare,
-            // both nowhere near a 100,000-capacity warehouse.
-            Assert.Equal(180L, await QuantityAsync(player.Id, "birch_log"));
-            Assert.Equal(20L, await QuantityAsync(player.Id, "golden_birch_log"));
+            // 1 hour at level 1 (200/hour), +60% (the Warehouse bonus stops at
+            // level 12) = 320, 90/10 split: 288 common + 32 rare, both nowhere
+            // near a 100,000-capacity warehouse.
+            Assert.Equal(288L, await QuantityAsync(player.Id, "birch_log"));
+            Assert.Equal(32L, await QuantityAsync(player.Id, "golden_birch_log"));
         }
 
         // The zero-elapsed and zero-production early returns must not report a

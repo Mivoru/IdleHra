@@ -176,8 +176,8 @@
   <p class="dim tiny">
     {#if ledger.data.MaterialsRecordedSince}Counted since {ledger.data.MaterialsRecordedSince}.{:else}Not counted yet.{/if}
     Gathered includes what village buildings produce. Spent is crafting, building, the larder and guild donations.
-    Lost is production thrown away while you were away because the Warehouse was full; while you play, a full
-    Warehouse pauses production instead.
+    Lost is production made while you were away that did not fit in the Warehouse; while you play, production goes
+    straight to the chest.
   </p>
 {:else if ledger.isError}
   <h3>Gold and materials</h3>

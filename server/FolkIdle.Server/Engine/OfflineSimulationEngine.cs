@@ -438,13 +438,15 @@ namespace FolkIdle.Server.Engine
             // permille of each hourly rate, over the honest elapsed time.
             long ticks = elapsedSeconds * 10L;
             int ratePermille = 1000 + scholarBonusPermille;
+            // The Warehouse's bonus is on the buildings' material only, as live.
+            int materialPermille = ratePermille + VillageManagementEngine.WarehouseBonusPermille(warehouseLevel);
             long goldAccumulator = 0L, woodAccumulator = 0L, oreAccumulator = 0L;
             long goldEarned = VillageManagementEngine.AccrueProduction(ref goldAccumulator,
                 VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel), ticks, ratePermille);
             long woodEarned = VillageManagementEngine.AccrueProduction(ref woodAccumulator,
-                VillageManagementEngine.ProductionRatePerHour(lumberjackLevel), ticks, ratePermille);
+                VillageManagementEngine.ProductionRatePerHour(lumberjackLevel), ticks, materialPermille);
             long oreEarned = VillageManagementEngine.AccrueProduction(ref oreAccumulator,
-                VillageManagementEngine.ProductionRatePerHour(mineLevel), ticks, ratePermille);
+                VillageManagementEngine.ProductionRatePerHour(mineLevel), ticks, materialPermille);
 
             // Modul: THE WINDOW CEILING IS GONE, 2026-09-30. This clamped the
             // whole window's production to one Warehouse's worth BEFORE the
@@ -483,7 +485,7 @@ namespace FolkIdle.Server.Engine
             try
             {
                 materialsLostToFullWarehouse = await VillageManagementEngine.GrantProductionAsync(
-                    db, playerId, lumberjackLevel, mineLevel, warehouseLevel, woodEarned, rareWood, oreEarned, rareOre);
+                    db, playerId, lumberjackLevel, mineLevel, warehouseLevel, woodEarned, rareWood, oreEarned, rareOre, away: true);
 
                 if (goldEarned > 0)
                 {
@@ -510,11 +512,14 @@ namespace FolkIdle.Server.Engine
                 // point - nothing here re-rolls anything, it only persists
                 // the exact outcome the rolled-back transaction was trying
                 // to write, so a retry replays it rather than recomputing it.
+                // What the Warehouse would have held, so a retry never pays
+                // more than the grant it replaces.
+                long store = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
                 var deltas = new Dictionary<string, long>();
-                if (woodEarned > 0) deltas[lumberjackMats.Log] = woodEarned;
-                if (oreEarned > 0) deltas[mineMats.Ore] = oreEarned;
-                if (rareWood > 0) deltas[lumberjackMats.RareLog] = rareWood;
-                if (rareOre > 0) deltas[mineMats.RareOre] = rareOre;
+                if (woodEarned > 0 && store > 0) deltas[lumberjackMats.Log] = Math.Min(woodEarned, store);
+                if (oreEarned > 0 && store > 0) deltas[mineMats.Ore] = Math.Min(oreEarned, store);
+                if (rareWood > 0 && store > 0) deltas[lumberjackMats.RareLog] = Math.Min(rareWood, store);
+                if (rareOre > 0 && store > 0) deltas[mineMats.RareOre] = Math.Min(rareOre, store);
                 // GoldLedger: counted when the outbox applies it (PendingGrantOutbox).
                 if (goldEarned > 0) deltas["gold"] = goldEarned;
 

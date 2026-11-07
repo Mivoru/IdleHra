@@ -1615,7 +1615,7 @@ export const BUILDINGS: readonly {
     name: 'Warehouse',
     stateField: 'WarehouseLevel',
     costKind: 'production',
-    what: 'Caps how much the production buildings can stockpile: 1,000 per level.',
+    what: 'Stores what the Lumberjack and Mine make while you are away (1,000 per level of each material) and adds 5% to their output a level.',
   },
 ];
 

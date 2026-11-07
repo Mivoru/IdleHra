@@ -402,8 +402,9 @@
             server extrapolates what they would have done, up to a cap. You get a
             summary of the loot and experience on your return. The Town Hall pays
             gold and the Lumberjack and Mine produce materials over the same
-            window, capped by the Warehouse at {formatNumber(WAREHOUSE_PER_LEVEL)} per level per
-            material — a Warehouse at level 0 banks nothing at all.
+            window into the Warehouse, which holds {formatNumber(WAREHOUSE_PER_LEVEL)} per level of each
+            material and empties into the chest when you return — a Warehouse at level 0 banks nothing
+            at all. What is already in your chest does not count against it.
           </p>
 
           <h3 id="halts">Why a character stopped</h3>

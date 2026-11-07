@@ -75,8 +75,9 @@ namespace FolkIdle.Server.Tests
                 // lumberjackLevel/mineLevel 1 (tier 0 materials), warehouseLevel
                 // 100 (no capacity clamp anywhere near these numbers),
                 // townHallLevel 1 (the 50g/h floor), 3600 elapsed seconds:
-                // 200 wood/ore each before the 90/10 rare split -> 180
-                // common + 20 rare each, 50 gold. All five deltas are
+                // 200 wood/ore each, +60% Warehouse bonus (it stops at level
+                // 12, 2026-11-07) = 320 before the 90/10 rare split -> 288
+                // common + 32 rare each, 50 gold (the bonus is not on gold). All five deltas are
                 // resolved, plain longs before the poisoned gold read below
                 // throws and rolls the whole grant back.
                 long overflow = await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
@@ -97,10 +98,10 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0, row.AttemptCount);
 
             var deltas = JsonSerializer.Deserialize<Dictionary<string, long>>(row.PayloadJson)!;
-            Assert.Equal(180L, deltas["birch_log"]);
-            Assert.Equal(180L, deltas["copper_ore"]);
-            Assert.Equal(20L, deltas["golden_birch_log"]);
-            Assert.Equal(20L, deltas["malachite_ore"]);
+            Assert.Equal(288L, deltas["birch_log"]);
+            Assert.Equal(288L, deltas["copper_ore"]);
+            Assert.Equal(32L, deltas["golden_birch_log"]);
+            Assert.Equal(32L, deltas["malachite_ore"]);
             Assert.Equal(50L, deltas["gold"]);
 
             // Nothing was actually granted - the transaction that would have
@@ -188,13 +189,12 @@ namespace FolkIdle.Server.Tests
                 long overflow = await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
                     db, player.Id, lumberjackLevel: 1, mineLevel: 0, warehouseLevel: 1, townHallLevel: 0, elapsedSeconds: 36000L);
 
-                // 10 hours at level 1 (200/hour, 90/10 split -> 180 common +
-                // 20 rare per hour) produces 1,800 common wood; with 990
-                // already stored against a 1,000-cap warehouse, only 10 more
-                // fits - 1,790 lost, matching
-                // OfflineVillageProductionOverflowTests' own math. (There is no
-                // window ceiling any more - see GrantVillagePassiveProductionAsync.)
-                Assert.Equal(1_790L, overflow);
+                // 10 hours at level 1 (200/hour, +5% for the level-1
+                // Warehouse, 90/10 split) produces 1,890 common wood; the
+                // Warehouse stores 1,000 for the window whatever the chest
+                // holds (2026-11-07) - 890 lost, matching
+                // OfflineVillageProductionOverflowTests' own math.
+                Assert.Equal(890L, overflow);
             }
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();

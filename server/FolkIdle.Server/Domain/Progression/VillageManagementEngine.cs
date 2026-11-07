@@ -233,10 +233,37 @@ namespace FolkIdle.Server.Domain.Progression
         /// </remarks>
         public const int RareYieldPercent = 10;
 
+        /// <summary>
+        /// What the Warehouse holds of each material produced while the player
+        /// is away: 1,000 per level. It is the Warehouse's OWN store, not a
+        /// ceiling on the chest - see GrantProductionAsync.
+        /// </summary>
         public static long CalculateWarehouseMaxStorage(int warehouseLevel)
         {
             return warehouseLevel <= 0 ? 0L : (long)warehouseLevel * WarehouseCapacityPerLevel;
         }
+
+        /// <summary>Production bonus of one Warehouse level, in permille of the Lumberjack's and the Mine's rate.</summary>
+        public const int WarehouseBonusPermillePerLevel = 50;
+
+        /// <summary>
+        /// The Warehouse's production bonus in permille (50 = +5% a level),
+        /// added to the Lumberjack's and the Mine's rate live and away. Town
+        /// Hall gold does not get it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE WAREHOUSE IS A STORE AND A MULTIPLIER (owner, 2026-11-07).
+        /// Measured before this, on a 24 game hour run of 20 bots: every bot
+        /// hit the old cap and 108-111 thousand units were thrown away, about a
+        /// quarter of the village's output. The cap was checked against the
+        /// whole chest stack, hand-gathered material included, so anyone with a
+        /// big stack got nothing from the Lumberjack at all. Each level now
+        /// also pays +5%, the step the Mine's own mining-speed bonus uses.
+        /// Clamped to the highest level a building can reach (12, Town Hall 5),
+        /// so a test fixture's level 100 cannot multiply production by six.
+        /// </remarks>
+        public static int WarehouseBonusPermille(int warehouseLevel)
+            => Math.Clamp(warehouseLevel, 0, GetMaxBuildingLevelCeiling(5)) * WarehouseBonusPermillePerLevel;
 
         // ------------------------------------------------------------------
         // Modul: ONE PRODUCTION RULE, LIVE AND AWAY (owner decision 2026-09-30).
@@ -289,16 +316,27 @@ namespace FolkIdle.Server.Domain.Progression
 
         /// <summary>
         /// Grants one batch of village production - the tier's log, rare log,
-        /// ore and rare ore - against the Warehouse cap, recording what did not
-        /// fit on the material ledger (task 79). Returns the units the cap
-        /// discarded. Runs inside the CALLER's transaction; the offline window
-        /// and the live production drain both call it.
+        /// ore and rare ore - recording on the material ledger (task 79) what
+        /// the Warehouse could not hold. Returns the units it discarded. Runs
+        /// inside the CALLER's transaction; the offline window passes
+        /// <paramref name="away"/> = true, the live production drain false.
         /// </summary>
+        /// <remarks>
+        /// Modul: THE WAREHOUSE IS ITS OWN STORE (owner, 2026-11-07). Away, the
+        /// buildings fill the Warehouse, up to CalculateWarehouseMaxStorage of
+        /// EACH material for the window, and the login empties it into the
+        /// chest. What is already in the chest no longer counts: the old rule
+        /// compared the window against the whole stack, so a player holding
+        /// more hand-gathered logs than the cap got nothing from the
+        /// Lumberjack, online or away. Live, the production goes straight to
+        /// the chest - the player is there to collect it - so the cap applies
+        /// only away, as the Wiki has always said.
+        /// </remarks>
         public static async Task<long> GrantProductionAsync(
             FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel,
-            long log, long rareLog, long ore, long rareOre)
+            long log, long rareLog, long ore, long rareOre, bool away)
         {
-            long maxStorage = CalculateWarehouseMaxStorage(warehouseLevel);
+            long maxStorage = away ? CalculateWarehouseMaxStorage(warehouseLevel) : long.MaxValue;
             var lumberjackMats = GetTierMaterials(lumberjackLevel);
             var mineMats = GetTierMaterials(mineLevel);
 
@@ -310,20 +348,15 @@ namespace FolkIdle.Server.Domain.Progression
             return lost;
         }
 
-        // Modul: returns what this call could NOT grant - the Warehouse cap,
-        // against live storage, at grant time. Summed by the offline caller
-        // into TickStatePayload.OfflineMaterialsLostToFullWarehouse, so a full
-        // warehouse stops silently discarding production with no record.
+        // Modul: returns what this call could NOT grant - what did not fit in
+        // the Warehouse's own store for this window. Summed by the offline
+        // caller into TickStatePayload.OfflineMaterialsLostToFullWarehouse, so
+        // a full warehouse never discards production with no record.
         private static async Task<long> GrantUnderWarehouseCapAsync(FolkIdleDbContext db, long playerId, string itemId, long amountToGrant, long maxStorage)
         {
             if (amountToGrant <= 0) return 0L;
 
-            var commodity = await db.CommodityRecords
-                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
-                .SingleOrDefaultAsync();
-
-            long currentStorage = commodity?.Quantity ?? 0L;
-            long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage - currentStorage));
+            long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage));
             long overflow = amountToGrant - grantedAmount;
 
             // Task 79: the material flow, in the caller's transaction.
@@ -333,9 +366,8 @@ namespace FolkIdle.Server.Domain.Progression
                 return overflow;
             }
 
-            // Modul: the FOR UPDATE read above stays, because the storage cap
-            // needs the current stack; the write is an upsert (task 44), since
-            // FOR UPDATE on a row that does not exist yet locks nothing.
+            // Modul: no read of the stack any more - the cap is the window's,
+            // not the chest's (2026-11-07). The write is an upsert (task 44).
             await CommodityLedger.AddAsync(db, playerId, itemId, grantedAmount);
             await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Gathered, itemId, grantedAmount);
 

@@ -32,8 +32,9 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>
         /// Writes the live tick's village production (SimulationEngine
         /// .VillageProductionQueue) off the tick, one transaction per batch,
-        /// through VillageManagementEngine.GrantProductionAsync - the Warehouse
-        /// cap and the material ledger the offline window writes through.
+        /// through VillageManagementEngine.GrantProductionAsync - the material
+        /// ledger the offline window writes through. Live production is not
+        /// capped; the Warehouse holds only what is made away.
         /// </summary>
         /// <remarks>
         /// Modul: BOUNDED, per the worker-loop rule: the depth is read once and
@@ -68,7 +69,7 @@ namespace FolkIdle.Server.Domain.Progression
             {
                 await VillageManagementEngine.GrantProductionAsync(
                     db, grant.PlayerId, grant.LumberjackLevel, grant.MineLevel, grant.WarehouseLevel,
-                    grant.Log, grant.RareLog, grant.Ore, grant.RareOre);
+                    grant.Log, grant.RareLog, grant.Ore, grant.RareOre, away: false);
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
