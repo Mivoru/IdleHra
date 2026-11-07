@@ -702,6 +702,8 @@ AppDomain.CurrentDomain.ProcessExit += (s, e) =>
     Console.WriteLine("Shutting down engine securely...");
     GlobalEngineState.IsShuttingDown = true;
     engine.ShutdownGracefully();
+    // The tick has stopped, so nothing new joins the loot queues: write them.
+    combatLootEngine.DrainForShutdownAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
     redisWriteBehindEngine.StopAndFlushAsync().GetAwaiter().GetResult();
     networkSystem.Stop();
 };
@@ -712,6 +714,8 @@ System.Runtime.InteropServices.PosixSignalRegistration.Create(System.Runtime.Int
     ctx.Cancel = true; // Prevent default termination
     GlobalEngineState.IsShuttingDown = true;
     engine.ShutdownGracefully();
+    // The tick has stopped, so nothing new joins the loot queues: write them.
+    combatLootEngine.DrainForShutdownAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
     redisWriteBehindEngine.StopAndFlushAsync().GetAwaiter().GetResult();
     networkSystem.Stop();
     Environment.Exit(0);
@@ -723,6 +727,8 @@ Console.CancelKeyPress += (s, e) =>
     e.Cancel = true;
     GlobalEngineState.IsShuttingDown = true;
     engine.ShutdownGracefully();
+    // The tick has stopped, so nothing new joins the loot queues: write them.
+    combatLootEngine.DrainForShutdownAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
     redisWriteBehindEngine.StopAndFlushAsync().GetAwaiter().GetResult();
     networkSystem.Stop();
     Environment.Exit(0);
