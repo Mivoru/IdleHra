@@ -35,6 +35,36 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.57.0',
+    date: '2026-11-07',
+    headline: 'Loot chests worth opening, and a Warehouse that keeps what your village makes.',
+    sections: [
+      {
+        title: 'Loot chests',
+        items: [
+          'Every Silver, Gold and Ancient chest now holds a piece of equipment, and a Bronze chest holds one half the time.',
+          'Chest equipment is much rarer than before: Bronze starts at Epic, Silver at Legendary, Gold at Mythic and Ancient at Relic, and every chest can hold a Godly or Transcendent piece.',
+          'The piece comes from the highest region you have reached, and the chest screen lists the exact chance of every rarity.',
+        ],
+      },
+      {
+        title: 'Village',
+        items: [
+          'The Warehouse is now a store for what the Lumberjack and the Mine make while you are away: 1,000 of each material per level, moved into your chest when you return. What your chest already holds no longer counts against it.',
+          'While you play, the Lumberjack and the Mine send everything straight to your chest.',
+          'Each Warehouse level also makes the Lumberjack and the Mine produce 5% more.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Gathered materials, loot and purchases are no longer lost or doubled when many things happen at once, and a busy server now says so instead of failing.',
+          'Loot and materials earned in the last seconds before a server update are no longer lost.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.56.2',
     date: '2026-11-03',
     headline: 'A tidier guild list on phones.',
