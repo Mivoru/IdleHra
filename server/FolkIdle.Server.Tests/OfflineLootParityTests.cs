@@ -643,6 +643,9 @@ namespace FolkIdle.Server.Tests
         // material and to the coin: an hour live and an hour away write the
         // same rows. Covered with and without Scholar (a rate on both paths),
         // and with a Warehouse small enough that the cap bites mid-hour.
+        // Since 2026-11-07 that cap is the Warehouse's store for the time
+        // AWAY, so with the small Warehouse the live hour keeps everything and
+        // the away hour keeps what fits; with the big one they are equal.
         [Theory]
         [InlineData(0, 20)]
         [InlineData(1, 20)]
@@ -703,29 +706,34 @@ namespace FolkIdle.Server.Tests
             var offlineStock = await StockAsync(offlinePlayer);
             _output.WriteLine($"scholar {scholar}, warehouse {warehouseLevel}: live {string.Join(", ", liveStock.OrderBy(k => k.Key))} / offline {string.Join(", ", offlineStock.OrderBy(k => k.Key))}, lost offline {lostOffline}");
 
-            // The rule, stated: (level + 1) x 100 an hour at 1000 + Scholar
-            // permille, a tenth rare, each material capped at the Warehouse.
+            // The rule, stated: (level + 1) x 100 an hour at 1000 + Scholar +
+            // the Warehouse's 50 a level permille, a tenth rare. Away, each
+            // material is capped at what the Warehouse stores; live it is not
+            // (2026-11-07: the Warehouse is a store for the time away).
             int permille = 1000 + ScholarRate.BonusPermille(in live);
+            int materialPermille = permille + VillageManagementEngine.WarehouseBonusPermille(warehouseLevel);
             long cap = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
             var logs = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
             var ores = VillageManagementEngine.GetTierMaterials(mineLevel);
-            long logUnits = (lumberjackLevel + 1) * 100L * permille / 1000L;
-            long oreUnits = (mineLevel + 1) * 100L * permille / 1000L;
-            var expected = new Dictionary<string, long>
+            long logUnits = (lumberjackLevel + 1) * 100L * materialPermille / 1000L;
+            long oreUnits = (mineLevel + 1) * 100L * materialPermille / 1000L;
+            Dictionary<string, long> Expected(long c) => new()
             {
-                [logs.Log] = Math.Min(cap, logUnits - logUnits / 10),
-                [logs.RareLog] = Math.Min(cap, logUnits / 10),
-                [ores.Ore] = Math.Min(cap, oreUnits - oreUnits / 10),
-                [ores.RareOre] = Math.Min(cap, oreUnits / 10),
+                [logs.Log] = Math.Min(c, logUnits - logUnits / 10),
+                [logs.RareLog] = Math.Min(c, logUnits / 10),
+                [ores.Ore] = Math.Min(c, oreUnits - oreUnits / 10),
+                [ores.RareOre] = Math.Min(c, oreUnits / 10),
             };
-            Assert.Equal(expected.OrderBy(k => k.Key), offlineStock.OrderBy(k => k.Key));
-            Assert.Equal(expected.OrderBy(k => k.Key), liveStock.OrderBy(k => k.Key));
+            Assert.Equal(Expected(cap).OrderBy(k => k.Key), offlineStock.OrderBy(k => k.Key));
+            Assert.Equal(Expected(long.MaxValue).OrderBy(k => k.Key), liveStock.OrderBy(k => k.Key));
             Assert.False(liveStock.ContainsKey(VillageManagementEngine.WoodCommodityId), "the live tick still produces \"wood\"");
             // ("iron_ore" is not asserted absent: it is ALSO region 2's
             // catalogued common ore, which a level 5-9 Mine rightly produces -
             // the legacy constant and the real item share one key.)
             if (warehouseLevel == 1) Assert.True(lostOffline > 0, "the small Warehouse never capped - the fixture does not test the cap");
-            Assert.Equal(await LostAsync(offlinePlayer), await LostAsync(livePlayer));
+            if (warehouseLevel == 20) Assert.Equal(Expected(cap).OrderBy(k => k.Key), liveStock.OrderBy(k => k.Key));
+            Assert.Equal(lostOffline, await LostAsync(offlinePlayer));
+            Assert.Equal(0L, await LostAsync(livePlayer));
 
             // Town Hall gold, to the coin.
             long offlineGold = await verify.CommodityRecords.AsNoTracking()

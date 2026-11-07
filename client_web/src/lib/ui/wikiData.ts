@@ -193,8 +193,8 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'production',
     cap: null,
     effect:
-      'Caps what the Lumberjack and the Mine may stockpile while you are away: 1,000 per level, per material. At level 0 they bank nothing at all.',
-    source: 'CalculateWarehouseMaxStorage',
+      'Stores what the Lumberjack and the Mine make while you are away: 1,000 per level of each material, emptied into the chest when you return (what the chest already holds does not count). At level 0 they bank nothing away. Each level also adds 5% to their output, online and away.',
+    source: 'CalculateWarehouseMaxStorage, WarehouseBonusPermille',
   },
 ];
 
