@@ -24,7 +24,10 @@ namespace FolkIdle.Server.Tests
                 var upper = LootChestRules.TableFor((LootChestTier)t);
                 Assert.True(upper.MaterialMinutes > lower.MaterialMinutes);
                 Assert.True(upper.GoldMinutes > lower.GoldMinutes);
-                Assert.True(upper.EquipmentPermille > lower.EquipmentPermille);
+                // Silver and up always hold a piece (2026-11-07), so the better
+                // chest pays through the rarity floor instead.
+                Assert.True(upper.EquipmentPermille >= lower.EquipmentPermille);
+                Assert.True(upper.EquipmentRarityFloor > lower.EquipmentRarityFloor);
                 Assert.True(upper.DiamondPermille >= lower.DiamondPermille);
             }
             Assert.Equal(1000, LootChestRules.TableFor(LootChestTier.Ancient).EquipmentPermille);
@@ -91,10 +94,54 @@ namespace FolkIdle.Server.Tests
             Assert.InRange(equipment * 1000.0 / n, t.EquipmentPermille - 15, t.EquipmentPermille + 15);
             Assert.InRange(diamonds * 1000.0 / n, t.DiamondPermille - 6, t.DiamondPermille + 6);
 
-            Assert.Contains(LootChestRules.OddsLines(LootChestTier.Silver), l => l.StartsWith("Equipment: 35%"));
+            Assert.Contains(LootChestRules.OddsLines(LootChestTier.Silver), l => l.StartsWith("Equipment: 100%"));
             Assert.DoesNotContain(LootChestRules.OddsLines(LootChestTier.Bronze), l => l.StartsWith("Diamonds"));
         }
     
+        [Theory]
+        [InlineData(LootChestTier.Bronze)]
+        [InlineData(LootChestTier.Silver)]
+        [InlineData(LootChestTier.Gold)]
+        [InlineData(LootChestTier.Ancient)]
+        public void EquipmentRarityOdds_SumToOne_NeverFallBelowTheFloor_AndAreRolledAsWritten(LootChestTier tier)
+        {
+            var t = LootChestRules.TableFor(tier);
+            long sum = 0;
+            for (int q = 1; q <= RarityTier.Transcendent; q++)
+            {
+                int odds = LootChestRules.RarityOddsFor(tier, q);
+                if (q < t.EquipmentRarityFloor) Assert.Equal(0, odds);
+                sum += odds;
+            }
+            Assert.Equal(LootChestRules.RarityOddsScale, sum);
+            // Godly and Transcendent are possible from every chest.
+            Assert.True(LootChestRules.RarityOddsFor(tier, RarityTier.Godly) > 0);
+            Assert.True(LootChestRules.RarityOddsFor(tier, RarityTier.Transcendent) > 0);
+
+            var rng = new Random(11);
+            const int n = 200_000;
+            var counts = new int[RarityTier.Transcendent + 1];
+            for (int i = 0; i < n; i++) counts[LootChestRules.RollEquipmentTier(tier, rng)]++;
+            int floorShare = (int)(counts[t.EquipmentRarityFloor] * (long)LootChestRules.RarityOddsScale / n);
+            Assert.InRange(floorShare, LootChestRules.RarityOddsFor(tier, t.EquipmentRarityFloor) - 50_000,
+                LootChestRules.RarityOddsFor(tier, t.EquipmentRarityFloor) + 50_000);
+            for (int q = 1; q < t.EquipmentRarityFloor; q++) Assert.Equal(0, counts[q]);
+
+            var line = Assert.Single(LootChestRules.OddsLines(tier), l => l.StartsWith("Equipment rarity: "));
+            Assert.Contains("Transcendent", line);
+        }
+
+        [Fact]
+        public void AnAncientChest_IsARelicOrBetter_AndCanBeTranscendent()
+        {
+            Assert.Equal(6_100_000, LootChestRules.RarityOddsFor(LootChestTier.Ancient, RarityTier.Relic));
+            Assert.Equal(75_000, LootChestRules.RarityOddsFor(LootChestTier.Ancient, RarityTier.Godly));        // 0.75%
+            Assert.Equal(15_000, LootChestRules.RarityOddsFor(LootChestTier.Ancient, RarityTier.Transcendent)); // 0.15%
+            var roll = LootChestRules.Roll(LootChestTier.Ancient, 3, 3, 100, 100, new Random(5));
+            Assert.True(roll.Equipment);
+            Assert.True(roll.EquipmentTier >= RarityTier.Relic);
+        }
+
         [Fact]
         public void TheSourcesPayTheChestsTheBuildPlanNames()
         {

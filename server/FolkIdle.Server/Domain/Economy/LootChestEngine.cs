@@ -191,7 +191,12 @@ namespace FolkIdle.Server.Domain.Economy
                         .ExecuteUpdateAsync(s => s.SetProperty(p => p.PremiumDiamonds, p => p.PremiumDiamonds + roll.Diamonds));
                 }
 
-                EquipmentInstance? piece = roll.Equipment ? AddPiece(db, playerId, chest.Region, roll.EquipmentRarityFloor, rng) : null;
+                // The piece comes from the player's highest region (2026-11-07):
+                // a chest earned in region 2 by a region-4 player would
+                // otherwise pay a piece two region steps behind.
+                EquipmentInstance? piece = roll.Equipment
+                    ? AddPieceOfTier(db, playerId, Math.Max(chest.Region, highest), roll.EquipmentTier, rng)
+                    : null;
                 if (piece != null)
                 {
                     // The drop record counts every piece that enters the game (task 26).
@@ -223,6 +228,11 @@ namespace FolkIdle.Server.Domain.Economy
         }
 
         internal static EquipmentInstance? AddPiece(FolkIdleDbContext db, long playerId, int region, int rarityFloor, Random rng)
+            => AddPieceOfTier(db, playerId, region, rarityFloor, rng, resolveFromFloor: true);
+
+        /// <summary>A random commissionable piece of the region at exactly this quality tier.</summary>
+        internal static EquipmentInstance? AddPieceOfTier(FolkIdleDbContext db, long playerId, int region, int qualityTier, Random rng,
+            bool resolveFromFloor = false)
         {
             var pool = WorkshopCommissionRules.CommissionableItemIds()
                 .Where(id => ContentRegistry.ItemDefinitions[id - 1].RegionTier == region)
@@ -230,7 +240,9 @@ namespace FolkIdle.Server.Domain.Economy
             if (pool.Count == 0) return null;
 
             string baseItemId = ContentRegistry.GetItemBaseId(pool[rng.Next(pool.Count)]);
-            int tier = WorkshopCommissionRules.ResolveTier(rarityFloor, rng);
+            int tier = resolveFromFloor
+                ? WorkshopCommissionRules.ResolveTier(qualityTier, rng)
+                : Math.Clamp(qualityTier, RarityTier.Normal, RarityTier.Transcendent);
             var affixes = new Dictionary<string, int>();
             AffixRegistry.RollAffixes(baseItemId, region, tier, RarityTier.GetAffixCount(tier), affixes);
 
