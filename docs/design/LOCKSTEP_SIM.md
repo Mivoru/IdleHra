@@ -168,19 +168,24 @@ the reference's spread.
   Village upgrade is ~85% of them (34 / 163 / 162 retries), then recruit
   (2 / 21 / 18) and hero-villager breeding (1 / 16 / 9). Retries exceed
   resolved operations by exactly the operations that needed a third attempt.
-- Races still unhandled (all production code, each a few per run): "Skill
-  tree commit error" (3 / 6 / 5, the REST commit answers 500), "Loot:
-  gathering grant ... failed" (7 / 1 / 5), "Village: live production ...
-  rolled back - queued for retry" (0 / 3 / 1, already retried), "Inheritance
-  purchase failed" (0 / 0 / 2, answers GenericValidationFailure). **The
-  gathering grant one loses materials:** `DrainGatheringGrantsAsync`
-  dequeues and coalesces the grants, then only logs a failed player's
-  batch, so that batch is never written.
+- Races still unhandled in that run (all production code, each a few per
+  run): "Skill tree commit error" (3 / 6 / 5, all 40001, the REST commit
+  answered 500), "Inheritance purchase failed" (2 / 1 / 10, all 40001,
+  answered GenericValidationFailure), "Loot: gathering grant ... failed"
+  (7 / 1 / 5), and "Village: live production ... rolled back - queued for
+  retry" (0 / 3 / 1, already retried). The gathering failures did NOT lose
+  materials, as this note first said: the failed batch was written to the
+  `pending_grants` outbox, and the table was empty in all three run
+  databases at the end, so the drain applied them. Two real holes remained
+  there - an outbox write that also failed lost the batch, and a commit
+  whose answer was lost would have been granted twice - and are closed by
+  the "no lost operations" PR (reserve in the outbox first, grant and delete
+  the reservation in one transaction). That PR also retries the skill tree
+  and inheritance races.
 
-Next, in order: the gathering grant loss and the skill tree / inheritance
-races (production code, owner decision); more seeds (2 and 3 at 24 h, then
-72 h); cron profiling and NoDelay; the CRON_SCALE 1/2/4/8 experiment against
-scale 1; then P5 below.
+Next, in order: the 72-hour validation again on the "no lost operations"
+fix; more seeds (2 and 3 at 24 h, then 72 h); cron profiling and NoDelay;
+the CRON_SCALE 1/2/4/8 experiment against scale 1; then P5 below.
 
 ### P5 - strategy cohorts and an endgame scoreboard (owner spec, not built)
 

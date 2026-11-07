@@ -1065,7 +1065,9 @@ namespace FolkIdle.Server.Engine
             while (taken < budget && queue.TryDequeue(out var grant))
             {
                 taken++;
-                if (grant.ItemId <= 0 || grant.Quantity <= 0) continue;
+                if (grant.Quantity <= 0) continue;
+                GatheringGrantLedger.NoteTaken(grant.Quantity);
+                if (grant.ItemId <= 0) { GatheringGrantLedger.NoteUnnamed(grant.Quantity); continue; }
 
                 var key = (grant.PlayerId, grant.ItemId);
                 into.TryGetValue(key, out var total);
@@ -1073,6 +1075,7 @@ namespace FolkIdle.Server.Engine
                 // 70x yield multiplier is genuinely capable of overflowing an
                 // int, and a negative quantity would be written to the chest.
                 long summed = (long)total.Quantity + grant.Quantity;
+                if (summed > int.MaxValue) GatheringGrantLedger.NoteClipped(summed - int.MaxValue);
                 total.Quantity = summed > int.MaxValue ? int.MaxValue : (int)summed;
                 total.ActivityId = grant.ActivityId;
                 into[key] = total;
@@ -1166,18 +1169,34 @@ namespace FolkIdle.Server.Engine
             var totals = new Dictionary<(long PlayerId, int ItemId), GatheringGrantTotal>();
             _gatheringGrantsCoalesced += CoalesceGatheringGrants(GatheringGrantQueue, budget, totals);
 
+            // Modul: A GATHERING GRANT IS NEVER DROPPED HERE (2026-11-06). The
+            // coalesced totals are off the queue, so a batch this loop gives up
+            // on is gone. GrantGatheredMaterialsAsync answers every failure
+            // itself - granted, kept in the outbox, or put back on the queue -
+            // and the catch below is for a fault outside those paths: it puts
+            // the batch back rather than logging it away.
             foreach (var player in totals.GroupBy(t => t.Key.PlayerId))
             {
                 try
                 {
-                    await GrantGatheredMaterialsAsync(player.Key, player);
-                    _gatheringWrites++;
+                    var outcome = await GrantGatheredMaterialsAsync(player.Key, player);
+                    if (outcome == GatheringGrantOutcome.Applied || outcome == GatheringGrantOutcome.AppliedByOutbox) _gatheringWrites++;
                 }
                 catch (Exception ex)
                 {
-                    _requestsFailed++;
+                    foreach (var grant in player)
+                    {
+                        GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
+                        {
+                            PlayerId = grant.Key.PlayerId,
+                            ActivityId = grant.Value.ActivityId,
+                            ItemId = grant.Key.ItemId,
+                            Quantity = grant.Value.Quantity,
+                        });
+                    }
+                    GatheringGrantLedger.NoteRequeued(player.Sum(g => (long)g.Value.Quantity));
                     Console.WriteLine(
-                        $"Loot: gathering grant for player {player.Key} failed: {ex.Message}");
+                        $"Loot: gathering grant for player {player.Key} failed ({ex.Message}); batch put back on the queue");
                 }
             }
         }
@@ -1218,6 +1237,7 @@ namespace FolkIdle.Server.Engine
                 + $"{DropRequestQueue.Count} still queued; "
                 + $"gathering {_gatheringGrantsCoalesced} grants -> {_gatheringWrites} writes, "
                 + $"{GatheringGrantQueue.Count} still queued");
+            Console.WriteLine(GatheringGrantLedger.Report(GatheringGrantQueue.Count));
 
             _gatheringGrantsCoalesced = 0;
             _gatheringWrites = 0;
@@ -2073,7 +2093,7 @@ namespace FolkIdle.Server.Engine
         /// where that number comes from. The row lock is still taken with FOR
         /// UPDATE, and still only over the rows this batch actually touches.
         /// </summary>
-        private async Task GrantGatheredMaterialsAsync(
+        internal async Task<GatheringGrantOutcome> GrantGatheredMaterialsAsync(
             long playerId,
             IEnumerable<KeyValuePair<(long PlayerId, int ItemId), GatheringGrantTotal>> grants)
         {
@@ -2085,55 +2105,84 @@ namespace FolkIdle.Server.Engine
             {
                 if (grant.Value.Quantity <= 0) continue;
                 string materialItemId = ContentRegistry.GetItemBaseId(grant.Key.ItemId);
-                if (string.IsNullOrEmpty(materialItemId)) continue;
+                if (string.IsNullOrEmpty(materialItemId)) { GatheringGrantLedger.NoteUnnamed(grant.Value.Quantity); continue; }
 
                 byMaterial.TryGetValue(materialItemId, out var existing);
                 long summed = (long)existing.Quantity + grant.Value.Quantity;
+                if (summed > int.MaxValue) GatheringGrantLedger.NoteClipped(summed - int.MaxValue);
                 byMaterial[materialItemId] = (
                     grant.Key.ItemId,
                     grant.Value.ActivityId,
                     summed > int.MaxValue ? int.MaxValue : (int)summed);
             }
 
-            if (byMaterial.Count == 0) return;
+            if (byMaterial.Count == 0) return GatheringGrantOutcome.Nothing;
 
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            var strategy = dbContext.Database.CreateExecutionStrategy();
-
+            // Modul: RESERVE, THEN GRANT (lockstep validation, 2026-11-06).
+            // byMaterial is resolved before any write, so the outbox stores
+            // the exact amounts (audit #18) - but it used to be written only
+            // AFTER a failed grant, on the context that had just failed. Two
+            // holes: an outbox write that also failed lost the batch (the
+            // queue had already moved on), and a commit whose answer was lost
+            // would be granted again by the drain. Now the row comes first and
+            // the grant deletes it in its own transaction - see
+            // PendingGrantOutbox.ReserveCommodityDeltasAsync.
+            var deltas = byMaterial.ToDictionary(m => m.Key, m => (long)m.Value.Quantity);
+            long batchQuantity = deltas.Values.Sum();
+            long reservationId;
             try
             {
-                await strategy.ExecuteAsync(async () =>
-                {
-                    dbContext.ChangeTracker.Clear();
-                    using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
-
-                    // Modul: one multi-row upsert (CommodityLedger), task 44.
-                    await CommodityLedger.AddManyAsync(dbContext, playerId,
-                        byMaterial.Select(m => new KeyValuePair<string, long>(m.Key, m.Value.Quantity)));
-                    // Task 79: the material flow, in the same transaction (and
-                    // inside the retried delegate, so a retry after a rollback
-                    // counts once).
-                    await MaterialLedger.RecordManyAsync(dbContext, playerId, MaterialFlowDirection.Gathered,
-                        byMaterial.Select(m => new KeyValuePair<string, long>(m.Key, m.Value.Quantity)));
-
-                    await dbContext.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                });
+                using var reserveScope = _serviceProvider.CreateScope();
+                var reserveDb = reserveScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                reservationId = await PendingGrantOutbox.ReserveCommodityDeltasAsync(
+                    reserveDb, playerId, PendingGrantSourceType.Gathering, deltas, GatheringReservationHoldMs);
+                GatheringGrantLedger.NoteReserved();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Modul: THE DURABLE RETRY OUTBOX (audit #18). byMaterial is
-                // already resolved (coalesced quantities per BaseId) before
-                // this write is even attempted - a retry replays these exact
-                // amounts rather than re-coalescing the queue, which has
-                // already moved on. Re-thrown so DrainGatheringGrantsAsync's
-                // existing catch still counts and logs this exactly as before.
-                var deltas = byMaterial.ToDictionary(m => m.Key, m => (long)m.Value.Quantity);
-                await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
-                    dbContext, playerId, PendingGrantSourceType.Gathering, deltas);
-                throw;
+                // Nothing is written anywhere: put the batch back on the queue
+                // whole, so the next cycle tries it again.
+                foreach (var material in byMaterial.Values)
+                {
+                    GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
+                    {
+                        PlayerId = playerId,
+                        ActivityId = material.ActivityId,
+                        ItemId = material.ItemId,
+                        Quantity = material.Quantity,
+                    });
+                }
+                GatheringGrantLedger.NoteRequeued(batchQuantity);
+                Console.WriteLine($"Loot: gathering grant for player {playerId} could not be reserved ({SqlStateOf(ex)}: {ex.Message}); batch put back on the queue");
+                return GatheringGrantOutcome.Requeued;
             }
+
+            bool granted;
+            try
+            {
+                granted = await TransientDbConflict.RetryAsync(
+                    () => ApplyReservedGatheringAsync(playerId, reservationId, deltas),
+                    GatheringGrantAttempts,
+                    operation: "Gathering grant");
+            }
+            catch (Exception ex)
+            {
+                // The grant rolled back and the reservation is still in the
+                // outbox: hand it to the drain now instead of after the hold.
+                await ReleaseGatheringReservationAsync(reservationId, ex);
+                GatheringGrantLedger.NoteLeftToDrain(batchQuantity);
+                Console.WriteLine($"Loot: gathering grant for player {playerId} kept in the outbox as pending grant {reservationId} ({SqlStateOf(ex)}: {ex.Message})");
+                return GatheringGrantOutcome.KeptInOutbox;
+            }
+
+            // false: the drain worker applied this reservation first (the hold
+            // ran out), so it is granted - once - and the feed line is skipped.
+            if (!granted)
+            {
+                GatheringGrantLedger.NoteLeftToDrain(batchQuantity);
+                return GatheringGrantOutcome.AppliedByOutbox;
+            }
+            GatheringGrantLedger.NoteCreditedInline(batchQuantity);
 
             foreach (var material in byMaterial)
             {
@@ -2149,6 +2198,87 @@ namespace FolkIdle.Server.Engine
                     DropKind = Network.ResponseLootDropPacket.DropKindMaterial
                 });
             }
+            return GatheringGrantOutcome.Applied;
+        }
+
+        /// <summary>How long a reserved gathering grant is hidden from the drain worker.</summary>
+        internal const long GatheringReservationHoldMs = 60_000L;
+
+        /// <summary>Attempts for one gathering grant against a lost race; a test sets 1 to exhaust them.</summary>
+        internal int GatheringGrantAttempts { get; set; } = TransientDbConflict.DefaultAttempts;
+
+        internal enum GatheringGrantOutcome { Nothing, Applied, AppliedByOutbox, KeptInOutbox, Requeued }
+
+        /// <summary>
+        /// One attempt at a reserved gathering grant: deletes the reservation
+        /// and credits the deltas in one transaction, on a fresh scope. False,
+        /// with nothing credited, when the reservation is already gone.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE DELETE GOES FIRST. It takes the row lock the drain's
+        /// FOR UPDATE SKIP LOCKED steps around, and when the drain got there
+        /// first the DELETE waits for it and then finds nothing - so the two
+        /// can never both grant. A lost race here (a deadlock with the
+        /// checkpoint flush on the commodity rows) rolls back the delete too.
+        /// </remarks>
+        internal async Task<bool> ApplyReservedGatheringAsync(long playerId, long reservationId, IReadOnlyDictionary<string, long> deltas)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+            try
+            {
+                int claimed = await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM pending_grants WHERE \"Id\" = {reservationId}");
+                if (claimed == 0)
+                {
+                    await transaction.SafeRollbackAsync();
+                    return false;
+                }
+
+                // Modul: one multi-row upsert (CommodityLedger), task 44.
+                await CommodityLedger.AddManyAsync(db, playerId, deltas);
+                // Task 79: the material flow, in the same transaction, so a
+                // rolled-back attempt counts nothing.
+                await MaterialLedger.RecordManyAsync(db, playerId, MaterialFlowDirection.Gathered, deltas);
+
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.SafeRollbackAsync();
+                throw;
+            }
+        }
+
+        /// <summary>Makes a reservation the inline grant gave up on eligible for the drain now. Best effort: the hold expires anyway.</summary>
+        private async Task ReleaseGatheringReservationAsync(long reservationId, Exception cause)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                string error = $"inline gathering grant failed: {SqlStateOf(cause)}: {cause.Message}";
+                if (error.Length > 512) error = error.Substring(0, 512);
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE pending_grants SET \"NextAttemptAtEpochMs\" = {nowMs}, \"LastError\" = {error} WHERE \"Id\" = {reservationId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Loot: pending grant {reservationId} stays held until its hold ends ({ex.Message})");
+            }
+        }
+
+        private static string SqlStateOf(Exception ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (e is Npgsql.PostgresException pg) return pg.SqlState;
+            }
+            return ex.GetType().Name;
         }
 
         private void PublishLootDrop(long playerId, int monsterId, int itemId, int quantity, byte qualityTier, byte dropKind, EquipmentInstance? instance = null)

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using FolkIdle.Server.Domain.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FolkIdle.Server.Engine
@@ -62,6 +63,32 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
+            // Modul: A LOST RACE WAS ANSWERED AS A RULE VIOLATION (lockstep
+            // validation, 2026-11-06: 2 / 1 / 10 purchases per 72-game-hour run
+            // of 20 bots, every one 40001 against the checkpoint flush on
+            // PlayerRecords). The catch below turned it into
+            // GenericValidationFailure, which says "not allowed" for a
+            // purchase that was allowed. Each attempt is a whole
+            // PurchaseLevelOnceAsync - its own scope and transaction, nothing
+            // queued before its commit - and only a conflict is retried; a
+            // refusal or any other error is answered at once, as before.
+            try
+            {
+                await TransientDbConflict.RetryAsync(() => PurchaseLevelOnceAsync(playerId, statId),
+                    ConflictAttempts, operation: "Inheritance purchase");
+            }
+            catch (Exception ex) when (TransientDbConflict.IsConflict(ex))
+            {
+                Console.WriteLine($"DB conflict exhausted: Inheritance purchase for player {playerId} after {ConflictAttempts} attempts: {ex.Message}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.TransactionPending);
+            }
+        }
+
+        /// <summary>Attempts for one purchase against a lost race; a test sets 1 to exhaust them.</summary>
+        internal int ConflictAttempts { get; set; } = TransientDbConflict.DefaultAttempts;
+
+        private async Task PurchaseLevelOnceAsync(long playerId, int statId)
+        {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             var strategy = db.Database.CreateExecutionStrategy();
@@ -144,7 +171,7 @@ namespace FolkIdle.Server.Engine
 
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.Success);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!TransientDbConflict.IsConflict(ex))
                 {
                     await transaction.SafeRollbackAsync();
                     Console.WriteLine($"Inheritance purchase failed for player {playerId}: {ex.Message}");

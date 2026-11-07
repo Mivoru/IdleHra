@@ -155,6 +155,12 @@ namespace FolkIdle.Server.Engine
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
                     Interlocked.Increment(ref _applied);
+                    if (row.SourceType == PendingGrantSourceType.Gathering && row.PayloadKind == PendingGrantPayloadKind.CommodityDeltas)
+                    {
+                        long credited = 0;
+                        foreach (var amount in JsonSerializer.Deserialize<Dictionary<string, long>>(row.PayloadJson)!.Values) credited += amount;
+                        GatheringGrantLedger.NoteCreditedByDrain(credited);
+                    }
                 }
                 catch (Exception ex)
                 {
