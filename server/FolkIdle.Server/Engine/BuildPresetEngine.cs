@@ -21,7 +21,14 @@ namespace FolkIdle.Server.Engine
         public static string CleanName(string? name, int slot)
         {
             string trimmed = new string((name ?? string.Empty).Where(c => !char.IsControl(c)).ToArray()).Trim();
-            if (trimmed.Length > MaxNameLength) trimmed = trimmed[..MaxNameLength].TrimEnd();
+            if (trimmed.Length > MaxNameLength)
+            {
+                // Modul: never cut between the two halves of a surrogate pair
+                // (an emoji): a lone half is not valid UTF-8 and Npgsql refuses it.
+                int cut = MaxNameLength;
+                if (char.IsHighSurrogate(trimmed[cut - 1])) cut--;
+                trimmed = trimmed[..cut].TrimEnd();
+            }
             return trimmed.Length == 0 ? $"Build {slot}" : trimmed;
         }
 

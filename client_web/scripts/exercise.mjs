@@ -4827,29 +4827,36 @@ await go('Character');
     );
     record('the four attributes are named and distinct', /Might/.test(panelText) && /Finesse/.test(panelText) && /Vigour/.test(panelText) && /Fortune/.test(panelText));
 
-    // Build presets (2026-11-07): save the current build into the last slot,
+    // Build presets (2026-11-07): save the current build into an EMPTY slot,
     // see it recognised as the current build, then clear the slot again so the
-    // step round-trips. Applying a DIFFERENT build would spend the fixture's
-    // free respec, so it is left to BuildPresetTests on the server.
+    // step round-trips and never overwrites a build someone saved. The slot is
+    // pinned by INDEX: a `.slot.empty` locator re-resolves lazily and would
+    // point at a different slot once this one is saved. Applying a DIFFERENT
+    // build would spend the fixture's free respec, so it is left to
+    // BuildPresetTests on the server.
     {
       const panel = page.getByTestId('build-presets');
       await panel.waitFor({ timeout: 10000 }).catch(() => {});
       const slots = panel.locator('article.slot');
-      const last = slots.nth(Math.max(0, (await slots.count()) - 1));
-      const hadPreset = (await last.locator('button', { hasText: 'Clear' }).count()) > 0;
-      await last.locator('input.name').fill('Exercise build').catch(() => {});
-      await last.locator('button', { hasText: /Save current/ }).first().click().catch(() => {});
-      const saved = await last
-        .locator('text=This is your current build.')
-        .waitFor({ timeout: 10000 })
-        .then(() => true)
-        .catch(() => false);
-      const summary = (await last.innerText().catch(() => '')) ?? '';
-      record('a build preset saves the current attributes and tree', saved && /Might \d/.test(summary) && /tree \d+ pts/.test(summary),
-        saved ? summary.replace(/\s+/g, ' ').slice(0, 120) : 'the saved slot never said it is the current build');
-      if (!hadPreset) {
-        await last.locator('button', { hasText: 'Clear' }).first().click().catch(() => {});
-        const cleared = await last.locator('text=Empty.').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+      const emptyIndex = await slots
+        .evaluateAll((els) => els.findIndex((el) => el.classList.contains('empty')))
+        .catch(() => -1);
+      if (emptyIndex < 0) {
+        record('a build preset saves the current attributes and tree', false, 'no empty build slot to test in (all in use, or the panel never rendered)');
+      } else {
+        const slot = slots.nth(emptyIndex);
+        await slot.locator('input.name').fill('Exercise build').catch(() => {});
+        await slot.locator('button', { hasText: /Save current/ }).first().click().catch(() => {});
+        const saved = await slot
+          .locator('text=This is your current build.')
+          .waitFor({ timeout: 10000 })
+          .then(() => true)
+          .catch(() => false);
+        const summary = (await slot.innerText().catch(() => '')) ?? '';
+        record('a build preset saves the current attributes and tree', saved && /Might \d/.test(summary) && /tree \d+ pts/.test(summary),
+          saved ? summary.replace(/\s+/g, ' ').slice(0, 120) : 'the saved slot never said it is the current build');
+        await slot.locator('button', { hasText: 'Clear' }).first().click().catch(() => {});
+        const cleared = await slot.locator('text=Empty.').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
         record('a build preset slot can be cleared again', cleared);
       }
     }

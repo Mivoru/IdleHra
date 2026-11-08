@@ -76,6 +76,10 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(new byte[WarTreeRegistry.Slots], BuildPresetRules.DecodeWarRanks("0:5,999:1,junk,3:x"));
             Assert.Equal("Build 2", BuildPresetRules.CleanName("   ", 2));
             Assert.Equal(BuildPresetRules.MaxNameLength, BuildPresetRules.CleanName(new string('a', 60), 1).Length);
+            // An emoji straddling the cut is dropped whole, never split into a lone surrogate.
+            string straddling = BuildPresetRules.CleanName(new string('a', BuildPresetRules.MaxNameLength - 1) + "🔥tail", 1);
+            Assert.Equal(new string('a', BuildPresetRules.MaxNameLength - 1), straddling);
+            Assert.DoesNotContain(straddling, char.IsSurrogate);
         }
 
         [Fact]
