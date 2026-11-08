@@ -5617,7 +5617,7 @@ namespace FolkIdle.Server.Tests
                     InventorySpaceRemaining = 1000
                 };
 
-                int hpBefore = payload.PlayerHp;
+                long hpBefore = payload.PlayerHp;
                 for (int t = 0; t < ticksPerAttack; t++)
                 {
                     simulationEngine.ProcessTick(ref payload);

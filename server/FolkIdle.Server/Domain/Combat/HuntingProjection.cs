@@ -165,9 +165,9 @@ namespace FolkIdle.Server.Domain.Combat
             public PlayerSwing Swing { get; init; }
             public double EatAtMilliHp { get; init; }
             public long LifestealCeiling { get; init; }
-            public int Heal1 { get; init; }
-            public int Heal2 { get; init; }
-            public int Heal3 { get; init; }
+            public long Heal1 { get; init; }
+            public long Heal2 { get; init; }
+            public long Heal3 { get; init; }
             public double ThornsFraction { get; init; }
 
             /// <summary>The larder's item ids, for rations (FoodRegistry.PickRationSlot).</summary>
@@ -182,7 +182,7 @@ namespace FolkIdle.Server.Domain.Combat
             public int RationRegionTier { get; init; }
 
             /// <summary>The food buff's regen, per tick (timed effects only).</summary>
-            public int RegenPerTick { get; init; }
+            public long RegenPerTick { get; init; }
 
             /// <summary>A Death Ward in the defensive slot (timed effects only).</summary>
             public bool DeathWardArmed { get; init; }
@@ -234,7 +234,7 @@ namespace FolkIdle.Server.Domain.Combat
                 long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, BossFirstClearRules.ReliefFor(in copy)) * 1000L;
                 double thornsFraction = SimulationEngine.ThornsFractionFor(in copy, in stats);
                 bool thorns = thornsFraction > 0;
-                int effectiveMaxHp = SimulationEngine.BarAsInt(maxMilliHp);
+                long effectiveMaxHp = SimulationEngine.Bar(maxMilliHp);
 
                 // First Strike: the first CONNECTING hit of each fight lands
                 // harder. Priced as the health it takes off before the count
@@ -292,7 +292,7 @@ namespace FolkIdle.Server.Domain.Combat
                     RationRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId),
                     ThornsFraction = thornsFraction,
                     RegenPerTick = timedEffects && copy.ActiveFoodBuffId > 0
-                        ? Math.Max(1, effectiveMaxHp / ConsumableEngine.FoodRegenDivisor)
+                        ? Math.Max(1L, effectiveMaxHp / ConsumableEngine.FoodRegenDivisor)
                         : 0,
                     DeathWardArmed = timedEffects
                         && ConsumableEngine.DeathWardItemId > 0
@@ -434,7 +434,7 @@ namespace FolkIdle.Server.Domain.Combat
             PlayerSwing swing = setup.Swing;
             double swingHeal = swing.ExpectedHeal(setup.LifestealCeiling);
             double max = setup.MaxMilliHp;
-            int effectiveMaxHp = (int)setup.MaxMilliHp;
+            long effectiveMaxHp = setup.MaxMilliHp;
 
             for (int i = 0; i < ticks && !s.Died; i++)
             {
@@ -481,7 +481,8 @@ namespace FolkIdle.Server.Domain.Combat
                 else if (s.WithFood && s.PlayerHp > 0 && s.PlayerHp <= setup.EatAtMilliHp)
                 {
                     // Best heal first, as auto-eat picks.
-                    int best = 0, heal = 0;
+                    int best = 0;
+                    long heal = 0;
                     if (s.Food1 > 0 && setup.Heal1 > heal) { best = 1; heal = setup.Heal1; }
                     if (s.Food2 > 0 && setup.Heal2 > heal) { best = 2; heal = setup.Heal2; }
                     if (s.Food3 > 0 && setup.Heal3 > heal) { best = 3; heal = setup.Heal3; }
@@ -527,7 +528,7 @@ namespace FolkIdle.Server.Domain.Combat
                     if (s.DeathWardUp)
                     {
                         // ConsumableEngine.TryInterceptLethalDamage: up at a fifth of the bar.
-                        s.PlayerHp = Math.Max(1, effectiveMaxHp / ConsumableEngine.DeathWardReviveDivisor);
+                        s.PlayerHp = Math.Max(1L, effectiveMaxHp / ConsumableEngine.DeathWardReviveDivisor);
                         s.DeathWardUp = false;
                         s.DeathWardUsed = true;
                     }

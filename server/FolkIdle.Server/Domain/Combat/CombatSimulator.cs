@@ -85,7 +85,7 @@ namespace FolkIdle.Server.Domain.Combat
                     if (payload.ActiveActivityId != activity) { left = true; break; }
 
                     if (tickEveryTick) continue;
-                    long quiet = Math.Min(QuietTicksAhead(in payload, out int maxHp), ticks - run);
+                    long quiet = Math.Min(QuietTicksAhead(in payload, out long maxHp), ticks - run);
                     if (quiet > 0)
                     {
                         SkipQuietTicks(ref payload, quiet, maxHp);
@@ -106,7 +106,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// condition below mirrors one branch of RunCombatTick, in its order;
         /// any doubt answers 0, which only costs speed.
         /// </summary>
-        internal static long QuietTicksAhead(in TickStatePayload payload, out int maxHp)
+        internal static long QuietTicksAhead(in TickStatePayload payload, out long maxHp)
         {
             maxHp = 0;
             // The top of the tick: the fishing rule, a rested bar, a death, a spawn.
@@ -121,7 +121,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Every return below this line is followed by the next tick, on a
             // payload that differs only in fields the stats never read.
             SimulationEngine.CarryStatsIntoNextTick(in stats);
-            maxHp = SimulationEngine.BarAsInt(SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats));
+            maxHp = SimulationEngine.Bar(SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats));
             var monster = ContentRegistry.Monsters[payload.CurrentMonsterId - 1];
             int playerInterval = SimulationEngine.LiveAttackIntervalMs(in payload, in stats);
 
@@ -184,7 +184,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// <paramref name="maxHp"/> is the bar QuietTicksAhead derived from the
         /// same payload - quiet ticks change nothing it depends on.
         /// </summary>
-        internal static void SkipQuietTicks(ref TickStatePayload payload, long count, int maxHp)
+        internal static void SkipQuietTicks(ref TickStatePayload payload, long count, long maxHp)
         {
             if (count <= 0) return;
 
@@ -192,7 +192,7 @@ namespace FolkIdle.Server.Domain.Combat
             // bar: k capped additions are one capped addition of k.
             if (payload.ActiveFoodBuffId > 0 && payload.PlayerHp > 0 && payload.PlayerHp < maxHp)
             {
-                int regenPerTick = maxHp / Shared.ConsumableEngine.FoodRegenDivisor;
+                long regenPerTick = maxHp / Shared.ConsumableEngine.FoodRegenDivisor;
                 if (regenPerTick < 1) regenPerTick = 1;
                 payload.PlayerHp = SimulationEngine.HealClamped(payload.PlayerHp, regenPerTick * count, maxHp);
             }

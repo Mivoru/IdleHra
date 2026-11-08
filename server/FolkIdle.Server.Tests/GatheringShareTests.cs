@@ -395,7 +395,7 @@ namespace FolkIdle.Server.Tests
             // ProgressionRateTests walks it, through CON at 15 HP a point.
             long effectiveMaxMilliHp = HealthPoolMilliHp(region);
             int fishItemId = RegionFishItemId(region);
-            int healMilliHp = FoodRegistry.GetHealMilliHp(fishItemId, effectiveMaxMilliHp);
+            long healMilliHp = FoodRegistry.GetHealMilliHp(fishItemId, effectiveMaxMilliHp);
             if (healMilliHp <= 0) return 0.0;
 
             // Modul: AUTO-EAT HAS A COOLDOWN, so food demand is bounded by TIME

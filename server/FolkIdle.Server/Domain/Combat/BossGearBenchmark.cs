@@ -243,7 +243,7 @@ namespace FolkIdle.Server.Domain.Combat
             // and a fish's tier is the region it was caught in.
             int foodItemId = FoodRegistry.FirstRawFishOfTier(
                 Math.Clamp(boss.RegionTier, 1, FoodRegistry.TierCount));
-            int healPerBite = withFood ? FoodRegistry.GetHealMilliHp(foodItemId, playerMaxMilliHp) : 0;
+            long healPerBite = withFood ? FoodRegistry.GetHealMilliHp(foodItemId, playerMaxMilliHp) : 0;
 
             double playerMilliHp = playerMaxMilliHp;
             double remainingBossMilliHp = bossMilliHp;

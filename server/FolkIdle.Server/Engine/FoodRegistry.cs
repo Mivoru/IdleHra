@@ -156,7 +156,7 @@ namespace FolkIdle.Server.Engine
         /// What one unit of this food restores to a character with the given
         /// effective max HP, in milli-HP. Pass 0 for the authored floor alone.
         /// </summary>
-        public static int GetHealMilliHp(int itemId, long effectiveMaxMilliHp)
+        public static long GetHealMilliHp(int itemId, long effectiveMaxMilliHp)
         {
             int flat = GetHealMilliHp(itemId);
             if (flat <= 0 || effectiveMaxMilliHp <= 0)
@@ -171,8 +171,7 @@ namespace FolkIdle.Server.Engine
             }
 
             long share = effectiveMaxMilliHp * tier * HealPercentOfMaxHpPerTier / 100L;
-            if (share > int.MaxValue) share = int.MaxValue;
-            return share > flat ? (int)share : flat;
+            return share > flat ? share : flat;
         }
 
         /// <summary>

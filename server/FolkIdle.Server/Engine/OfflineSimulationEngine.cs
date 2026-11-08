@@ -1206,7 +1206,7 @@ namespace FolkIdle.Server.Engine
             payload.RationTicksSinceMeal = state.RationTicks;
             payload.Hungry = state.Hungry;
 
-            int effectiveMaxHp = SimulationEngine.BarAsInt(setup.MaxMilliHp);
+            long effectiveMaxHp = SimulationEngine.Bar(setup.MaxMilliHp);
             if (state.DeathWardUsed)
             {
                 // The ward is spent - through the live tick's own interception.
@@ -1224,7 +1224,7 @@ namespace FolkIdle.Server.Engine
             {
                 // The fight in progress is not carried across the login: the
                 // character is back on the bar it had, against a fresh monster.
-                payload.PlayerHp = (int)Math.Clamp(state.PlayerHp, 1.0, effectiveMaxHp);
+                payload.PlayerHp = (long)Math.Clamp(state.PlayerHp, 1.0, effectiveMaxHp);
                 payload.CurrentMonsterId = 0;
                 payload.CurrentMonsterHp = 0;
                 payload.CombatTargetTickAccumulator = 0;

@@ -193,7 +193,7 @@ namespace FolkIdle.Server.Domain.Shared
         // the player revives at exactly 20 percent of effective max HP,
         // and the ward clears its own active effect (one charge). Pure
         // integer compare and writes - zero allocation on the tick.
-        public static bool TryInterceptLethalDamage(ref TickStatePayload payload, int effectiveMaxHp)
+        public static bool TryInterceptLethalDamage(ref TickStatePayload payload, long effectiveMaxHp)
         {
             int wardId = DeathWardItemId;
             if (wardId <= 0 || payload.ActiveDefensivePotionId != wardId)
