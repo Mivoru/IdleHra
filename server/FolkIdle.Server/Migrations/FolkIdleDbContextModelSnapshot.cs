@@ -164,6 +164,44 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("boss_challenge_completions");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.BuildPreset", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Slot")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Constitution")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Dexterity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Luck")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<int>("Strength")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WarRanks")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.HasKey("PlayerId", "Slot");
+
+                    b.ToTable("player_build_presets", (string)null);
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.CharacterLineageRegistry", b =>
                 {
                     b.Property<Guid>("CharacterId")

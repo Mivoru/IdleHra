@@ -2615,6 +2615,66 @@ export async function respecSkillTreeRest(gold: boolean, half: SkillTreeHalf = '
 }
 
 // ---------------------------------------------------------------------------
+// /api/v1/skilltree/presets (build presets, 2026-11-07)
+// ---------------------------------------------------------------------------
+
+export interface BuildPreset {
+  Slot: number;
+  Name: string;
+  STR: number;
+  DEX: number;
+  CON: number;
+  LCK: number;
+  /** The War half's ranks, the skill tree's own rank buffer shape. */
+  Levels: number[];
+  PointsSpent: number;
+  UpdatedAtUtc: string;
+  /** The tree already is this preset's. */
+  TreeMatches: boolean;
+  /** Applying the tree needs a respec (the preset lacks a rank you hold). */
+  NeedsRespec: boolean;
+}
+
+export interface BuildPresetList {
+  MaxSlots: number;
+  Presets: BuildPreset[];
+}
+
+export interface BuildPresetTreeResult {
+  Reason: string | null;
+  Changed: boolean;
+  Respecced: boolean;
+  GoldSpent: number;
+  Spent: number;
+}
+
+export function fetchBuildPresets(): Promise<BuildPresetList> {
+  return authedGet<BuildPresetList>('/api/v1/skilltree/presets');
+}
+
+/** Saves the attributes given and the current skill tree (read by the server) under the slot. */
+export async function saveBuildPreset(
+  slot: number,
+  name: string,
+  attributes: Record<'STR' | 'DEX' | 'CON' | 'LCK', number>,
+): Promise<BuildPreset | null> {
+  const res = await authedPost<{ Preset: BuildPreset | null }>('/api/v1/skilltree/presets/save', { Slot: slot, Name: name, ...attributes });
+  return res?.Preset ?? null;
+}
+
+export async function deleteBuildPreset(slot: number): Promise<boolean> {
+  const res = await authedPost<{ Removed: boolean }>('/api/v1/skilltree/presets/delete', { Slot: slot });
+  return res?.Removed ?? false;
+}
+
+/** Makes the War half of the tree the preset's; a refusal answers with its Reason. */
+export async function applyBuildPresetTree(slot: number, gold: boolean): Promise<BuildPresetTreeResult> {
+  const res = await authedPost<BuildPresetTreeResult>('/api/v1/skilltree/presets/apply', { Slot: slot, Gold: gold });
+  if (!res) throw new AuthError('POST /api/v1/skilltree/presets/apply answered nothing', 500);
+  return res;
+}
+
+// ---------------------------------------------------------------------------
 // /api/v1/player/gold-ledger (task 79)
 // ---------------------------------------------------------------------------
 

@@ -62,6 +62,7 @@
   import { spriteUrl } from '../lib/ui/spriteUrl';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
+  import BuildPresetsPanel from '../lib/ui/BuildPresetsPanel.svelte';
   import CharacterStatsPanel from '../lib/ui/CharacterStatsPanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
   import { ATTRIBUTES, equipRequirement } from '../lib/net/commands';
@@ -769,6 +770,11 @@
           values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
           unspent={attributePoints}
           onnotice={(message) => pushLocalNotice(message, 'error')}
+        />
+        <BuildPresetsPanel
+          values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
+          unspent={attributePoints}
+          onnotice={(message, kind) => pushLocalNotice(message, kind ?? 'error')}
         />
       </section>
     {:else if shownTab === 'stats'}
