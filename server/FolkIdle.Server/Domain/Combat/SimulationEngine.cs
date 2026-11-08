@@ -97,13 +97,12 @@ namespace FolkIdle.Server.Domain.Combat
         // wearer immortal against sustained damage.
         internal const float SetDamageCapMaxHpFraction = 0.20f;
 
-        // Modul: the floor a clamped health subtraction lands on. PlayerHp is an
-        // int in milli-HP and incoming damage is a long since the boss wall went
-        // per-region, so a lethal hit can exceed the whole int range. Anything at
+        // Modul: the floor a clamped health subtraction lands on. Anything at
         // or below zero is death, so the exact depth is irrelevant - what matters
         // is that it cannot wrap round into a positive bar, which is how the
-        // deadliest monster in the game once dealt 1 HP a hit.
-        private const int MinimumRepresentableHp = int.MinValue / 2;
+        // deadliest monster in the game once dealt 1 HP a hit. PlayerHp is a
+        // long since 2026-11-08, but the floor stays: a hit can still be huge.
+        private const long MinimumRepresentableHp = long.MinValue / 2;
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
         private readonly InheritanceEngine? _inheritanceEngine;
@@ -2356,7 +2355,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                                 CurrentMonsterId = currentPayload.CurrentMonsterId,
                                 CurrentMonsterHp = (int)(currentPayload.CurrentMonsterHp / 1000L),
-                                PlayerHp = currentPayload.PlayerHp / 1000,
+                                PlayerHp = (int)Math.Min(int.MaxValue, currentPayload.PlayerHp / 1000L),
 
                                 // Modul: the same call the spawn makes, so the
                                 // bar's maximum and the monster's actual health
@@ -2942,7 +2941,7 @@ namespace FolkIdle.Server.Domain.Combat
             out int playerHp, out int playerMaxHp, out ushort monsterId, out int monsterHp, out int monsterMaxHp,
             out ushort progressTicks, out ushort requiredTicks)
         {
-            playerHp = slot.PlayerHp / 1000;
+            playerHp = (int)Math.Min(int.MaxValue, slot.PlayerHp / 1000L);
             playerMaxHp = (int)(slot.CachedEffectiveMaxHp / 1000L);
             monsterId = (ushort)Math.Clamp(slot.CurrentMonsterId, 0, ushort.MaxValue);
             monsterHp = (int)(slot.CurrentMonsterHp / 1000L);
@@ -3999,7 +3998,7 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.DraugrMasteryLevel, AffixFamilies.Totals(in payload), payload.IsEpicMutation,
                     TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
 
-                int regenMaxHp = 100000 + (regenStats.MaxHp * 1000);
+                long regenMaxHp = 100000L + (regenStats.MaxHp * 1000L);
                 if (payload.PlayerHp < regenMaxHp)
                 {
                     // Modul: and there is always a baseline. The stat is zero
@@ -4008,7 +4007,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // most need it. Everyone recovers a share of their own
                     // maximum per second; the stat adds to that rather than
                     // being the entire supply of it.
-                    int baselinePerTick = regenMaxHp / (BaselineOutOfCombatRegenSeconds * 10);
+                    long baselinePerTick = regenMaxHp / (BaselineOutOfCombatRegenSeconds * 10);
                     if (baselinePerTick < 1) baselinePerTick = 1;
 
                     payload.PlayerHp = HealClamped(payload.PlayerHp, baselinePerTick + (long)(regenStats.OutOfCombatHpRegen * 100f), regenMaxHp);
@@ -4137,11 +4136,15 @@ namespace FolkIdle.Server.Domain.Combat
         /// The combat health bar, in milli-HP. Moved out of RunCombatTick
         /// unchanged (task 78) so the hunting advisor reads the same bar.
         /// </summary>
-        /// <summary>A milli-HP bar in the int range PlayerHp lives in - clamped, never truncated.</summary>
-        internal static int BarAsInt(long milliHp) => (int)Math.Clamp(milliHp, 0L, int.MaxValue);
+        /// <summary>
+        /// A milli-HP bar, never below zero. Modul: this used to clamp into
+        /// int.MaxValue (BarAsInt), which silently capped every character at
+        /// 2,147,483 HP - see TickStatePayload.PlayerHp.
+        /// </summary>
+        internal static long Bar(long milliHp) => Math.Max(0L, milliHp);
 
-        /// <summary>Current health plus a heal, in long, capped at the bar - an int sum can wrap negative.</summary>
-        internal static int HealClamped(int current, long heal, int max) => (int)Math.Min((long)max, (long)current + Math.Max(0L, heal));
+        /// <summary>Current health plus a heal, capped at the bar; a negative heal heals nothing.</summary>
+        internal static long HealClamped(long current, long heal, long max) => Math.Min(max, current + Math.Max(0L, heal));
 
         internal static long EffectiveMaxMilliHpFor(in TickStatePayload payload, in CombatStats combatStats)
         {
@@ -4496,7 +4499,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// Shared by RunCombatTick and the offline projection, so a character
         /// that would have died while watched stops while away as well.
         /// </summary>
-        internal static void ApplyCombatDeath(ref TickStatePayload payload, int deathMonsterId, int effectiveMaxHp)
+        internal static void ApplyCombatDeath(ref TickStatePayload payload, int deathMonsterId, long effectiveMaxHp)
         {
             // Read before the respawn clears CurrentMonsterId, which the check needs.
             bool seasonalFight = TryGetSeasonalBoss(in payload, out _);
@@ -5086,7 +5089,7 @@ namespace FolkIdle.Server.Domain.Combat
         {
             var combatStats = LiveCombatStats(in payload);
             payload.CachedEffectiveMaxHp = EffectiveMaxMilliHpFor(in payload, in combatStats);
-            payload.PlayerHp = BarAsInt(payload.CachedEffectiveMaxHp);
+            payload.PlayerHp = Bar(payload.CachedEffectiveMaxHp);
             payload.RestedHpPending = true;
         }
 
@@ -5225,7 +5228,7 @@ namespace FolkIdle.Server.Domain.Combat
             // calibrating Malakor on the owner's level-106 character, which sat
             // just under that line - any health bonus (inheritance, a +8% pet)
             // made it measurably WEAKER. HealthOverflowTests pins it.
-            int effectiveMaxHp = BarAsInt(effectiveMilliHp);
+            long effectiveMaxHp = Bar(effectiveMilliHp);
 
             // Modul: and the client is told what the bar's maximum IS. Every
             // term above this line feeds it, and all of it used to be discarded
@@ -5253,7 +5256,7 @@ namespace FolkIdle.Server.Domain.Combat
             // unmanaged payload fields - zero allocation.
             if (payload.ActiveFoodBuffId > 0 && payload.PlayerHp > 0 && payload.PlayerHp < effectiveMaxHp)
             {
-                int regenPerTick = effectiveMaxHp / ConsumableEngine.FoodRegenDivisor;
+                long regenPerTick = effectiveMaxHp / ConsumableEngine.FoodRegenDivisor;
                 if (regenPerTick < 1) regenPerTick = 1;
                 payload.PlayerHp = HealClamped(payload.PlayerHp, regenPerTick, effectiveMaxHp);
                 if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
@@ -5368,7 +5371,7 @@ namespace FolkIdle.Server.Domain.Combat
             else if (payload.PlayerHp > 0 && payload.PlayerHp <= (payload.AutoEatThreshold / 100.0f) * effectiveMaxHp)
             {
                 int bestFoodIndex = 0;
-                int highestHeal = 0;
+                long highestHeal = 0;
 
                 // Modul: larder. These were all a hardcoded 50000 milli-HP,
                 // which made the "highest-healing food" selection below a tie
@@ -5385,9 +5388,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // the unit the registry expects.
                 // The Max health 5 milestone's bigger bite, read by the away
                 // projection through the same function.
-                int heal1 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food1_ItemId, (long)effectiveMaxHp);
-                int heal2 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food2_ItemId, (long)effectiveMaxHp);
-                int heal3 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food3_ItemId, (long)effectiveMaxHp);
+                long heal1 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food1_ItemId, (long)effectiveMaxHp);
+                long heal2 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food2_ItemId, (long)effectiveMaxHp);
+                long heal3 = InheritanceMilestones.FoodHealMilliHp(in payload, payload.Food3_ItemId, (long)effectiveMaxHp);
 
                 if (payload.Food1_Count > 0 && heal1 > highestHeal) { bestFoodIndex = 1; highestHeal = heal1; }
                 if (payload.Food2_Count > 0 && heal2 > highestHeal) { bestFoodIndex = 2; highestHeal = heal2; }
@@ -5874,7 +5877,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// payload already IS that state (health, accumulators, War counters,
         /// LastHitWasCrit, eat cooldown, food), so it is passed by ref instead of
         /// being copied in and out of a second struct that could drift from it.</remarks>
-        internal static void ResolvePlayerSwing(ref TickStatePayload payload, in CombatStats combatStats, in MonsterDefinition activeMonster, int effectiveMaxHp, Random rng)
+        internal static void ResolvePlayerSwing(ref TickStatePayload payload, in CombatStats combatStats, in MonsterDefinition activeMonster, long effectiveMaxHp, Random rng)
         {
             // Step 1 (Hit Determination). AccuracyRating (DEX-derived,
             // see StatsCalculator) and the monster's content-authored
@@ -6079,7 +6082,7 @@ namespace FolkIdle.Server.Domain.Combat
                         * BloodthirstTenths(in payload) / 1000L;
                     if (healed > 0)
                     {
-                        payload.PlayerHp = (int)Math.Min(
+                        payload.PlayerHp = Math.Min(
                             effectiveMaxHp, payload.PlayerHp + healed);
                     }
                 }
@@ -6212,7 +6215,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// payload already IS that state (health, accumulators, War counters,
         /// LastHitWasCrit, eat cooldown, food), so it is passed by ref instead of
         /// being copied in and out of a second struct that could drift from it.</remarks>
-        internal static void ResolveMonsterSwing(ref TickStatePayload payload, in CombatStats combatStats, in MonsterDefinition activeMonster, int effectiveMaxHp, Random rng)
+        internal static void ResolveMonsterSwing(ref TickStatePayload payload, in CombatStats combatStats, in MonsterDefinition activeMonster, long effectiveMaxHp, Random rng)
         {
             // Step 1 (Hit Determination). Monsters have no authored
             // accuracy stat (their content data only defines DodgeRating
@@ -6304,15 +6307,14 @@ namespace FolkIdle.Server.Domain.Combat
                     monsterRegionTier,
                     effectiveMaxHp);
 
-                // Modul: clamped, because finalDamage is a long now and
-                // PlayerHp is an int. Any value at or below zero is death, so
-                // flooring the result costs nothing and an unclamped cast
-                // could wrap a lethal hit into a positive health bar - the
-                // exact shape of the overflow bug this block already records.
+                // Modul: floored, because a lethal hit can be enormous. Any
+                // value at or below zero is death, so flooring the result costs
+                // nothing, and it keeps the bar far from any wrap - the exact
+                // shape of the overflow bug this block already records.
                 long playerHpAfterHit = payload.PlayerHp - finalDamage;
                 payload.PlayerHp = playerHpAfterHit < MinimumRepresentableHp
                     ? MinimumRepresentableHp
-                    : (int)playerHpAfterHit;
+                    : playerHpAfterHit;
 
                 // Modul: set bonuses made real. Thorns - the Eternal
                 // Dreadnought 4-piece. Reflects a fraction of what actually

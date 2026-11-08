@@ -73,11 +73,11 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>Max health 5: one bite's heal, for the live auto-eat and the away projection alike.</summary>
-        public static int FoodHealMilliHp(in TickStatePayload payload, int foodItemId, long maxMilliHp)
+        public static long FoodHealMilliHp(in TickStatePayload payload, int foodItemId, long maxMilliHp)
         {
-            int heal = FoodRegistry.GetHealMilliHp(foodItemId, maxMilliHp);
+            long heal = FoodRegistry.GetHealMilliHp(foodItemId, maxMilliHp);
             if (!Reached(payload.Inherit_MaxHp, FirstLevel) || heal <= 0) return heal;
-            return (int)Math.Min(int.MaxValue, (long)heal * (100 + FoodHealPct) / 100);
+            return heal * (100 + FoodHealPct) / 100;
         }
 
         /// <summary>Experience 5: combat XP earned while away.</summary>

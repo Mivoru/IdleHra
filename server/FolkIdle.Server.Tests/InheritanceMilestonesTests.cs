@@ -57,7 +57,7 @@ namespace FolkIdle.Server.Tests
                 .First(id => FoodRegistry.GetHealMilliHp(id, 1_000_000) > 0);
             var p = Character();
             p.Inherit_MaxHp = 4;
-            int plain = InheritanceMilestones.FoodHealMilliHp(in p, food, 1_000_000);
+            long plain = InheritanceMilestones.FoodHealMilliHp(in p, food, 1_000_000);
             Assert.Equal(FoodRegistry.GetHealMilliHp(food, 1_000_000), plain);
             p.Inherit_MaxHp = 5;
             Assert.Equal(plain * 115L / 100, InheritanceMilestones.FoodHealMilliHp(in p, food, 1_000_000));

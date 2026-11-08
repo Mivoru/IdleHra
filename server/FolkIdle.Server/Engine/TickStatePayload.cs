@@ -102,7 +102,12 @@ namespace FolkIdle.Server.Engine
         // which wrapped negative and made the monster spawn already dead - see
         // the regression note in ContentRegistry.GetScaledMonsterMaxHp.
         public long CurrentMonsterHp;
-        public int PlayerHp;
+        // Milli-HP, long for the same reason. Modul: AN INT CAPPED EVERY PLAYER
+        // AT 2,147,483 HP (owner, 2026-11-08): a 5.6M HP character fought with
+        // 2.15M, because the bar was clamped into int.MaxValue milli-HP and food,
+        // regen and lifesteal all healed toward the clamped bar. The wire still
+        // carries whole HP as int, so it holds 2.1 billion HP.
+        public long PlayerHp;
         public int CombatTargetTickAccumulator;
         
         public bool IsSuspended;
