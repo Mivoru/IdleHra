@@ -47,6 +47,7 @@
   import { pushLocalNotice } from '../stores/game';
   import { formatNumber } from './format';
   import { rarityColor, rarityName } from './rarity';
+  import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
   import RebirthRoadmap from './RebirthRoadmap.svelte';
 
   const client = useQueryClient();
@@ -86,7 +87,36 @@
       (a, b) => Number(b.IsEquipped) - Number(a.IsEquipped) || b.QualityTier - a.QualityTier,
     ),
   );
-  const keepCandidates = $derived(sortedGear.slice(0, keepRows));
+  // Modul: THE VAULT FILTERS (owner, 2026-11-09: "so the player does not
+  // have to scroll forever"). A late-game chest holds hundreds of pieces and
+  // the Vault listed them forty at a time. The player narrows the list by
+  // slot and by rarity. Buttons, not <select>: see the header comment on the
+  // Android WebView. A filter only HIDES rows - a piece already ticked stays
+  // in the keep and in the total, so a filter change never drops a choice.
+  let slotFilter = $state<number | null>(null);
+  let tierFilter = $state<number | null>(null);
+  const gearSlots = $derived(
+    EQUIPMENT_SLOTS.map((s) => ({ ...s, count: sortedGear.filter((e) => resolveSlotIndex(e.BaseItemId) === s.index).length })).filter(
+      (s) => s.count > 0,
+    ),
+  );
+  const gearTiers = $derived(
+    [...new Set(sortedGear.map((e) => e.QualityTier))].sort((a, b) => b - a),
+  );
+  const filteredGear = $derived(
+    sortedGear.filter(
+      (e) =>
+        (slotFilter === null || resolveSlotIndex(e.BaseItemId) === slotFilter) &&
+        (tierFilter === null || e.QualityTier === tierFilter),
+    ),
+  );
+  $effect(() => {
+    // A new filter starts at the top page again.
+    void slotFilter;
+    void tierFilter;
+    keepRows = KEEP_PAGE;
+  });
+  const keepCandidates = $derived(filteredGear.slice(0, keepRows));
   /** Each rarity once, rarest first, for the price list. */
   const priceRows = $derived(
     (p?.KeepPriceByTier ?? []).map((price, tier) => ({ tier, price })).filter((r) => r.tier > 0).reverse(),
@@ -247,9 +277,30 @@
         {:else}
           {#if inventory.isPending}
             <p class="dim tiny">Reading your gear&hellip;</p>
-          {:else if keepCandidates.length === 0}
+          {:else if sortedGear.length === 0}
             <p class="dim tiny">No gear to keep.</p>
           {:else}
+            <div class="vault-filters" role="group" aria-label="Filter by slot" data-testid="rebirth-keep-slots">
+              <button class:active={slotFilter === null} onclick={() => (slotFilter = null)}>
+                All <span class="count">{sortedGear.length}</span>
+              </button>
+              {#each gearSlots as s (s.index)}
+                <button class:active={slotFilter === s.index} onclick={() => (slotFilter = s.index)}>
+                  {s.label} <span class="count">{s.count}</span>
+                </button>
+              {/each}
+            </div>
+            <div class="vault-filters" role="group" aria-label="Filter by rarity" data-testid="rebirth-keep-tiers">
+              <button class:active={tierFilter === null} onclick={() => (tierFilter = null)}>Any rarity</button>
+              {#each gearTiers as t (t)}
+                <button class:active={tierFilter === t} style:--rc={rarityColor(t)} class="tier" onclick={() => (tierFilter = t)}>
+                  {rarityName(t)}
+                </button>
+              {/each}
+            </div>
+            {#if keepCandidates.length === 0}
+              <p class="dim tiny">No gear matches this filter.</p>
+            {/if}
             <div class="keep-list" data-testid="rebirth-keep">
               {#each keepCandidates as e (e.Id)}
                 <label class="keep-row">
@@ -260,9 +311,9 @@
                 </label>
               {/each}
             </div>
-            {#if sortedGear.length > keepRows}
+            {#if filteredGear.length > keepRows}
               <button class="tiny-btn" onclick={() => (keepRows += KEEP_PAGE)}>
-                Show {Math.min(KEEP_PAGE, sortedGear.length - keepRows)} more of {sortedGear.length}
+                Show {Math.min(KEEP_PAGE, filteredGear.length - keepRows)} more of {filteredGear.length}
               </button>
             {/if}
           {/if}
@@ -537,6 +588,43 @@
   .keep {
     display: grid;
     gap: 0.35rem;
+  }
+
+  .vault-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .vault-filters button {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  .vault-filters button.tier {
+    color: var(--rc);
+  }
+
+  .vault-filters button.active {
+    border-color: var(--accent);
+    color: var(--text);
+    font-weight: 700;
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  .vault-filters button.tier.active {
+    border-color: var(--rc);
+    color: var(--rc);
+    background: color-mix(in srgb, var(--rc) 18%, transparent);
+  }
+
+  .vault-filters .count {
+    font-size: 0.68rem;
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
   }
 
   .keep-list {

@@ -35,6 +35,32 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.58.0',
+    date: '2026-11-09',
+    headline: 'Saved builds, full health for big characters, and a Vault you can sort.',
+    sections: [
+      {
+        title: 'Builds',
+        items: [
+          'Save up to three builds of your attributes and War skill tree in the new Builds panel on the Character screen, and switch between them with one tap.',
+          'Switching uses your free respec when you have one, and gold otherwise. A build that no longer fits your points is refused before anything is spent.',
+        ],
+      },
+      {
+        title: 'Rebirth',
+        items: [
+          'The Vault can now show only one kind of gear - weapons, helmets, chests, boots and so on - and only one rarity, so you no longer scroll through everything to find what to keep.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Health above 2,147,483 now counts in full. Characters with more health than that were fighting, eating and respawning with a bar stopped at 2.15 million.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.57.0',
     date: '2026-11-07',
     headline: 'Loot chests worth opening, and a Warehouse that keeps what your village makes.',
