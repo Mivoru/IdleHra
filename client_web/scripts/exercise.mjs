@@ -4516,8 +4516,12 @@ await go('Character');
   const tree = await apiGet('/api/v1/skilltree').catch(() => null);
   const keystone = tree?.Nodes?.find((n) => n.Kind === 'Keystone');
   const state = await apiGet('/api/v1/skilltree/state').catch(() => null);
-  record('the skill tree is the War half: four columns, 35 nodes, a 128-slot rank array',
-    tree?.Columns?.length === 4 && tree?.Nodes?.length === 35 && tree?.Slots === 128 && state?.Levels?.length === 128,
+  // Modul: the SHAPE, not a node count. "35 nodes" went red on a working game
+  // when signatures grew the tree to 39 (ids 88-91, past the Hearth block); a
+  // count is a second copy of WarTreeRegistry that drifts.
+  record('the skill tree is the War half: four columns, at least 35 nodes inside a 128-slot rank array',
+    tree?.Columns?.length === 4 && (tree?.Nodes?.length ?? 0) >= 35 && tree.Nodes.every((n) => n.Id >= 0 && n.Id < 128)
+      && tree?.Slots === 128 && state?.Levels?.length === 128,
     `${tree?.Columns?.length} columns, ${tree?.Nodes?.length} nodes, ${tree?.Slots} slots, state ${state?.Levels?.length}`);
   if (keystone && state?.Levels) {
     // The fixture's own ranks, with the keystone added and its column's
@@ -4545,8 +4549,12 @@ await go('Character');
 {
   const def = await apiGet('/api/v1/skilltree?half=hearth').catch(() => null);
   const ids = (def?.Nodes ?? []).map((n) => n.Id);
-  record('the Hearth half is its own definition: nodes 56-87, craft points per mastery',
-    def?.Half === 'hearth' && ids.length > 0 && ids.every((id) => id >= 56 && id <= 87) && def?.MasteryLevelsPerPoint > 0,
+  // Same reason as the War check: what matters is that the two halves never
+  // share a rank slot, not a last id (87 went stale at 92).
+  const warIds = new Set(((await apiGet('/api/v1/skilltree').catch(() => null))?.Nodes ?? []).map((n) => n.Id));
+  record('the Hearth half is its own definition: its own rank slots, craft points per mastery',
+    def?.Half === 'hearth' && ids.length > 0 && warIds.size > 0 && ids.every((id) => id >= 56 && id < 128 && !warIds.has(id))
+      && def?.MasteryLevelsPerPoint > 0,
     `half ${def?.Half}, ${ids.length} nodes (${Math.min(...ids)}-${Math.max(...ids)}), ${def?.MasteryLevelsPerPoint} levels per point`);
 
   await go('Skill Tree');
