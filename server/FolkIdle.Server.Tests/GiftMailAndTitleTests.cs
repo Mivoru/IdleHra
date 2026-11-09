@@ -99,6 +99,28 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(TitleRegistry.Find(TitleRegistry.BetatesterSlug)!.Color, worn.TitleColor);
         }
 
+        [Theory]
+        [InlineData(-400L, 600L)]      // charged in full
+        [InlineData(-5_000L, 0L)]      // never past zero
+        public async Task ANegativeGoldMail_ChargesOnClaim_NeverPastZero(long attachment, long expected)
+        {
+            var player = await CreatePlayerAsync(); // holds 1,000 gold
+            long mailId;
+            await using (var seed = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var mail = new MailboxInstance { PlayerId = player.Id, BaseItemId = string.Empty, GoldAttachment = attachment };
+                seed.MailboxInstances.Add(mail);
+                await seed.SaveChangesAsync();
+                mailId = mail.Id;
+            }
+
+            await new MailboxAndBankEngine(_fixture.ServiceProvider, new PlayerSessionRegistry()).CommitMailClaimAsync(player.Id, mailId, true);
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            Assert.Equal(expected, (await db.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == player.Id && c.ItemId == "gold")).Quantity);
+            Assert.True((await db.MailboxInstances.AsNoTracking().SingleAsync(m => m.Id == mailId)).IsClaimed);
+        }
+
         [Fact]
         public async Task APlainGoldMail_TouchesNeitherDiamondsNorTitle()
         {
