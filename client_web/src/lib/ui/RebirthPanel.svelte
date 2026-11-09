@@ -48,6 +48,7 @@
   import { formatNumber } from './format';
   import { rarityColor, rarityName } from './rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
+  import { contentRegistry } from '../net/registry.svelte';
   import RebirthRoadmap from './RebirthRoadmap.svelte';
 
   const client = useQueryClient();
@@ -95,6 +96,17 @@
   // in the keep and in the total, so a filter change never drops a choice.
   let slotFilter = $state<number | null>(null);
   let tierFilter = $state<number | null>(null);
+  // Modul: AND BY REGION (owner, 2026-11-09). The region a piece comes from is
+  // the item catalogue's RegionTier - the same number the rebirth's wear lock
+  // (VaultLockRegion) is set from - so the player filters by the gate that
+  // decides when the piece can be worn again.
+  let regionFilter = $state<number | null>(null);
+  function regionOf(baseItemId: string): number {
+    return contentRegistry.current?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 0;
+  }
+  const gearRegions = $derived(
+    [...new Set(sortedGear.map((e) => regionOf(e.BaseItemId)))].filter((r) => r > 0).sort((a, b) => a - b),
+  );
   const gearSlots = $derived(
     EQUIPMENT_SLOTS.map((s) => ({ ...s, count: sortedGear.filter((e) => resolveSlotIndex(e.BaseItemId) === s.index).length })).filter(
       (s) => s.count > 0,
@@ -107,13 +119,15 @@
     sortedGear.filter(
       (e) =>
         (slotFilter === null || resolveSlotIndex(e.BaseItemId) === slotFilter) &&
-        (tierFilter === null || e.QualityTier === tierFilter),
+        (tierFilter === null || e.QualityTier === tierFilter) &&
+        (regionFilter === null || regionOf(e.BaseItemId) === regionFilter),
     ),
   );
   $effect(() => {
     // A new filter starts at the top page again.
     void slotFilter;
     void tierFilter;
+    void regionFilter;
     keepRows = KEEP_PAGE;
   });
   const keepCandidates = $derived(filteredGear.slice(0, keepRows));
@@ -298,6 +312,14 @@
                 </button>
               {/each}
             </div>
+            {#if gearRegions.length > 1}
+              <div class="vault-filters" role="group" aria-label="Filter by region" data-testid="rebirth-keep-regions">
+                <button class:active={regionFilter === null} onclick={() => (regionFilter = null)}>Any region</button>
+                {#each gearRegions as r (r)}
+                  <button class:active={regionFilter === r} onclick={() => (regionFilter = r)}>Region {r}</button>
+                {/each}
+              </div>
+            {/if}
             {#if keepCandidates.length === 0}
               <p class="dim tiny">No gear matches this filter.</p>
             {/if}
@@ -306,7 +328,7 @@
                 <label class="keep-row">
                   <input type="checkbox" checked={keep.includes(e.Id)} disabled={working} onchange={() => toggleKeep(e.Id)} />
                   <span class="name" style="color: {rarityColor(e.QualityTier)}">{prettifyBaseId(e.BaseItemId)}</span>
-                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if e.IsEquipped} &middot; worn{/if}</span>
+                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if regionOf(e.BaseItemId) > 0} &middot; R{regionOf(e.BaseItemId)}{/if}{#if e.IsEquipped} &middot; worn{/if}</span>
                   <span class="price">{formatNumber(priceOf(e.QualityTier))}</span>
                 </label>
               {/each}
