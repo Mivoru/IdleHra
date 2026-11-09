@@ -297,6 +297,25 @@ namespace FolkIdle.Server.Engine
                 await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", mail.GoldAttachment);
                 await GoldLedger.RecordIncomeAsync(db, mail.PlayerId, GoldIncomeSource.Mail, mail.GoldAttachment);
             }
+            else if (mail.GoldAttachment < 0)
+            {
+                // Modul: A MAIL CAN CHARGE GOLD (owner, 2026-11-09 - the
+                // "speed tax" sent to the two players who took twenty
+                // rebirths at level 1). Only a hand-written row carries a
+                // negative attachment; the admin route still refuses one.
+                // Taken only when the player presses Claim, and never past
+                // zero: the gold row is locked, then debited by at most what
+                // it holds.
+                long held = await db.Database.SqlQuery<long>(
+                    $"SELECT \"Quantity\" AS \"Value\" FROM \"CommodityRecords\" WHERE \"PlayerId\" = {mail.PlayerId} AND \"ItemId\" = 'gold' FOR UPDATE")
+                    .FirstOrDefaultAsync();
+                long charge = Math.Min(Math.Max(0L, held), -mail.GoldAttachment);
+                if (charge > 0)
+                {
+                    // GoldLedger: a debit, not income.
+                    await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", -charge);
+                }
+            }
 
             // Modul: diamonds and a title, sent only by the admin mail
             // (the 2026-10-09 betatester thank-you). The title is worn

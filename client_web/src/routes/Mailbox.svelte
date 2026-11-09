@@ -67,7 +67,7 @@
     return new Date(epochSeconds * 1000).toLocaleString();
   }
 
-  const totalGold = $derived(entries.reduce((sum, e) => sum + Number(e.GoldAttachment), 0));
+  const totalGold = $derived(entries.reduce((sum, e) => sum + Math.max(0, Number(e.GoldAttachment)), 0));
 </script>
 
 <div class="wrap">
@@ -131,8 +131,9 @@
                 <span class="name">{entry.DiamondAttachment > 0 || entry.TitleAttachment ? 'Gift' : 'Gold delivery'}</span>
               {/if}
 
-              {#if entry.GoldAttachment > 0}
-                <span class="gold"><Money amount={Number(entry.GoldAttachment)} signed /></span>
+              {#if entry.GoldAttachment !== 0}
+                <!-- A negative attachment is a charge (see ClaimMailItemAsync). -->
+                <span class="gold" class:charge={Number(entry.GoldAttachment) < 0}><Money amount={Number(entry.GoldAttachment)} signed /></span>
               {/if}
               {#if entry.DiamondAttachment > 0}
                 <span class="gold"><Money amount={Number(entry.DiamondAttachment)} kind="diamond" signed /></span>
@@ -294,5 +295,10 @@
     .when {
       grid-column: 1 / -1;
     }
+  }
+
+  .charge,
+  .charge :global(*) {
+    color: var(--danger);
   }
 </style>
