@@ -6841,6 +6841,7 @@ namespace FolkIdle.Server.Network
                 // Task 114: refusals the panel explains, never a 500.
                 RebirthResult.Capped => 409,
                 RebirthResult.NotEnoughGold => 409,
+                RebirthResult.LevelTooLow => 409,
                 RebirthResult.KeepNotOwned => 400,
                 _ => 500,
             };

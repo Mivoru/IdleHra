@@ -24,6 +24,22 @@ namespace FolkIdle.Server.Engine
         /// <summary>The level a rebirth must be taken at to count toward Renown - halfway to the level-100 deed.</summary>
         public const int RenownLevel = 50;
 
+        /// <summary>
+        /// The lowest level a rebirth can be taken at at all.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A REBIRTH AT LEVEL 1 WAS FREE (owner, 2026-11-09). Rebirth had
+        /// no level floor - only Renown asked for level 50 - and every other
+        /// reward (skill points, bloodline ceiling, avatars, the Phoenix, the
+        /// second pet slot, shards) paid at any level. A level-1 life has no
+        /// gear or gold to lose, so two players typed REBIRTH twenty times in a
+        /// few minutes and took the whole road. The floor is the Renown level:
+        /// one number for "a life worth ending".
+        /// </remarks>
+        public const int MinimumLevel = RenownLevel;
+
+        public static bool IsLevelEnough(int level) => level >= MinimumLevel;
+
         /// <summary>The asymptote of the damage bonus, in percent. Never reached.</summary>
         public const int MaxDamageBonusPct = 15;
 

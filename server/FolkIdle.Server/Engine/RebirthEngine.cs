@@ -28,6 +28,8 @@ namespace FolkIdle.Server.Engine
         NotEnoughGold = 7,
         /// <summary>A piece chosen to keep is not this account's (or is listed on the market).</summary>
         KeepNotOwned = 8,
+        /// <summary>The character is below RebirthRules.MinimumLevel.</summary>
+        LevelTooLow = 9,
     }
 
     public readonly record struct RebirthOutcome(
@@ -45,6 +47,8 @@ namespace FolkIdle.Server.Engine
         public int RenownedRebirths { get; set; }
         public int Level { get; set; }
         public int RenownLevel { get; set; }
+        /// <summary>The lowest level a rebirth can be taken at (RebirthRules.MinimumLevel).</summary>
+        public int MinimumLevel { get; set; }
         public bool Renowned { get; set; }
         public int DamageBonusPctNow { get; set; }
         public int DamageBonusPctAfter { get; set; }
@@ -164,6 +168,16 @@ namespace FolkIdle.Server.Engine
                     {
                         await transaction.SafeRollbackAsync(cancellationToken);
                         return new RebirthOutcome(RebirthResult.Capped, player.RebirthCount, player.RenownedRebirths,
+                            RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                    }
+
+                    // The level floor, read from the row this transaction just
+                    // locked - the online path flushes the live payload first,
+                    // so it is the level the player sees.
+                    if (!RebirthRules.IsLevelEnough(player.CurrentLevel))
+                    {
+                        await transaction.SafeRollbackAsync(cancellationToken);
+                        return new RebirthOutcome(RebirthResult.LevelTooLow, player.RebirthCount, player.RenownedRebirths,
                             RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                     }
 
@@ -351,6 +365,7 @@ namespace FolkIdle.Server.Engine
                 RenownedRebirths = player.RenownedRebirths,
                 Level = level,
                 RenownLevel = RebirthRules.RenownLevel,
+                MinimumLevel = RebirthRules.MinimumLevel,
                 Renowned = renowned,
                 DamageBonusPctNow = RebirthRules.DamageBonusPct(player.RenownedRebirths),
                 DamageBonusPctAfter = RebirthRules.DamageBonusPct(player.RenownedRebirths + (renowned ? 1 : 0)),

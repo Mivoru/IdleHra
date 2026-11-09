@@ -148,6 +148,11 @@
   function toggleKeep(id: number) {
     keep = keep.includes(id) ? keep.filter((k) => k !== id) : [...keep, id];
   }
+  // Modul: A LEVEL FLOOR (owner, 2026-11-09). Rebirth opens at
+  // MinimumLevel; below it every reward but Renown used to pay for a life
+  // that lost nothing. The terms can still be read - the confirm is what is
+  // shut - and the server refuses it anyway (LevelTooLow).
+  const levelEnough = $derived(!p || p.Level >= (p.MinimumLevel ?? 0));
   let typed = $state('');
   const wordTyped = $derived(typed.trim().toUpperCase() === REBIRTH_CONFIRMATION_WORD);
   let working = $state(false);
@@ -164,7 +169,7 @@
   }
 
   async function rebirth() {
-    if (!p || working || !wordTyped) return;
+    if (!p || working || !wordTyped || !levelEnough) return;
     working = true;
     try {
       const outcome = await requestRebirth(p.RebirthCount, typed, keep);
@@ -182,6 +187,8 @@
         pushLocalNotice(`You have taken all ${p.MaxRebirths} rebirths. Nothing was reset.`, 'error');
       } else if (outcome.Result === 'NotEnoughGold') {
         pushLocalNotice('Your gold does not cover the gear you chose to keep. Nothing was reset.', 'error');
+      } else if (outcome.Result === 'LevelTooLow') {
+        pushLocalNotice(`A rebirth opens at level ${p.MinimumLevel}. Nothing was reset.`, 'error');
       } else if (outcome.Result === 'KeepNotOwned') {
         pushLocalNotice('A piece you chose to keep is no longer yours. Nothing was reset.', 'error');
       } else if (outcome.Result === 'AlreadyReborn' || outcome.Result === 'InFlight') {
@@ -351,6 +358,11 @@
     {#if p.Capped}
       <p class="dim" data-testid="rebirth-capped">You have taken all {p.MaxRebirths} rebirths.</p>
     {:else if !confirming}
+      {#if !levelEnough}
+        <p class="warn" data-testid="rebirth-level-floor">
+          A rebirth opens at <strong>level {p.MinimumLevel}</strong> &mdash; you are {p.Level}. You can read the terms now.
+        </p>
+      {/if}
       <button class="rebirth-open" data-guide="rebirth-start" disabled={working} onclick={() => (confirming = true)}>
         Rebirth&hellip;
       </button>
@@ -406,6 +418,11 @@
             Mark someone <em>Keep</em> in the Hall of Ancestors to change who.
           </p>
         {/if}
+        {#if !levelEnough}
+          <p class="warn" data-testid="rebirth-level-floor">
+            A rebirth opens at <strong>level {p.MinimumLevel}</strong> &mdash; you are {p.Level}.
+          </p>
+        {/if}
         <label class="typeword">
           <span>Type <strong>{REBIRTH_CONFIRMATION_WORD}</strong> to confirm</span>
           <input
@@ -422,7 +439,7 @@
           <button class="rebirth-cancel" disabled={working} onclick={() => { confirming = false; typed = ''; }}>
             Cancel
           </button>
-          <button class="rebirth-confirm danger" disabled={working || !wordTyped || !keepAffordable} onclick={rebirth}>
+          <button class="rebirth-confirm danger" disabled={working || !wordTyped || !keepAffordable || !levelEnough} onclick={rebirth}>
             {working ? 'Rebirthing…' : 'Yes, rebirth now'}
           </button>
         </div>

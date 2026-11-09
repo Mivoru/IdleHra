@@ -2784,6 +2784,8 @@ export interface RebirthPreview {
   RenownedRebirths: number;
   Level: number;
   RenownLevel: number;
+  /** The lowest level a rebirth can be taken at (RebirthRules.MinimumLevel). */
+  MinimumLevel: number;
   /** Whether this rebirth, taken now, raises Renown. */
   Renowned: boolean;
   DamageBonusPctNow: number;
@@ -2846,7 +2848,8 @@ export type RebirthResultName =
   | 'ConfirmationRequired'
   | 'Capped'
   | 'NotEnoughGold'
-  | 'KeepNotOwned';
+  | 'KeepNotOwned'
+  | 'LevelTooLow';
 
 export interface RebirthOutcome {
   Result: RebirthResultName;

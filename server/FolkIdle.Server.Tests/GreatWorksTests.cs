@@ -218,6 +218,8 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(CommandResultCode.GreatWorkStageBuilt, built.Result);
                 await GreatWorksEngine.DepositCoreAsync(db, playerId, 1, GreatWorksRegistry.MaterialLog, 10_000, DateTime.UtcNow);
                 db.SeasonalEraRecords.Add(new SeasonalEraRecord { IsActive = true, IsRolloverPaused = true, EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600 });
+                // A rebirth needs a life past RebirthRules.MinimumLevel.
+                (await db.PlayerRecords.SingleAsync(p => p.Id == playerId)).CurrentLevel = RebirthRules.MinimumLevel;
                 await db.SaveChangesAsync();
             }
 

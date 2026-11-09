@@ -357,22 +357,37 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task ARebirthBelowTheRenownLevelIsAllowed_ButPaysNoRenown()
+        public async Task ARebirthBelowTheMinimumLevelIsRefused_AndChangesNothing()
         {
-            var me = await SeedAsync(950_088_021L, level: RebirthRules.RenownLevel - 1, hallMembers: 2);
+            // Modul: owner 2026-11-09 - two players took all twenty rebirths
+            // at level 1 in minutes. This test used to assert that a rebirth
+            // below level 50 was ALLOWED; it pinned the hole as the design.
+            var me = await SeedAsync(950_088_021L, level: RebirthRules.MinimumLevel - 1, hallMembers: 2);
             await ActiveEraAsync();
             var engine = new RebirthEngine(_fixture.ServiceProvider);
 
             var preview = await engine.PreviewAsync(me.PlayerId);
             Assert.False(preview!.Renowned);
-            Assert.Equal(0, preview.DamageBonusPctAfter);
+            Assert.Equal(RebirthRules.MinimumLevel, preview.MinimumLevel);
 
             var outcome = await engine.RebirthAsync(me.PlayerId, 0);
+            Assert.Equal(RebirthResult.LevelTooLow, outcome.Result);
+            Assert.Equal(0, outcome.RebirthCount);
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(x => x.Id == me.PlayerId);
+            Assert.Equal(0, player.RebirthCount);
+            Assert.Equal(RebirthRules.MinimumLevel - 1, player.CurrentLevel);
+        }
+
+        [Fact]
+        public async Task ARebirthAtTheMinimumLevelGoesThrough()
+        {
+            var me = await SeedAsync(950_088_022L, level: RebirthRules.MinimumLevel, hallMembers: 2);
+            await ActiveEraAsync();
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0);
             Assert.Equal(RebirthResult.Ok, outcome.Result);
-            Assert.False(outcome.Renowned);
             Assert.Equal(1, outcome.RebirthCount);
-            Assert.Equal(0, outcome.RenownedRebirths);
-            Assert.Equal(0, outcome.DamageBonusPct);
         }
 
         [Fact]
@@ -707,7 +722,9 @@ namespace FolkIdle.Server.Tests
             // (owner 2026-10-14): the skill points stay at the tenth's.
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0} WHERE \"Id\" = {1}", RebirthRules.MaxRebirths - 1, me.PlayerId);
+                // The tenth reset the level to 1; the twentieth needs a life
+                // past the minimum level again.
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0}, \"CurrentLevel\" = {2} WHERE \"Id\" = {1}", RebirthRules.MaxRebirths - 1, me.PlayerId, RebirthRules.MinimumLevel);
             }
             var twentieth = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths - 1);
             Assert.Equal(RebirthResult.Ok, twentieth.Result);
