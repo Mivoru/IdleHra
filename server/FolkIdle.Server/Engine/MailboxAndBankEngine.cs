@@ -312,6 +312,7 @@ namespace FolkIdle.Server.Engine
                 long charge = Math.Min(Math.Max(0L, held), -mail.GoldAttachment);
                 if (charge > 0)
                 {
+                    // GoldLedger: a debit, not income.
                     await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", -charge);
                 }
             }
