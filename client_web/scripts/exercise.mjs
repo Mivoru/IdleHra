@@ -6452,10 +6452,14 @@ await go('Ancestors');
     const openAfter = await confirmBtn.isEnabled();
     await panel.locator('[data-testid="rebirth-confirm-word"]').fill('');
     const warning = await panel.locator('[data-testid="rebirth-warning"]').innerText().catch(() => '');
+    // 2026-11-09: below MinimumLevel the word opens nothing - the confirm
+    // stays shut and the panel says which level opens it.
+    const belowFloor = before !== null && before.Level < before.MinimumLevel;
+    const floorNote = await panel.locator('[data-testid="rebirth-level-floor"]').count();
     record(
       'rebirth asks for the typed word and warns it cannot be undone',
-      lockedBefore && openAfter && /cannot be undone/i.test(warning),
-      `disabled before typing: ${lockedBefore}, enabled after: ${openAfter}`,
+      lockedBefore && (belowFloor ? !openAfter && floorNote > 0 : openAfter) && /cannot be undone/i.test(warning),
+      `disabled before typing: ${lockedBefore}, enabled after: ${openAfter}, level ${before?.Level} of ${before?.MinimumLevel}`,
     );
 
     await panel.locator('button.rebirth-cancel').click();
@@ -7101,45 +7105,22 @@ if (want('new-player')) {
         && stillThere.json?.RebirthCount === count && stillThere.json?.Level === before.json?.Level,
       `HTTP ${unconfirmed.status} ${JSON.stringify(unconfirmed.json)}`,
     );
-    // Task 114: a new account cannot afford to keep its starter weapon (the
-    // cheapest piece is 5M), so asking is refused and resets nothing.
-    const inventory = await call('GET', '/api/v1/player/inventory');
-    const starter = inventory.json?.Equipment?.[0]?.Id;
-    const tooDear = starter
-      ? await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH', KeepEquipmentIds: [starter] })
-      : null;
-    const unchanged = await call('GET', '/api/v1/rebirth/preview');
-    record(
-      'keeping gear the gold cannot pay for is refused and resets nothing',
-      tooDear?.status === 409 && tooDear.json?.Result === 'NotEnoughGold'
-        && unchanged.json?.RebirthCount === count && unchanged.json?.Level === before.json?.Level,
-      tooDear ? `HTTP ${tooDear.status} ${JSON.stringify(tooDear.json)}` : 'no starter gear to ask for',
-    );
-
+    // Task 114's "keeping gear the gold cannot pay for" refusal is pinned in
+    // RebirthTests: since 2026-11-09 this level-1 account is refused for its
+    // level before the gold is ever priced.
+    // Modul: A NEW ACCOUNT CANNOT BE REBORN (owner, 2026-11-09). This step
+    // used to rebirth the level-1 throwaway and assert it WORKED - the exact
+    // hole two players used to take twenty rebirths in minutes. The live
+    // rebirth path is pinned in RebirthTests (AnOnlineRebirthFlushesFirst...);
+    // here the refusal is measured end to end.
     const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
+    const afterRefusal = await call('GET', '/api/v1/rebirth/preview');
     record(
-      'a throwaway account is reborn, live',
-      first.status === 200 && first.json?.Result === 'Ok' && first.json?.RebirthCount === count + 1,
-      `HTTP ${first.status} ${JSON.stringify(first.json)}`,
-    );
-
-    const second = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
-    record(
-      'the same preview submitted twice is refused, not a second rebirth',
-      second.status === 409 && second.json?.Result === 'AlreadyReborn',
-      `HTTP ${second.status} ${JSON.stringify(second.json)}`,
-    );
-
-    const after = await call('GET', '/api/v1/rebirth/preview');
-    record(
-      'after the rebirth the preview reads level 1 and one rebirth more',
-      after.json?.Level === 1 && after.json?.RebirthCount === count + 1 && after.json?.Gold === 0,
-      JSON.stringify({ Level: after.json?.Level, RebirthCount: after.json?.RebirthCount, Gold: after.json?.Gold }),
-    );
-    record(
-      'a rebirth pays its skill points',
-      after.json?.SkillPointsFromRebirthsNow === 2 * (count + 1),
-      `${after.json?.SkillPointsFromRebirthsNow} points from ${count + 1} rebirth(s)`,
+      'a rebirth below the minimum level is refused and resets nothing',
+      first.status === 409 && first.json?.Result === 'LevelTooLow'
+        && afterRefusal.json?.RebirthCount === count && afterRefusal.json?.Level === before.json?.Level
+        && before.json?.MinimumLevel > 1,
+      `HTTP ${first.status} ${JSON.stringify(first.json)}, minimum level ${before.json?.MinimumLevel}`,
     );
   }
 

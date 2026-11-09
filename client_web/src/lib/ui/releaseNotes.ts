@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.59.0',
+    date: '2026-11-09',
+    headline: 'Rebirth now opens at level 50.',
+    sections: [
+      {
+        title: 'Rebirth',
+        items: [
+          'A rebirth can now be taken only at level 50 or above. Below that you can still read the terms, but the confirm button stays shut.',
+          'The Vault can also show only the gear from one region, and every piece in it says which region it comes from.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.58.0',
     date: '2026-11-09',
     headline: 'Saved builds, full health for big characters, and a Vault you can sort.',

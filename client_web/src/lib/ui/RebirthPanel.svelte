@@ -48,6 +48,7 @@
   import { formatNumber } from './format';
   import { rarityColor, rarityName } from './rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
+  import { contentRegistry } from '../net/registry.svelte';
   import RebirthRoadmap from './RebirthRoadmap.svelte';
 
   const client = useQueryClient();
@@ -95,6 +96,17 @@
   // in the keep and in the total, so a filter change never drops a choice.
   let slotFilter = $state<number | null>(null);
   let tierFilter = $state<number | null>(null);
+  // Modul: AND BY REGION (owner, 2026-11-09). The region a piece comes from is
+  // the item catalogue's RegionTier - the same number the rebirth's wear lock
+  // (VaultLockRegion) is set from - so the player filters by the gate that
+  // decides when the piece can be worn again.
+  let regionFilter = $state<number | null>(null);
+  function regionOf(baseItemId: string): number {
+    return contentRegistry.current?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 0;
+  }
+  const gearRegions = $derived(
+    [...new Set(sortedGear.map((e) => regionOf(e.BaseItemId)))].filter((r) => r > 0).sort((a, b) => a - b),
+  );
   const gearSlots = $derived(
     EQUIPMENT_SLOTS.map((s) => ({ ...s, count: sortedGear.filter((e) => resolveSlotIndex(e.BaseItemId) === s.index).length })).filter(
       (s) => s.count > 0,
@@ -107,13 +119,15 @@
     sortedGear.filter(
       (e) =>
         (slotFilter === null || resolveSlotIndex(e.BaseItemId) === slotFilter) &&
-        (tierFilter === null || e.QualityTier === tierFilter),
+        (tierFilter === null || e.QualityTier === tierFilter) &&
+        (regionFilter === null || regionOf(e.BaseItemId) === regionFilter),
     ),
   );
   $effect(() => {
     // A new filter starts at the top page again.
     void slotFilter;
     void tierFilter;
+    void regionFilter;
     keepRows = KEEP_PAGE;
   });
   const keepCandidates = $derived(filteredGear.slice(0, keepRows));
@@ -134,6 +148,11 @@
   function toggleKeep(id: number) {
     keep = keep.includes(id) ? keep.filter((k) => k !== id) : [...keep, id];
   }
+  // Modul: A LEVEL FLOOR (owner, 2026-11-09). Rebirth opens at
+  // MinimumLevel; below it every reward but Renown used to pay for a life
+  // that lost nothing. The terms can still be read - the confirm is what is
+  // shut - and the server refuses it anyway (LevelTooLow).
+  const levelEnough = $derived(!p || p.Level >= (p.MinimumLevel ?? 0));
   let typed = $state('');
   const wordTyped = $derived(typed.trim().toUpperCase() === REBIRTH_CONFIRMATION_WORD);
   let working = $state(false);
@@ -150,7 +169,7 @@
   }
 
   async function rebirth() {
-    if (!p || working || !wordTyped) return;
+    if (!p || working || !wordTyped || !levelEnough) return;
     working = true;
     try {
       const outcome = await requestRebirth(p.RebirthCount, typed, keep);
@@ -168,6 +187,8 @@
         pushLocalNotice(`You have taken all ${p.MaxRebirths} rebirths. Nothing was reset.`, 'error');
       } else if (outcome.Result === 'NotEnoughGold') {
         pushLocalNotice('Your gold does not cover the gear you chose to keep. Nothing was reset.', 'error');
+      } else if (outcome.Result === 'LevelTooLow') {
+        pushLocalNotice(`A rebirth opens at level ${p.MinimumLevel}. Nothing was reset.`, 'error');
       } else if (outcome.Result === 'KeepNotOwned') {
         pushLocalNotice('A piece you chose to keep is no longer yours. Nothing was reset.', 'error');
       } else if (outcome.Result === 'AlreadyReborn' || outcome.Result === 'InFlight') {
@@ -298,6 +319,14 @@
                 </button>
               {/each}
             </div>
+            {#if gearRegions.length > 1}
+              <div class="vault-filters" role="group" aria-label="Filter by region" data-testid="rebirth-keep-regions">
+                <button class:active={regionFilter === null} onclick={() => (regionFilter = null)}>Any region</button>
+                {#each gearRegions as r (r)}
+                  <button class:active={regionFilter === r} onclick={() => (regionFilter = r)}>Region {r}</button>
+                {/each}
+              </div>
+            {/if}
             {#if keepCandidates.length === 0}
               <p class="dim tiny">No gear matches this filter.</p>
             {/if}
@@ -306,7 +335,7 @@
                 <label class="keep-row">
                   <input type="checkbox" checked={keep.includes(e.Id)} disabled={working} onchange={() => toggleKeep(e.Id)} />
                   <span class="name" style="color: {rarityColor(e.QualityTier)}">{prettifyBaseId(e.BaseItemId)}</span>
-                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if e.IsEquipped} &middot; worn{/if}</span>
+                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if regionOf(e.BaseItemId) > 0} &middot; R{regionOf(e.BaseItemId)}{/if}{#if e.IsEquipped} &middot; worn{/if}</span>
                   <span class="price">{formatNumber(priceOf(e.QualityTier))}</span>
                 </label>
               {/each}
@@ -329,6 +358,11 @@
     {#if p.Capped}
       <p class="dim" data-testid="rebirth-capped">You have taken all {p.MaxRebirths} rebirths.</p>
     {:else if !confirming}
+      {#if !levelEnough}
+        <p class="warn" data-testid="rebirth-level-floor">
+          A rebirth opens at <strong>level {p.MinimumLevel}</strong> &mdash; you are {p.Level}. You can read the terms now.
+        </p>
+      {/if}
       <button class="rebirth-open" data-guide="rebirth-start" disabled={working} onclick={() => (confirming = true)}>
         Rebirth&hellip;
       </button>
@@ -384,6 +418,11 @@
             Mark someone <em>Keep</em> in the Hall of Ancestors to change who.
           </p>
         {/if}
+        {#if !levelEnough}
+          <p class="warn" data-testid="rebirth-level-floor">
+            A rebirth opens at <strong>level {p.MinimumLevel}</strong> &mdash; you are {p.Level}.
+          </p>
+        {/if}
         <label class="typeword">
           <span>Type <strong>{REBIRTH_CONFIRMATION_WORD}</strong> to confirm</span>
           <input
@@ -400,7 +439,7 @@
           <button class="rebirth-cancel" disabled={working} onclick={() => { confirming = false; typed = ''; }}>
             Cancel
           </button>
-          <button class="rebirth-confirm danger" disabled={working || !wordTyped || !keepAffordable} onclick={rebirth}>
+          <button class="rebirth-confirm danger" disabled={working || !wordTyped || !keepAffordable || !levelEnough} onclick={rebirth}>
             {working ? 'Rebirthing…' : 'Yes, rebirth now'}
           </button>
         </div>
