@@ -698,7 +698,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task TheTenthRebirthBringsTheTitle_AndTheTwentiethIsTheLast()
+        public async Task TheTenthRebirthBringsTheTitle_AndRebirthGoesOnPastTwenty()
         {
             var me = await SeedAsync(950_114_005L, level: 55);
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
@@ -724,12 +724,22 @@ namespace FolkIdle.Server.Tests
             {
                 // The tenth reset the level to 1; the twentieth needs a life
                 // past the minimum level again.
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0}, \"CurrentLevel\" = {2} WHERE \"Id\" = {1}", RebirthRules.MaxRebirths - 1, me.PlayerId, RebirthRules.MinimumLevel);
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0}, \"CurrentLevel\" = {2} WHERE \"Id\" = {1}", RebirthRules.BloodlineRebirths - 1, me.PlayerId, RebirthRules.MinimumLevel);
             }
-            var twentieth = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths - 1);
+            var twentieth = await engine.RebirthAsync(me.PlayerId, RebirthRules.BloodlineRebirths - 1);
             Assert.Equal(RebirthResult.Ok, twentieth.Result);
-            var past = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths);
-            Assert.Equal(RebirthResult.Capped, past.Result);
+
+            // No cap since 2026-11-13: the twenty-first is a rebirth like any
+            // other once the life reaches the minimum level again.
+            var tooLow = await engine.RebirthAsync(me.PlayerId, RebirthRules.BloodlineRebirths);
+            Assert.Equal(RebirthResult.LevelTooLow, tooLow.Result);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = {1} WHERE \"Id\" = {0}", me.PlayerId, 80);
+            }
+            var past = await engine.RebirthAsync(me.PlayerId, RebirthRules.BloodlineRebirths);
+            Assert.Equal(RebirthResult.Ok, past.Result);
+            Assert.Equal(RebirthRules.ShardsForLevel(80), past.ShardsEarned);
 
             await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -737,6 +747,9 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal + RebirthRules.SkillPointsFor(RebirthRules.RewardedRebirths), player.AvailableSkillPoints);
                 // Granted once: the twentieth did not bring a second Phoenix.
                 Assert.Equal(1, await verify.PlayerPets.CountAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
+                // The twentieth's title milestone (RebirthRules.TitleMilestones).
+                Assert.True(await verify.PlayerTitles.AnyAsync(t => t.PlayerId == me.PlayerId && t.TitleSlug == "rebirth_bloodline"));
+                Assert.Equal(RebirthRules.BloodlineRebirths + 1, player.RebirthCount);
             }
         }
 
@@ -811,7 +824,11 @@ namespace FolkIdle.Server.Tests
 
             // Twenty rebirths, but the points, Renown and the milestones stop
             // at ten (owner 2026-10-14).
-            Assert.Equal(20, RebirthRules.MaxRebirths);
+            Assert.Equal(20, RebirthRules.BloodlineRebirths);
+            // Shards by the level the life reached (2026-11-13).
+            Assert.Equal(1250, RebirthRules.ShardsForLevel(50));
+            Assert.Equal(4050, RebirthRules.ShardsForLevel(90));
+            Assert.Equal(5000, RebirthRules.ShardsForLevel(100));
             Assert.Equal(10, RebirthRules.RewardedRebirths);
             Assert.Equal(20, RebirthRules.SkillPointsFor(10));
             Assert.Equal(20, RebirthRules.SkillPointsFor(15));

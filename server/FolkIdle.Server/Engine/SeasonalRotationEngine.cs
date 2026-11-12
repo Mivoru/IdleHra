@@ -138,40 +138,18 @@ namespace FolkIdle.Server.Engine
             foreach (var chunk in chunks)
             {
                 var chunkIds = chunk.ToList();
-                var goldDict = await db.CommodityRecords
-                    .AsNoTracking()
-                    .Where(c => chunkIds.Contains(c.PlayerId) && c.ItemId == "gold")
-                    .ToDictionaryAsync(c => c.PlayerId, c => c.Quantity, stoppingToken);
-
-                var eqByPlayer = await db.EquipmentInstances
-                    .AsNoTracking()
-                    .Where(c => chunkIds.Contains(c.PlayerId))
-                    .GroupBy(c => c.PlayerId)
-                    .ToDictionaryAsync(g => g.Key, g => g.ToList(), stoppingToken);
-
-                var marketByPlayer = await db.MarketEquipmentInstances
-                    .AsNoTracking()
-                    .Where(c => chunkIds.Contains(c.PlayerId) && !c.IsLockedInEscrow)
-                    .GroupBy(c => c.PlayerId)
-                    .ToDictionaryAsync(g => g.Key, g => g.ToList(), stoppingToken);
-
                 var ledgers = await db.PlayerLegacyLedgers
                     .Where(l => l.EraId == eraId && chunkIds.Contains(l.PlayerId))
                     .ToDictionaryAsync(l => l.PlayerId, stoppingToken);
 
                 foreach (var playerId in chunk)
                 {
-                    // Squared, as before, so the reward stays superlinear
-                    // in how far the season was actually pushed.
+                    // Modul: by the level the life reached alone, since
+                    // 2026-11-13 (RebirthRules.ShardsForLevel). The gold,
+                    // equipment and market reads that fed the old formula are
+                    // gone with it; CalculateLegacyShards stays for its tests.
                     long playerLevel = Math.Max(1, levelByPlayer.GetValueOrDefault(playerId, 1));
-                    long levelSquareSum = playerLevel * playerLevel;
-
-                    var eq = eqByPlayer.GetValueOrDefault(playerId, new List<EquipmentInstance>());
-                    var mEq = marketByPlayer.GetValueOrDefault(playerId, new List<MarketEquipmentInstance>());
-                    long inventoryScore = CalculateInventoryScore(eq, mEq);
-
-                    long totalGold = Math.Max(0L, goldDict.GetValueOrDefault(playerId, 0L));
-                    int shardsEarned = CalculateLegacyShards(totalGold, levelSquareSum, inventoryScore);
+                    int shardsEarned = RebirthRules.ShardsForLevel((int)playerLevel);
                     if (playerId == onlyPlayerId)
                     {
                         paidToOnlyPlayer = shardsEarned;

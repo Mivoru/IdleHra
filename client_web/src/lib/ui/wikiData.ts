@@ -438,6 +438,7 @@ export const SEASON_CARRIES: readonly string[] = [
  * road to twenty, written out for the Wiki. serverMirrors.test.ts holds each
  * number against RebirthRules.cs, so the two cannot drift apart quietly.
  */
+/** RebirthRules.BloodlineRebirths: the rebirth that maxes the bloodline ceiling. Not a cap since 2026-11-13. */
 export const REBIRTH_MAX = 20;
 /** RebirthRules.RewardedRebirths: the points, Renown and milestones stop here. */
 export const REBIRTH_REWARDED = 10;
@@ -463,7 +464,9 @@ export const REBIRTH_PAYS: readonly string[] = [
   `At ${REBIRTH_SECOND_PET_SLOT_AT} rebirths, a second pet slot on every character.`,
   'Avatars at rebirths 3, 5, 7 and 10: Jarilo, Vesna, Étaín and Morana.',
   'At 10: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
-  `Rebirths ${REBIRTH_REWARDED + 1} to ${REBIRTH_MAX} pay the bloodline ceiling and nothing else - the long road for the bloodline.`,
+  `Rebirths ${REBIRTH_REWARDED + 1} to ${REBIRTH_MAX} raise the bloodline ceiling - the long road for the bloodline.`,
+  'Legacy Shards on every rebirth, by the level the life reached: half its square (a life ended at 90 pays 4,050, at 100 pays 5,000). Spend them on the Ancestral Boons on the Rebirth screen - +25% XP, +25% gold and +10% damage at the most, for good.',
+  'There is no last rebirth. Past twenty they pay shards, and 20, 30 and 50 bring the titles Keeper of the Blood, The Undying and Wheel of Ages.',
   'Your rebirth count is shown as a badge beside your name.',
   `Renown, if the rebirth is taken halfway to level 100 or later - counted for the first ${REBIRTH_REWARDED} rebirths.`,
 ];
@@ -489,7 +492,9 @@ export const REBIRTH_ROADMAP: readonly { rebirth: number; rewards: string }[] = 
   { rebirth: 17, rewards: 'bloodline ceiling 45' },
   { rebirth: 18, rewards: 'bloodline ceiling 47' },
   { rebirth: 19, rewards: 'bloodline ceiling 48' },
-  { rebirth: 20, rewards: 'bloodline ceiling 50 - the highest an aptitude can go' },
+  { rebirth: 20, rewards: 'bloodline ceiling 50 - the highest an aptitude can go; the title Keeper of the Blood' },
+  { rebirth: 30, rewards: 'the title The Undying' },
+  { rebirth: 50, rewards: 'the title Wheel of Ages' },
 ];
 
 /**

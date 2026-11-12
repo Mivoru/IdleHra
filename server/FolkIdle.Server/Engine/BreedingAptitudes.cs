@@ -58,7 +58,7 @@ namespace FolkIdle.Server.Engine
         /// <summary>
         /// The highest value breeding can produce for an account that has taken
         /// this many rebirths: the village ceiling at none, rising to MaxValue
-        /// at RebirthRules.MaxRebirths.
+        /// at RebirthRules.BloodlineRebirths.
         ///
         /// Modul: THE REBIRTH IS THE CLOCK, NOT THE PLAYTIME (owner 2026-10-14:
         /// "50 should take about twenty rebirths"). A generation costs an hour
@@ -74,9 +74,9 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public static int CeilingFor(int rebirthCount)
         {
-            int rebirths = Math.Clamp(rebirthCount, 0, RebirthRules.MaxRebirths);
+            int rebirths = Math.Clamp(rebirthCount, 0, RebirthRules.BloodlineRebirths);
             int span = MaxValue - VillagerCeiling;
-            return VillagerCeiling + span * rebirths / RebirthRules.MaxRebirths;
+            return VillagerCeiling + span * rebirths / RebirthRules.BloodlineRebirths;
         }
 
         /// <summary>

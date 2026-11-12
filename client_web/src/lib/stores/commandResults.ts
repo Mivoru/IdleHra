@@ -134,6 +134,11 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   70: 'The Cailleach comes down from the mountain. Fight!',
   71: 'A pet you already have found you again - its diamonds are in your mail.',
   72: 'That piece is still in the Vault lock - kill something in its region in this life first.',
+
+  // The Ancestral Boons (2026-11-13): 73 is good news, the other two say why not.
+  73: 'Boon raised - it lasts through every rebirth.',
+  74: 'Not enough Legacy Shards for that boon yet.',
+  75: 'That boon is already complete.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;

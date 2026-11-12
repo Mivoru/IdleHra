@@ -1378,14 +1378,14 @@
           </div>
           <h3 id="rebirth-pays">What a rebirth pays</h3>
           <p>
-            A rebirth is open from the <strong>Rebirth</strong> screen in the Hero menu, at any level. You can be
-            reborn up to {REBIRTH_MAX} times, and every one pays something that lasts:
+            A rebirth is open from the <strong>Rebirth</strong> screen in the Hero menu once your level reaches the Renown level. There is
+            no limit on how many times you can be reborn, and every one pays something that lasts:
           </p>
           <ul class="styled-list">
             {#each REBIRTH_PAYS as line (line)}<li>{line}</li>{/each}
           </ul>
 
-          <h3 id="rebirth-roadmap">The road to twenty</h3>
+          <h3 id="rebirth-roadmap">The road</h3>
           <div class="scroll">
             <table>
               <thead><tr><th>Rebirth</th><th>What it brings</th></tr></thead>

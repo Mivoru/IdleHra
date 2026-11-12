@@ -50,6 +50,7 @@
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
   import { contentRegistry } from '../net/registry.svelte';
   import RebirthRoadmap from './RebirthRoadmap.svelte';
+  import AncestralBoons from './AncestralBoons.svelte';
 
   const client = useQueryClient();
   const preview = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
@@ -184,7 +185,7 @@
       } else if (outcome.Result === 'ConfirmationRequired') {
         pushLocalNotice(`Type ${REBIRTH_CONFIRMATION_WORD} to confirm. Nothing was reset.`, 'error');
       } else if (outcome.Result === 'Capped') {
-        pushLocalNotice(`You have taken all ${p.MaxRebirths} rebirths. Nothing was reset.`, 'error');
+        pushLocalNotice('This server still caps rebirth. Nothing was reset.', 'error');
       } else if (outcome.Result === 'NotEnoughGold') {
         pushLocalNotice('Your gold does not cover the gear you chose to keep. Nothing was reset.', 'error');
       } else if (outcome.Result === 'LevelTooLow') {
@@ -217,11 +218,11 @@
     <!-- Where you stand. -->
     <div class="hero" data-testid="rebirth-hero">
       <div class="count">
-        <span class="shield" class:max={p.Capped}>{p.RebirthCount}</span>
-        <span><strong>{p.RebirthCount} of {p.MaxRebirths}</strong> rebirths taken</span>
+        <span class="shield" class:max={p.RebirthCount >= p.MaxRebirths}>{p.RebirthCount}</span>
+        <span><strong>{p.RebirthCount}</strong> {p.RebirthCount === 1 ? 'rebirth' : 'rebirths'} taken</span>
       </div>
       <div class="stats">
-        <span class="stat"><strong>{p.BloodlineCeilingNow}</strong> bloodline ceiling{#if !p.Capped} ({p.BloodlineCeilingAfter} after the next){/if}</span>
+        <span class="stat"><strong>{p.BloodlineCeilingNow}</strong> bloodline ceiling{#if p.BloodlineCeilingAfter > p.BloodlineCeilingNow} ({p.BloodlineCeilingAfter} after the next){:else} (the highest){/if}</span>
         <span class="stat"><strong>{p.SkillPointsFromRebirthsNow}</strong> skill points from rebirths</span>
         <span class="stat"><strong>+{p.DamageBonusPctNow}%</strong> damage (Renown {p.RenownedRebirths})</span>
         <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below the level your last life reached ({p.PeakLevelAfter} after the next rebirth)</span>
@@ -239,14 +240,22 @@
     </p>
 
     <p class="pays" data-testid="rebirth-pays">
-      <strong>Every rebirth</strong> raises the bloodline ceiling - the highest an aptitude can be bred - from
-      {p.BloodlineCeilingNow} to {p.BloodlineCeilingAfter}.
+      <strong>Every rebirth</strong> pays <strong>Legacy Shards</strong> by the level the life reached
+      ({formatNumber(p.ShardsEarned)} at level {p.Level}) for the Ancestral Boons below, and gives
+      +{p.ReLevelXpBonusPct}% combat XP on every level below the one this life reached (level {p.PeakLevelAfter} after this one).
+      {#if p.BloodlineCeilingAfter > p.BloodlineCeilingNow}
+        It raises the bloodline ceiling - the highest an aptitude can be bred - from {p.BloodlineCeilingNow} to {p.BloodlineCeilingAfter}
+        (rebirths 1 to {p.MaxRebirths}).
+      {/if}
       <strong>The first {p.RewardedRebirths}</strong> also pay +2 skill points for good
-      (now {p.SkillPointsFromRebirthsNow}) and Renown. Every rebirth gives +{p.ReLevelXpBonusPct}% combat XP on every level below the one this life reached
-      (level {p.PeakLevelAfter} after this one). {p.SecondPetSlotRebirths} rebirths open a second pet slot on every character.
-      Rebirths 3, 5, 7 and 10 each bring an avatar, and the tenth the Phoenix pet.
-      <span class="dim">{p.RebirthCount} of {p.MaxRebirths} taken.</span>
+      (now {p.SkillPointsFromRebirthsNow}) and Renown. {p.SecondPetSlotRebirths} rebirths open a second pet slot on every character.
+      Rebirths 3, 5, 7 and 10 each bring an avatar, the tenth the Phoenix pet, and 20, 30 and 50 a title.
+      There is no last rebirth.
     </p>
+
+    {#if p.Boons && p.Boons.length > 0}
+      <AncestralBoons boons={p.Boons} shards={p.ShardBalance} />
+    {/if}
 
     {#if carriers.length > 0}
       <h3>Your line after the rebirth</h3>
@@ -272,7 +281,7 @@
       </p>
     {/if}
 
-    <h3>The road to {p.MaxRebirths}</h3>
+    <h3>The road</h3>
     <RebirthRoadmap steps={p.Roadmap} taken={p.RebirthCount} />
 
     {#if !p.Capped}
@@ -356,7 +365,7 @@
 
     <h3>Rebirth now</h3>
     {#if p.Capped}
-      <p class="dim" data-testid="rebirth-capped">You have taken all {p.MaxRebirths} rebirths.</p>
+      <p class="dim" data-testid="rebirth-capped">This server still caps rebirth at {p.MaxRebirths}.</p>
     {:else if !confirming}
       {#if !levelEnough}
         <p class="warn" data-testid="rebirth-level-floor">

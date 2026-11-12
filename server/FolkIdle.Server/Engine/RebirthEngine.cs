@@ -22,7 +22,7 @@ namespace FolkIdle.Server.Engine
         InFlight = 4,
         /// <summary>The request did not carry the typed confirmation word - see RebirthRules.ConfirmationWord.</summary>
         ConfirmationRequired = 5,
-        /// <summary>The account already has RebirthRules.MaxRebirths (task 114).</summary>
+        /// <summary>Never returned since 2026-11-13 (rebirth is unlimited); kept so old clients keep their wording.</summary>
         Capped = 6,
         /// <summary>The gold held does not cover the equipment chosen to keep.</summary>
         NotEnoughGold = 7,
@@ -40,6 +40,42 @@ namespace FolkIdle.Server.Engine
         int ShardsEarned,
         bool Renowned);
 
+    /// <summary>One Ancestral Boon as the Rebirth screen shows it.</summary>
+    public sealed class BoonView
+    {
+        /// <summary>The TargetUnlockId a purchase sends (LegacyStoreEngine's perk ids).</summary>
+        public uint UnlockId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Effect { get; set; } = string.Empty;
+        public int Rank { get; set; }
+        public int MaxRank { get; set; }
+        /// <summary>Shards for the next rank, or -1 at the cap.</summary>
+        public int NextCost { get; set; }
+
+        public static List<BoonView> For(long legacyPerks)
+        {
+            var list = new List<BoonView>(3);
+            void Add(uint id, int offset, string name, string effect)
+            {
+                int max = LegacyPerkResolver.MaxRankFor(offset);
+                int rank = Math.Min(LegacyPerkResolver.GetPerkRank(legacyPerks, offset), max);
+                list.Add(new BoonView
+                {
+                    UnlockId = id,
+                    Name = name,
+                    Effect = effect,
+                    Rank = rank,
+                    MaxRank = max,
+                    NextCost = rank >= max ? -1 : LegacyPerkResolver.CalculatePerkRankCost(offset, rank),
+                });
+            }
+            Add(LegacyStoreEngine.XpMultiplierPerkUnlockId, LegacyPerkResolver.XpMultiplierBitOffset, "Ancestors' Wisdom", "+1% combat XP per rank");
+            Add(LegacyStoreEngine.GoldDropRatePerkUnlockId, LegacyPerkResolver.GoldDropRateBitOffset, "Ancestors' Fortune", "+1% gold from kills per rank");
+            Add(LegacyStoreEngine.CombatSpeedPerkUnlockId, LegacyPerkResolver.CombatSpeedBitOffset, "Ancestors' Fury", "+1% damage per rank");
+            return list;
+        }
+    }
+
     /// <summary>What a rebirth would do right now. Read-only.</summary>
     public sealed class RebirthPreview
     {
@@ -56,6 +92,7 @@ namespace FolkIdle.Server.Engine
         public int ShardsEarned { get; set; }
 
         // Task 114: what a rebirth pays now, and its ceiling.
+        /// <summary>RebirthRules.BloodlineRebirths - the count that maxes the bloodline ceiling. Not a cap any more.</summary>
         public int MaxRebirths { get; set; }
         public bool Capped { get; set; }
         /// <summary>The last rebirth that pays more than the bloodline ceiling (RebirthRules.RewardedRebirths).</summary>
@@ -89,6 +126,9 @@ namespace FolkIdle.Server.Engine
         public int SkillPointsFromSeals { get; set; }
         public int InheritanceLevels { get; set; }
         public int ShardBalance { get; set; }
+
+        /// <summary>The Ancestral Boons the shards buy (LegacyPerkResolver), with their prices.</summary>
+        public List<BoonView> Boons { get; set; } = new();
         public int Diamonds { get; set; }
         public int HallMembersKept { get; set; }
         public int VillageBuildingLevels { get; set; }
@@ -164,12 +204,8 @@ namespace FolkIdle.Server.Engine
                             RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                     }
 
-                    if (RebirthRules.IsCapped(player.RebirthCount))
-                    {
-                        await transaction.SafeRollbackAsync(cancellationToken);
-                        return new RebirthOutcome(RebirthResult.Capped, player.RebirthCount, player.RenownedRebirths,
-                            RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
-                    }
+                    // No cap since 2026-11-13 (RebirthRules.BloodlineRebirths);
+                    // RebirthResult.Capped stays in the enum for old clients.
 
                     // The level floor, read from the row this transaction just
                     // locked - the online path flushes the live payload first,
@@ -282,6 +318,14 @@ namespace FolkIdle.Server.Engine
                         await Domain.Progression.TitleEngine.GrantAsync(db, playerId, Domain.Progression.TitleRegistry.RebirthTitleSlug, GameClock.UtcNow);
                         await Domain.Progression.PetEngine.GrantAsync(db, playerId, Domain.Progression.PetRegistry.PhoenixId, GameClock.UtcNow);
                     }
+                    // The milestone titles past ten (20, 30, 50). At or past,
+                    // and the grant ignores a duplicate - so an account that
+                    // reached 20 before the list existed is paid on its next one.
+                    foreach (var titleMilestone in RebirthRules.TitleMilestones)
+                    {
+                        if (countAfter >= titleMilestone.Rebirths)
+                            await Domain.Progression.TitleEngine.GrantAsync(db, playerId, titleMilestone.TitleSlug, GameClock.UtcNow);
+                    }
                     // The milestone avatars (3, 5, 7, 10). Cosmetics survive the
                     // reset; granted once, so a replay cannot add a second.
                     foreach (var milestone in RebirthRules.AvatarMilestones)
@@ -347,8 +391,8 @@ namespace FolkIdle.Server.Engine
 
             int level = Math.Max(1, player.CurrentLevel);
             bool renowned = RebirthRules.IsRenowned(level);
-            int shards = SeasonalRotationEngine.CalculateLegacyShards(
-                gold, (long)level * level, SeasonalRotationEngine.CalculateInventoryScore(equipment, listings));
+            // The same number AwardLegacyShardsAsync pays (2026-11-13).
+            int shards = RebirthRules.ShardsForLevel(level);
 
             var characters = await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId).CountAsync(cancellationToken);
             var letGo = await HallOfAncestorsEngine.WouldReleaseAsync(db, playerId, cancellationToken);
@@ -372,8 +416,8 @@ namespace FolkIdle.Server.Engine
                 DamageBonusPctCap = RebirthRules.MaxDamageBonusPct,
                 ShardsEarned = shards,
 
-                MaxRebirths = RebirthRules.MaxRebirths,
-                Capped = RebirthRules.IsCapped(player.RebirthCount),
+                MaxRebirths = RebirthRules.BloodlineRebirths,
+                Capped = false,
                 RewardedRebirths = RebirthRules.RewardedRebirths,
                 BloodlineCeilingNow = BreedingAptitudes.CeilingFor(player.RebirthCount),
                 BloodlineCeilingAfter = BreedingAptitudes.CeilingFor(player.RebirthCount + 1),
@@ -403,6 +447,7 @@ namespace FolkIdle.Server.Engine
                     .Where(l => l.PlayerId == playerId).SumAsync(l => (int?)l.LegacyShardBalance, cancellationToken) ?? 0,
                 Diamonds = player.PremiumDiamonds,
                 HallMembersKept = Math.Max(0, characters - letGo.Count),
+                Boons = BoonView.For(player.LegacyPerks),
                 VillageBuildingLevels = await db.VillageInfrastructures.AsNoTracking()
                     .Where(v => v.PlayerId == playerId).SumAsync(v => (int?)v.CurrentLevel, cancellationToken) ?? 0,
             };

@@ -2800,9 +2800,10 @@ export interface RebirthPreview {
   DamageBonusPctCap: number;
   ShardsEarned: number;
 
-  // Task 114: what a rebirth pays now, and its ceiling (RebirthRules).
+  // Task 114: what a rebirth pays now (RebirthRules).
+  /** RebirthRules.BloodlineRebirths: the count that maxes the bloodline ceiling. NOT a cap since 2026-11-13. */
   MaxRebirths: number;
-  /** True once the account has taken MaxRebirths - the server refuses more. */
+  /** Always false since 2026-11-13 - rebirth is unlimited. Kept for an older server. */
   Capped: boolean;
   /** The last rebirth that pays more than the bloodline ceiling (10 of 20). */
   RewardedRebirths: number;
@@ -2839,6 +2840,20 @@ export interface RebirthPreview {
   Diamonds: number;
   HallMembersKept: number;
   VillageBuildingLevels: number;
+  /** The Ancestral Boons the shards buy. Absent on an older server. */
+  Boons?: BoonView[];
+}
+
+/** One Ancestral Boon (BoonView / LegacyPerkResolver on the server). */
+export interface BoonView {
+  /** The TargetUnlockId purchaseLegacyUnlock sends. */
+  UnlockId: number;
+  Name: string;
+  Effect: string;
+  Rank: number;
+  MaxRank: number;
+  /** Shards for the next rank, or -1 at the cap. */
+  NextCost: number;
 }
 
 export function fetchRebirthPreview(): Promise<RebirthPreview> {

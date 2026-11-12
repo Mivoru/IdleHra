@@ -871,7 +871,7 @@ describe('the Wiki rebirth tables mirror RebirthRules', () => {
   };
 
   it('has the same cap, points, bonus, slot and Vault bounds', () => {
-    expect(wiki.REBIRTH_MAX).toBe(constant('MaxRebirths'));
+    expect(wiki.REBIRTH_MAX).toBe(constant('BloodlineRebirths'));
     expect(wiki.REBIRTH_REWARDED).toBe(constant('RewardedRebirths'));
     expect(wiki.REBIRTH_SKILL_POINTS_EACH).toBe(constant('SkillPointsPerRebirth'));
     expect(wiki.REBIRTH_XP_BONUS_PCT).toBe(constant('ReLevelXpBonusPct'));
@@ -887,10 +887,10 @@ describe('the Wiki rebirth tables mirror RebirthRules', () => {
     const apt = (name: string) => Number(aptitudes.match(new RegExp(`const int ${name} = (\\d+);`))![1]);
     expect(wiki.BLOODLINE_CEILING_START).toBe(apt('VillagerCeiling'));
     expect(wiki.BLOODLINE_CEILING_END).toBe(apt('MaxValue'));
-    expect(aptitudes).toMatch(/return VillagerCeiling \+ span \* rebirths \/ RebirthRules\.MaxRebirths;/);
+    expect(aptitudes).toMatch(/return VillagerCeiling \+ span \* rebirths \/ RebirthRules\.BloodlineRebirths;/);
     expect(wiki.bloodlineCeilingFor(0)).toBe(apt('VillagerCeiling'));
     expect(wiki.bloodlineCeilingFor(wiki.REBIRTH_MAX)).toBe(apt('MaxValue'));
-    for (const row of wiki.REBIRTH_ROADMAP) {
+    for (const row of wiki.REBIRTH_ROADMAP.filter((r) => r.rebirth <= wiki.REBIRTH_MAX)) {
       expect(row.rewards).toContain(`bloodline ceiling ${wiki.bloodlineCeilingFor(row.rebirth)}`);
     }
   });
@@ -902,8 +902,17 @@ describe('the Wiki rebirth tables mirror RebirthRules', () => {
   });
 
   it('lists one roadmap row per rebirth, with the avatars where the server grants them', () => {
-    expect(wiki.REBIRTH_ROADMAP.map((r) => r.rebirth)).toEqual(Array.from({ length: wiki.REBIRTH_MAX }, (_, i) => i + 1));
+    // 1..BloodlineRebirths, then each title milestone past it (RebirthRoadmap.Build).
+    const titleSteps = [...rules.matchAll(/new TitleMilestone\((\d+), "[^"]+", "([^"]+)"\)/g)];
+    const pastTwenty = titleSteps.map((m) => Number(m[1])).filter((n) => n > wiki.REBIRTH_MAX);
+    expect(wiki.REBIRTH_ROADMAP.map((r) => r.rebirth)).toEqual([
+      ...Array.from({ length: wiki.REBIRTH_MAX }, (_, i) => i + 1),
+      ...pastTwenty,
+    ]);
     for (const [, n, name] of rules.matchAll(/new AvatarMilestone\((\d+), "[^"]+", "([^"]+)"/g)) {
+      expect(wiki.REBIRTH_ROADMAP.find((r) => r.rebirth === Number(n))?.rewards).toContain(name);
+    }
+    for (const [, n, name] of titleSteps) {
       expect(wiki.REBIRTH_ROADMAP.find((r) => r.rebirth === Number(n))?.rewards).toContain(name);
     }
   });
