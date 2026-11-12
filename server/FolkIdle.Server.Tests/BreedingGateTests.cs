@@ -100,10 +100,45 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void TwoRacesMayNot()
+        public void TwoRacesMay()
         {
-            Assert.Equal(BreedingRefusal.RaceMismatch,
+            // Lineage overhaul 2026-11-13: the same-race gate is gone; the
+            // player picks the child's race (ResolveChildRace).
+            Assert.Equal(BreedingRefusal.None,
                 BreedingGateRules.CheckPair(Adult(race: 1), Adult(isFemale: true, race: 2), nowEpoch: 100));
+            Assert.Equal(BreedingRefusal.None,
+                BreedingGateRules.CheckVillagerPair(
+                    Adult(race: 1), villagerIsFemale: true, villagerRaceId: 4, villagerHasMarried: false, nowEpoch: 100));
+        }
+
+        [Theory]
+        [InlineData(1, 4, 0, 1)]   // no choice: the default
+        [InlineData(1, 4, 4, 4)]   // the other parent's race
+        [InlineData(1, 4, 1, 1)]   // the default, named
+        [InlineData(1, 4, 6, 1)]   // a race neither parent has: the default, never a refusal
+        [InlineData(3, 3, 3, 3)]
+        public void TheChildIsBornAsAParentsRace(int a, int b, int requested, int expected)
+        {
+            Assert.Equal((byte)expected, BreedingGateRules.ResolveChildRace((byte)a, (byte)b, (byte)requested, (byte)a));
+        }
+
+        [Fact]
+        public void TheRaceTravelsInTheSelectionBytesHighNibble()
+        {
+            int mask = (4 << 4) | 0b0011;
+            Assert.Equal((byte)4, BreedingGateRules.RequestedRaceFromMask(mask));
+            // And the aptitude selection never sees it.
+            Assert.Equal(0b0011, BreedingAptitudes.ClampSelection(mask, groundsLevel: 12));
+        }
+
+        [Fact]
+        public void AChildIsGrownOneChildhoodAfterBirth()
+        {
+            Assert.Equal(3600L, ChildGrowth.ChildhoodSeconds);
+            Assert.False(ChildGrowth.IsGrown(1000, 1000 + 3599));
+            Assert.True(ChildGrowth.IsGrown(1000, 1000 + 3600));
+            // Children born before the column existed (0) are long grown.
+            Assert.True(ChildGrowth.IsGrown(0, 5000));
         }
 
         [Fact]

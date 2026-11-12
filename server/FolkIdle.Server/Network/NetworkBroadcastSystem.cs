@@ -6892,6 +6892,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                await Engine.ChildGrowth.TrySettleAsync(db, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 var characters = await db.CharacterRecords
                     .AsNoTracking()
                     .Where(c => c.PlayerId == playerId)
@@ -7016,6 +7017,7 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+                await Engine.ChildGrowth.TrySettleAsync(db, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 var characters = await db.CharacterRecords
                     .AsNoTracking()
                     .Where(c => c.PlayerId == playerId)
@@ -7153,6 +7155,8 @@ namespace FolkIdle.Server.Network
             // it. Sent rather than derived so the screen can show what a tick
             // buys without a client copy of the rule.
             public int SelectedMin { get; set; }
+            // The selected band's top (BreedingAptitudes.PreviewSelected).
+            public int SelectedMax { get; set; }
             // True when the bloodline ceiling, not the parents, set PredictedMax.
             public bool AtCeiling { get; set; }
         }
@@ -7180,6 +7184,12 @@ namespace FolkIdle.Server.Network
             // next rebirth would raise it to (equal at the last one).
             public int BloodlineCeiling { get; set; }
             public int NextBloodlineCeiling { get; set; }
+            // The races the child can be born as: the first is the default
+            // (father / hero), the second the other parent's when it differs.
+            // Sent so the picker never offers a race the engine would replace.
+            public System.Collections.Generic.List<int> ChildRaceOptions { get; set; } = new();
+            // How many aptitudes the Grounds lets the player select now.
+            public int SelectableCount { get; set; }
         }
 
         private static async Task AddAptitudePreviewsAsync(
@@ -7191,9 +7201,14 @@ namespace FolkIdle.Server.Network
             response.BloodlineCeiling = ceiling;
             response.NextBloodlineCeiling = Engine.BreedingAptitudes.CeilingFor(rebirths + 1);
 
+            // Modul: relatedness is set on the response before this runs, and
+            // it changes the bands (no sure growth, reversed luck) - so the
+            // preview must be filled after IsInbredRisk, never before.
+            bool related = response.IsInbredRisk;
             for (int i = 0; i < Engine.BreedingAptitudes.Count; i++)
             {
-                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max, ceiling);
+                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max, ceiling, related);
+                Engine.BreedingAptitudes.PreviewSelected(hero[i], partner[i], out int selMin, out int selMax, ceiling, related);
                 int better = Math.Max(hero[i], partner[i]);
                 response.Aptitudes.Add(new AptitudePreviewResponse
                 {
@@ -7202,8 +7217,9 @@ namespace FolkIdle.Server.Network
                     ParentPartner = partner[i],
                     PredictedMin = min,
                     PredictedMax = max,
-                    SelectedMin = Math.Min(Math.Max(0, better - 1), max),
-                    AtCeiling = max < Math.Min(better + 1, Engine.BreedingAptitudes.MaxValue),
+                    SelectedMin = selMin,
+                    SelectedMax = selMax,
+                    AtCeiling = better >= Engine.BreedingAptitudes.ChildLimit(hero[i], partner[i], ceiling),
                 });
             }
         }
@@ -7311,9 +7327,15 @@ namespace FolkIdle.Server.Network
                     .FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
-                AddLocusPreview(response.Loci, "Race", pVec.LocusRace, mVec.LocusRace, maxGen);
+                // Modul: no locus rows (2026-11-13). The Speed/Crit/Yield loci
+                // are read by nothing, and the Race row said what the race
+                // picker now says. Loci stays on the response, empty, so an
+                // older client renders nothing rather than failing.
+                AddChildRaceOptions(response, pVec.LocusRace.Dominant, mVec.LocusRace.Dominant);
                 await AddAptitudePreviewsAsync(db, playerId, response, pLineage.AptitudeVector(), mLineage.AptitudeVector());
-                AddTraitPreviews(response, pLineage.TraitMask, mLineage.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
+                int rosterGrounds = await BreedingGroundsLevelAsync(db, playerId);
+                response.SelectableCount = Engine.BreedingAptitudes.SelectableCount(rosterGrounds);
+                AddTraitPreviews(response, pLineage.TraitMask, mLineage.TraitMask, rosterGrounds);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -7402,9 +7424,11 @@ namespace FolkIdle.Server.Network
                     .FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
-                AddLocusPreview(response.Loci, "Race", heroVec.LocusRace, villagerVec.LocusRace, maxGen);
+                AddChildRaceOptions(response, heroVec.LocusRace.Dominant, (byte)newcomer.RaceId);
                 await AddAptitudePreviewsAsync(db, playerId, response, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
-                AddTraitPreviews(response, heroLineage.TraitMask, newcomer.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
+                int villagerGrounds = await BreedingGroundsLevelAsync(db, playerId);
+                response.SelectableCount = Engine.BreedingAptitudes.SelectableCount(villagerGrounds);
+                AddTraitPreviews(response, heroLineage.TraitMask, newcomer.TraitMask, villagerGrounds);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -7419,19 +7443,10 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
-        private static void AddLocusPreview(System.Collections.Generic.List<GenePreviewLocusResponse> loci, string name, Locus pLocus, Locus mLocus, int maxGeneration)
+        private static void AddChildRaceOptions(BreedingPreviewResponse response, byte defaultRace, byte otherRace)
         {
-            GeneticSplicingEngine.PreviewLocus(pLocus, mLocus, maxGeneration, out byte minDominant, out byte maxDominant, out double mutationChancePct);
-
-            loci.Add(new GenePreviewLocusResponse
-            {
-                LocusName = name,
-                ParentPaternalDominant = pLocus.Dominant,
-                ParentMaternalDominant = mLocus.Dominant,
-                PredictedMinDominant = minDominant,
-                PredictedMaxDominant = maxDominant,
-                MutationChancePct = mutationChancePct
-            });
+            response.ChildRaceOptions.Add(defaultRace);
+            if (otherRace != defaultRace && otherRace != 0) response.ChildRaceOptions.Add(otherRace);
         }
 
         // Modul 13: authorized snapshot of the player's real Race Mastery

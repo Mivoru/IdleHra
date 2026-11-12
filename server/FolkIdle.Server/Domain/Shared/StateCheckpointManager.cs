@@ -1285,6 +1285,9 @@ namespace FolkIdle.Server.Domain.Shared
                 Console.WriteLine($"VillageArrival: settle failed for player {playerId}: {ex.Message}");
             }
 
+            // Children who grew up while the player was away (ChildGrowth).
+            await ChildGrowth.TrySettleAsync(dbContext, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
+
             long loadedGold = await dbContext.CommodityRecords
                 .AsNoTracking()
                 .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
@@ -2133,22 +2136,26 @@ namespace FolkIdle.Server.Domain.Shared
                         await ApplyPendingGoldDeltaAsync(dbContext, state);
                         await ApplyPendingVillageProductionAsync(dbContext, state);
 
+                        // Modul: forward-only, like PersistFieldedAgeAsync. A
+                        // child the ChildGrowth settle promoted while it sat in
+                        // a slot has more ticks on its row than in the payload,
+                        // and the shutdown flush must not take them back.
                         if (state.Slot1_CharacterId != System.Guid.Empty)
                         {
                             var c1 = await dbContext.CharacterRecords.FindAsync(state.Slot1_CharacterId);
-                            if (c1 != null) { c1.AgeTicks = state.Slot1_AgeTicks; c1.AgePhase = state.Slot1_AgePhase; }
+                            if (c1 != null && c1.AgeTicks < state.Slot1_AgeTicks) { c1.AgeTicks = state.Slot1_AgeTicks; c1.AgePhase = state.Slot1_AgePhase; }
                         }
                         // Shutdown flushes everyone through here, not FlushState.
                         await PersistFieldedActivitiesAsync(dbContext, state);
                         if (state.Slot2_CharacterId != System.Guid.Empty)
                         {
                             var c2 = await dbContext.CharacterRecords.FindAsync(state.Slot2_CharacterId);
-                            if (c2 != null) { c2.AgeTicks = state.Slot2_AgeTicks; c2.AgePhase = state.Slot2_AgePhase; }
+                            if (c2 != null && c2.AgeTicks < state.Slot2_AgeTicks) { c2.AgeTicks = state.Slot2_AgeTicks; c2.AgePhase = state.Slot2_AgePhase; }
                         }
                         if (state.Slot3_CharacterId != System.Guid.Empty)
                         {
                             var c3 = await dbContext.CharacterRecords.FindAsync(state.Slot3_CharacterId);
-                            if (c3 != null) { c3.AgeTicks = state.Slot3_AgeTicks; c3.AgePhase = state.Slot3_AgePhase; }
+                            if (c3 != null && c3.AgeTicks < state.Slot3_AgeTicks) { c3.AgeTicks = state.Slot3_AgeTicks; c3.AgePhase = state.Slot3_AgePhase; }
                         }
                     }
 

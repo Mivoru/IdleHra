@@ -248,11 +248,58 @@ namespace FolkIdle.Server.Engine
         /// </remarks>
         public const int BloodlineMemoryChancePercent = 25;
 
+        // --- growth (lineage overhaul, 2026-11-13) ------------------------------
+
+        /// <summary>What a SELECTED aptitude always gains, below the limit.</summary>
+        public const int GuaranteedGrowth = 1;
+
+        /// <summary>
+        /// The distance below the limit at which growth speeds up: a selected
+        /// aptitude gains one more point, an unselected one gets a
+        /// CatchUpPercent chance of one.
+        /// </summary>
+        public const int CatchUpGap = 10;
+
+        /// <summary>An unselected aptitude's chance of +1 while CatchUpGap or more below the limit.</summary>
+        public const int CatchUpPercent = 50;
+
+        /// <summary>
+        /// The points a selected aptitude is sure to gain over the better
+        /// parent, given the child's limit. Zero for a related pair.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A SELECTED APTITUDE ALWAYS GROWS (owner brief 2026-11-13:
+        /// "50 50 50 50 is almost impossible"). Measured on production: both
+        /// 20-rebirth accounts had a ceiling of 50 and a best aptitude of 21-23,
+        /// because past the village the climb was +0.2-0.33 a generation - a
+        /// 25% coin for +1 against a 10% coin for -1, on the very stat the
+        /// player had asked to raise. The ceiling (rebirths) was meant to be
+        /// the clock; the dice had become it. Now a selected aptitude gains
+        /// +1, or +2 while it is CatchUpGap or more below the limit, and never
+        /// falls. Python model, Grounds 12, ceiling 50, from 20: 16-25
+        /// generations to 50/50/50/50 with three selected (was 77-119 for one
+        /// stat). See docs/design/LINEAGE_REBIRTH_OVERHAUL.md section 2.2.
+        /// </remarks>
+        public static int SureGrowth(int better, int limit, bool isRelated)
+        {
+            if (isRelated) return 0;
+            int gap = limit - better;
+            if (gap <= 0) return 0;
+            int growth = GuaranteedGrowth + (gap >= CatchUpGap ? 1 : 0);
+            return Math.Min(growth, gap);
+        }
+
         // --- the whole child ---------------------------------------------------
 
         /// <summary>
         /// Breeds a full aptitude vector: inherit each value from one parent,
-        /// mutate it, then add the epic bonus if one was rolled.
+        /// grow and mutate it, then add the epic bonus if one was rolled.
+        ///
+        /// A SELECTED aptitude takes the better parent and gains SureGrowth,
+        /// then only a luck roll upward. An unselected one is inherited by the
+        /// weighted coin and mutated both ways, with a catch-up chance while
+        /// far below the limit. A related pair gets no sure growth and no
+        /// catch-up, and its luck is reversed (Mutate).
         ///
         /// The caller supplies <paramref name="isEpic"/> rather than this
         /// rolling it, because the same flag is stored on the lineage row and
@@ -290,14 +337,27 @@ namespace FolkIdle.Server.Engine
                 // so a bloodline regularly lost ground on the exact stat the
                 // player was trying to raise, and had no way to say which one
                 // that was.
-                int inherited = isSelected
-                    ? Math.Max(father[i], mother[i])
-                    : InheritOne(father[i], mother[i], rng);
+                int limit = ChildLimit(father[i], mother[i], ceiling);
+                int value;
+                if (isSelected && !isInbred)
+                {
+                    int better = Math.Max(father[i], mother[i]);
+                    value = better + SureGrowth(better, limit, isInbred);
+                    if (rng.Next(100) < UpMutationPercentFor(groundsLevel) + Math.Max(0, upBonusPercent)) value++;
+                }
+                else
+                {
+                    int inherited = isSelected
+                        ? Math.Max(father[i], mother[i])
+                        : InheritOne(father[i], mother[i], rng);
+                    value = Mutate(inherited, isInbred, rng, groundsLevel, upBonusPercent);
+                    if (!isInbred && limit - inherited >= CatchUpGap && rng.Next(100) < CatchUpPercent) value++;
+                }
 
-                child[i] = Mutate(inherited, isInbred, rng, groundsLevel, upBonusPercent);
+                child[i] = value;
                 if (isEpic) child[i] = child[i] + EpicBonus;
                 if (bloodlineMemory && rng.Next(100) < BloodlineMemoryChancePercent) child[i] = child[i] + 1;
-                child[i] = Math.Min(child[i], ChildLimit(father[i], mother[i], ceiling));
+                child[i] = Math.Clamp(child[i], 0, limit);
             }
             return child;
         }
@@ -312,11 +372,17 @@ namespace FolkIdle.Server.Engine
         /// which makes the choice of partner - the entire point of the village -
         /// irrelevant. Three is the most the maxed building can buy.
         /// </summary>
+        /// <remarks>
+        /// Modul: ONE FROM THE FIRST LEVEL (2026-11-13). It was 1/2/3 at
+        /// Grounds 4/7/10, so a new Grounds bred by the weighted coin alone and
+        /// the rule a player most needs - "pick what to raise" - was hidden
+        /// behind three upgrades. Now 1/2/3 at 1/4/7.
+        /// </remarks>
         public static int SelectableCount(int groundsLevel)
         {
-            if (groundsLevel >= 10) return 3;
-            if (groundsLevel >= 7) return 2;
-            if (groundsLevel >= 4) return 1;
+            if (groundsLevel >= 7) return 3;
+            if (groundsLevel >= 4) return 2;
+            if (groundsLevel >= 1) return 1;
             return 0;
         }
 
@@ -397,13 +463,44 @@ namespace FolkIdle.Server.Engine
         /// time and widening every band by one to describe it would make the
         /// common case a lie.
         /// </summary>
-        public static void PreviewOne(int parentA, int parentB, out int min, out int max, int ceiling = MaxValue)
+        public static void PreviewOne(int parentA, int parentB, out int min, out int max, int ceiling = MaxValue, bool isRelated = false)
         {
             parentA = Math.Clamp(parentA, 0, MaxValue);
             parentB = Math.Clamp(parentB, 0, MaxValue);
+            int limit = ChildLimit(parentA, parentB, ceiling);
+            int better = Math.Max(parentA, parentB);
 
             min = Math.Clamp(Math.Min(parentA, parentB) - 1, 0, MaxValue);
-            max = Math.Min(Math.Max(parentA, parentB) + 1, ChildLimit(parentA, parentB, ceiling));
+            // The catch-up chance can add one more to the better parent's value
+            // while it is far below the limit (never for a related pair).
+            int catchUp = !isRelated && limit - better >= CatchUpGap ? 1 : 0;
+            max = Math.Min(better + 1 + catchUp, limit);
+            min = Math.Min(min, max);
+        }
+
+        /// <summary>
+        /// The band of a SELECTED aptitude: the better parent plus SureGrowth,
+        /// and one more from the luck roll. A related pair has no sure growth
+        /// and its luck runs both ways (reversed), so its band is better +/- 1.
+        /// Exact, like PreviewOne; the epic and Bloodline Memory extras are not
+        /// folded in.
+        /// </summary>
+        public static void PreviewSelected(int parentA, int parentB, out int min, out int max, int ceiling = MaxValue, bool isRelated = false)
+        {
+            parentA = Math.Clamp(parentA, 0, MaxValue);
+            parentB = Math.Clamp(parentB, 0, MaxValue);
+            int limit = ChildLimit(parentA, parentB, ceiling);
+            int better = Math.Max(parentA, parentB);
+
+            if (isRelated)
+            {
+                min = Math.Clamp(better - 1, 0, limit);
+                max = Math.Min(better + 1, limit);
+                return;
+            }
+
+            min = Math.Min(better + SureGrowth(better, limit, false), limit);
+            max = Math.Min(min + 1, limit);
         }
 
         // --- relatedness -------------------------------------------------------

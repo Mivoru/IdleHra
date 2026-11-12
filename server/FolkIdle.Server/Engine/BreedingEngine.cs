@@ -114,6 +114,12 @@ namespace FolkIdle.Server.Engine
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+            // Children grown since the roster was last read become adults
+            // first, so the gate below sees them as the screen does. Outside
+            // the Serializable transaction: it is a forward-only promotion and
+            // must not widen this transaction's conflict set.
+            await ChildGrowth.TrySettleAsync(dbContext, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
+
             using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
             {
@@ -215,6 +221,13 @@ namespace FolkIdle.Server.Engine
                 bool isInbred = await BreedingRelatedness.AreRelatedAsync(dbContext, pLineage, mLineage);
 
                 long childGenome = GeneticSplicingEngine.Breed(pLineage.GeneticVector, mLineage.GeneticVector, maxGen);
+                // The father's race unless the player picked the mother's - see
+                // BreedingGateRules.ResolveChildRace.
+                byte fatherRace = pVec.LocusRace.Dominant;
+                byte motherRace = mVec.LocusRace.Dominant;
+                byte childRace = BreedingGateRules.ResolveChildRace(fatherRace, motherRace,
+                    BreedingGateRules.RequestedRaceFromMask(selectionMask), fatherRace);
+                childGenome = GeneticSplicingEngine.WithRace(childGenome, childRace, childRace == fatherRace ? motherRace : fatherRace);
                 if (isInbred)
                 {
                     childGenome = GeneticSplicingEngine.ApplyInbreedingDegradation(childGenome);
@@ -282,7 +295,8 @@ namespace FolkIdle.Server.Engine
                     // a newborn could sort ahead of its own parent and become
                     // the character whose gear hydrates the register.
                     SlotIndex = await CharacterGrantEngine.NextFreeSlotIndexAsync(dbContext, playerId),
-                    IsFemale = childIsFemale
+                    IsFemale = childIsFemale,
+                    BornAtEpoch = nowEpoch
                 };
 
                 var newLineage = new CharacterLineageRegistry
@@ -364,6 +378,12 @@ namespace FolkIdle.Server.Engine
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            // Children grown since the roster was last read become adults
+            // first, so the gate below sees them as the screen does. Outside
+            // the Serializable transaction: it is a forward-only promotion and
+            // must not widen this transaction's conflict set.
+            await ChildGrowth.TrySettleAsync(dbContext, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
 
             using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
@@ -488,6 +508,14 @@ namespace FolkIdle.Server.Engine
                     ? GeneticSplicingEngine.Breed(heroGenome, villagerGenome, maxGen)
                     : GeneticSplicingEngine.Breed(villagerGenome, heroGenome, maxGen);
 
+                // The hero's race unless the player picked the villager's - see
+                // BreedingGateRules.ResolveChildRace.
+                byte heroRace = heroVec.LocusRace.Dominant;
+                byte villagerRace = (byte)newcomer.RaceId;
+                byte childRace = BreedingGateRules.ResolveChildRace(heroRace, villagerRace,
+                    BreedingGateRules.RequestedRaceFromMask(selectionMask), heroRace);
+                childGenome = GeneticSplicingEngine.WithRace(childGenome, childRace, childRace == heroRace ? villagerRace : heroRace);
+
                 // Modul: THE BLOODLINE CEILING - what this account's rebirths
                 // have opened (BreedingAptitudes.CeilingFor). Read here, in the
                 // same transaction, never sent by the client.
@@ -519,7 +547,8 @@ namespace FolkIdle.Server.Engine
                     AgePhase = 0,
                     IsLockedInEscrow = false,
                     SlotIndex = await CharacterGrantEngine.NextFreeSlotIndexAsync(dbContext, playerId),
-                    IsFemale = childIsFemale
+                    IsFemale = childIsFemale,
+                    BornAtEpoch = nowEpoch
                 });
 
                 var newLineage = new CharacterLineageRegistry

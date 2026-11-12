@@ -266,6 +266,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("AutomationRules")
                         .HasColumnType("bigint");
 
+                    b.Property<long>("BornAtEpoch")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("BreedingCooldownEndEpoch")
                         .HasColumnType("bigint");
 

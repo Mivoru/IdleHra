@@ -192,12 +192,14 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine(
                 $"{generations} unselected generations from {start}: mean {mean:0.00}, highest seen {highest}");
 
-            // +0.15 a generation, so about +1.5 over ten.
-            Assert.InRange(mean, start + 1.0, start + 2.0);
+            // Far below the limit an unselected aptitude drifts +0.15 and has a
+            // 50% catch-up chance: about +0.65 a generation, +6.5 over ten
+            // (lineage overhaul 2026-11-13; it was +0.15 alone).
+            Assert.InRange(mean, start + 5.5, start + 7.5);
 
             // And nothing runs away: even the luckiest lineage in four thousand
             // stays nowhere near the cap without selection behind it.
-            Assert.True(highest < 25, $"an unselected lineage reached {highest} - the drift is too steep");
+            Assert.True(highest < 30, $"an unselected lineage reached {highest} - the drift is too steep");
         }
 
         // --- inbreeding ---------------------------------------------------------
@@ -367,7 +369,8 @@ namespace FolkIdle.Server.Tests
         public void TheEpicBonusIsNotFoldedIntoTheBand()
         {
             BreedingAptitudes.PreviewOne(10, 10, out _, out int max);
-            Assert.Equal(11, max);
+            // 10 + luck + catch-up (far below the limit of 50).
+            Assert.Equal(12, max);
 
             var rng = Seeded();
             bool exceeded = false;

@@ -28,12 +28,12 @@ namespace FolkIdle.Server.Tests
 
         [Theory]
         [InlineData(0, 0)]
-        [InlineData(1, 0)]
-        [InlineData(3, 0)]
-        [InlineData(4, 1)]
-        [InlineData(6, 1)]
-        [InlineData(7, 2)]
-        [InlineData(9, 2)]
+        [InlineData(1, 1)]
+        [InlineData(3, 1)]
+        [InlineData(4, 2)]
+        [InlineData(6, 2)]
+        [InlineData(7, 3)]
+        [InlineData(9, 3)]
         [InlineData(10, 3)]
         [InlineData(12, 3)]
         public void SelectableCountByGroundsLevel(int level, int expected)
@@ -101,9 +101,10 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TheMaskIsClampedToWhatTheGroundsPermit()
         {
-            Assert.Equal(0, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 3)));
-            Assert.Equal(1, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 4)));
-            Assert.Equal(2, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 7)));
+            Assert.Equal(0, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 0)));
+            Assert.Equal(1, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 1)));
+            Assert.Equal(2, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 4)));
+            Assert.Equal(3, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 7)));
             Assert.Equal(3, BitOperations.PopCount((uint)BreedingAptitudes.ClampSelection(0b1111, 12)));
         }
 
@@ -116,7 +117,7 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void AnOverreachingMaskIsTrimmedRatherThanRefused()
         {
-            int clamped = BreedingAptitudes.ClampSelection(0b1111, groundsLevel: 4);
+            int clamped = BreedingAptitudes.ClampSelection(0b1111, groundsLevel: 1);
             Assert.NotEqual(0, clamped);
             Assert.Equal(1, BitOperations.PopCount((uint)clamped));
         }
