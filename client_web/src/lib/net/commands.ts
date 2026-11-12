@@ -1401,14 +1401,31 @@ export const APTITUDES: readonly {
  * rather than their gold.
  */
 export function selectableAptitudeCount(groundsLevel: number): number {
-  if (groundsLevel >= 10) return 3;
-  if (groundsLevel >= 7) return 2;
-  if (groundsLevel >= 4) return 1;
+  if (groundsLevel >= 7) return 3;
+  if (groundsLevel >= 4) return 2;
+  if (groundsLevel >= 1) return 1;
   return 0;
 }
 
 /** The Grounds level at which each extra selection arrives, for the UI to quote. */
-export const SELECTION_UNLOCK_LEVELS: readonly number[] = [4, 7, 10];
+export const SELECTION_UNLOCK_LEVELS: readonly number[] = [1, 4, 7];
+
+/**
+ * BreedingAptitudes.GuaranteedGrowth / CatchUpGap - a SELECTED aptitude gains
+ * +1 over the better parent, +2 while CatchUpGap or more below the limit.
+ */
+export const GUARANTEED_GROWTH = 1;
+export const CATCH_UP_GAP = 10;
+
+/**
+ * The child's race rides in the HIGH nibble of BreedingSelectionMask
+ * (BreedingGateRules.RequestedRaceFromMask); 0 means the server's default
+ * (the father, or the hero). The low nibble is the clamped aptitude selection.
+ */
+export function packBreedingMask(selectionMask: number, groundsLevel: number, childRace = 0): number {
+  const race = Number.isInteger(childRace) && childRace > 0 && childRace < 16 ? childRace : 0;
+  return (race << 4) | clampSelectionMask(selectionMask, groundsLevel);
+}
 
 /**
  * BreedingAptitudes.ClampSelection - keep the lowest set bits, up to what the
@@ -1752,6 +1769,7 @@ export function executeBreeding(
   maternalId: string,
   breedingLevel: number,
   selectionMask = 0,
+  childRace = 0,
 ): CommandOutcome {
   if (breedingLevel <= 0) return refuse('Build Breeding Grounds in your village first.');
   if (!paternalId || !maternalId) return refuse('Choose two parents.');
@@ -1761,7 +1779,7 @@ export function executeBreeding(
     Command: CommandType.ExecuteBreeding,
     TargetGuid: paternalId,
     SecondaryGuid: maternalId,
-    BreedingSelectionMask: clampSelectionMask(selectionMask, breedingLevel),
+    BreedingSelectionMask: packBreedingMask(selectionMask, breedingLevel, childRace),
   });
   return OK;
 }
@@ -1780,6 +1798,7 @@ export function executeVillagerBreeding(
   newcomerId: number,
   breedingLevel: number,
   selectionMask = 0,
+  childRace = 0,
 ): CommandOutcome {
   if (breedingLevel <= 0) return refuse('Build Breeding Grounds in your village first.');
   if (!heroId) return refuse('Choose one of your characters.');
@@ -1789,7 +1808,7 @@ export function executeVillagerBreeding(
     Command: CommandType.ExecuteVillagerBreeding,
     TargetGuid: heroId,
     TargetId: newcomerId,
-    BreedingSelectionMask: clampSelectionMask(selectionMask, breedingLevel),
+    BreedingSelectionMask: packBreedingMask(selectionMask, breedingLevel, childRace),
   });
   return OK;
 }

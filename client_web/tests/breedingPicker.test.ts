@@ -73,11 +73,12 @@ describe('breeding picker', () => {
     expect(heroBlockedReason(candidate(), 0)).toBeNull();
   });
 
-  it('mirrors the villager gate: spent, same sex, other race', () => {
+  it('mirrors the villager gate: spent, same sex - and any race', () => {
     const hero = candidate();
     expect(villagerBlockedReason(hero, newcomer({ IsElder: true }))).toMatch(/already married in/);
     expect(villagerBlockedReason(hero, newcomer({ IsFemale: false }))).toBe('both men');
-    expect(villagerBlockedReason(hero, newcomer({ RaceId: 2 }))).toBe('not Human');
+    // Any two races may pair since 2026-11-13.
+    expect(villagerBlockedReason(hero, newcomer({ RaceId: 2 }))).toBeNull();
     expect(villagerBlockedReason(hero, newcomer())).toBeNull();
     // Without a hero only the spent flag can be known.
     expect(villagerBlockedReason(undefined, newcomer({ IsFemale: false }))).toBeNull();
@@ -87,7 +88,7 @@ describe('breeding picker', () => {
     const hero = candidate();
     expect(characterPartnerBlockedReason(hero, hero, 0)).toMatch(/your hero/);
     expect(characterPartnerBlockedReason(hero, candidate({ CharacterId: 'x', IsFemale: false }), 0)).toBe('both men');
-    expect(characterPartnerBlockedReason(hero, candidate({ CharacterId: 'x', IsFemale: true, LocusRaceDominant: 3 }), 0)).toBe('not Human');
+    expect(characterPartnerBlockedReason(hero, candidate({ CharacterId: 'x', IsFemale: true, LocusRaceDominant: 3 }), 0)).toBeNull();
     expect(characterPartnerBlockedReason(hero, candidate({ CharacterId: 'x', IsFemale: true }), 0)).toBeNull();
   });
 

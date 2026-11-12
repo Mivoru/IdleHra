@@ -730,7 +730,7 @@ describe('the breeding selection table', () => {
 
   it('agrees with the server level by level', () => {
     for (let level = 0; level <= 20; level++) {
-      const expected = level >= 10 ? 3 : level >= 7 ? 2 : level >= 4 ? 1 : 0;
+      const expected = level >= 7 ? 3 : level >= 4 ? 2 : level >= 1 ? 1 : 0;
       expect(selectableAptitudeCount(level), `Grounds ${level}`).toBe(expected);
     }
   });
@@ -745,14 +745,14 @@ describe('the breeding selection table', () => {
   });
 
   it('clamps a greedy mask the way ClampSelection does - lowest bits first', () => {
-    expect(clampSelectionMask(0b1111, 3)).toBe(0b0000);
-    expect(clampSelectionMask(0b1111, 4)).toBe(0b0001);
-    expect(clampSelectionMask(0b1111, 7)).toBe(0b0011);
+    expect(clampSelectionMask(0b1111, 0)).toBe(0b0000);
+    expect(clampSelectionMask(0b1111, 1)).toBe(0b0001);
+    expect(clampSelectionMask(0b1111, 4)).toBe(0b0011);
     expect(clampSelectionMask(0b1111, 12)).toBe(0b0111);
 
     // And keeps the bits that were actually asked for, not the first N.
-    expect(clampSelectionMask(0b1000, 4)).toBe(0b1000);
-    expect(clampSelectionMask(0b1100, 4)).toBe(0b0100);
+    expect(clampSelectionMask(0b1000, 1)).toBe(0b1000);
+    expect(clampSelectionMask(0b1100, 1)).toBe(0b0100);
   });
 
   it('quotes the same up-mutation chance the server rolls', () => {

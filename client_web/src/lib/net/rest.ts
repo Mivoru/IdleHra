@@ -1688,7 +1688,9 @@ export interface AptitudePreview {
   PredictedMax: number;
   /** The band's low end when this aptitude is selected on the Grounds (the better parent is taken outright). */
   SelectedMin: number;
-  /** True when the account's bloodline ceiling, not the parents, set PredictedMax. */
+  /** The selected band's top (BreedingAptitudes.PreviewSelected). Absent on an older server. */
+  SelectedMax?: number;
+  /** True when the better parent already stands at the limit - the child cannot climb here. */
   AtCeiling: boolean;
 }
 
@@ -1713,6 +1715,10 @@ export interface BreedingPreview {
   BloodlineCeiling: number;
   /** What the next rebirth raises it to (equal at the last one). */
   NextBloodlineCeiling: number;
+  /** The races the child can be born as; the first is the default. Absent on an older server. */
+  ChildRaceOptions?: number[];
+  /** How many aptitudes the Grounds lets you select now. */
+  SelectableCount?: number;
 }
 
 export function fetchBreedingPreview(paternalId: string, maternalId: string): Promise<BreedingPreview> {

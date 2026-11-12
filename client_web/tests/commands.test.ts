@@ -266,8 +266,8 @@ describe('hero x villager pairing', () => {
   it('carries the chosen aptitudes, clamped to what the Grounds permits', () => {
     // The server clamps too, and never refuses an overreaching mask - the count
     // is a server truth and this copy is a hint for drawing checkboxes. Sending
-    // all four from a level-4 Grounds must arrive as one, not as a disconnect.
-    expect(executeVillagerBreeding('a-hero-guid', 42, 4, 0b1111).ok).toBe(true);
+    // all four from a level-1 Grounds must arrive as one, not as a disconnect.
+    expect(executeVillagerBreeding('a-hero-guid', 42, 1, 0b1111).ok).toBe(true);
     expect(sent[0].BreedingSelectionMask).toBe(0b0001);
 
     sent.length = 0;
@@ -275,9 +275,13 @@ describe('hero x villager pairing', () => {
     expect(sent[0].BreedingSelectionMask).toBe(0b1010);
   });
 
-  it('sends no selection at all from a Breeding Grounds too low to buy one', () => {
-    expect(executeVillagerBreeding('a-hero-guid', 42, 3, 0b1111).ok).toBe(true);
-    expect(sent[0].BreedingSelectionMask).toBe(0);
+  it('carries the child race in the high nibble, and drops a nonsense race', () => {
+    // BreedingGateRules.RequestedRaceFromMask reads bits 4-7.
+    expect(executeVillagerBreeding('a-hero-guid', 42, 12, 0b0011, 4).ok).toBe(true);
+    expect(sent[0].BreedingSelectionMask).toBe((4 << 4) | 0b0011);
+    sent.length = 0;
+    expect(executeVillagerBreeding('a-hero-guid', 42, 12, 0b0001, 99).ok).toBe(true);
+    expect(sent[0].BreedingSelectionMask).toBe(0b0001);
   });
 
   it('refuses without Breeding Grounds, which the server answers by disconnecting', () => {

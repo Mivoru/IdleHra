@@ -34,6 +34,8 @@
   import ChildPreview from '../lib/ui/ChildPreview.svelte';
   import PersonPicker from '../lib/ui/PersonPicker.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
+  import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  import { raceName } from '../lib/ui/races';
   import {
     heroPerson,
     partnerCharacterPerson,
@@ -216,6 +218,21 @@
     partnerKey === '' ? undefined : partnerIsVillager ? villagePreview.data : rosterPreview.data,
   );
 
+  // Modul: THE CHILD'S RACE (2026-11-13). Any two races may pair, and the
+  // child is born as one of the two parents' races. The options are the
+  // preview's (the server's default first), so the picker never offers a race
+  // the engine would replace. 0 = the default; reset with every new partner.
+  let childRace = $state(0);
+  const raceOptions = $derived(preview?.ChildRaceOptions ?? []);
+  const chosenRace = $derived(
+    raceOptions.includes(childRace) ? childRace : (raceOptions[0] ?? 0),
+  );
+  $effect(() => {
+    void partnerKey;
+    void heroId;
+    childRace = 0;
+  });
+
   const generation = $derived(
     !hero
       ? null
@@ -234,7 +251,7 @@
   function refusal(code: string): string {
     switch (code) {
       case 'parent_not_adult':
-        return 'A parent has to be a grown adult. A child matures after an hour of work in a slot.';
+        return 'A parent has to be a grown adult. A child grows up within an hour of birth.';
       case 'parent_locked_in_escrow':
         return 'That character is locked in a trade.';
       case 'parent_on_cooldown':
@@ -275,8 +292,8 @@
   function breed() {
     hallBefore = new Set((hall.data?.Members ?? []).map((m) => m.CharacterId));
     const outcome = partnerIsVillager
-      ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
-      : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
+      ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask, chosenRace)
+      : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask, chosenRace);
 
     if (!outcome.ok) {
       hallBefore = null;
@@ -390,15 +407,16 @@
         {#if selectableCount === 0}
           <p class="dim tiny">
             Breeding Grounds level {SELECTION_UNLOCK_LEVELS[0]} lets you choose an
-            aptitude that always keeps the better parent's value.
+            aptitude that always grows.
           </p>
         {:else}
           <!-- One choice is a radio choice; toggleSelection already replaces
                the old pick at capacity 1, and a second tap clears it. -->
           <p class="dim tiny">
-            {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it keeps the
-            better parent's value; the rest roll. Every aptitude has a
-            {upMutationPercent(breedingLevel)}% chance of +1.
+            {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it takes the
+            better parent's value and <strong>always grows</strong> (+1, or +2 far below your
+            ceiling) until the ceiling. The rest roll. Every aptitude has a
+            {upMutationPercent(breedingLevel)}% chance of one more.
           </p>
 
           <div class="apt-choices">
@@ -429,6 +447,26 @@
 
       {#if preview}
         {@const p = preview}
+        {#if raceOptions.length > 1}
+          <fieldset class="race-pick" data-testid="child-race-picker">
+            <legend>The child is born</legend>
+            <div class="race-choices">
+              {#each raceOptions as race (race)}
+                <label class="race-choice" class:on={chosenRace === race}>
+                  <input
+                    type="radio"
+                    name="child-race"
+                    checked={chosenRace === race}
+                    onclick={() => (childRace = race)}
+                  />
+                  <RaceIcon raceId={race} />
+                  <span>{raceName(race)}</span>
+                </label>
+              {/each}
+            </div>
+            <p class="dim tiny">Aptitudes and traits carry over whichever race you pick.</p>
+          </fieldset>
+        {/if}
         <ChildForecast preview={p} selectionMask={effectiveMask} {heroName} {partnerName} />
 
         <!-- The price, the cost that matters most, and the button: together
@@ -707,5 +745,38 @@
     .apt-choice {
       transition: none;
     }
+  }
+
+  .race-pick {
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin: 0 0 0.75rem;
+  }
+  .race-pick legend {
+    font-weight: 600;
+    padding: 0 0.25rem;
+  }
+  .race-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .race-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    cursor: pointer;
+  }
+  .race-choice.on {
+    border-color: var(--accent, #d4a64a);
+    background: color-mix(in srgb, var(--accent, #d4a64a) 14%, transparent);
+  }
+  .race-choice input {
+    margin: 0;
   }
 </style>

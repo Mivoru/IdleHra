@@ -281,17 +281,13 @@
           the cap is allowed &mdash; the same ranking settles it, and a mark that
           loses says <em>Kept - over the cap</em>.
         </p>
-        <!-- Modul: FIELDING IS ALSO HOW A CHILD GROWS UP, and nothing said so.
-             ProcessAgeSlot only ages the three played slots and a newborn is
-             put at the END of the roster, so a bred child sits at AgePhase 0
-             forever until it is fielded. -->
+        <!-- Modul: CHILDREN GROW UP ON THEIR OWN since 2026-11-13
+             (ChildGrowth). Fielding used to be the only way a newborn aged. -->
         <p class="dim tiny">
-          <strong>Fielding</strong> (tap a row) is also how a bred child grows up:
-          only a played slot that is working ages, so a child on the bench or idle
-          in a slot stays a child. Give a fielded one an hour of work (offline
-          counts) to reach Adult and it can be a parent
-          itself &mdash; that is the only gate. How many slots you may use is set
-          by the Town Hall.
+          <strong>Fielding</strong> (tap a row) puts an ancestor to work in one of
+          your slots. A bred child grows up on its own within an hour of birth,
+          online or away, and can then be a parent itself. Adults age only while
+          they work. How many slots you may use is set by the Town Hall.
         </p>
         {#if data}
           <p class="dim tiny">
