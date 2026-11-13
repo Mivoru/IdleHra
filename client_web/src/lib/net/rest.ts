@@ -46,6 +46,7 @@ export const queryKeys = {
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
   deepestBoard: ['meta', 'leaderboard', 'deepest'] as const,
   lifeRecordBoard: ['meta', 'leaderboard', 'lives'] as const,
+  bloodlineWeekBoard: ['meta', 'leaderboard', 'bloodline'] as const,
   journey: ['player', 'journey'] as const,
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
@@ -2220,6 +2221,24 @@ export interface JourneyRow {
 
 export function fetchJourney(): Promise<JourneyRow[]> {
   return authedGet<{ Rows: JourneyRow[] }>('/api/v1/player/journey').then((r) => r?.Rows ?? []);
+}
+
+/** One row of the Bloodline week board (BloodlineWeekBoard on the server). */
+export interface BloodlineWeekRow {
+  Rank: number;
+  PlayerId: number;
+  Name: string;
+  Title: string | null;
+  /** The best child's name; may be empty (name it by race). */
+  ChildName: string;
+  ChildRaceId: number;
+  AptitudeTotal: number;
+  LowestAptitude: number;
+  ChildrenThisWeek: number;
+}
+
+export function fetchBloodlineWeekBoard(): Promise<BloodlineWeekRow[]> {
+  return authedGet<{ Entries: BloodlineWeekRow[] }>('/api/v1/leaderboard/bloodline').then((r) => r?.Entries ?? []);
 }
 
 export function fetchLifeRecordBoard(): Promise<LifeRecordBoardRow[]> {

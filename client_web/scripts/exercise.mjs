@@ -3752,6 +3752,20 @@ await go('The Delve');
         `${livesRows} rows, server ${livesApi.length}`,
       );
 
+      // --- the Bloodline week board (2026-11-13): the same contract - the
+      // screen draws every row the server ranks, or the empty line.
+      await page.getByRole('tab', { name: /Best blood this week/i }).first().click();
+      await page.getByTestId('bloodline-board').waitFor({ timeout: 6000 }).catch(() => {});
+      const bloodApi = (await apiGet('/api/v1/leaderboard/bloodline'))?.Entries ?? [];
+      await page.waitForTimeout(800);
+      const bloodRows = await page.locator('[data-testid="bloodline-board"] .board li').count();
+      const bloodEmpty = /No child has been born/.test(await page.getByTestId('bloodline-board').innerText().catch(() => ''));
+      record(
+        'the Bloodline week board draws the server\'s ranking',
+        bloodApi.length === 0 ? bloodEmpty : bloodRows === bloodApi.length,
+        `${bloodRows} rows, server ${bloodApi.length}${bloodApi[0] ? `, top ${bloodApi[0].Name} ${bloodApi[0].AptitudeTotal}` : ''}`,
+      );
+
       // --- a title: granted, worn, seen in the profile, and taken off -------
       const granted = await apiPostStatus('/api/v1/dev/titles/grant', { Slug: 'deep_10' });
       await go('The Delve');

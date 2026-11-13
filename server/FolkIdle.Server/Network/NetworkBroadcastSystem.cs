@@ -2412,6 +2412,13 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // The Bloodline week board (2026-11-13). Read-only SQL; pays nothing.
+            if (requestPath == "/api/v1/leaderboard/bloodline" && context.Request.HttpMethod == "GET")
+            {
+                await HandleBloodlineWeekBoard(context);
+                return;
+            }
+
             // The Fastest lives board (2026-11-13). Read-only SQL; pays nothing.
             if (requestPath == "/api/v1/leaderboard/lives" && context.Request.HttpMethod == "GET")
             {
@@ -8273,6 +8280,36 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Journey error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleBloodlineWeekBoard(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var rows = await FolkIdle.Server.Domain.Progression.BloodlineWeekBoard.TopAsync(db, GameClock.UtcNowOffset);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Entries = rows });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Bloodline week board error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally

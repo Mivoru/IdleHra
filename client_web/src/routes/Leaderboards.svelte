@@ -9,7 +9,9 @@
     fetchGuildLeaderboard,
     fetchDeepestBoard,
     fetchLifeRecordBoard,
+    fetchBloodlineWeekBoard,
   } from '../lib/net/rest';
+  import { raceName } from '../lib/ui/races';
   import { formatDuration } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import Skeleton from '../lib/ui/Skeleton.svelte';
@@ -26,7 +28,7 @@
     Its own tab rather than a third panel, because it is a different question
     ("how far down did anyone get this week") and it resets weekly.
   */
-  let tab = $state<'standing' | 'deepest' | 'lives'>('standing');
+  let tab = $state<'standing' | 'deepest' | 'lives' | 'bloodline'>('standing');
   const deepest = createQuery(() => ({
     queryKey: queryKeys.deepestBoard,
     queryFn: fetchDeepestBoard,
@@ -37,6 +39,14 @@
     queryKey: queryKeys.lifeRecordBoard,
     queryFn: fetchLifeRecordBoard,
     enabled: tab === 'lives',
+  }));
+  // The Bloodline week board (2026-11-13): each account's best child bred
+  // since Monday. Glory only - breeding's weekly race between the few
+  // players there are, on their own time.
+  const bloodline = createQuery(() => ({
+    queryKey: queryKeys.bloodlineWeekBoard,
+    queryFn: fetchBloodlineWeekBoard,
+    enabled: tab === 'bloodline',
   }));
 </script>
 
@@ -51,11 +61,46 @@
       { value: 'standing', label: 'Standing' },
       { value: 'deepest', label: 'Deepest this week' },
       { value: 'lives', label: 'Fastest lives' },
+      { value: 'bloodline', label: 'Best blood this week' },
     ]}
   />
 </div>
 
-{#if tab === 'lives'}
+{#if tab === 'bloodline'}
+  <div class="grid">
+    <section class="panel deepest" data-testid="bloodline-board">
+      <h2>Best blood this week</h2>
+      <p class="dim tiny">
+        Each bloodline's best child born since Monday, by its four aptitudes added up, then by its weakest one.
+        Glory only: this board pays nothing, and it starts again every week.
+      </p>
+      {#if bloodline.isPending}
+        <Skeleton />
+      {:else if bloodline.isError}
+        <p class="warn">Could not load the leaderboard.</p>
+        <button class="retry" onclick={() => bloodline.refetch()}>Retry</button>
+      {:else if (bloodline.data ?? []).length === 0}
+        <p class="dim">No child has been born this week yet.</p>
+      {:else}
+        <ol class="board">
+          {#each bloodline.data ?? [] as row (row.PlayerId)}
+            <li class:self={row.PlayerId === connection.currentPlayerId}>
+              <span class="rank dim">#{row.Rank}</span>
+              <button class="who who-btn" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>
+                <PlayerAvatar playerId={row.PlayerId} size="sm" />
+                {row.Name}
+                <PlayerTitle playerId={row.PlayerId} />
+              </button>
+              <span class="xp" title="{row.ChildrenThisWeek} bred this week">
+                {row.ChildName || raceName(row.ChildRaceId)}: {row.AptitudeTotal} (lowest {row.LowestAptitude})
+              </span>
+            </li>
+          {/each}
+        </ol>
+      {/if}
+    </section>
+  </div>
+{:else if tab === 'lives'}
   <div class="grid">
     <section class="panel deepest" data-testid="lives-board">
       <h2>Fastest lives</h2>
