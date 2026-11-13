@@ -823,6 +823,58 @@ body::before {
 }
 
 
+/* Modul: EMBERS OVER THE BATTLEFIELD AND THE FORGE (2026-11-13, owner: "more
+   effects"). A few sparks drift up the painted scene on Combat and the Make
+   section. One fixed pseudo-element, two layers of dots, animated by transform
+   only - the compositor moves it, the main thread never repaints it - and it
+   sits under all content (z-index -1, after body::before). Off for reduced
+   motion. The tile is twice the viewport tall so the loop has no seam. */
+:root[data-section='combat'] body::after,
+:root[data-section='make'] body::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 200vh;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(255 180 90 / 0.85) 0 2px, rgb(255 120 40 / 0.25) 3px 5px, transparent 6px),
+    radial-gradient(circle at 37% 64%, rgb(255 200 120 / 0.75) 0 1.5px, rgb(255 140 60 / 0.2) 2.5px 4px, transparent 5px),
+    radial-gradient(circle at 71% 33%, rgb(255 160 70 / 0.8) 0 2.5px, rgb(255 110 30 / 0.22) 3.5px 6px, transparent 7px),
+    radial-gradient(circle at 88% 81%, rgb(255 190 110 / 0.75) 0 1.5px, rgb(255 140 60 / 0.2) 2.5px 4px, transparent 5px),
+    radial-gradient(circle at 54% 9%, rgb(255 170 80 / 0.7) 0 2px, rgb(255 120 40 / 0.2) 3px 5px, transparent 6px),
+    radial-gradient(circle at 23% 47%, rgb(255 210 140 / 0.7) 0 1.5px, rgb(255 150 70 / 0.18) 2.5px 4px, transparent 5px),
+    radial-gradient(circle at 6% 72%, rgb(255 170 80 / 0.7) 0 2px, rgb(255 120 40 / 0.2) 3px 5px, transparent 6px),
+    radial-gradient(circle at 95% 22%, rgb(255 190 100 / 0.7) 0 1.5px, rgb(255 130 50 / 0.2) 2.5px 4px, transparent 5px);
+  background-size: 100% 50%;
+  background-repeat: repeat;
+  opacity: 0.8;
+  animation: folk-embers 26s linear infinite;
+  will-change: transform;
+}
+
+:where(:root[data-scheme='light']) body::after {
+  display: none;
+}
+
+@keyframes folk-embers {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-section] body::after {
+    animation: none;
+    display: none;
+  }
+}
+
 /* --- secondary text ------------------------------------------------------ */
 
 /* Modul: ONE DEFINITION OF "QUIET TEXT" (design wave 2, 2026-10-14).
