@@ -972,6 +972,8 @@
     margin: -12px 0;
     padding: 0 2px;
     background: none;
+    background-image: none;
+    box-shadow: none;
     border: none;
     color: inherit;
     font: inherit;
