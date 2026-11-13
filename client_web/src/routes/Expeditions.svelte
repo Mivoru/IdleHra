@@ -28,11 +28,31 @@
   });
 
   let pickedId = $state('');
-  let pickedHours = $state(12);
+  // Remembered per browser (2026-11-14): an endgame player sends the same
+  // trip every check-in. A convenience only - unreadable storage just falls
+  // back to 12 h, unprovisioned.
+  const HOURS_KEY = 'folkidle.expedition.hours';
+  const PROVISION_KEY = 'folkidle.expedition.provision';
+  function readStored(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  let pickedHours = $state([4, 8, 12].includes(Number(readStored(HOURS_KEY))) ? Number(readStored(HOURS_KEY)) : 12);
   let busy = $state(false);
   // Provisions (2026-11-13): gold for a better haul, priced by the server in
   // hours of this player's own income; the toggle stays as set between sends.
-  let provision = $state(false);
+  let provision = $state(readStored(PROVISION_KEY) === '1');
+  $effect(() => {
+    try {
+      localStorage.setItem(HOURS_KEY, String(pickedHours));
+      localStorage.setItem(PROVISION_KEY, provision ? '1' : '0');
+    } catch {
+      // private window or blocked storage: the choice simply is not kept
+    }
+  });
 
   const data = $derived(board.data ?? null);
   const freeSlots = $derived(data ? data.Slots - data.Active.length : 0);

@@ -6256,8 +6256,9 @@ if (want('ancestors')) {
   if (before && before.Candidates.length > 0 && before.Active.length < before.Slots) {
     const target = before.Candidates[0];
     // Provisions (2026-11-13): this trip goes provisioned, so the gold leaves
-    // and the row is marked. The toggle is component state; the reload below
-    // resets it, so the bulk trip after goes unprovisioned.
+    // and the row is marked. The toggle is remembered per browser (2026-11-14),
+    // so it is switched back off right after, and the bulk trips below go
+    // unprovisioned.
     const goldBefore = (await apiGet('/api/v1/player/statistics').catch(() => null))?.Gold ?? 0;
     const provisionCost = before.ProvisionCosts?.[before.Durations.indexOf(12)] ?? 0;
     await page.getByTestId('expedition-provision').click().catch(() => {});
@@ -6269,6 +6270,11 @@ if (want('ancestors')) {
     record('a provisioned expedition takes its gold and is marked provisioned',
       provisionCost > 0 && away?.Provisioned === true && goldAfter <= goldBefore - provisionCost,
       `cost ${provisionCost}, provisioned ${away?.Provisioned}, gold ${goldBefore} -> ${goldAfter}`);
+    const toggle = page.getByTestId('expedition-provision');
+    if ((await toggle.count()) > 0 && (await toggle.getAttribute('aria-pressed')) === 'true') await toggle.click().catch(() => {});
+    record('the provisions toggle switches back off after a provisioned send',
+      (await toggle.count()) === 0 || (await toggle.getAttribute('aria-pressed')) === 'false',
+      `aria-pressed ${(await toggle.count()) > 0 ? await toggle.getAttribute('aria-pressed') : 'n/a'}`);
     const hall = await apiGet('/api/v1/ancestors/hall').catch(() => null);
     const inHall = (hall?.Members ?? []).find((m) => m.CharacterId === target.CharacterId);
     record('sending an ancestor puts them away and the Hall says so', away !== null && inHall?.IsAway === true,
