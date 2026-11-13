@@ -919,7 +919,20 @@ Design: `docs/design/LINEAGE_REBIRTH_OVERHAUL.md` (sections 1-9) and
   return at `/api/v1/expeditions/dev/return` - routes under `/api/v1/dev/*`
   are taken by another handler first). Away = refused by
   `HallOfAncestorsEngine.AssignSlotAsync` and resting for breeding.
-  `PlayerRecords.ExpeditionsClaimed` drives the titles.
+  `PlayerRecords.ExpeditionsClaimed` drives the titles. Gold sinks on it:
+  `PlayerRecords.ExpeditionSlotsBought` (two slots, 24 h / 72 h of own
+  income) and `Expeditions.Provisioned` (half the trip in hours of income,
+  +25 on the better chest), both priced from `LootChestEngine.
+  GoldPerMinuteAsync` inside the transaction and logged as
+  `GoldSpendCategory.Expedition`; the REST path enqueues `ReloadState` so the
+  live wallet follows the database debit.
+- **Look (client)**: `sections.ts` maps every screen to a section and sets
+  `--scene` (and `--scene-underground`) on `<html>`; `app.css` paints
+  `Backgrounds/scene_<section>.webp` on the fixed `body::before` layer under a
+  wash, dyes `.panel` with `--section`, and masks a folk band under the header.
+  `ScreenBanner` strips (`banner_*.webp`) head 11 screens. All art is Gemini
+  (`tools/assets/gemini.json`); sprites are served from the server's
+  `bin/Sprites`, so a local server must be rebuilt after adding one.
 - **Home "Your road"**: `JourneyBoard` behind `GET /api/v1/player/journey`;
   the Dungeon row's hint is a no-dodge forecast while online.
 - **Dungeon forecast**: one `DungeonRunner` run with `challenges: false` per
