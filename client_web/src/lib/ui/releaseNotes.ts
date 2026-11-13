@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.63.0',
+    date: '2026-11-13',
+    headline: 'The Hall of Ancestors tells you when your best blood is sitting on the bench.',
+    sections: [
+      {
+        title: 'Hall of Ancestors',
+        items: [
+          'Aptitudes only count on the character who plays. When a grown ancestor clearly out-bloods whoever stands in slot 1, the Hall now says so and takes you to them in one tap.',
+          'The aptitude columns read St, Sk, En and Fo, so Strength and Skill no longer share a letter.',
+          'A child on the roster now says "Growing up" - children grow up on their own.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.62.0',
     date: '2026-11-13',
     headline: 'A new leaderboard: Fastest lives.',

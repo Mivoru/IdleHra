@@ -6162,6 +6162,31 @@ await go('Ancestors');
     );
   }
 
+  // Your best blood on the bench (2026-11-13): the nudge appears exactly when
+  // the strongest grown member beats slot 1's total by the nudge's gap, and
+  // tapping its name opens that member's sheet (where fielding lives).
+  {
+    const members = await hallNow();
+    const total = (m) => m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
+    const slotOne = members.find((m) => m.PlayableSlot === 0);
+    const best = members.filter((m) => m.AgePhase >= 1).sort((a, b) => total(b) - total(a))[0];
+    const expected = Boolean(slotOne && best && best.CharacterId !== slotOne.CharacterId && total(best) - total(slotOne) >= 8);
+    const nudge = page.getByTestId('hall-bench-nudge');
+    const shown = (await nudge.count()) > 0;
+    let opened = !expected;
+    if (expected && shown) {
+      await nudge.locator('button.inline-link').click();
+      await page.waitForTimeout(400);
+      opened = (await hallSheet.count()) > 0;
+      await closeHallSheet();
+    }
+    record(
+      'the Hall nudges toward the best blood on the bench exactly when it should',
+      shown === expected && opened,
+      `expected ${expected}, shown ${shown}, sheet ${opened}${best ? `, best ${best.Name} ${total(best)} vs slot 1 ${slotOne ? total(slotOne) : '-'}` : ''}`,
+    );
+  }
+
   // Modul: THE BRED CHILD'S OWN TRAITS, not just the preview that promised it.
   // `bredChildHadTrait` came from GET /api/v1/breeding/roster right after the
   // Breed click - server truth, rolled server-side - so this is checking that
