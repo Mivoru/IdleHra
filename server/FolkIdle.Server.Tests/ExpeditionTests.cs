@@ -122,5 +122,48 @@ namespace FolkIdle.Server.Tests
                 Assert.True(await db.PlayerTitles.AnyAsync(t => t.PlayerId == playerId && t.TitleSlug == "expedition_10"));
             }
         }
+
+        [Fact]
+        public void BoughtSlotsArePricedInHoursOfOwnIncome()
+        {
+            Assert.Equal(0, ExpeditionRules.SlotsFor(0, 2));
+            Assert.Equal(5, ExpeditionRules.SlotsFor(ExpeditionRules.ThirdSlotGroundsLevel, 2));
+            Assert.Equal(5, ExpeditionRules.SlotsFor(ExpeditionRules.ThirdSlotGroundsLevel, 9));
+            // 10,000 gold a minute: the 4th slot is a day of it, the 5th three days.
+            Assert.Equal(14_400_000L, ExpeditionRules.NextSlotPrice(0, 10_000));
+            Assert.Equal(43_200_000L, ExpeditionRules.NextSlotPrice(1, 10_000));
+            Assert.Equal(0L, ExpeditionRules.NextSlotPrice(2, 10_000));
+        }
+
+        [Fact]
+        public async Task BuyingASlotTakesItsGoldAndAddsTheSlot()
+        {
+            const long playerId = 960_117_003L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = playerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 2 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 1_000_000_000L });
+                await db.SaveChangesAsync();
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var before = await ExpeditionEngine.BoardAsync(db, playerId, 1_900_200_000L);
+                Assert.Equal(2, before.Slots);
+                Assert.True(before.NextSlotCost > 0);
+
+                var (result, price) = await ExpeditionEngine.BuySlotAsync(db, playerId);
+                Assert.Equal(ExpeditionSlotPurchase.Bought, result);
+                Assert.Equal(before.NextSlotCost, price);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var after = await ExpeditionEngine.BoardAsync(db, playerId, 1_900_200_000L);
+                Assert.Equal(3, after.Slots);
+                Assert.Equal(1, after.SlotsBought);
+                long gold = await db.CommodityRecords.AsNoTracking().Where(c => c.PlayerId == playerId && c.ItemId == "gold").Select(c => c.Quantity).SingleAsync();
+                Assert.True(gold < 1_000_000_000L);
+            }
+        }
     }
 }

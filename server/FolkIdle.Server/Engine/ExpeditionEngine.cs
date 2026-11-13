@@ -20,7 +20,9 @@ namespace FolkIdle.Server.Engine
     public sealed record ExpeditionCandidate(Guid CharacterId, string Name, int RaceId, int AptitudeTotal, int UpgradePct);
 
     public sealed record ExpeditionBoard(int Slots, int Region, int[] Durations, List<ExpeditionView> Active, List<ExpeditionCandidate> Candidates,
-        int Claimed = 0, string NextTitle = "", int NextTitleAt = 0);
+        int Claimed = 0, string NextTitle = "", int NextTitleAt = 0, int SlotsBought = 0, long NextSlotCost = 0, int NextSlotHours = 0);
+
+    public enum ExpeditionSlotPurchase { Bought, Maxed, NoGrounds, NotEnoughGold }
 
     public enum ExpeditionStartResult { Started, NoSlot, NotEligible, BadDuration, NoGrounds }
 
@@ -48,9 +50,21 @@ namespace FolkIdle.Server.Engine
         public static async Task<HashSet<Guid>> AwayIdsAsync(FolkIdleDbContext db, long playerId)
             => (await db.Expeditions.AsNoTracking().Where(e => e.PlayerId == playerId).Select(e => e.CharacterId).ToListAsync()).ToHashSet();
 
+        private static Task<int> BoughtAsync(FolkIdleDbContext db, long playerId)
+            => db.PlayerRecords.AsNoTracking().Where(p => p.Id == playerId).Select(p => p.ExpeditionSlotsBought).FirstOrDefaultAsync();
+
+        /// <summary>The next gold-bought slot's price for this player now (hours of their own income), or 0.</summary>
+        public static async Task<long> NextSlotPriceAsync(FolkIdleDbContext db, long playerId, int bought, int region)
+        {
+            if (bought >= ExpeditionRules.MaxBoughtSlots) return 0L;
+            double perMinute = await LootChestEngine.GoldPerMinuteAsync(db, playerId, region, GameClock.UtcNow);
+            return ExpeditionRules.NextSlotPrice(bought, perMinute);
+        }
+
         public static async Task<ExpeditionBoard> BoardAsync(FolkIdleDbContext db, long playerId, long nowEpoch)
         {
-            int slots = ExpeditionRules.SlotsFor(await GroundsLevelAsync(db, playerId));
+            int bought = await BoughtAsync(db, playerId);
+            int slots = ExpeditionRules.SlotsFor(await GroundsLevelAsync(db, playerId), bought);
             int region = await RegionAsync(db, playerId);
             var rows = await db.Expeditions.AsNoTracking().Where(e => e.PlayerId == playerId).OrderBy(e => e.Slot).ToListAsync();
             var names = await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId)
@@ -72,14 +86,16 @@ namespace FolkIdle.Server.Engine
 
             int claimedSoFar = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == playerId).Select(p => p.ExpeditionsClaimed).FirstOrDefaultAsync();
             var next = ExpeditionRules.TitleMilestones.FirstOrDefault(m => m.Count > claimedSoFar);
+            long nextCost = slots == 0 ? 0L : await NextSlotPriceAsync(db, playerId, bought, region);
+            int nextHours = bought < ExpeditionRules.MaxBoughtSlots ? ExpeditionRules.BoughtSlotPriceHours[bought] : 0;
             return new ExpeditionBoard(slots, region, ExpeditionRules.Durations, active, candidates,
-                claimedSoFar, next.Name ?? string.Empty, next.Count);
+                claimedSoFar, next.Name ?? string.Empty, next.Count, bought, nextCost, nextHours);
         }
 
         public static async Task<ExpeditionStartResult> StartAsync(FolkIdleDbContext db, long playerId, Guid characterId, int hours, long nowEpoch)
         {
             if (!ExpeditionRules.IsDuration(hours)) return ExpeditionStartResult.BadDuration;
-            int slots = ExpeditionRules.SlotsFor(await GroundsLevelAsync(db, playerId));
+            int slots = ExpeditionRules.SlotsFor(await GroundsLevelAsync(db, playerId), await BoughtAsync(db, playerId));
             if (slots == 0) return ExpeditionStartResult.NoGrounds;
 
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -156,6 +172,41 @@ namespace FolkIdle.Server.Engine
             }
             await tx.CommitAsync();
             return new ExpeditionClaim(true, tier.ToString(), row.Region, string.Empty, claimed, title);
+        }
+
+        /// <summary>
+        /// Buys the next expedition slot with gold, at the price the board quotes
+        /// (re-priced here, inside the transaction, never trusted from the client).
+        /// The caller reloads the live session so the wallet shows the debit.
+        /// </summary>
+        public static async Task<(ExpeditionSlotPurchase Result, long Price)> BuySlotAsync(FolkIdleDbContext db, long playerId)
+        {
+            if (ExpeditionRules.SlotsFor(await GroundsLevelAsync(db, playerId)) == 0) return (ExpeditionSlotPurchase.NoGrounds, 0L);
+            int region = await RegionAsync(db, playerId);
+
+            await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var player = await db.PlayerRecords
+                .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId).SingleOrDefaultAsync();
+            if (player == null || player.ExpeditionSlotsBought >= ExpeditionRules.MaxBoughtSlots)
+            {
+                await tx.SafeRollbackAsync();
+                return (ExpeditionSlotPurchase.Maxed, 0L);
+            }
+            long price = await NextSlotPriceAsync(db, playerId, player.ExpeditionSlotsBought, region);
+            var gold = await db.CommodityRecords
+                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                .SingleOrDefaultAsync();
+            if (gold == null || gold.Quantity < price)
+            {
+                await tx.SafeRollbackAsync();
+                return (ExpeditionSlotPurchase.NotEnoughGold, price);
+            }
+            gold.Quantity -= price;
+            player.ExpeditionSlotsBought += 1;
+            await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Expedition, price);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return (ExpeditionSlotPurchase.Bought, price);
         }
 
         /// <summary>DEV TOOLS ONLY (exercise.mjs): brings every expedition of this player back now.</summary>
