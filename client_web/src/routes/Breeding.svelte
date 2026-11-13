@@ -15,6 +15,7 @@
     fetchTraits,
     fetchAncestorsHall,
     fetchRebirthPreview,
+    fetchBreedingSuggestions,
   } from '../lib/net/rest';
   import {
     executeBreeding,
@@ -133,6 +134,24 @@
       people: sortForPicker(candidates.map((c) => partnerCharacterPerson(hero, c, nowSeconds, catalogue))),
     },
   ]);
+
+  // Modul: BEST MATCHES (2026-11-13). Choosing a partner meant opening the
+  // preview for each candidate in turn and comparing bands by eye, while
+  // dodging relatives nothing marked. The server ranks the eligible partners
+  // by the child they would make (BreedingMatchmaker, from the same bands the
+  // forecast draws) and says which aptitudes to tick; one tap takes both.
+  const suggestions = createQuery(() => ({
+    queryKey: queryKeys.breedingSuggest(heroId),
+    queryFn: () => fetchBreedingSuggestions(heroId),
+    enabled: heroId !== '' && breedingLevel > 0,
+  }));
+
+  function takeSuggestion(key: string, mask: number) {
+    partnerKey = key;
+    const order: number[] = [];
+    for (let i = 0; i < APTITUDES.length; i++) if ((mask & (1 << i)) !== 0) order.push(i);
+    selectionOrder = order;
+  }
 
   const heroName = $derived(heroGroups[0].people.find((p) => p.key === 'c:' + heroId)?.name ?? 'your hero');
   const partnerName = $derived(
@@ -383,6 +402,37 @@
           emptyText="Nobody to choose from here."
         />
       </div>
+
+      {#if heroId !== '' && suggestions.data && suggestions.data.length > 0}
+        <div class="matches" data-testid="breeding-matches">
+          <strong class="small">Best matches for {heroName}</strong>
+          <ul>
+            {#each suggestions.data as s (s.Key)}
+              <li>
+                <button
+                  type="button"
+                  class="match"
+                  class:on={partnerKey === s.Key}
+                  data-testid="breeding-match"
+                  onclick={() => takeSuggestion(s.Key, s.SelectionMask)}
+                >
+                  <RaceIcon raceId={s.RaceId} />
+                  <span class="who">
+                    <strong>{s.Name}</strong>
+                    <span class="dim tiny">
+                      {s.IsVillager ? 'newcomer' : 'your line'}{#if s.IsRelated} &middot; <span class="risk">related</span>{/if}
+                    </span>
+                  </span>
+                  <span class="score" title="Expected aptitude total of the child (lowest possible in brackets)">
+                    ~{Math.round(s.ExpectedTotal)} <span class="dim tiny">({s.ChildFloorTotal}+)</span>
+                  </span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+          <p class="dim tiny">Ranked by the child they would make. A tap picks the partner and the aptitudes to breed for.</p>
+        </div>
+      {/if}
 
       <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. The Inn
            figure is bestVillagerAptitudeFor, pinned to the server by
@@ -778,5 +828,45 @@
   }
   .race-choice input {
     margin: 0;
+  }
+
+  .matches {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0.25rem 0 0.5rem;
+  }
+  .matches ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .match {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .match.on {
+    border-color: var(--accent, #d4a64a);
+    background: color-mix(in srgb, var(--accent, #d4a64a) 12%, transparent);
+  }
+  .match .who {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+  .match .score {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 </style>

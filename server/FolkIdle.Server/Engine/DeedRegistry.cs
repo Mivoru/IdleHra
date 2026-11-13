@@ -42,7 +42,13 @@ namespace FolkIdle.Server.Engine
         int DelveDeepestFloor = 0,
         int BestHit = 0,
         // Task 88: rebirths taken at RebirthRules.RenownLevel or above.
-        int RenownedRebirths = 0);
+        int RenownedRebirths = 0,
+        // 2026-11-13, chapter VI (The Long Blood): the bloodline's own records.
+        int BestSingleAptitude = 0,
+        int BestLowestAptitude = 0,
+        int RacesAtThirty = 0,
+        int DeepestGeneration = 0,
+        int RebirthCount = 0);
 
     /// <summary>
     /// A deed nobody is told about until it is done (task 57). Shown as "???"
@@ -113,7 +119,7 @@ namespace FolkIdle.Server.Engine
     /// </summary>
     public static class DeedRegistry
     {
-        public const int ChapterCount = 5;
+        public const int ChapterCount = 6;
 
         /// <summary>Skill points a single Seal is worth, every season.</summary>
         public const int SkillPointsPerSeal = 2;
@@ -190,6 +196,8 @@ namespace FolkIdle.Server.Engine
         {
             if (chapterIndex <= 1) return true;
             if (chapterIndex <= LastLoopChapter) return (doneMask & 1) != 0;
+            // Chapter VI (The Long Blood, 2026-11-13) follows the finale.
+            if (chapterIndex > FinaleChapter) return (doneMask & (1 << (FinaleChapter - 1))) != 0;
 
             int loopsDone = 0;
             for (int c = FirstLoopChapter; c <= LastLoopChapter; c++)
@@ -204,6 +212,7 @@ namespace FolkIdle.Server.Engine
         {
             if (chapterIndex <= 1) return string.Empty;
             if (chapterIndex <= LastLoopChapter) return $"Opens when {Chapters[0].Title} is finished.";
+            if (chapterIndex > FinaleChapter) return $"Opens when {Chapters[FinaleChapter - 1].Title} is finished.";
             return $"Opens when two of {Chapters[1].Title}, {Chapters[2].Title} and {Chapters[3].Title} are finished.";
         }
 
@@ -366,6 +375,33 @@ namespace FolkIdle.Server.Engine
                     new("epic-child", "Breed an epic child",
                         "A 5% roll, +1 to all four aptitudes and a crown on the portrait. This one is luck, and it is meant to be.",
                         "breeding", 1, c => Math.Min(c.EpicChildrenBred, 1)),
+                }),
+
+                // VI - THE LONG BLOOD (2026-11-13). The endgame list: the two
+                // twenty-rebirth accounts had finished everything else. Each
+                // deed is a step of the bloodline climb the lineage overhaul made
+                // reachable (a selected aptitude always grows to the ceiling,
+                // any two races pair). Opens when the Ledger is finished.
+                new DeedChapter(6, "The Long Blood", "A Seal", new List<Deed>
+                {
+                    new("aptitude-thirty", "Breed an aptitude to 30",
+                        "Past the village's 20. It takes a rebirth or more to open the ceiling that far.",
+                        "breeding", 30, c => Math.Min(c.BestSingleAptitude, 30)),
+                    new("aptitude-forty", "Breed an aptitude to 40",
+                        "Fourteen rebirths of ceiling, and a line that kept growing into it.",
+                        "breeding", 40, c => Math.Min(c.BestSingleAptitude, 40)),
+                    new("perfect-blood", "Breed 50 in all four aptitudes",
+                        "The counter is the best lowest aptitude in your Hall. Twenty rebirths open the ceiling; selection and patience fill it.",
+                        "breeding", 50, c => Math.Min(c.BestLowestAptitude, 50)),
+                    new("every-race", "Hold every race at 30",
+                        "One member of each of the six races with all four aptitudes at 30 or more. Any two races may marry.",
+                        "breeding", 6, c => Math.Min(c.RacesAtThirty, 6)),
+                    new("ten-generations", "Breed a tenth generation",
+                        "Ten births from a founder, parent to child.",
+                        "breeding", 10, c => Math.Min(c.DeepestGeneration, 10)),
+                    new("twenty-rebirths", "Be reborn twenty times",
+                        "The rebirth that opens the bloodline's last point.",
+                        "progression", 20, c => Math.Min(c.RebirthCount, 20)),
                 }),
             };
         }

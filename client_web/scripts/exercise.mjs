@@ -5639,6 +5639,22 @@ await go('Breeding');
     groups.join(' | ') || 'no groups',
   );
 
+  // Modul: BEST MATCHES (2026-11-13). The server ranks the hero's eligible
+  // partners (BreedingMatchmaker); a tap must pick the partner and draw the
+  // forecast - a list that renders but sets nothing is this project's
+  // favourite shipped defect. Read-only: nothing is bred here.
+  const matchRows = page.getByTestId('breeding-match');
+  await matchRows.first().waitFor({ timeout: 6000 }).catch(() => {});
+  const matchCount = await matchRows.count();
+  record('Best matches lists partners for the chosen hero', matchCount > 0, `${matchCount} matches`);
+  if (matchCount > 0) {
+    await matchRows.first().click();
+    await page.getByTestId('child-forecast').waitFor({ timeout: 6000 }).catch(() => {});
+    const forecastShown = (await page.getByTestId('child-forecast').count()) > 0;
+    const picked = await matchRows.first().evaluate((n) => n.classList.contains('on'));
+    record('a tap on a match picks the partner and draws the forecast', forecastShown && picked, `forecast ${forecastShown}, picked ${picked}`);
+  }
+
   // The screen has to say what the Inn and the Grounds each buy, or the two
   // levers are invisible and a player cannot tell why their line has stalled.
   record(
@@ -5848,18 +5864,22 @@ await go('Breeding');
     );
 
     if (aptCount === 4) {
+      // Capped at what the Grounds permits (1/2/3 at Grounds 1/4/7 since
+      // 2026-11-13, never all four) - ticking past the cap must SWAP the
+      // oldest pick rather than add a fifth or silently do nothing.
       await aptBoxes.first().check();
       await page.waitForTimeout(200);
       const checked = await page.locator('.apt-choice input:checked').count();
-      // Capped at what the Grounds permits - checking a second must SWAP
-      // rather than silently do nothing, which is the worse of the two.
-      await aptBoxes.nth(1).check();
-      await page.waitForTimeout(200);
-      const afterSecond = await page.locator('.apt-choice input:checked').count();
+      for (let i = 1; i < 4; i++) {
+        await aptBoxes.nth(i).check();
+        await page.waitForTimeout(150);
+      }
+      const afterAll = await page.locator('.apt-choice input:checked').count();
+      const lastOn = await aptBoxes.nth(3).isChecked();
       record(
         'the selection is capped at what the Grounds permits',
-        checked >= 1 && afterSecond === checked,
-        `${checked} selected, still ${afterSecond} after checking another`,
+        checked >= 1 && afterAll >= 1 && afterAll <= 3 && lastOn,
+        `${checked} after one tick, ${afterAll} after ticking all four, last tick kept ${lastOn}`,
       );
     }
 
@@ -6397,11 +6417,27 @@ await go('Ancestors');
   const portraits = await page.locator('[data-testid="rebirth-roadmap"] img').count();
   record(
     'the Rebirth screen draws the whole road, the next step marked',
-    before !== null && steps === before.MaxRebirths && next === `rebirth-step-${before.RebirthCount + 1}` && portraits >= 5,
+    // The road has gaps past twenty (title milestones), so "next" is the first
+    // step still ahead (2026-11-13).
+    before !== null && steps === before.Roadmap.length
+      && next === `rebirth-step-${(before.Roadmap.find((st) => st.Rebirth > before.RebirthCount) ?? { Rebirth: -1 }).Rebirth}`
+      && portraits >= 5,
     `${steps} steps, next ${next}, ${portraits} pictures`,
   );
   const vaultPrices = await page.locator('[data-testid="rebirth-vault-prices"] .price-chip').count();
   record('the Vault lists its price for every rarity', vaultPrices === 14, `${vaultPrices} rarities`);
+
+  // The Ancestral Boons (2026-11-13): three rows, the balance the server
+  // reports, and a buy button whose state matches the price. Not pressed -
+  // a rank bought cannot be handed back, and a check that spends fixture
+  // state passes once and fails forever.
+  const boonRows = await panel.locator('[data-testid="boon-row"]').count();
+  const boonShards = (await panel.locator('[data-testid="boons-shards"]').innerText().catch(() => '')).replace(/[^0-9]/g, '');
+  record(
+    'the Rebirth screen offers the three Ancestral Boons with the shard balance',
+    before !== null && boonRows === (before.Boons?.length ?? -1) && boonRows === 3 && boonShards === String(before.ShardBalance),
+    `${boonRows} boons, shards ${boonShards} (server ${before?.ShardBalance})`,
+  );
 
   const renown = await panel.locator('[data-testid="rebirth-renown"]').innerText().catch(() => '');
   record('the Rebirth panel shows Renown', /Renown \d+/.test(renown), renown.replace(/\s+/g, ' ').slice(0, 90));
@@ -6425,7 +6461,9 @@ await go('Ancestors');
     const pays = await panel.locator('[data-testid="rebirth-pays"]').innerText().catch(() => '');
     record(
       'the Rebirth panel says what a rebirth pays',
-      /skill points/.test(pays) && /% combat XP/.test(pays) && new RegExp(`of ${before?.MaxRebirths} taken`).test(pays),
+      // Unlimited since 2026-11-13: the panel says so, and quotes the shards.
+      /skill points/.test(pays) && /% combat XP/.test(pays) && /no last rebirth/.test(pays)
+        && pays.replace(/(\d)[,.\s\u00a0\u202f](?=\d{3}\b)/g, '$1').includes(`(${before?.ShardsEarned} at level`),
       pays.replace(/\s+/g, ' ').slice(0, 120),
     );
     const keepRow = panel.locator('.keep-row').first();

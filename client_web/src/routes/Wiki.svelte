@@ -1432,11 +1432,11 @@
 
           <h3 id="deeds">The Book of Deeds, and Seals</h3>
           <p class="dim small">
-            Five chapters of six deeds. Finishing a chapter awards a
+            Six chapters of six deeds. Finishing a chapter awards a
             <strong>Seal</strong>, and a Seal is worth
             <strong>+{SKILL_POINTS_PER_SEAL} skill points, given back after every rebirth</strong>
             — a second source of points, earned by exploring the game rather than by
-            levelling. Five Seals is +{SKILL_POINTS_PER_SEAL * 5} against a base of
+            levelling. Six Seals is +{SKILL_POINTS_PER_SEAL * 6} against a base of
             about a hundred. There is no claim button: a Seal is awarded the moment
             the server sees the chapter complete.
           </p>
@@ -1453,7 +1453,8 @@
             The live counters are on the <a href="#/progression">Progression screen</a>.
             The Village Road comes first. Once it is finished, Smiths, Hunters and
             Stewards are open together, and the Ledger of Legends opens when two of
-            those three are done - so no loop you dislike blocks the others.
+            those three are done - so no loop you dislike blocks the others. The Long
+            Blood, the bloodline's endgame, follows the Ledger.
           </p>
 
           <h3 id="hall">The Hall of Ancestors, and the cull</h3>

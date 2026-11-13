@@ -1885,6 +1885,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Modul: "who should my hero marry?" (2026-11-13) - the best
+            // partners for one hero, ranked by BreedingMatchmaker.
+            if (requestPath == "/api/v1/breeding/suggest" && context.Request.HttpMethod == "GET")
+            {
+                await HandleBreedingSuggest(context);
+                return;
+            }
+
             // Modul: the same question asked of THE standard pair - a
             // hero and somebody from the village. Separate because the
             // partner is a village_newcomers row, not a character.
@@ -7437,6 +7445,150 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Villager breeding preview error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class BreedingSuggestionResponse
+        {
+            /// <summary>The partner picker's key: "c:" + character id, or "v:" + newcomer id.</summary>
+            public string Key { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public bool IsVillager { get; set; }
+            public bool IsRelated { get; set; }
+            public int RaceId { get; set; }
+            /// <summary>Expected child aptitude total, one decimal.</summary>
+            public double ExpectedTotal { get; set; }
+            public int ChildFloorTotal { get; set; }
+            public int SelectionMask { get; set; }
+            public long CostGold { get; set; }
+        }
+
+        /// <summary>
+        /// The five best partners for a hero, eligible ones only: the same gate
+        /// the engine runs, the same relatedness, the same bands
+        /// (BreedingMatchmaker). Read-only.
+        /// </summary>
+        private async Task HandleBreedingSuggest(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!Guid.TryParse(query["heroId"], out Guid heroId) || heroId == Guid.Empty)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
+                await Engine.ChildGrowth.TrySettleAsync(db, playerId, nowEpoch);
+
+                var hero = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == heroId);
+                var heroLineage = await db.CharacterLineages.AsNoTracking().FirstOrDefaultAsync(l => l.CharacterId == heroId);
+                if (hero == null || heroLineage == null || hero.PlayerId != playerId)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                int rebirths = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == playerId).Select(p => p.RebirthCount).FirstOrDefaultAsync();
+                int ceiling = Engine.BreedingAptitudes.CeilingFor(rebirths);
+                int grounds = await BreedingGroundsLevelAsync(db, playerId);
+                int selectable = Engine.BreedingAptitudes.SelectableCount(grounds);
+                int discount = Engine.HearthTreeRegistry.ValueAtLevel(Engine.HearthTreeRegistry.Matchmaker, await Engine.HearthTreeRegistry.StoredLevelAsync(db, playerId, Engine.HearthTreeRegistry.Matchmaker));
+                var heroGate = ToGateParent(hero, heroLineage.GeneticVector);
+                int[] heroApt = heroLineage.AptitudeVector();
+
+                var results = new System.Collections.Generic.List<BreedingSuggestionResponse>();
+
+                // The player's own line: the roster gate (ordered by sex) and
+                // the relatedness the engine would find.
+                var others = await db.CharacterRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.Id != heroId && c.IsFemale != hero.IsFemale)
+                    .ToListAsync();
+                var otherIds = others.Select(o => o.Id).ToList();
+                var otherLineages = await db.CharacterLineages.AsNoTracking()
+                    .Where(l => otherIds.Contains(l.CharacterId))
+                    .ToDictionaryAsync(l => l.CharacterId);
+                foreach (var other in others)
+                {
+                    if (!otherLineages.TryGetValue(other.Id, out var lineage)) continue;
+                    var otherGate = ToGateParent(other, lineage.GeneticVector);
+                    var refusal = hero.IsFemale
+                        ? Engine.BreedingGateRules.CheckPair(otherGate, heroGate, nowEpoch)
+                        : Engine.BreedingGateRules.CheckPair(heroGate, otherGate, nowEpoch);
+                    if (refusal != Engine.BreedingRefusal.None) continue;
+
+                    bool related = await Engine.BreedingRelatedness.AreRelatedAsync(db, heroLineage, lineage);
+                    var match = Engine.BreedingMatchmaker.Score(heroApt, lineage.AptitudeVector(), ceiling, related, selectable);
+                    results.Add(new BreedingSuggestionResponse
+                    {
+                        Key = "c:" + other.Id,
+                        Name = other.Name,
+                        IsVillager = false,
+                        IsRelated = related,
+                        RaceId = new GeneticVector(lineage.GeneticVector).LocusRace.Dominant,
+                        ExpectedTotal = match.Score / 10.0,
+                        ChildFloorTotal = match.ChildFloorTotal,
+                        SelectionMask = match.SelectionMask,
+                        CostGold = Engine.BreedingEngine.CostFor(Math.Max(heroLineage.GenerationIndex, lineage.GenerationIndex), discount),
+                    });
+                }
+
+                // The village: never related, marries once.
+                var newcomers = await db.VillageNewcomers.AsNoTracking()
+                    .Where(v => v.PlayerId == playerId && !v.IsElder && v.IsFemale != hero.IsFemale)
+                    .ToListAsync();
+                foreach (var person in newcomers)
+                {
+                    var refusal = Engine.BreedingGateRules.CheckVillagerPair(heroGate, person.IsFemale, (byte)person.RaceId, person.IsElder, nowEpoch);
+                    if (refusal != Engine.BreedingRefusal.None) continue;
+                    var match = Engine.BreedingMatchmaker.Score(heroApt, person.AptitudeVector(), ceiling, false, selectable);
+                    results.Add(new BreedingSuggestionResponse
+                    {
+                        Key = "v:" + person.Id,
+                        Name = Engine.FolkNameRegistry.ForNewcomer(person.Id, person.IsFemale),
+                        IsVillager = true,
+                        IsRelated = false,
+                        RaceId = person.RaceId,
+                        ExpectedTotal = match.Score / 10.0,
+                        ChildFloorTotal = match.ChildFloorTotal,
+                        SelectionMask = match.SelectionMask,
+                        CostGold = Engine.BreedingEngine.CostFor(heroLineage.GenerationIndex, discount),
+                    });
+                }
+
+                // Best expected child first; a relative only ranks where its
+                // numbers put it (no sure growth already lowers them), and a
+                // tie goes to the higher floor - the surer child.
+                var top = results
+                    .OrderByDescending(r => r.ExpectedTotal)
+                    .ThenByDescending(r => r.ChildFloorTotal)
+                    .ThenBy(r => r.IsRelated)
+                    .Take(5)
+                    .ToList();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, top);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Breeding suggest error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

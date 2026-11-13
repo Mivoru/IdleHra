@@ -394,6 +394,13 @@ export const DEED_CHAPTERS: readonly {
     about:
       'A renowned rebirth, five pieces of one set, level 100, Malakor down, a child raised and an epic child bred. Nobody finishes this in their first run.',
   },
+  {
+    index: 6,
+    title: 'The Long Blood',
+    reward: 'A Seal',
+    about:
+      'An aptitude at 30 and at 40, 50 in all four, every race at 30, a tenth generation and twenty rebirths. The endgame bloodline, opened when the Ledger is finished.',
+  },
 ];
 
 /** DeedRegistry.SkillPointsPerSeal. */

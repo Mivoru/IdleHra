@@ -68,6 +68,7 @@ export const queryKeys = {
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
   villagerBreedingPreview: (heroId: string, newcomerId: number) =>
     ['meta', 'breeding', 'preview', 'village', heroId, newcomerId] as const,
+  breedingSuggest: (heroId: string) => ['meta', 'breeding', 'suggest', heroId] as const,
   storeCatalog: ['shop', 'catalog'] as const,
   raceMastery: ['meta', 'raceMastery'] as const,
   guilds: ['social', 'guilds'] as const,
@@ -1731,6 +1732,29 @@ export function fetchBreedingPreview(paternalId: string, maternalId: string): Pr
  * from the village. A separate endpoint because the partner is a
  * village_newcomers row rather than a character.
  */
+/** One ranked partner for a hero (BreedingMatchmaker on the server, 2026-11-13). */
+export interface BreedingSuggestion {
+  /** The partner picker's key: 'c:<guid>' or 'v:<id>'. */
+  Key: string;
+  Name: string;
+  IsVillager: boolean;
+  IsRelated: boolean;
+  RaceId: number;
+  /** Expected child aptitude total with the suggested selection. */
+  ExpectedTotal: number;
+  /** The lowest total the child can come out with. */
+  ChildFloorTotal: number;
+  /** The aptitudes worth ticking for this pair. */
+  SelectionMask: number;
+  CostGold: number;
+}
+
+/** The five best eligible partners for a hero, best first. */
+export function fetchBreedingSuggestions(heroId: string): Promise<BreedingSuggestion[]> {
+  const query = new URLSearchParams({ heroId });
+  return authedGet<BreedingSuggestion[]>(`/api/v1/breeding/suggest?${query}`);
+}
+
 export function fetchVillagerBreedingPreview(
   heroId: string,
   newcomerId: number,

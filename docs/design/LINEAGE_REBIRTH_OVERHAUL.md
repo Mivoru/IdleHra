@@ -17,7 +17,7 @@ measurement behind it.
 | Past the village (20), an aptitude climbs about +0.2-0.33 a generation. That is 77-119 generations from 25 to 50 for ONE selected stat. The fourth stat can never be selected. | `BreedingClimbTests`, `BreedingAptitudes.Mutate` |
 | A pairing needs the same race. Villagers arrive spread evenly over all unlocked races: (pro)boss has 1-4 newcomers per race, Tomda 1-4. One strong line cannot carry into another race, so every race is its own breeding program with its own inbreeding problem. | `village_newcomers` grouped by race; `BreedingGateRules.RaceMismatch` |
 | A child grows up only while it works in one of the three slots (owner rule 2026-10-21, for adults' aging). So every newborn takes a working slot away for an hour before it can breed. | `SimulationEngine.ProcessAgeSlot` |
-| Legacy Shards are paid at every rebirth (40k-55k banked by the top three accounts) and **the web client has no way to spend them**. The server's three perks (XP, gold, combat speed; 50 ranks each, 20+8r shards) are applied live and are not applied offline. `LegacyPerks = 0` on every account. | `PlayerLegacyLedgers`, `LegacyPerkResolver`, grep of client_web |
+| Legacy Shards are paid at every rebirth (40k-55k banked by the top three accounts) and **the web client has no way to spend them**. The server's three perks (XP, gold, combat speed; 50 ranks each, 20+8r shards) are applied live and offline (shared helpers). `LegacyPerks = 0` on every account. | `PlayerLegacyLedgers`, `LegacyPerkResolver`, grep of client_web |
 | Rebirth is capped at 20, and everything except the bloodline ceiling stops at 10. Both 20-rebirth accounts can never rebirth again. | `RebirthRules.MaxRebirths`, `RewardedRebirths` |
 | The genome's Speed/Crit/Yield loci are bred and stored but read by nothing. | `CharacterLineageRegistry` comment, grep |
 
@@ -108,8 +108,8 @@ wired live. What was missing: a screen, an offline path, and sane numbers.
   and +50% combat speed tonight with what they already hold.
   New costs are geometric and ranks are capped lower (see section 6 for the
   numbers and the measurement).
-- **Applied offline as well as live**, through one helper, so the two cannot
-  drift.
+- Already applied offline as well as live (the kill, gold and damage helpers
+  are shared), so nothing to change there.
 - **A Boons panel** on the Rebirth screen: balance, each boon's rank, effect
   and next price.
 
@@ -151,6 +151,30 @@ They give the 20-rebirth players a concrete list for the new climb.
   lives in the session payload. The promotion must update the payload as well
   as the row, or the session keeps treating it as a child.
 
-## 6. Numbers
+## 6. Numbers (as built)
 
-Filled in as each part is built and measured. See the sections below.
+| Lever | Value | Where |
+|---|---|---|
+| Sure growth of a selected aptitude | +1, +2 while 10+ below the limit | `BreedingAptitudes.SureGrowth` |
+| Catch-up of an unselected aptitude | 50% chance of +1 while 10+ below | `BreedingAptitudes.CatchUpPercent` |
+| Selections | 1 / 2 / 3 at Grounds 1 / 4 / 7 | `SelectableCount` |
+| 20 -> 50/50/50/50 (fresh villager each time, Grounds 12) | median 24, p90 28 generations | `BreedingClimbTests` |
+| Childhood | 1 hour from birth, working or not | `ChildGrowth` |
+| Shards per rebirth | level^2 / 2 (50: 1,250; 90: 4,050; 100: 5,000) | `RebirthRules.ShardsForLevel` |
+| Boons | XP +25%, gold +25%, damage +10%; 200x1.12^r, 200x1.12^r, 500x1.3^r | `LegacyPerkResolver` |
+| All boons maxed | ~74,600 shards (18 level-90 rebirths) | `AncestralBoonsTests` |
+| Title milestones | 20 Keeper of the Blood, 30 The Undying, 50 Wheel of Ages | `RebirthRules.TitleMilestones` |
+| Deeds chapter VI | aptitude 30, 40, 50x4, six races at 30, gen 10, 20 rebirths; a Seal | `DeedRegistry` |
+
+Also built: **Best matches** - the five best eligible partners for a hero,
+ranked by the child they would make, with the aptitudes to tick
+(`BreedingMatchmaker`, `GET /api/v1/breeding/suggest`).
+
+### What existing players get on deploy
+
+- Every child already on a roster (born before `BornAtEpoch` existed) reads as
+  grown at the next read and becomes an adult.
+- Lines already above the ceiling keep their values (grandfathered).
+- The 20-rebirth accounts can rebirth again; their next rebirth also grants
+  Keeper of the Blood.
+- Banked shards (40k-55k) can be spent at once, on the new prices.
