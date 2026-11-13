@@ -167,6 +167,18 @@
             {dungeon.Name} &middot; {stage.Band} band &middot; stage {stage.Stage}{stage.Cleared ? ' · cleared' : ''} &middot; best {dungeon.BestStage}
           </p>
           <p class="small">{stage.Reward}{stage.FirstClearPaid ? ' (first clear already paid)' : ''}</p>
+          <!-- Modul: the next stage, forecast by the server's own simulator
+               with no dodges - the floor of a live run (2026-11-13). -->
+          {#if dungeon.Forecast}
+            {@const f = dungeon.Forecast}
+            <p class="forecast small" data-testid="dungeon-forecast" data-won={f.Won}>
+              <strong>Stage {f.Stage}, without a single dodge:</strong>
+              {#if f.Won}your party of {f.Party} would win it.
+              {:else if f.ReachedBoss}you would reach {dungeon.Boss} and leave {f.BossHpLeftPct}% of the health.
+              {:else}you would fall in wave {f.WavesCleared + 1}.{/if}
+              <span class="dim">Clean dodges and blessings do better than this.</span>
+            </p>
+          {/if}
           <h3>{dungeon.Boss} at this stage</h3>
           <ul class="abilities">
             {#each stage.Abilities as a (a.Id)}
@@ -486,5 +498,13 @@
   }
   .seat.locked {
     opacity: 0.55;
+  }
+
+  .forecast {
+    margin: 0.3rem 0;
+    padding: 0.4rem 0.6rem;
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-radius: 6px;
   }
 </style>

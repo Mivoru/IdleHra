@@ -1793,6 +1793,21 @@ if (want('dungeon')) {
   await page.waitForTimeout(300);
   const navDot = await page.getByTestId('nav-dungeon-full').count();
   record('the menu dots Dungeon exactly when a gate is full of tickets', (navDot > 0) === Boolean(fullNow), `full ${Boolean(fullNow)}, dots ${navDot}`);
+  // The next-stage forecast (2026-11-13): the selected gate's line says what
+  // the server simulated - win, the boss's health left, or the wave it falls in.
+  {
+    const fv = await apiGet('/api/v1/dungeon').catch(() => null);
+    const forecasts = (fv?.Dungeons ?? []).filter((d) => d.Forecast);
+    if (forecasts[0]) {
+      await page.locator('button.gate', { hasText: forecasts[0].Name }).first().click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
+    const line = (await page.getByTestId('dungeon-forecast').first().innerText().catch(() => '')).replace(/\s+/g, ' ');
+    const sel = forecasts.find((d) => line.includes(`Stage ${d.Forecast.Stage}`)) ?? null;
+    const f = sel?.Forecast;
+    const says = !f ? false : f.Won ? /would win/.test(line) : f.ReachedBoss ? line.includes(`${f.BossHpLeftPct}%`) : line.includes(`wave ${f.WavesCleared + 1}`);
+    record('the Dungeon forecasts the next stage as the server simulated it', forecasts.length > 0 && says, line.slice(0, 120) || `${forecasts.length} forecasts, no line`);
+  }
   record('each gate shows its own loaded ticket picture', ticketArt.length === 3
     && new Set(ticketArt).size === 3 && ticketArt.every((t) => t.endsWith(':ok')), ticketArt.join(' ') || 'none');
   // The run's own sounds (2026-11-01): every dungeon_* clip audio.ts names is

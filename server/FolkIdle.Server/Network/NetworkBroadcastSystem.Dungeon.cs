@@ -106,6 +106,16 @@ namespace FolkIdle.Server.Network
                             Tickets = row.Tickets,
                             BestStage = row.BestStage,
                             PartySlots = DungeonEngine.PartySlotsOpen(row.BestStage),
+                            // Modul: THE NEXT STAGE, FORECAST (2026-11-13). Two of the
+                            // three endgame accounts had sat on the same best stage for
+                            // days with tickets piling up, and nothing said whether the
+                            // next one was a near miss or a wall. One run of the same
+                            // simulator the sweep and calibration use - expected values,
+                            // NO dodges and no blessings, so it is the floor of what a
+                            // live run does - with the whole open party and the larder.
+                            Forecast = snapshot == null || row.BestStage >= DungeonSimulator.StageCount
+                                || DungeonEngine.StageLockedReason(row.BestStage + 1, mask, row.BestStage) != null
+                                ? null : ForecastFor(snapshot.Value.Payload, kind, row.BestStage + 1, DungeonEngine.PartySlotsOpen(row.BestStage)),
                             Stages = Enumerable.Range(1, DungeonSimulator.StageCount).Select(stage => new
                             {
                                 Stage = stage,
@@ -129,6 +139,17 @@ namespace FolkIdle.Server.Network
             {
                 context.Response.Close();
             }
+        }
+
+        private static object ForecastFor(TickStatePayload payload, DungeonKind kind, int stage, int partySlotsOpen)
+        {
+            var party = Enumerable.Range(0, Math.Min(3, partySlotsOpen)).Where(slot => SlotHoldsCharacter(in payload, slot)).ToList();
+            if (party.Count == 0) party.Add(0);
+            var food = DungeonEngine.BestFood(in payload);
+            var runner = new DungeonRunner(payload, kind, stage, food.ItemId, food.Count, party, challenges: false);
+            runner.Advance();
+            var r = runner.Result!;
+            return new { Stage = stage, r.Won, r.WavesCleared, r.ReachedBoss, r.BossHpLeftPct, Party = party.Count };
         }
 
         // POST /api/v1/dungeon/run {Kind, Stage, Party?, Sweep?}

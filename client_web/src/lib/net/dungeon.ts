@@ -37,6 +37,17 @@ export interface DungeonInfo {
   /** How many champions this dungeon takes now: 1, then 2 after stage 6, 3 after stage 11. */
   PartySlots: number;
   Stages: DungeonStage[];
+  /** The next stage, simulated once without dodges (the floor of a live run). Null when there is none or it is locked. */
+  Forecast?: DungeonForecast | null;
+}
+
+export interface DungeonForecast {
+  Stage: number;
+  Won: boolean;
+  WavesCleared: number;
+  ReachedBoss: boolean;
+  BossHpLeftPct: number;
+  Party: number;
 }
 
 export interface DungeonView {
