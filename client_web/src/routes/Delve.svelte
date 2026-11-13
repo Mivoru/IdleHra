@@ -471,7 +471,7 @@
         <span class="nowrap">Deep <strong>{view.DeepDiamondsEarnedThisWeek}/{view.DeepWeeklyDiamondCeiling}</strong></span>
       {/if}
       {#if ceilingLeft === 0}
-        <span>- cap reached; a run still pays gold back from the gate.</span>
+        <span>Cap reached: a run still pays gold back from the gate.</span>
       {/if}
       <span class="nowrap muted">Resets {resetsAt}.</span>
     </p>
