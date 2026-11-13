@@ -1399,6 +1399,17 @@ export const APTITUDE_MILESTONE_AT = [30, 40, 50] as const;
  */
 export const EXPEDITION_THIRD_SLOT_GROUNDS = 8;
 export const EXPEDITION_MAX_BOUGHT_SLOTS = 2;
+
+/**
+ * The chest odds (ExpeditionRules.ChestFor): an 8 h trip pays Silver at this
+ * percent, a 12 h one Gold, plus up to EXPEDITION_APTITUDE_BONUS_MAX for the
+ * party's aptitudes and EXPEDITION_PROVISION_PCT for provisions. Pinned in
+ * serverMirrors.test.ts; the Expeditions screen's sentence and the Wiki read them.
+ */
+export const EXPEDITION_SILVER_AT_8H_PCT = 25;
+export const EXPEDITION_GOLD_AT_12H_PCT = 15;
+export const EXPEDITION_APTITUDE_BONUS_MAX = 30;
+export const EXPEDITION_PROVISION_PCT = 25;
 export const APTITUDE_MILESTONES: Readonly<Record<string, { name: string; effects: readonly string[] }>> = {
   Aptitude_Strength: { name: 'Keen Edge', effects: ['+0.10x crit damage', '+0.20x crit damage', '+0.30x crit damage'] },
   Aptitude_Skill: { name: 'Deft Hands', effects: ['+5% gathering yield', '+10% gathering yield', '+15% gathering yield'] },

@@ -8,6 +8,12 @@ import {
   APTITUDE_VILLAGE_CEILING,
   EXPEDITION_THIRD_SLOT_GROUNDS,
   EXPEDITION_MAX_BOUGHT_SLOTS,
+  EXPEDITION_SILVER_AT_8H_PCT,
+  EXPEDITION_GOLD_AT_12H_PCT,
+  EXPEDITION_APTITUDE_BONUS_MAX,
+  EXPEDITION_PROVISION_PCT,
+  GUARANTEED_GROWTH,
+  CATCH_UP_GAP,
 } from '../src/lib/net/commands';
 import { MAX_MARKET_PRICE, MAX_FORGE_LEVEL } from '../src/lib/net/commands';
 import { refineCost, REFINE_OPERATION } from '../src/lib/net/commands';
@@ -126,6 +132,16 @@ describe('the numbers the client mirrors still match the server', () => {
     const rules = read(serverRoot, 'Engine', 'ExpeditionRules.cs');
     expect(EXPEDITION_THIRD_SLOT_GROUNDS).toBe(num(rules, /ThirdSlotGroundsLevel = (\d+);/, 'ThirdSlotGroundsLevel'));
     expect(EXPEDITION_MAX_BOUGHT_SLOTS).toBe(num(rules, /MaxBoughtSlots = (\d+);/, 'MaxBoughtSlots'));
+    expect(EXPEDITION_GOLD_AT_12H_PCT).toBe(num(rules, />= 12 => roll0To99 < (\d+) \+ bonus/, '12 h Gold odds'));
+    expect(EXPEDITION_SILVER_AT_8H_PCT).toBe(num(rules, />= 8 => roll0To99 < (\d+) \+ bonus/, '8 h Silver odds'));
+    expect(EXPEDITION_APTITUDE_BONUS_MAX).toBe(num(rules, /\(aptitudeTotal - 16\) \* (\d+) \//, 'aptitude bonus max'));
+    expect(EXPEDITION_PROVISION_PCT).toBe(num(rules, /ProvisionUpgradePct = (\d+);/, 'ProvisionUpgradePct'));
+  });
+
+  it('lineage: sure growth and its catch-up gap', () => {
+    const b = read(serverRoot, 'Engine', 'BreedingAptitudes.cs');
+    expect(GUARANTEED_GROWTH).toBe(num(b, /GuaranteedGrowth = (\d+);/, 'GuaranteedGrowth'));
+    expect(CATCH_UP_GAP).toBe(num(b, /CatchUpGap = (\d+);/, 'CatchUpGap'));
   });
 
   it('lineage: the aptitude milestones', () => {

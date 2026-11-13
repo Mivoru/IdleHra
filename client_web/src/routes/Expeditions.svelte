@@ -10,6 +10,7 @@
   import { queryKeys, fetchExpeditions, startExpedition, claimExpedition, buyExpeditionSlot, type ExpeditionCandidate } from '../lib/net/rest';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import { formatNumber } from '../lib/ui/format';
+  import { EXPEDITION_GOLD_AT_12H_PCT, EXPEDITION_SILVER_AT_8H_PCT } from '../lib/net/commands';
   import { formatDuration } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import { pushLocalNotice } from '../lib/stores/game';
@@ -52,8 +53,8 @@
   // Mirrors ExpeditionRules.ChestFor for the sentence only; the roll is the server's.
   function chestLine(hours: number, upgradePct: number, provisioned: boolean): string {
     const extra = provisioned ? provisionPct : 0;
-    if (hours >= 12) return `a Silver chest, Gold at ${15 + upgradePct + extra}%`;
-    if (hours >= 8) return `a Bronze chest, Silver at ${25 + upgradePct + extra}%`;
+    if (hours >= 12) return `a Silver chest, Gold at ${EXPEDITION_GOLD_AT_12H_PCT + upgradePct + extra}%`;
+    if (hours >= 8) return `a Bronze chest, Silver at ${EXPEDITION_SILVER_AT_8H_PCT + upgradePct + extra}%`;
     return provisioned ? `a Bronze chest, Silver at ${provisionPct}%` : 'a Bronze chest';
   }
 
