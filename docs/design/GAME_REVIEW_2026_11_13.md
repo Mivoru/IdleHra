@@ -137,6 +137,7 @@ bonus with its source.
    Recommendation: a late-game gold sink that pays something lasting (for
    example Vault slots, Hall slots or recruit price relief bought with gold)
    rather than cutting income. Your call - it is an economy decision.
+   Measured options and a recommendation: `docs/design/GOLD_ECONOMY_2026_11_13.md`.
 
 ## 4. What I am doing without waiting
 
