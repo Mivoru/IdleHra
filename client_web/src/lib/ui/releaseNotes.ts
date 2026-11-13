@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.81.0',
+    date: '2026-11-13',
+    headline: 'Sparks over the battlefield and the forge.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'A few embers drift up behind the windows in Combat and the Make screens. They switch off with your system setting for reduced motion, and on the light scheme.',
+          'The gold ledger on Progress names every kind of spending and income - respecs, refines, expeditions, loot chests and the Gold dungeon showed raw names before.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.80.0',
     date: '2026-11-13',
     headline: 'The Delve goes underground for real.',
