@@ -24,6 +24,18 @@
   const showNotes = $derived($pendingNotes.length > 0 && $playerState !== null && $offlineSummary === null);
   const showReload = $derived(!showNotes && $updateAvailable);
 
+  // Modul: A DIGEST WHEN MANY UPDATES ARE WAITING (2026-11-13). The endgame
+  // accounts come back to ten releases at once (1.60-1.69, one night of the
+  // lineage overhaul) - thirty-odd bullets in a scroll. Past a few releases
+  // the window opens on one line per release (its headline, or its first
+  // item), with the full notes below for whoever wants them.
+  const DIGEST_FROM = 4;
+  const digest = $derived(
+    $pendingNotes.length >= DIGEST_FROM
+      ? $pendingNotes.map((r) => ({ version: r.version, line: r.headline ?? r.sections[0]?.items[0] ?? '' }))
+      : [],
+  );
+
   // Modul: BACK MEANS "GOT IT". The notes are a modal, and after every OTA
   // update an APK player meets them first - but back could not see them, so it
   // changed the screen underneath (or, on the map, opened "Leave FolkIdle?" on
@@ -72,6 +84,18 @@
         </div>
       {/snippet}
       {#snippet footer()}<button class="got-it" onclick={acknowledgeNotes}>Got it</button>{/snippet}
+
+      {#if digest.length > 0}
+        <div class="digest" data-testid="whatsnew-digest">
+          <p><strong>{digest.length} updates since you last played.</strong> In short:</p>
+          <ul>
+            {#each digest as d (d.version)}
+              <li><span class="dim tiny">{d.version}</span> {d.line}</li>
+            {/each}
+          </ul>
+          <p class="dim tiny">The full notes follow.</p>
+        </div>
+      {/if}
 
       {#each $pendingNotes as release (release.version)}
         <div class="release">
@@ -137,6 +161,16 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-dim);
+  }
+
+  .digest {
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .digest p {
+    margin: 0 0 0.4rem;
   }
 
   .release + .release {
