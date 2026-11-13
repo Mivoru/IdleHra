@@ -94,6 +94,8 @@
   });
 
   let confirming = $state(false);
+  const LET_GO_SHOWN = 12;
+  let letGoOpen = $state(false);
 
   // THE VAULT (owner, 2026-10-11: "where is the save you can save your
   // equipment from rebirth"). Its own section, open before the terms, so the
@@ -527,8 +529,13 @@
           </fieldset>
         {/if}
         {#if p.HallLetGo.length > 0}
-          <p class="warn">
-            <strong>The Hall lets go, permanently:</strong> {p.HallLetGo.join(', ')}.
+          <!-- A count and the first names, not a wall: the dev fixture listed
+               about 290 names here (2026-11-13), which read as noise right
+               where the player decides. The whole list is one tap away. -->
+          <p class="warn" data-testid="rebirth-letgo">
+            <strong>The Hall lets go {p.HallLetGo.length}, permanently:</strong>
+            {(letGoOpen ? p.HallLetGo : p.HallLetGo.slice(0, LET_GO_SHOWN)).join(', ')}{#if !letGoOpen && p.HallLetGo.length > LET_GO_SHOWN}
+              &hellip; <button type="button" class="inline-link" onclick={() => (letGoOpen = true)}>and {p.HallLetGo.length - LET_GO_SHOWN} more</button>{:else}.{/if}
             Mark someone <em>Keep</em> in the Hall of Ancestors to change who.
           </p>
         {/if}
@@ -910,6 +917,8 @@
     margin: -12px 0;
     padding: 0 2px;
     background: none;
+    background-image: none;
+    box-shadow: none;
     border: none;
     color: inherit;
     font: inherit;
