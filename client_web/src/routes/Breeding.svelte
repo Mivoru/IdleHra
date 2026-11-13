@@ -154,6 +154,21 @@
   }
 
   const heroName = $derived(heroGroups[0].people.find((p) => p.key === 'c:' + heroId)?.name ?? 'your hero');
+
+  // Modul: A HERO IS ALREADY CHOSEN (2026-11-13). The lab opened on an empty
+  // "Choose a hero..." with the partner picker greyed out, so Best matches -
+  // the list that answers "who should I pair with?" - stayed hidden until a
+  // first tap nothing asked for. The strongest grown adult who is free to
+  // breed (the picker's own first entry) is chosen once, when the roster
+  // arrives; any later pick is the player's.
+  let heroAutoPicked = false;
+  $effect(() => {
+    if (heroAutoPicked || heroId !== '') return;
+    const first = heroGroups[0].people.find((p) => p.blocked === null);
+    if (!first) return;
+    heroAutoPicked = true;
+    selectHero(first.key);
+  });
   const partnerName = $derived(
     partnerGroups.flatMap((g) => g.people).find((p) => p.key === partnerKey)?.name ?? 'the partner',
   );
