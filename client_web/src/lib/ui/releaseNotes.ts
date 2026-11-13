@@ -44,6 +44,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         items: [
           'The brick wall behind every screen is gone. Each part of the game paints its own scene behind the windows: a blood-moon field for Combat, a misty river wood for Gathering, the hero chamber, the village forge, the longhouse and a valley at dusk for Home.',
           'Windows are slightly see-through so the scene shows behind them, and each one has an embroidered hem in its section colour along the top.',
+          'A woven band of folk diamonds under the top bar takes the colour of the part of the game you are in.',
         ],
       },
     ],
