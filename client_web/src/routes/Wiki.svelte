@@ -1378,7 +1378,7 @@
           <!-- 2026-11-13: one map of the endgame. The tracks existed; nothing put
                them side by side for a player past level 50 (Your road does it on
                the Home screen, this is the same list with the why). -->
-          <h3 id="endgame">After level 50: your long goals</h3>
+          <h3 id="endgame">The endgame: your long goals</h3>
           <div class="scroll">
             <table data-testid="wiki-endgame">
               <thead><tr><th>Track</th><th>How often</th><th>What it pays</th></tr></thead>
