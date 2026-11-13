@@ -94,6 +94,26 @@ line per release when four or more are waiting; #354 **aptitude milestones**
 gathering yield, block, kill gold; `AptitudeMilestones`, design doc section 9)
 (1.70.0).
 
+Endgame content (owner brief: what keeps endgame players busy; proposal
+`docs/design/ENDGAME_CONTENT_2026_11_13.md`, owner approved C and A only):
+- #355 **Ascension says what it pays** - it already paid a chest a step and
+  +2% region damage at step 10, but the panel, Wiki and quest line said
+  "cosmetics only"; Your road gets an Ascension row.
+- #357 **Expeditions** (1.71.0, additive migration `Expeditions`): benched
+  grown ancestors go 4/8/12 h for one loot chest of the top region; 2 slots,
+  3 from Breeding Grounds 8; away = cannot be fielded (AssignSlotAsync) or
+  bred (cooldown raised to the return). Dev return:
+  `/api/v1/expeditions/dev/return` (routes under `/api/v1/dev/*` are taken by
+  another handler first). #358 Your road leads with it; #361 titles at
+  10/50/100 claimed (`ExpeditionsClaimed`, additive migration; 1.72.0).
+- #362 **Dungeon next-stage forecast**: one no-dodge run of the server's own
+  simulator per gate (the floor of a live run).
+- #359 Chest Worn list clipped at 1500px (grid `minmax(0,1fr)`); #360 flaky
+  step-down parity assertion (mode of a 3-3 split) fixed.
+
+Not built (owner did not pick them): B bounty board, D endless dungeon, E
+weekly modifier, F paragon/second prestige.
+
 Open: the owner's answers to the review's questions (now five - gold
 inflation added).
 
