@@ -174,6 +174,28 @@ with the four stateful mechanics.**
 
 ### 37. The Deep - measure the retune (PAST DUE since 2026-10-14, roadmap 3.1)
 
+**Re-measured 2026-11-13 (read-only, gold_income_daily / gold_spend_daily,
+ISO weeks):**
+
+| Week of | Gold minted | Deep spend | Deep share | Deep payers |
+|---|---|---|---|---|
+| 10-12 | 3.34B | 1.37B | 40.9% | 2 |
+| 10-19 | 3.79B | 0.02B | 0.5% | 1 |
+| 10-26 | 7.55B | 1.83B | 24.2% | 1 |
+| 11-02 | 14.75B | 0.92B | 6.3% | 1 |
+| 11-09 (part) | 10.65B | 0.47B | 4.4% | 2 |
+
+The Deep's spend recovered after the retune (0.5% to 24%), then its SHARE
+fell again, mostly because minting quadrupled: offline kills (source 2) went
+2.2B -> 8.6B a week, auto-salvage 1.4B -> 3.5B, and the new loot chests (14)
+and Gold dungeon (15) add 1-2B each. The biggest sinks the week of 11-09
+were the guild (5.1B) and the Deep (0.5B); villager recruits ran ~1.4B a
+week through October. Balances: 2.8B / 0.78B / 0.25B gold on the three
+accounts. **Recommendation: leave the Deep alone; the open question is the
+whole gold economy (a 6x rise in weekly minting in five weeks against sinks
+that did not grow) - an owner decision, recorded in
+`docs/design/GAME_REVIEW_2026_11_13.md`.**
+
 **Measured 2026-10-30, acted on (PR `claude/deep-reward`).** Week 1 file:
 deepest floor 23 (yes), one payer. Fresh read-only query: a second payer
 (Tomda, 3.65M, floor 10); the diamond ceiling held (60/60). But Deep spend

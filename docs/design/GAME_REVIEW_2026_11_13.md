@@ -130,6 +130,13 @@ bonus with its source.
 3. **Merge Hall + Breeding + Rebirth into one "Bloodline" screen** (B)?
 4. **The new-player funnel** (A): may I add funnel telemetry for the first ten
    steps and send you a weekly summary?
+5. **Gold inflation** (measured 2026-11-13, TASK_BOARD 37): weekly minted
+   gold rose from 2.3B to 14.8B in five weeks (offline kills 4x, auto-salvage
+   2.5x, chests and the Gold dungeon new), while sinks stayed flat. Gold is
+   losing meaning for the three accounts (2.8B / 0.78B / 0.25B banked).
+   Recommendation: a late-game gold sink that pays something lasting (for
+   example Vault slots, Hall slots or recruit price relief bought with gold)
+   rather than cutting income. Your call - it is an economy decision.
 
 ## 4. What I am doing without waiting
 

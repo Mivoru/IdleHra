@@ -61,7 +61,7 @@
       { value: 'standing', label: 'Standing' },
       { value: 'deepest', label: 'Deepest this week' },
       { value: 'lives', label: 'Fastest lives' },
-      { value: 'bloodline', label: 'Best blood this week' },
+      { value: 'bloodline', label: 'Best blood' },
     ]}
   />
 </div>
