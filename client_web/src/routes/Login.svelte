@@ -185,10 +185,19 @@
     {#if mode === 'register'}
       <label>
         Username
-        <input bind:value={username} autocomplete="username" maxlength="20" />
+        <!-- Modul: autocomplete="nickname", NOT "username" (2026-11-13). To a
+             password manager "username" means the login identifier, so it
+             filled this box with the player's email - and maxlength cut it to
+             20, which is how a production account came to show
+             "name@gmail." on every public board. The server refuses an "@"
+             as well. -->
+        <input bind:value={username} autocomplete="nickname" maxlength="20" />
         <!-- RegisterWithEmailAsync: 3 to 20 characters after trimming. It is
              the DisplayName other players see. -->
-        <span class="hint-small">3 to 20 characters. Other players see this name.</span>
+        <span class="hint-small">3 to 20 characters. Other players see this name - not your email.</span>
+        {#if username.includes('@')}
+          <span class="hint-small warn" data-testid="username-email-warning">This looks like an email. Pick a name instead - everyone can see it.</span>
+        {/if}
       </label>
     {/if}
 
@@ -218,7 +227,7 @@
 
     <button
       class="primary"
-      disabled={busy || !email || !password || (mode === 'register' && !username)}
+      disabled={busy || !email || !password || (mode === 'register' && (!username || username.includes('@')))}
       onclick={() =>
         run(() =>
           mode === 'register'
@@ -490,5 +499,9 @@
     justify-self: center;
     min-height: 44px;
     font-size: 0.9rem;
+  }
+
+  .hint-small.warn {
+    color: var(--danger, #c0392b);
   }
 </style>

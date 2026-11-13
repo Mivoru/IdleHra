@@ -793,7 +793,10 @@ namespace FolkIdle.Server.Engine
             }
 
             string trimmedUsername = (username ?? string.Empty).Trim();
-            if (trimmedUsername.Length < 3 || trimmedUsername.Length > 20)
+            // Modul: NO EMAIL AS A NAME (2026-11-13). The username is shown on
+            // every public board; a browser that autofilled the login email into
+            // it (see Login.svelte) published one. An "@" is refused outright.
+            if (trimmedUsername.Length < 3 || trimmedUsername.Length > 20 || trimmedUsername.Contains('@'))
             {
                 return (EmailRegisterOutcome.InvalidUsername, 0L, Guid.Empty);
             }
