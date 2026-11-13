@@ -35,6 +35,24 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.72.0',
+    date: '2026-11-13',
+    headline: 'Expedition titles, and Your road points at waiting chests.',
+    sections: [
+      {
+        title: 'Expeditions',
+        items: [
+          'Titles for expeditions claimed: Pathfinder at 10, Far-Strider at 50, Lord of Long Roads at 100. The Expeditions tab counts yours.',
+          'Your road on the Home screen now starts with your expeditions - how many are away, and when one is back with a chest to claim.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: ['On a wide screen the Chest list no longer cuts long affix lines off without a "...".'],
+      },
+    ],
+  },
+  {
     version: '1.71.0',
     date: '2026-11-13',
     headline: 'Expeditions: your benched ancestors bring back loot chests.',

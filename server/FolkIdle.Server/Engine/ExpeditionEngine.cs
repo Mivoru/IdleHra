@@ -19,11 +19,12 @@ namespace FolkIdle.Server.Engine
     /// <summary>An ancestor who could set out now.</summary>
     public sealed record ExpeditionCandidate(Guid CharacterId, string Name, int RaceId, int AptitudeTotal, int UpgradePct);
 
-    public sealed record ExpeditionBoard(int Slots, int Region, int[] Durations, List<ExpeditionView> Active, List<ExpeditionCandidate> Candidates);
+    public sealed record ExpeditionBoard(int Slots, int Region, int[] Durations, List<ExpeditionView> Active, List<ExpeditionCandidate> Candidates,
+        int Claimed = 0, string NextTitle = "", int NextTitleAt = 0);
 
     public enum ExpeditionStartResult { Started, NoSlot, NotEligible, BadDuration, NoGrounds }
 
-    public sealed record ExpeditionClaim(bool Ok, string Tier, int Region, string Reason);
+    public sealed record ExpeditionClaim(bool Ok, string Tier, int Region, string Reason, int Claimed = 0, string Title = "");
 
     /// <summary>Expeditions: start, list, claim. The rules are ExpeditionRules.</summary>
     public static class ExpeditionEngine
@@ -69,7 +70,10 @@ namespace FolkIdle.Server.Engine
                     (int)(l.GeneticVector & 0xFF), l.AptitudeVector().Sum(), ExpeditionRules.AptitudeUpgradePct(l.AptitudeVector().Sum())))
                 .OrderByDescending(c => c.AptitudeTotal).ThenBy(c => c.Name).Take(30).ToList();
 
-            return new ExpeditionBoard(slots, region, ExpeditionRules.Durations, active, candidates);
+            int claimedSoFar = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == playerId).Select(p => p.ExpeditionsClaimed).FirstOrDefaultAsync();
+            var next = ExpeditionRules.TitleMilestones.FirstOrDefault(m => m.Count > claimedSoFar);
+            return new ExpeditionBoard(slots, region, ExpeditionRules.Durations, active, candidates,
+                claimedSoFar, next.Name ?? string.Empty, next.Count);
         }
 
         public static async Task<ExpeditionStartResult> StartAsync(FolkIdleDbContext db, long playerId, Guid characterId, int hours, long nowEpoch)
@@ -139,8 +143,19 @@ namespace FolkIdle.Server.Engine
             LootChestEngine.Stage(db, playerId, tier, row.Region, LootChestSource.Expedition, utcNow);
             db.Expeditions.Remove(row);
             await db.SaveChangesAsync();
+
+            // The count and its titles, in the same transaction (GrantAsync joins
+            // it and is idempotent, so at-or-past is safe to ask every claim).
+            int claimed = (await db.Database.SqlQueryRaw<int>(
+                "UPDATE \"PlayerRecords\" SET \"ExpeditionsClaimed\" = \"ExpeditionsClaimed\" + 1 WHERE \"Id\" = {0} RETURNING \"ExpeditionsClaimed\" AS \"Value\"",
+                playerId).ToListAsync()).FirstOrDefault();
+            string title = string.Empty;
+            foreach (var m in ExpeditionRules.TitleMilestones)
+            {
+                if (claimed >= m.Count && await TitleEngine.GrantAsync(db, playerId, m.Slug, utcNow)) title = m.Name;
+            }
             await tx.CommitAsync();
-            return new ExpeditionClaim(true, tier.ToString(), row.Region, string.Empty);
+            return new ExpeditionClaim(true, tier.ToString(), row.Region, string.Empty, claimed, title);
         }
 
         /// <summary>DEV TOOLS ONLY (exercise.mjs): brings every expedition of this player back now.</summary>

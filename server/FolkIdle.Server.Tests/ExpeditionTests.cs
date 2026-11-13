@@ -86,11 +86,40 @@ namespace FolkIdle.Server.Tests
                 var claim = await ExpeditionEngine.ClaimAsync(db, playerId, expeditionId, now + 8 * 3600, DateTime.UtcNow, new Random(1));
                 Assert.True(claim.Ok);
                 Assert.Contains(claim.Tier, new[] { "Bronze", "Silver" });
+                Assert.Equal(1, claim.Claimed);
+                Assert.Equal(string.Empty, claim.Title);
                 Assert.Equal(chestsBefore + 1, await db.LootChests.CountAsync(c => c.PlayerId == playerId && c.Source == (byte)LootChestSource.Expedition));
                 Assert.False(await ExpeditionEngine.IsAwayAsync(db, hero));
 
                 var twice = await ExpeditionEngine.ClaimAsync(db, playerId, expeditionId, now + 9 * 3600, DateTime.UtcNow, new Random(1));
                 Assert.False(twice.Ok);
+            }
+        }
+
+        [Fact]
+        public async Task TheTenthClaimPaysTheFirstTitle()
+        {
+            const long playerId = 960_117_002L;
+            var hero = Guid.NewGuid();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), ExpeditionsClaimed = 9 });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = playerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = hero, PlayerId = playerId, Name = "Tenth", SlotIndex = 4, AgePhase = AgePhaseCurve.Adult, AgeTicks = AgePhaseCurve.ChildEndTicks });
+                db.CharacterLineages.Add(new CharacterLineageRegistry { CharacterId = hero });
+                await db.SaveChangesAsync();
+            }
+            long now = 1_900_100_000L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(ExpeditionStartResult.Started, await ExpeditionEngine.StartAsync(db, playerId, hero, 4, now));
+                var board = await ExpeditionEngine.BoardAsync(db, playerId, now);
+                Assert.Equal("Pathfinder", board.NextTitle);
+                long id = board.Active.Single().Id;
+                var claim = await ExpeditionEngine.ClaimAsync(db, playerId, id, now + 4 * 3600, DateTime.UtcNow, new Random(2));
+                Assert.Equal(10, claim.Claimed);
+                Assert.Equal("Pathfinder", claim.Title);
+                Assert.True(await db.PlayerTitles.AnyAsync(t => t.PlayerId == playerId && t.TitleSlug == "expedition_10"));
             }
         }
     }

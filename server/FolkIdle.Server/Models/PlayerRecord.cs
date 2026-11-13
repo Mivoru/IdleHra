@@ -552,6 +552,9 @@ namespace FolkIdle.Server.Models
         public long BestLifeSecondsTo50 { get; set; }
         public long BestLifeSecondsTo100 { get; set; }
 
+        /// <summary>Expeditions claimed, ever (ExpeditionEngine.ClaimAsync) - for the expedition titles.</summary>
+        public int ExpeditionsClaimed { get; set; }
+
         // The highest region THIS LIFE has killed a monster in. Raised by
         // CodexEngine after its batch commits (GREATEST, so out-of-order
         // batches cannot lower it), reset to 0 by the rebirth. Read only by the

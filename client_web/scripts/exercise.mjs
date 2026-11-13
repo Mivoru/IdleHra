@@ -6208,6 +6208,8 @@ if (want('ancestors')) {
   const panel = page.getByTestId('expeditions');
   await panel.waitFor({ timeout: 10000 }).catch(() => {});
   const before = await apiGet('/api/v1/expeditions').catch(() => null);
+  const tally = (await page.getByTestId('expedition-tally').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  record('the Expeditions tab counts expeditions done and names the next title', before !== null && tally.includes(`${before.Claimed ?? 0} expeditions done`), tally);
   record('the Expeditions tab shows the server board', before !== null && (await panel.count()) > 0 && before.Slots >= 2,
     before ? `${before.Slots} slots, ${before.Active.length} away, ${before.Candidates.length} free, region ${before.Region}` : 'no board');
 

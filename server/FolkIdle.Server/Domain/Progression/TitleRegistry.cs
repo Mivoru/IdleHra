@@ -74,6 +74,10 @@ namespace FolkIdle.Server.Domain.Progression
                 new TitleDefinition("trial_slow_hand", "The Patient", 0, "#6fb3a8"),
                 new TitleDefinition("trial_frailty", "The Unbroken", 0, "#d26464"),
                 new TitleDefinition("trial_iron", "Ironborn", 0, "#9aa4b1"),
+                // Expeditions (ExpeditionRules.TitleMilestones, 2026-11-13).
+                new TitleDefinition("expedition_10", "Pathfinder", 0, "#8fbf6a"),
+                new TitleDefinition("expedition_50", "Far-Strider", 0, "#5fa8d3"),
+                new TitleDefinition("expedition_100", "Lord of Long Roads", 0, "#d4a64a"),
 
                 // Chernobog (owner, 2026-10-13): two milestone titles, kept for
                 // good, and last week's top three, which move every Sunday.
