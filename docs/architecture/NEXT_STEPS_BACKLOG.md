@@ -78,7 +78,17 @@ nothing writes. The Dungeon lives in `DungeonProgress`, one row per gate. A
 review finding ("the endgame accounts never played the Dungeon") came from
 those columns and was wrong: on production the gates stand at 5-13.
 
-Open: the owner's answers to the review's four questions.
+Then, same morning: #347 Stats tab **Lifetime bonuses** (1.66.0); #348 a
+390px walkthrough - the breeding lab preselects the strongest free hero, the
+rebirth road folds to the next four steps, and the Rebirth screen **warns when
+the best blood would not carry** (1.67.0); #349 the same warning in the Hall
+and **Boons bought several ranks per command** (`RequestedSlotIndex` = ranks,
+`LegacyStoreEngine.RanksAffordable`) (1.68.0, 1.0.1716); #350 copy fixes,
+build-cache cap in `deploy.sh`, task 37 re-measured. On production the owner's
+account had a 75 outside a marked ten whose weakest was 46 (Tomda 60 vs 57).
+
+Open: the owner's answers to the review's questions (now five - gold
+inflation added).
 
 ---
 
