@@ -26,7 +26,7 @@
   // (see hallSections.ts).
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { pushLocalNotice } from '../lib/stores/game';
-  import { queryKeys, fetchAncestorsHall, fetchTraits, type HallMember } from '../lib/net/rest';
+  import { queryKeys, fetchAncestorsHall, fetchTraits, fetchExpeditions, type HallMember } from '../lib/net/rest';
   import { purchaseAncestorSlot, setAncestorKept, assignCharacterSlot, APTITUDE_MAX } from '../lib/net/commands';
   import { raceName } from '../lib/ui/races';
   import { traitsOf } from '../lib/ui/traits';
@@ -43,6 +43,13 @@
 
   const client = useQueryClient();
   const hall = createQuery(() => ({ queryKey: queryKeys.ancestorsHall, queryFn: fetchAncestorsHall }));
+  // Expeditions (2026-11-13): the Hall is where the idle bench is seen, so it
+  // says when expedition slots stand empty while grown ancestors sit here.
+  const expeditions = createQuery(() => ({ queryKey: queryKeys.expeditions, queryFn: fetchExpeditions }));
+  const freeExpeditionSlots = $derived(
+    expeditions.data ? Math.max(0, expeditions.data.Slots - expeditions.data.Active.length) : 0,
+  );
+  const idleBench = $derived(expeditions.data?.Candidates.length ?? 0);
   const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
 
   const data = $derived(hall.data);
@@ -297,6 +304,14 @@
         count on the character who plays - tap
         <button type="button" class="inline-link" onclick={() => (sheetId = benchNudge.best.CharacterId)}>{nameOf(benchNudge.best)}</button>
         to field them.
+      </p>
+    {/if}
+
+    {#if freeExpeditionSlots > 0 && idleBench > 0}
+      <p class="bench-nudge" data-testid="hall-expedition-nudge">
+        <strong>{freeExpeditionSlots} expedition {freeExpeditionSlots === 1 ? 'slot stands' : 'slots stand'} empty</strong>
+        while grown ancestors wait on the bench. Each trip brings back a loot chest.
+        <button type="button" class="inline-link" onclick={() => requestScreen('expeditions')}>Send someone</button>
       </p>
     {/if}
 
