@@ -232,8 +232,13 @@ namespace FolkIdle.Server.Tests
             long liveRung = live.GroupBy(r => r.FinalActivity).OrderByDescending(g => g.Count()).First().Key;
             Assert.True(liveRung > 0 && liveRung < RaceUnlockRegistry.GetRegionBossMonsterId(1), $"the live hours ended on {liveRung}");
             Assert.Equal(liveRung, offline.FinalActivity);
-            byte liveReason = live.GroupBy(r => r.FinalReason).OrderByDescending(g => g.Count()).First().Key;
-            Assert.Equal(liveReason, offline.FinalReason);
+            // Modul: THE REASON IS A COIN NEAR THE END OF THE WINDOW, so it is held
+            // to the set the live hours produce, not to their mode. On 2026-11-13
+            // CI drew six live runs split 3-3 between reasons 7 and 1; the mode
+            // then depended on group order and the offline 1 "failed" a doc-only
+            // PR. The offline note must be one the live tick also ends on.
+            var liveReasons = live.Select(r => r.FinalReason).Distinct().ToList();
+            Assert.Contains(offline.FinalReason, liveReasons);
             AssertClose("deaths", offline.Deaths, live.Average(r => r.Deaths), 0.0, 0.5);
             AssertClose("kills", offline.Kills, live.Average(r => r.Kills), 0.05, 2.0);
         }
