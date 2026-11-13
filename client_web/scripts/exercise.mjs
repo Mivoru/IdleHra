@@ -6575,6 +6575,11 @@ await go('Ancestors');
     before !== null && boonRows === (before.Boons?.length ?? -1) && boonRows === 3 && boonShards === String(before.ShardBalance),
     `${boonRows} boons, shards ${boonShards} (server ${before?.ShardBalance})`,
   );
+  // "Buy all" (several ranks in one command) shows exactly on the rows the
+  // server says the balance covers more than one rank of.
+  const buyAll = await panel.locator('[data-testid="boon-buy-all"]').count();
+  const wantAll = (before?.Boons ?? []).filter((b) => (b.AffordableRanks ?? 0) > 1).length;
+  record('a Boon offers "buy all" exactly where the shards cover several ranks', before !== null && buyAll === wantAll, `${buyAll} buttons, server ${wantAll}`);
 
   // Life records (2026-11-13): three numbers, each a time or a dash.
   const records = (await panel.locator('[data-testid="rebirth-records"]').innerText().catch(() => '')).replace(/\s+/g, ' ');

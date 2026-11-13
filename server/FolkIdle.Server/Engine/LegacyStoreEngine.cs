@@ -83,7 +83,7 @@ namespace FolkIdle.Server.Engine
 
                 if (isPerkUnlock)
                 {
-                    await ExecutePerkPurchaseAsync(db, transaction, playerId, targetUnlockId, ledgers, totalBalance);
+                    await ExecutePerkPurchaseAsync(db, transaction, playerId, targetUnlockId, ledgers, totalBalance, (int)Math.Min(requestedSlotIndex, (uint)MaxRanksPerPurchase));
                     return;
                 }
 
@@ -141,7 +141,36 @@ namespace FolkIdle.Server.Engine
         // PlayerRecord.LegacyPerks, not on any single era's ledger row,
         // since perk power is meant to persist across every future era
         // rather than resetting with CitizenMultiSlotsUnlocked.
-        private async Task ExecutePerkPurchaseAsync(FolkIdleDbContext db, Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction, long playerId, uint targetUnlockId, System.Collections.Generic.List<PlayerLegacyLedger> ledgers, long totalBalance)
+        /// <summary>The most ranks one Boon purchase may buy (the largest Boon has 25).</summary>
+        public const int MaxRanksPerPurchase = 25;
+
+        /// <summary>
+        /// How many ranks a balance buys from <paramref name="currentRank"/>, up to
+        /// <paramref name="wanted"/> and the Boon's cap, and what they cost.
+        /// </summary>
+        public static (int Ranks, long Cost) RanksAffordable(int bitOffset, int currentRank, long balance, int wanted)
+        {
+            int max = LegacyPerkResolver.MaxRankFor(bitOffset);
+            int ranks = 0;
+            long cost = 0;
+            while (ranks < wanted && currentRank + ranks < max)
+            {
+                long next = LegacyPerkResolver.CalculatePerkRankCost(bitOffset, currentRank + ranks);
+                if (cost + next > balance) break;
+                cost += next;
+                ranks++;
+            }
+            return (ranks, cost);
+        }
+
+        // Modul: SEVERAL RANKS IN ONE COMMAND (2026-11-13). The endgame accounts
+        // held 40k-55k shards, about sixty ranks' worth, and each rank was one
+        // tap - sixty fast taps, the exact rhythm the macro detector exists to
+        // catch. RequestedSlotIndex, which only the citizen-slot half reads,
+        // carries how many ranks to buy (0 and 1 both mean one, as every older
+        // client sends); the server buys as many as the balance covers in one
+        // transaction.
+        private async Task ExecutePerkPurchaseAsync(FolkIdleDbContext db, Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction, long playerId, uint targetUnlockId, System.Collections.Generic.List<PlayerLegacyLedger> ledgers, long totalBalance, int ranksWanted)
         {
             int bitOffset = targetUnlockId switch
             {
@@ -175,11 +204,12 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            int cost = LegacyPerkResolver.CalculatePerkRankCost(bitOffset, currentRank);
+            var (ranksBought, totalCost) = RanksAffordable(bitOffset, currentRank, totalBalance, Math.Max(1, ranksWanted));
+            int cost = (int)Math.Min(int.MaxValue, totalCost);
 
-            if (totalBalance < cost)
+            if (ranksBought == 0)
             {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 25, Value2 = cost, Timestamp = Environment.TickCount64 });
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 25, Value2 = LegacyPerkResolver.CalculatePerkRankCost(bitOffset, currentRank), Timestamp = Environment.TickCount64 });
                 await transaction.SafeRollbackAsync();
                 // Modul: say so (2026-11-13) - this refusal used to answer nothing.
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.BoonInsufficientShards);
@@ -195,7 +225,7 @@ namespace FolkIdle.Server.Engine
                 remainingCost -= debit;
             }
 
-            player.LegacyPerks = LegacyPerkResolver.SetPerkRank(player.LegacyPerks, bitOffset, currentRank + 1);
+            player.LegacyPerks = LegacyPerkResolver.SetPerkRank(player.LegacyPerks, bitOffset, currentRank + ranksBought);
 
             await db.SaveChangesAsync();
             await transaction.CommitAsync();

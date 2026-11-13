@@ -88,14 +88,19 @@ namespace FolkIdle.Server.Engine
         public int MaxRank { get; set; }
         /// <summary>Shards for the next rank, or -1 at the cap.</summary>
         public int NextCost { get; set; }
+        /// <summary>How many ranks the shard balance buys at once (LegacyStoreEngine.RanksAffordable).</summary>
+        public int AffordableRanks { get; set; }
+        /// <summary>What those ranks cost together.</summary>
+        public long AffordableCost { get; set; }
 
-        public static List<BoonView> For(long legacyPerks)
+        public static List<BoonView> For(long legacyPerks, long shardBalance = 0)
         {
             var list = new List<BoonView>(3);
             void Add(uint id, int offset, string name, string effect)
             {
                 int max = LegacyPerkResolver.MaxRankFor(offset);
                 int rank = Math.Min(LegacyPerkResolver.GetPerkRank(legacyPerks, offset), max);
+                var (affordable, affordableCost) = LegacyStoreEngine.RanksAffordable(offset, rank, shardBalance, LegacyStoreEngine.MaxRanksPerPurchase);
                 list.Add(new BoonView
                 {
                     UnlockId = id,
@@ -104,6 +109,8 @@ namespace FolkIdle.Server.Engine
                     Rank = rank,
                     MaxRank = max,
                     NextCost = rank >= max ? -1 : LegacyPerkResolver.CalculatePerkRankCost(offset, rank),
+                    AffordableRanks = affordable,
+                    AffordableCost = affordableCost,
                 });
             }
             Add(LegacyStoreEngine.XpMultiplierPerkUnlockId, LegacyPerkResolver.XpMultiplierBitOffset, "Ancestors' Wisdom", "+1% combat XP per rank");
@@ -494,7 +501,7 @@ namespace FolkIdle.Server.Engine
                 + (player.BaseConstitution - AttributeRegistry.StartingValue(AttributeRegistry.Vigour))
                 + (player.BaseLuck - AttributeRegistry.StartingValue(AttributeRegistry.Fortune));
 
-            return new RebirthPreview
+            var preview = new RebirthPreview
             {
                 RebirthCount = player.RebirthCount,
                 RenownedRebirths = player.RenownedRebirths,
@@ -547,6 +554,10 @@ namespace FolkIdle.Server.Engine
                 VillageBuildingLevels = await db.VillageInfrastructures.AsNoTracking()
                     .Where(v => v.PlayerId == playerId).SumAsync(v => (int?)v.CurrentLevel, cancellationToken) ?? 0,
             };
+            // The Boons again, now that the balance is known: each row says how
+            // many ranks "buy all" would take (several ranks in one command).
+            preview.Boons = BoonView.For(player.LegacyPerks, preview.ShardBalance);
+            return preview;
         }
 
         /// <summary>
