@@ -136,7 +136,7 @@
                   {#if entry && entry.Kills > 0}
                     <!-- "lv 0" read as a broken number; below the first
                          level the kill count says it all. -->
-                    {#if entry.Level > 0}level {entry.Level} &middot; {/if}{formatNumber(entry.Kills)} kills
+                    {#if entry.Level > 0}level {entry.Level}&nbsp;&middot;&nbsp;{/if}{formatNumber(entry.Kills)} kills
                   {:else}
                     never encountered
                   {/if}

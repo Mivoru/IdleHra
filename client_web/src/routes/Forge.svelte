@@ -939,7 +939,7 @@
 
     <div class="cardcol" bind:this={cardCol}>
     {#if !rerollItem}
-      <p class="dim small pickfirst">Pick a piece on the left to see its affixes.</p>
+      <p class="dim small pickfirst">Pick a piece to see its affixes.</p>
     {:else}
       {#if rerollItem.IsAffixLocked}
         <p class="warn">This item's affixes are locked.</p>

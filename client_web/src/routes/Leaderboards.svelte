@@ -59,7 +59,7 @@
     variant="underline"
     tabs={[
       { value: 'standing', label: 'Standing' },
-      { value: 'deepest', label: 'Deepest this week' },
+      { value: 'deepest', label: 'Deepest' },
       { value: 'lives', label: 'Fastest lives' },
       { value: 'bloodline', label: 'Best blood' },
     ]}
