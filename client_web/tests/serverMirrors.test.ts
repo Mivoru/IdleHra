@@ -6,6 +6,8 @@ import {
   aptitudeBonusPercent,
   APTITUDE_MAX,
   APTITUDE_VILLAGE_CEILING,
+  EXPEDITION_THIRD_SLOT_GROUNDS,
+  EXPEDITION_MAX_BOUGHT_SLOTS,
 } from '../src/lib/net/commands';
 import { MAX_MARKET_PRICE, MAX_FORGE_LEVEL } from '../src/lib/net/commands';
 import { refineCost, REFINE_OPERATION } from '../src/lib/net/commands';
@@ -120,6 +122,12 @@ describe('the numbers the client mirrors still match the server', () => {
   // price (AffixRerollEngine.GoldCostFor); the region table's remaining copy is
   // the Wiki's, compared in wiki.test.ts. The rarity factor is new and is
   // compared here, entry by entry.
+  it('expeditions: the third slot level and the bought-slot cap', () => {
+    const rules = read(serverRoot, 'Engine', 'ExpeditionRules.cs');
+    expect(EXPEDITION_THIRD_SLOT_GROUNDS).toBe(num(rules, /ThirdSlotGroundsLevel = (\d+);/, 'ThirdSlotGroundsLevel'));
+    expect(EXPEDITION_MAX_BOUGHT_SLOTS).toBe(num(rules, /MaxBoughtSlots = (\d+);/, 'MaxBoughtSlots'));
+  });
+
   it('lineage: the aptitude milestones', () => {
     const server = read(serverRoot, 'Engine', 'AptitudeMilestones.cs');
     const at = server.match(/Thresholds = \{ ([\d, ]+) \}/)![1].split(',').map((x) => Number(x.trim()));

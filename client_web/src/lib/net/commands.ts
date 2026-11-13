@@ -1391,6 +1391,14 @@ export const APTITUDES: readonly {
  * in serverMirrors.test.ts - the server applies them; this only draws them.
  */
 export const APTITUDE_MILESTONE_AT = [30, 40, 50] as const;
+
+/**
+ * Expedition slots (ExpeditionRules): two with the Breeding Grounds, a third
+ * from this Grounds level, and up to EXPEDITION_MAX_BOUGHT_SLOTS more bought
+ * with gold. Pinned to the server in serverMirrors.test.ts.
+ */
+export const EXPEDITION_THIRD_SLOT_GROUNDS = 8;
+export const EXPEDITION_MAX_BOUGHT_SLOTS = 2;
 export const APTITUDE_MILESTONES: Readonly<Record<string, { name: string; effects: readonly string[] }>> = {
   Aptitude_Strength: { name: 'Keen Edge', effects: ['+0.10x crit damage', '+0.20x crit damage', '+0.30x crit damage'] },
   Aptitude_Skill: { name: 'Deft Hands', effects: ['+5% gathering yield', '+10% gathering yield', '+15% gathering yield'] },
@@ -1626,7 +1634,7 @@ export const BUILDINGS: readonly {
     // rarer - the old blurb promised something the engine forbids.
     // From SELECTION_UNLOCK_LEVELS, not written out: the literal "one at 4,
     // two at 7, three at 10" outlived the 2026-11-13 change to 1/4/7 here.
-    what: `Required to breed at all. Its level decides how many aptitudes you may breed FOR - one from level ${SELECTION_UNLOCK_LEVELS[0]}, two from ${SELECTION_UNLOCK_LEVELS[1]}, three from ${SELECTION_UNLOCK_LEVELS[2]} - and opens a third expedition slot at 8.`,
+    what: `Required to breed at all. Its level decides how many aptitudes you may breed FOR - one from level ${SELECTION_UNLOCK_LEVELS[0]}, two from ${SELECTION_UNLOCK_LEVELS[1]}, three from ${SELECTION_UNLOCK_LEVELS[2]} - and opens a third expedition slot at ${EXPEDITION_THIRD_SLOT_GROUNDS} (up to ${EXPEDITION_MAX_BOUGHT_SLOTS} more can be bought with gold on the Expeditions tab).`,
   },
   {
     id: 5,
