@@ -3808,7 +3808,7 @@ namespace FolkIdle.Server.Domain.Combat
         // alike (OfflineSimulationEngine applies the same rule per slot).
         private static bool ProcessAgeSlot(ref System.Guid characterId, ref long ageTicks, ref int agePhase, bool slotIsWorking)
         {
-            if (characterId == System.Guid.Empty || !slotIsWorking) return false;
+            if (characterId == System.Guid.Empty || !Engine.ChildGrowth.AgesThisTick(agePhase, slotIsWorking)) return false;
             
             ageTicks++;
             // Modul: the thresholds live in AgePhaseCurve now. They used to be
