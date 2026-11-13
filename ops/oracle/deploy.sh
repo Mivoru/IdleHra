@@ -37,8 +37,15 @@ docker compose up -d --build
 # and only cache older than a week, so the next build still reuses the layers
 # this one just made. Dangling images are the previous builds' leftovers;
 # images a container uses are never touched.
+#
+# Modul: AND A SIZE CAP (2026-11-13). The age filter alone let a day of many
+# deploys pile up: eight deploys took the disk from 26% to 42%, about 2 GB of
+# fresh cache each, none of it old enough to go. --keep-storage keeps the
+# newest 4 GB (enough for the next build to reuse its layers) and drops the
+# rest whatever its age.
 prune() {
   docker builder prune -f --filter until=168h >/dev/null || true
+  docker builder prune -f --keep-storage 4GB >/dev/null 2>&1 || true
   docker image prune -f >/dev/null || true
   echo "deploy: pruned; disk $(df -h / | awk 'NR==2 {print $5}') used"
 }
