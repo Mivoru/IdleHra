@@ -53,5 +53,20 @@ namespace FolkIdle.Server.Tests
             var rows = JourneyBoard.Build(Deeds(0, 4), new PlayerRecord { CurrentLevel = 45 }, 0, new[] { new DungeonGateStanding(0, 4) });
             Assert.DoesNotContain(rows, r => r.Key == "dungeon");
         }
+
+        [Fact]
+        public void AReturnedExpeditionLeadsTheRoad()
+        {
+            var rows = JourneyBoard.Build(Deeds(0, 4), new PlayerRecord { CurrentLevel = 60 }, 0, new[] { new DungeonGateStanding(0, 4) },
+                ascensionSteps: 0, expeditionSlots: 3, expeditionsAway: 2, expeditionsBack: 1);
+            var first = rows.First();
+            Assert.Equal("expeditions", first.Key);
+            Assert.Equal(2, first.Value);
+            Assert.Equal(3, first.Max);
+            Assert.Contains("claim", first.Hint);
+
+            var none = JourneyBoard.Build(Deeds(0, 4), new PlayerRecord { CurrentLevel = 60 }, 0, new[] { new DungeonGateStanding(0, 4) });
+            Assert.DoesNotContain(none, r => r.Key == "expeditions");
+        }
     }
 }

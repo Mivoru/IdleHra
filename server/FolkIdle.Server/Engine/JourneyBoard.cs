@@ -39,9 +39,21 @@ namespace FolkIdle.Server.Engine
         /// <summary>The level from which the card is worth showing.</summary>
         public const int ShowFromLevel = 40;
 
-        public static List<JourneyRow> Build(in DeedContext deeds, PlayerRecord player, int shardBalance, IReadOnlyList<DungeonGateStanding> gates, int ascensionSteps = 0)
+        public static List<JourneyRow> Build(in DeedContext deeds, PlayerRecord player, int shardBalance, IReadOnlyList<DungeonGateStanding> gates, int ascensionSteps = 0,
+            int expeditionSlots = 0, int expeditionsAway = 0, int expeditionsBack = 0)
         {
             var rows = new List<JourneyRow>();
+
+            // Expeditions (2026-11-13): first, because a returned one is a chest
+            // waiting - the one row here that asks for a tap right now.
+            if (expeditionSlots > 0)
+            {
+                string hint = expeditionsBack > 0 ? $"{expeditionsBack} back - claim the chest"
+                    : expeditionsAway < expeditionSlots ? $"{expeditionSlots - expeditionsAway} slot free - send an ancestor"
+                    : "everyone is away";
+                rows.Add(new JourneyRow("expeditions", "Expeditions", $"{expeditionsAway} of {expeditionSlots} away",
+                    expeditionsAway, expeditionSlots, "expeditions", hint));
+            }
 
             if (DungeonEngine.IsOpen((byte)deeds.DefeatedRegionBossMask) && gates.Count > 0)
             {
@@ -114,7 +126,9 @@ namespace FolkIdle.Server.Engine
             }
             int ascension = await db.BossAscensionProgress.AsNoTracking()
                 .Where(p => p.PlayerId == playerId).SumAsync(p => (int)p.HighestStep);
-            return Build(in deeds, player, shards, gates, ascension);
+            var board = await ExpeditionEngine.BoardAsync(db, playerId, new DateTimeOffset(now).ToUnixTimeSeconds());
+            return Build(in deeds, player, shards, gates, ascension,
+                board.Slots, board.Active.Count, board.Active.Count(e => e.Returned));
         }
     }
 }
