@@ -191,7 +191,7 @@
               <!-- Task 109: slot 1 is the character Combat fights with - the
                    player's own person. A bare "Brennus" left a new player
                    asking who that was. -->
-              <strong data-testid="home-worker-name">{who(worker)}{#if worker.slot === 1}<span class="you"> (you)</span>{/if}</strong>
+              <strong data-testid="home-worker-name">{who(worker)}{#if worker.slot === 1}<span class="you">&nbsp;(you)</span>{/if}</strong>
               <span class:idle={worker.activity === 0}>{jobLabel(worker.activity)}</span>
               {#if halt}
                 <span class="halt">{halt}</span>
