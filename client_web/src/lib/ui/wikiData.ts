@@ -824,6 +824,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'breeding', anchor: 'inherits', title: 'What a child inherits', keywords: 'aptitude drift epic mutation genes dominant recessive band preview' },
   { tab: 'breeding', anchor: 'genepool', title: 'The Inn and the gene pool', keywords: 'newcomer arrival interval capacity feast elder marry' },
 
+  { tab: 'longgame', anchor: 'endgame', title: 'After level 50: your long goals', keywords: 'endgame goals what to do expeditions dungeon delve ascension world boss breeding rebirth deeds level 50' },
   { tab: 'longgame', anchor: 'season', title: 'What a rebirth resets', keywords: 'rebirth prestige rollover reset carries lost season end wipe renown' },
   { tab: 'longgame', anchor: 'rebirth-pays', title: 'What a rebirth pays', keywords: 'rebirth skill points xp faster keep gear pet slot title cap ten' },
   { tab: 'longgame', anchor: 'rebirth-roadmap', title: 'The road to ten rebirths', keywords: 'rebirth roadmap milestones avatar phoenix jarilo vesna etain morana badge' },

@@ -1375,6 +1375,26 @@
             let go - before you confirm. No date ends a run for you.
           </p>
 
+          <!-- 2026-11-13: one map of the endgame. The tracks existed; nothing put
+               them side by side for a player past level 50 (Your road does it on
+               the Home screen, this is the same list with the why). -->
+          <h3 id="endgame">After level 50: your long goals</h3>
+          <div class="scroll">
+            <table data-testid="wiki-endgame">
+              <thead><tr><th>Track</th><th>How often</th><th>What it pays</th></tr></thead>
+              <tbody>
+                <tr><td>Expeditions (Bloodline)</td><td>every few hours</td><td>A loot chest per trip from a benched ancestor; titles at 10 / 50 / 100 trips</td></tr>
+                <tr><td>Dungeon</td><td>2 tickets a day per gate</td><td>Gear, XP or gold, first-clear diamonds, a title at stage 15; each gate forecasts your next stage</td></tr>
+                <tr><td>The Delve and the Deep</td><td>weekly</td><td>Diamonds under a weekly cap, depth titles, the Deepest board</td></tr>
+                <tr><td>Boss Ascension</td><td>whenever</td><td>A loot chest per new step; step 10 adds +2% damage in that region for good</td></tr>
+                <tr><td>World boss</td><td>daily strike, weekly payout</td><td>Diamonds by damage, milestone titles</td></tr>
+                <tr><td>Breeding to 50 / 50 / 50 / 50</td><td>a generation an hour or so</td><td>Aptitude bonuses, and milestones at 30 / 40 / 50 (crit damage, yield, block, gold); the Best blood board</td></tr>
+                <tr><td>Rebirth</td><td>when a life has paid out</td><td>Legacy Shards for the Ancestral Boons, a Rebirth Trial, a higher bloodline ceiling, a life record</td></tr>
+                <tr><td>Book of Deeds</td><td>as you go</td><td>A Seal per chapter: +2 skill points each, for good</td></tr>
+              </tbody>
+            </table>
+          </div>
+
           <h3 id="season">What a rebirth resets</h3>
           <div class="two-col">
             <div class="card good">
