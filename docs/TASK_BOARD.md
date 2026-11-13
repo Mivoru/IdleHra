@@ -215,6 +215,15 @@ history: archive section 37.
 
 ### 111. Rations - three weeks of data (live since 2026-10-07, roadmap 3.2)
 
+**Re-measured 2026-11-13** (`material_flow_daily`, 11-06..11-13, larder use
+is booked as Spent): the region-5 fish **void ray: 7.57M gathered, 0.48M
+spent** (15x); moss bass, frost cod, lava carp and sunlit perch are each
+under 0.05M spent. Rations still cost the endgame accounts nothing - a
+fisher out-catches a fighter many times over, and the Skill aptitude
+milestones (+5/10/15% gather yield, live today) widen it. **Still no change
+recommended**; if rations are meant to bite, the lever is
+`RationIntervalTicks` (owner decision, with the gold-economy question).
+
 **Measured 2026-10-30 (read-only, the 3 players at level 95+).** Rations
 cost nothing yet: every larder holds about 3 x 10,000 fish, and fish
 gathered outruns fish spent 5-15x a week (week of 10-19: 4.65M gathered,
