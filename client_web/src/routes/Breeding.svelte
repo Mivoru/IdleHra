@@ -27,6 +27,7 @@
     bestVillagerAptitudeFor,
     SELECTION_UNLOCK_LEVELS,
     APTITUDE_VILLAGE_CEILING,
+    setAncestorKept,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import AptitudePanel from '../lib/ui/AptitudePanel.svelte';
@@ -323,6 +324,33 @@
     play('childBorn');
   });
 
+  // Modul: KEEP THE CHILD AT BIRTH (2026-11-13). Marked members carry first,
+  // so a child better than the weakest marked one is cut at the next rebirth
+  // unless somebody acts - on production the owner had a 75 outside a marked
+  // ten whose weakest was 46. The birth is the moment to ask: the banner
+  // offers to keep the child in that member's place (WouldCarry is the
+  // server's; two ordinary keep commands).
+  const bornSwap = $derived.by(() => {
+    if (!bornChild || bornChild.WouldCarry || bornChild.IsKept) return null;
+    const total = (m: { AptitudeStrength: number; AptitudeSkill: number; AptitudeEndurance: number; AptitudeFortune: number }) =>
+      m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
+    const marked = (hall.data?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter);
+    if (marked.length === 0) return null;
+    const weakest = marked.reduce((a, b) => (total(b) < total(a) ? b : a));
+    return total(bornChild) > total(weakest) ? weakest : null;
+  });
+  let bornKeptId = $state('');
+
+  function keepBorn() {
+    if (!bornChild || !bornSwap) return;
+    const off = setAncestorKept(bornSwap.CharacterId, false);
+    if (!off.ok) return pushLocalNotice(off.reason, 'error');
+    const on = setAncestorKept(bornChild.CharacterId, true);
+    if (!on.ok) return pushLocalNotice(on.reason, 'error');
+    bornKeptId = bornChild.CharacterId;
+    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.ancestorsHall }), 900);
+  }
+
   function breed() {
     hallBefore = new Set((hall.data?.Members ?? []).map((m) => m.CharacterId));
     const outcome = partnerIsVillager
@@ -576,7 +604,17 @@
               Endurance {bornChild.AptitudeEndurance} &middot; Fortune {bornChild.AptitudeFortune}{#if bornChild.IsEpicMutation}
                 &middot; <span class="epic">epic</span>{/if}
             </span>
-            <span class="dim tiny">Field them in the Hall of Ancestors - about an hour of play and they are grown.</span>
+            <span class="dim tiny">They grow up on their own within an hour. Field them in the Hall of Ancestors to play them.</span>
+            {#if bornSwap && bornKeptId !== bornChild.CharacterId}
+              <span class="dim tiny" data-testid="born-not-carried">
+                Not among those who carry through a rebirth: {bornSwap.Name || 'a weaker member'} is marked to keep instead.
+              </span>
+              <button type="button" class="keep-born" data-testid="born-keep" onclick={keepBorn}>
+                Keep instead of {bornSwap.Name || 'them'}
+              </button>
+            {:else if bornKeptId === bornChild.CharacterId}
+              <span class="dim tiny" data-testid="born-kept">Marked to keep - they carry through your next rebirth.</span>
+            {/if}
           </div>
           <button type="button" onclick={() => requestScreen('ancestors')}>Hall of Ancestors</button>
         </div>
@@ -883,5 +921,11 @@
   .match .score {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+
+  .keep-born {
+    justify-self: start;
+    min-height: 44px;
+    margin-top: 0.3rem;
   }
 </style>

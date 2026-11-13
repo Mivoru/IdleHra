@@ -5974,6 +5974,27 @@ await go('Breeding');
         bannerText.split(/\r?\n/)[0] || 'no banner',
       );
 
+      // Keep-at-birth (2026-11-13): the banner offers to keep the child in the
+      // weakest marked member's place exactly when the child would not carry
+      // and beats that member. Not pressed - the marks are fixture state.
+      if (after > before) {
+        await page.waitForTimeout(1500);
+        const hallB = await apiGet('/api/v1/ancestors/hall').catch(() => null);
+        const totB = (m) => m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
+        const rosterNow = await apiGet('/api/v1/breeding/roster').catch(() => null);
+        const beforeIdsB = new Set((rosterBefore ?? []).map((c) => c.CharacterId));
+        const kidId = (rosterNow ?? []).find((c) => !beforeIdsB.has(c.CharacterId))?.CharacterId ?? null;
+        const kid = (hallB?.Members ?? []).find((m) => m.CharacterId === kidId) ?? null;
+        const markedB = (hallB?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter).map(totB);
+        const offer = await page.getByTestId('born-keep').count();
+        const want = kid !== null && !kid.WouldCarry && !kid.IsKept && markedB.length > 0 && totB(kid) > Math.min(...markedB);
+        record(
+          'a birth offers to keep a child who would not carry',
+          kid !== null && (offer > 0) === want,
+          `offer ${offer}, want ${want}${kid ? `, child ${totB(kid)} carry ${kid.WouldCarry} vs weakest marked ${markedB.length ? Math.min(...markedB) : '-'}` : ', child not found'}`,
+        );
+      }
+
       // Modul: WHAT THE CHILD ACTUALLY GOT, read from the roster endpoint
       // rather than guessed from the parents' odds - inheritance is rolled
       // server-side, so this is the one place in the script that can say

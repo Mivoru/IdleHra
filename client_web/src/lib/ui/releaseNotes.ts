@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.69.0',
+    date: '2026-11-13',
+    sections: [
+      {
+        title: 'Bloodline',
+        items: [
+          'When a child is born better than an ancestor you marked to keep, the birth banner offers to keep the child in their place - one tap.',
+          'The Hall of Ancestors warning about better blood being lost has a Swap the marks button that fixes it in one tap.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.68.0',
     date: '2026-11-13',
     sections: [
