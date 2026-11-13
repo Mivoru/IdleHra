@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.73.0',
+    date: '2026-11-13',
+    headline: 'The Dungeon tells you how your next stage would go.',
+    sections: [
+      {
+        title: 'Dungeon',
+        items: [
+          'Each gate now shows a forecast for your next stage: whether your party would win it, how much health the boss would keep, or which wave you would fall in - worked out as if you never dodged, so a run with clean dodges and blessings does better.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.72.0',
     date: '2026-11-13',
     headline: 'Expedition titles, and Your road points at waiting chests.',
