@@ -537,6 +537,21 @@ namespace FolkIdle.Server.Models
         // owner found that let rebirths be farmed - see RebirthEngine.
         public int PeakLevel { get; set; }
 
+        // Rebirth Trials (RebirthTrials, 2026-11-13). The trial this life is
+        // under (0 = none) and the ones finished, one bit each. RebirthEngine
+        // is the only writer of both; the payload hydrates them at login, and
+        // a rebirth ends in a reload, like RenownedRebirths.
+        public int ActiveRebirthTrial { get; set; }
+        public int CompletedRebirthTrials { get; set; }
+
+        // Life records (RebirthRules.LifeRecord, 2026-11-13): when this life
+        // began (set by every rebirth; 0 = never timed), and the fastest life
+        // that ended in a rebirth at level 50 and at level 100, in seconds
+        // (0 = none yet). RebirthEngine is the only writer.
+        public long LifeStartedAtEpoch { get; set; }
+        public long BestLifeSecondsTo50 { get; set; }
+        public long BestLifeSecondsTo100 { get; set; }
+
         // The highest region THIS LIFE has killed a monster in. Raised by
         // CodexEngine after its batch commits (GREATEST, so out-of-order
         // batches cannot lower it), reset to 0 by the rebirth. Read only by the

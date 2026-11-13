@@ -30,6 +30,10 @@ namespace FolkIdle.Server.Engine
         KeepNotOwned = 8,
         /// <summary>The character is below RebirthRules.MinimumLevel.</summary>
         LevelTooLow = 9,
+        /// <summary>The trial asked for does not exist or is already finished (RebirthTrials).</summary>
+        TrialUnavailable = 10,
+        /// <summary>The Trial of Iron was asked for with gear chosen for the Vault.</summary>
+        TrialForbidsVault = 11,
     }
 
     public readonly record struct RebirthOutcome(
@@ -39,6 +43,39 @@ namespace FolkIdle.Server.Engine
         int DamageBonusPct,
         int ShardsEarned,
         bool Renowned);
+
+    /// <summary>One Rebirth Trial as the Rebirth screen shows it.</summary>
+    public sealed class TrialView
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Rule { get; set; } = string.Empty;
+        public string Reward { get; set; } = string.Empty;
+        public string TitleName { get; set; } = string.Empty;
+        public bool ForbidsVault { get; set; }
+        public bool Completed { get; set; }
+        public bool Active { get; set; }
+
+        public static List<TrialView> For(int activeTrial, int completedMask)
+        {
+            var list = new List<TrialView>();
+            foreach (var t in RebirthTrials.All)
+            {
+                list.Add(new TrialView
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Rule = t.Rule,
+                    Reward = t.Reward,
+                    TitleName = t.TitleName,
+                    ForbidsVault = t.ForbidsVault,
+                    Completed = RebirthTrials.IsCompleted(completedMask, t.Id),
+                    Active = t.Id == activeTrial,
+                });
+            }
+            return list;
+        }
+    }
 
     /// <summary>One Ancestral Boon as the Rebirth screen shows it.</summary>
     public sealed class BoonView
@@ -129,6 +166,15 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>The Ancestral Boons the shards buy (LegacyPerkResolver), with their prices.</summary>
         public List<BoonView> Boons { get; set; } = new();
+
+        /// <summary>The Rebirth Trials, and the one this life is under (0 = none).</summary>
+        public List<TrialView> Trials { get; set; } = new();
+        public int ActiveTrial { get; set; }
+
+        /// <summary>Life records (RebirthRules.LifeRecord): seconds, 0 = none. LifeSeconds is this life so far, 0 if untimed.</summary>
+        public long LifeSeconds { get; set; }
+        public long BestLifeSecondsTo50 { get; set; }
+        public long BestLifeSecondsTo100 { get; set; }
         public int Diamonds { get; set; }
         public int HallMembersKept { get; set; }
         public int VillageBuildingLevels { get; set; }
@@ -165,7 +211,7 @@ namespace FolkIdle.Server.Engine
             _serviceProvider = serviceProvider;
         }
 
-        public async Task<RebirthOutcome> RebirthAsync(long playerId, int expectedRebirthCount, IReadOnlyCollection<long>? keepEquipmentIds = null, CancellationToken cancellationToken = default)
+        public async Task<RebirthOutcome> RebirthAsync(long playerId, int expectedRebirthCount, IReadOnlyCollection<long>? keepEquipmentIds = null, CancellationToken cancellationToken = default, int trialId = RebirthTrials.None)
         {
             await PurgeRedisAsync(playerId);
 
@@ -215,6 +261,26 @@ namespace FolkIdle.Server.Engine
                         await transaction.SafeRollbackAsync(cancellationToken);
                         return new RebirthOutcome(RebirthResult.LevelTooLow, player.RebirthCount, player.RenownedRebirths,
                             RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                    }
+
+                    // Rebirth Trials: the next life's rule, refused before
+                    // anything is written. A finished trial cannot be taken
+                    // again; Iron forbids the Vault.
+                    long[] keepRequested = (keepEquipmentIds ?? Array.Empty<long>()).Distinct().ToArray();
+                    if (trialId != RebirthTrials.None)
+                    {
+                        if (!RebirthTrials.IsChoosable(trialId, player.CompletedRebirthTrials))
+                        {
+                            await transaction.SafeRollbackAsync(cancellationToken);
+                            return new RebirthOutcome(RebirthResult.TrialUnavailable, player.RebirthCount, player.RenownedRebirths,
+                                RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                        }
+                        if (RebirthTrials.Find(trialId)!.ForbidsVault && keepRequested.Length > 0)
+                        {
+                            await transaction.SafeRollbackAsync(cancellationToken);
+                            return new RebirthOutcome(RebirthResult.TrialForbidsVault, player.RebirthCount, player.RenownedRebirths,
+                                RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                        }
                     }
 
                     // Task 114: the equipment the player pays to keep. Priced
@@ -326,6 +392,31 @@ namespace FolkIdle.Server.Engine
                         if (countAfter >= titleMilestone.Rebirths)
                             await Domain.Progression.TitleEngine.GrantAsync(db, playerId, titleMilestone.TitleSlug, GameClock.UtcNow);
                     }
+
+                    // Rebirth Trials: the life this rebirth ends was under a
+                    // trial and reached the rebirth level (checked above), so
+                    // the trial is finished - its bit and its title. Then the
+                    // next life's trial, already validated.
+                    int completedTrials = player.CompletedRebirthTrials;
+                    var finishedTrial = RebirthTrials.Find(player.ActiveRebirthTrial);
+                    if (finishedTrial != null)
+                    {
+                        completedTrials |= RebirthTrials.BitOf(finishedTrial.Id);
+                        await Domain.Progression.TitleEngine.GrantAsync(db, playerId, finishedTrial.TitleSlug, GameClock.UtcNow);
+                    }
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"PlayerRecords\" SET \"CompletedRebirthTrials\" = {0}, \"ActiveRebirthTrial\" = {1} WHERE \"Id\" = {2}",
+                        new object[] { completedTrials, trialId, playerId }, cancellationToken);
+
+                    // Life records (RebirthRules.LifeRecord): this life, timed
+                    // from the rebirth that began it, then the next life's clock.
+                    long nowSeconds = GameClock.UtcNowOffset.ToUnixTimeSeconds();
+                    long lifeSeconds = player.LifeStartedAtEpoch > 0 ? nowSeconds - player.LifeStartedAtEpoch : 0;
+                    long best50 = RebirthRules.LifeRecord(player.BestLifeSecondsTo50, lifeSeconds, player.CurrentLevel, RebirthRules.RecordLevelLow);
+                    long best100 = RebirthRules.LifeRecord(player.BestLifeSecondsTo100, lifeSeconds, player.CurrentLevel, RebirthRules.RecordLevelHigh);
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"PlayerRecords\" SET \"LifeStartedAtEpoch\" = {0}, \"BestLifeSecondsTo50\" = {1}, \"BestLifeSecondsTo100\" = {2} WHERE \"Id\" = {3}",
+                        new object[] { nowSeconds, best50, best100, playerId }, cancellationToken);
                     // The milestone avatars (3, 5, 7, 10). Cosmetics survive the
                     // reset; granted once, so a replay cannot add a second.
                     foreach (var milestone in RebirthRules.AvatarMilestones)
@@ -448,6 +539,11 @@ namespace FolkIdle.Server.Engine
                 Diamonds = player.PremiumDiamonds,
                 HallMembersKept = Math.Max(0, characters - letGo.Count),
                 Boons = BoonView.For(player.LegacyPerks),
+                Trials = TrialView.For(player.ActiveRebirthTrial, player.CompletedRebirthTrials),
+                ActiveTrial = player.ActiveRebirthTrial,
+                LifeSeconds = player.LifeStartedAtEpoch > 0 ? Math.Max(0, GameClock.UtcNowOffset.ToUnixTimeSeconds() - player.LifeStartedAtEpoch) : 0,
+                BestLifeSecondsTo50 = player.BestLifeSecondsTo50,
+                BestLifeSecondsTo100 = player.BestLifeSecondsTo100,
                 VillageBuildingLevels = await db.VillageInfrastructures.AsNoTracking()
                     .Where(v => v.PlayerId == playerId).SumAsync(v => (int?)v.CurrentLevel, cancellationToken) ?? 0,
             };

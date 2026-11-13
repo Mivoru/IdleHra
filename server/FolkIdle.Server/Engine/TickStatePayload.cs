@@ -507,6 +507,11 @@ namespace FolkIdle.Server.Engine
         // at - below it kills pay RebirthRules.ReLevelXpBonusPct more XP.
         // Hydrated like RenownedRebirths; only RebirthEngine writes the column.
         public int PeakLevel;
+        // Rebirth Trials (RebirthTrials): hydrated like PeakLevel; only
+        // RebirthEngine writes the columns. Read by the shared XP, gold,
+        // health and damage helpers, so live and offline agree.
+        public int ActiveRebirthTrial;
+        public int CompletedRebirthTrials;
         public bool RebirthPending;
 
         // Modul: THE SKILL TREE'S RANKS, ONE BYTE PER NODE, indexed by node id.

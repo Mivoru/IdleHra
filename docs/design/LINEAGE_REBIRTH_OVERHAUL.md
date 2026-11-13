@@ -178,3 +178,30 @@ ranked by the child they would make, with the aptitudes to tick
 - The 20-rebirth accounts can rebirth again; their next rebirth also grants
   Keeper of the Blood.
 - Banked shards (40k-55k) can be spent at once, on the new prices.
+
+## 7. Rebirth Trials (built the same night, client 1.61.0)
+
+An optional rule for the next life, chosen at rebirth; the rebirth that ends
+that life finishes it (it needs the rebirth level anyway). Each pays once.
+
+| Trial | Rule while active | Reward for good | Title |
+|---|---|---|---|
+| Want | kill gold x0.5 | +5% kill gold | The Frugal |
+| The Slow Hand | combat XP x0.6 (whole multiplier) | +5% XP (additive layer) | The Patient |
+| Frailty | max health -25% | +5% max health | The Unbroken |
+| Iron | no Vault for that rebirth | +2% damage | Ironborn |
+
+Applied in the helpers live and offline share (`LiveKillXpMultiplierPct`,
+`CombatGoldReward.FactorsFor`, `EffectiveMaxMilliHpFor`,
+`EffectiveMilliAttackFor`); decided only in `RebirthEngine`. Columns
+`PlayerRecords.ActiveRebirthTrial` / `CompletedRebirthTrials` (additive
+migration), hydrated into the payload like `PeakLevel`. No abandon in v1 - the
+rules are a slower climb, never a wall. Tests: `RebirthTrialsTests`.
+
+## 8. Life records (client 1.61.0)
+
+`PlayerRecords.LifeStartedAtEpoch` is set by every rebirth; the rebirth that
+ends a life at level 50+ (100+) keeps the fastest such life
+(`BestLifeSecondsTo50` / `To100`, `RebirthRules.LifeRecord`). Decided only in
+`RebirthEngine`. Lives begun before the column are untimed. Shown on the
+Rebirth screen; a leaderboard is the natural next step.

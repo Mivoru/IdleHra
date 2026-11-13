@@ -6758,6 +6758,8 @@ namespace FolkIdle.Server.Network
             public string? Confirm { get; set; }
             // Task 114: equipment ids to carry through, each paid for by rarity.
             public long[]? KeepEquipmentIds { get; set; }
+            /// <summary>The Rebirth Trial for the next life (RebirthTrials), 0 or absent for none.</summary>
+            public int TrialId { get; set; }
         }
 
         /// <summary>
@@ -6815,6 +6817,7 @@ namespace FolkIdle.Server.Network
                     PlayerId = playerId,
                     ExpectedRebirthCount = body.ExpectedRebirthCount,
                     KeepEquipmentIds = body.KeepEquipmentIds ?? Array.Empty<long>(),
+                    TrialId = body.TrialId,
                     Engine = engine,
                 };
                 _playerSessionRegistry.RebirthRequestQueue.Enqueue(request);
@@ -6837,7 +6840,7 @@ namespace FolkIdle.Server.Network
                 {
                     await _checkpointManager.WaitForPendingFlushesAsync(playerId);
                 }
-                outcome = await engine.RebirthAsync(playerId, body.ExpectedRebirthCount, body.KeepEquipmentIds ?? Array.Empty<long>());
+                outcome = await engine.RebirthAsync(playerId, body.ExpectedRebirthCount, body.KeepEquipmentIds ?? Array.Empty<long>(), default, body.TrialId);
             }
 
             int status = outcome.Value.Result switch
@@ -6851,6 +6854,8 @@ namespace FolkIdle.Server.Network
                 RebirthResult.NotEnoughGold => 409,
                 RebirthResult.LevelTooLow => 409,
                 RebirthResult.KeepNotOwned => 400,
+                RebirthResult.TrialUnavailable => 409,
+                RebirthResult.TrialForbidsVault => 400,
                 _ => 500,
             };
             await WriteRebirthAsync(context, status, outcome.Value);

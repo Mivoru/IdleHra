@@ -1557,6 +1557,8 @@ namespace FolkIdle.Server.Domain.Shared
                 // Task 88: RebirthEngine's column, read-only here.
                 RenownedRebirths = player.RenownedRebirths,
                 PeakLevel = player.PeakLevel,
+                ActiveRebirthTrial = player.ActiveRebirthTrial,
+                CompletedRebirthTrials = player.CompletedRebirthTrials,
                 Skill_Craft = skillTreeLevels[SkillTreeRegistry.BoughCraft],
                 Skill_Harvest = skillTreeLevels[SkillTreeRegistry.BoughHarvest],
                 Skill_Scholar = skillTreeLevels[SkillTreeRegistry.CrownScholar],

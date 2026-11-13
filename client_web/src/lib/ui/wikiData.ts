@@ -474,6 +474,7 @@ export const REBIRTH_PAYS: readonly string[] = [
   `Rebirths ${REBIRTH_REWARDED + 1} to ${REBIRTH_MAX} raise the bloodline ceiling - the long road for the bloodline.`,
   'Legacy Shards on every rebirth, by the level the life reached: half its square (a life ended at 90 pays 4,050, at 100 pays 5,000). Spend them on the Ancestral Boons on the Rebirth screen - +25% XP, +25% gold and +10% damage at the most, for good.',
   'There is no last rebirth. Past twenty they pay shards, and 20, 30 and 50 bring the titles Keeper of the Blood, The Undying and Wheel of Ages.',
+  'Rebirth Trials: when you are reborn you may take a trial for the next life - Want (kills pay half the gold), the Slow Hand (40% less combat XP), Frailty (25% less health) or Iron (no Vault). The rebirth that ends that life finishes it, for +5% gold, +5% XP, +5% health or +2% damage for good, and a title. Each pays once.',
   'Your rebirth count is shown as a badge beside your name.',
   `Renown, if the rebirth is taken halfway to level 100 or later - counted for the first ${REBIRTH_REWARDED} rebirths.`,
 ];
