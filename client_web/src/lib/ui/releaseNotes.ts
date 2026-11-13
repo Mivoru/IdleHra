@@ -35,6 +35,26 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.65.0',
+    date: '2026-11-13',
+    headline: 'Best blood this week: a weekly race for breeders.',
+    sections: [
+      {
+        title: 'Leaderboards',
+        items: [
+          'New tab, Best blood this week: the best child of each bloodline, born since Monday, ranked by its four aptitudes added up, then by its weakest one. It starts again every Monday and pays nothing - it is for bragging rights.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'A child you put into a slot now grows up an hour after birth even while it stands idle, and its stats change the moment it does, without signing in again.',
+          'Your road on the Home screen now shows your real Dungeon stages for each gate and your waiting tickets. It used to show 0.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.64.0',
     date: '2026-11-13',
     headline: 'Your road: every long goal on one card.',

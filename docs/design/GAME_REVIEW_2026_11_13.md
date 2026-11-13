@@ -93,7 +93,14 @@ Further ideas, in order of value per effort:
   Rebirth screen and as a leaderboard. Costs one timestamp column; makes every
   rebirth a race against yourself.
 - **Weekly world-boss and Delve ladders** exist; a weekly "bloodline" ladder
-  (best child bred this week) would give breeding a social side.
+  (best child bred this week) would give breeding a social side. Built
+  (client 1.65.0): Leaderboards, "Best blood this week" (BloodlineWeekBoard,
+  glory only).
+- **Correction (same night):** the claim that the endgame accounts never
+  played the Dungeon came from the dead pre-rework columns
+  PlayerRecord.DungeonBestStage/DungeonTickets. The per-gate DungeonProgress
+  rows show stages 5-13. The Your road card read the same dead columns and was
+  fixed in #343.
 
 ### D. Social layer for a tiny population
 
