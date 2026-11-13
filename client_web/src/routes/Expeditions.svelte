@@ -161,13 +161,13 @@
       <ul class="trips">
         {#each data.Active as e (e.Id)}
           {@const left = Math.max(0, e.ReturnsAtEpoch - nowSeconds)}
-          <li data-testid="expedition-row" data-character-id={e.CharacterId} data-returned={left === 0}>
+          <li data-testid="expedition-row" data-character-id={e.CharacterId} data-returned={left === 0} class:returned={left === 0}>
             <div class="who">
               <strong>{e.Name || 'An ancestor'}</strong>
               <span class="dim tiny">{e.Hours} h to region {e.Region} &middot; aptitudes {e.AptitudeTotal}</span>
             </div>
             {#if left === 0}
-              <button type="button" class="claim" data-testid="expedition-claim" disabled={busy} onclick={() => claim(e.Id)}>Claim the chest</button>
+              <button type="button" class="claim primary" data-testid="expedition-claim" disabled={busy} onclick={() => claim(e.Id)}>Claim the chest</button>
             {:else}
               <span class="tiny">back in {formatDuration(left)}</span>
             {/if}
@@ -302,5 +302,11 @@
     font-weight: 600;
     text-decoration: underline;
     cursor: pointer;
+  }
+
+  /* A returned trip is the one thing on this screen waiting for a tap. */
+  .trips li.returned {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 </style>
