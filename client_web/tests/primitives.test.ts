@@ -41,7 +41,8 @@ describe('app.css shared rules', () => {
   });
 
   it('defines the .panel surface once, in app.css (106)', () => {
-    expect(appCss).toMatch(/\.panel \{\s*background: var\(--bg-panel\);/);
+    // Slightly see-through since 2026-11-13, so the section scene shows behind it.
+    expect(appCss).toMatch(/\.panel \{\s*(\/\*[\s\S]*?\*\/\s*)?background: color-mix\(in srgb, var\(--bg-panel\) \d+%, transparent\);/);
     const copies = svelte
       .filter(({ text }) => /\.panel \{[^}]*background: var\(--bg-panel\)/.test(text))
       .map(({ f }) => f);

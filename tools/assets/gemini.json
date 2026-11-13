@@ -914,6 +914,66 @@
       ],
       "prompt": "A wide panoramic banner for the village screen of a pagan Slavic-folklore idle RPG: a lively early-medieval village of log houses with thatched roofs, a forge with sparks, a mill, a breeding grounds paddock, villagers at work, a wooden palisade and forest beyond, warm afternoon light. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
       "note": "2026-11-13: generated 1584x672, cropped to a 1200x360 strip (10:3) at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_village.webp for ScreenBanner."
+    },
+    {
+      "id": "scene_combat",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/abyssal_breach.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A pagan Slavic-folklore battlefield at night: the edge of a dark forest under a blood moon, broken spears and shields in the grass, glowing eyes of beasts between the trees, drifting embers, crimson and charcoal palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_combat.webp - the fixed page background for the 'combat' section (sections.ts sceneUrl, app.css body::before)."
+    },
+    {
+      "id": "scene_gather",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/whispering_woods.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A misty Slavic forest river at dawn: stacked logs by an axe stump, a rocky outcrop with glinting ore veins, a small wooden fishing jetty, wild herbs and mushrooms, green and soft gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_gather.webp - the fixed page background for the 'gather' section (sections.ts sceneUrl, app.css body::before)."
+    },
+    {
+      "id": "scene_hero",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A candle-lit Slavic warrior's chamber: armour on a stand, a carved oak chest, runes glowing faintly on wooden beams, a fur cloak, a window to a starry night, violet and deep amber palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_hero.webp - the fixed page background for the 'hero' section (sections.ts sceneUrl, app.css body::before)."
+    },
+    {
+      "id": "scene_make",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/main_hub.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A Slavic village forge and workshop interior at evening: an anvil glowing with hot iron, hanging tools, a loom and spinning wheel, woven baskets, warm firelight with cool blue window light, blue and copper palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_make.webp - the fixed page background for the 'make' section (sections.ts sceneUrl, app.css body::before)."
+    },
+    {
+      "id": "scene_community",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/main_hub.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A Slavic longhouse feast hall at night: long tables with lanterns, banners of different clans, a market stall corner with goods, a hearth in the middle, teal and warm gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_community.webp - the fixed page background for the 'community' section (sections.ts sceneUrl, app.css body::before)."
+    },
+    {
+      "id": "scene_home",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/login_valley.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A wide Slavic river valley at dusk seen from a hilltop: a village with smoking chimneys far below, forests and distant mountains, the first stars, a carved wooden idol on the hill in the foreground edge, brass and dusky blue palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_home.webp - the fixed page background for the 'home' section (sections.ts sceneUrl, app.css body::before)."
     }
   ]
 }
