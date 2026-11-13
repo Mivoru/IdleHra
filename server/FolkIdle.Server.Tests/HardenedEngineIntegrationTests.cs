@@ -11582,8 +11582,18 @@ namespace FolkIdle.Server.Tests
             RunSlotTicks(ref payload, ticks);
 
             Assert.Equal(AgePhaseCurve.ChildEndTicks + ticks, payload.Slot1_AgeTicks);
-            Assert.Equal(0L, payload.Slot2_AgeTicks);
+            // Since 2026-11-13 a child grows on its own (ChildGrowth), so the
+            // idle child in slot 2 ages too - the live payload matches the
+            // row's since-birth settle instead of waiting for a relog.
+            Assert.Equal((long)ticks, payload.Slot2_AgeTicks);
             Assert.Equal((long)ticks, payload.Slot3_AgeTicks);
+
+            // An idle ADULT still ages only on its own work.
+            var idleAdult = AgePerSlotPayload(970004412L);
+            idleAdult.Slot2_AgeTicks = AgePhaseCurve.ChildEndTicks;
+            idleAdult.Slot2_AgePhase = AgePhaseCurve.Adult;
+            RunSlotTicks(ref idleAdult, ticks);
+            Assert.Equal(AgePhaseCurve.ChildEndTicks, idleAdult.Slot2_AgeTicks);
         }
 
         [Fact]

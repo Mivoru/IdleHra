@@ -1621,7 +1621,7 @@ namespace FolkIdle.Server.Domain.Shared
             if (characters.Count > 0)
             {
                 payload.Slot1_CharacterId = characters[0].Id;
-                payload.Slot1_AgeTicks = characters[0].AgeTicks;
+                payload.Slot1_AgeTicks = ChildGrowth.AgeTicksOnLoad(characters[0].AgeTicks, characters[0].AgePhase, characters[0].BornAtEpoch, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 payload.Slot1_AgePhase = characters[0].AgePhase;
                 payload.Slot1_GeneticVector = characters[0].Lineage?.GeneticVector ?? 0;
 
@@ -1665,7 +1665,7 @@ namespace FolkIdle.Server.Domain.Shared
             if (characters.Count > 1)
             {
                 payload.Slot2_CharacterId = characters[1].Id;
-                payload.Slot2_AgeTicks = characters[1].AgeTicks;
+                payload.Slot2_AgeTicks = ChildGrowth.AgeTicksOnLoad(characters[1].AgeTicks, characters[1].AgePhase, characters[1].BornAtEpoch, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 payload.Slot2_AgePhase = characters[1].AgePhase;
                 payload.Slot2_GeneticVector = characters[1].Lineage?.GeneticVector ?? 0;
 
@@ -1684,7 +1684,7 @@ namespace FolkIdle.Server.Domain.Shared
             if (characters.Count > 2)
             {
                 payload.Slot3_CharacterId = characters[2].Id;
-                payload.Slot3_AgeTicks = characters[2].AgeTicks;
+                payload.Slot3_AgeTicks = ChildGrowth.AgeTicksOnLoad(characters[2].AgeTicks, characters[2].AgePhase, characters[2].BornAtEpoch, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 payload.Slot3_AgePhase = characters[2].AgePhase;
                 payload.Slot3_GeneticVector = characters[2].Lineage?.GeneticVector ?? 0;
 
