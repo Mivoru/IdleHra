@@ -3667,6 +3667,10 @@ namespace FolkIdle.Server.Tests
             var shortUsername = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes_970000803@example.com", "ab", "valid password", null);
             Assert.Equal(EmailRegisterOutcome.InvalidUsername, shortUsername.Outcome);
 
+            // An email-shaped name is refused: it would be shown on every public board.
+            var emailName = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes_email_970000804@example.com", "someone@gmail.", "valid password", null);
+            Assert.Equal(EmailRegisterOutcome.InvalidUsername, emailName.Outcome);
+
             var shortPassword = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes2_970000803@example.com", "ValidUserB803", "abc", null);
             Assert.Equal(EmailRegisterOutcome.InvalidPassword, shortPassword.Outcome);
 
