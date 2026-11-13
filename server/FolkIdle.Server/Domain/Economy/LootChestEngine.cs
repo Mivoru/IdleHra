@@ -286,15 +286,25 @@ namespace FolkIdle.Server.Domain.Economy
         }
 
         /// <summary>
-        /// The player's own gold per minute over the last seven days of the
-        /// income ledger, never below the region's floor.
+        /// The player's own EARNED gold per minute over the last seven days of
+        /// the income ledger, never below the region's floor.
         /// </summary>
+        /// <remarks>
+        /// Modul: ONE DEFINITION OF EARNED (2026-11-14). This summed every
+        /// source except the chests themselves, so Market sales, mail (where
+        /// scaled rewards land), the guild payout, the Delve, the quest line and
+        /// the Gold dungeon all raised the base that chest gold, the Delve stake
+        /// and the expedition slot and provision prices are priced from - a
+        /// second definition beside GoldRewardScale.EarnedSources, whose own
+        /// note says a reward must never raise its own base. Measured on
+        /// production 2026-11-14: +39% / +7% / +14% on the three accounts.
+        /// </remarks>
         internal static async Task<double> GoldPerMinuteAsync(FolkIdleDbContext db, long playerId, int highestRegion, DateTime utcNow)
         {
             var since = DateOnly.FromDateTime(utcNow.AddDays(-7));
-            short chestSource = (short)GoldIncomeSource.LootChest;
+            var earnedSources = GoldRewardScale.EarnedSources.Select(s => (short)s).ToArray();
             long earned = await db.GoldIncomeDaily.AsNoTracking()
-                .Where(g => g.PlayerId == playerId && g.Day >= since && g.Source != chestSource)
+                .Where(g => g.PlayerId == playerId && g.Day >= since && earnedSources.Contains(g.Source))
                 .SumAsync(g => (long?)g.Amount) ?? 0L;
             double measured = earned / (7.0 * 24 * 60);
             return Math.Max(measured, GoldPerMinuteFloorByRegion[highestRegion - 1]);
