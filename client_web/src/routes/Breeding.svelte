@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import Money from '../lib/ui/Money.svelte';
   import { play } from '../lib/ui/audio';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -383,6 +384,7 @@
 </script>
 
 <div class="breeding-screen">
+  <ScreenBanner art="banner_breeding" line="Every child carries the best of two lines." />
   <BloodlinePath
     hall={hall.data}
     newcomers={newcomers.length}

@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.75.0',
+    date: '2026-11-13',
+    headline: 'Painted banners for the Bloodline and Rebirth screens.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'Breeding, the Hall of Ancestors, Expeditions and Rebirth now open under a painted banner from the game art: the whispering woods, the ancient ruins, the high roads and Yggdrasil.',
+          'The Wiki explains the Rebirth Trials, the Ancestral Boons, expeditions, the leaderboards and the marks that keep your best blood.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.74.0',
     date: '2026-11-13',
     headline: 'Every slot now plays with its own bloodline.',
