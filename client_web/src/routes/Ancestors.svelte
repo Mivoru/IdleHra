@@ -51,11 +51,11 @@
   const claimed = $derived(claimedCount(members));
 
   // Modul: YOUR BEST BLOOD ON THE BENCH (2026-11-13). Aptitudes pay only on
-  // the character who plays, and the production accounts were playing their
-  // 4/4/4/4 founder in slot 1 while bred adults with totals of 40+ sat on the
-  // bench - the bloodline was invisible in combat and nothing said so. The
-  // nudge names the strongest grown member when it clearly beats whoever
-  // stands in slot 1 (8+ points of total, two aptitudes' worth).
+  // the character who plays, and nothing said so: the dev fixture plays its
+  // 4/4/4/4 founder beside bred adults of 40+. (The production endgame
+  // accounts were checked afterwards and do field bred characters - this is
+  // for whoever does not.) The nudge names the strongest grown member when it
+  // clearly beats whoever stands in slot 1 (8+ points of total).
   const BENCH_NUDGE_GAP = 8;
   const slotOne = $derived(members.find((m) => m.PlayableSlot === 0));
   const bestAdult = $derived(

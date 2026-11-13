@@ -46,6 +46,7 @@ export const queryKeys = {
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
   deepestBoard: ['meta', 'leaderboard', 'deepest'] as const,
   lifeRecordBoard: ['meta', 'leaderboard', 'lives'] as const,
+  journey: ['player', 'journey'] as const,
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
@@ -2203,6 +2204,22 @@ export interface LifeRecordBoardRow {
   BestTo100: number;
   RebirthCount: number;
   Title: string | null;
+}
+
+/** One long-term track on the Home "Your road" card (JourneyBoard on the server). */
+export interface JourneyRow {
+  Key: string;
+  Label: string;
+  Progress: string;
+  Value: number;
+  Max: number;
+  /** The screen the Go button opens. */
+  Screen: string;
+  Hint: string;
+}
+
+export function fetchJourney(): Promise<JourneyRow[]> {
+  return authedGet<{ Rows: JourneyRow[] }>('/api/v1/player/journey').then((r) => r?.Rows ?? []);
 }
 
 export function fetchLifeRecordBoard(): Promise<LifeRecordBoardRow[]> {
