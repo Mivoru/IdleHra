@@ -246,6 +246,15 @@ history: archive section 37.
 
 ### 111. Rations - three weeks of data (live since 2026-10-07, roadmap 3.2)
 
+**Re-measured 2026-11-13** (`material_flow_daily`, 11-06..11-13, larder use
+is booked as Spent): the region-5 fish **void ray: 7.57M gathered, 0.48M
+spent** (15x); moss bass, frost cod, lava carp and sunlit perch are each
+under 0.05M spent. Rations still cost the endgame accounts nothing - a
+fisher out-catches a fighter many times over, and the Skill aptitude
+milestones (+5/10/15% gather yield, live today) widen it. **Still no change
+recommended**; if rations are meant to bite, the lever is
+`RationIntervalTicks` (owner decision, with the gold-economy question).
+
 **Measured 2026-10-30 (read-only, the 3 players at level 95+).** Rations
 cost nothing yet: every larder holds about 3 x 10,000 fish, and fish
 gathered outruns fish spent 5-15x a week (week of 10-19: 4.65M gathered,
@@ -273,6 +282,16 @@ per region behind, no heal. Unpaid = hungry, kills pay half XP and gold.
   `HungryRewardPct` - halving pay is the signal, the interval is the cost.
 
 ### 112. Re-measure Malakor's Ascension after power changes (after phase 3, roadmap 3.5)
+
+**Re-measured 2026-11-13** (prod dump 17:52Z restored locally, harness on
+player 8, level 109, 4 rebirths; after the aptitude milestones, Boons and the
+per-slot bloodline fix): headroom r5 = x38 real, x112 maxed. Malakor: the
+owner clears **A0-A4** (A4 in 33 s) and dies at A5; the maxed profile clears
+**A0-A6 and A8** (A7 timed out - noise at the edge). Target is owner ~A2-A3,
+maxed ~A5-A7: the owner sits one step high, the maxed profile in band.
+**No change** - one step is inside the harness's own noise; re-run after the
+next power change. (Same run, dungeon stages: real 8/9/8, maxed 9/10/9 for
+XP/Gold/Equipment.)
 
 **Re-measured 2026-11-02** (roadmap 6.2a item 4): the ladder had drifted
 (owner x47.6, maxed x68-77) and is re-solved to A3 = x40, x1.21 a step. Run
