@@ -2000,6 +2000,15 @@ input[type='radio']:disabled {
     auto, auto, auto, auto, auto, auto, calc(100% - 2.6rem) 2px, auto !important;
 }
 
+/* Modul: A PANEL TAKES ITS SECTION'S COLOUR (2026-11-13, owner: "many
+   panels and frames are just brown"). The cloth itself is dyed a little with
+   the section colour - green on Gathering, blue on the Forge - instead of every
+   card being the same charred oak. Sunken wells keep their own darker value,
+   and the mix stays translucent so the scene behind still shows. */
+.panel:not(.panel--sunken) {
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--bg-panel) 90%, var(--section)) 88%, transparent) !important;
+}
+
 /* Modul: AN EMBROIDERED HEM. A running stitch in the section's colour just
    under each panel's top edge, stopping short of the corner brackets - the folk
    trim a woven cloth has along its border. It is a background layer, not a
