@@ -57,6 +57,14 @@ sections breeding/rebirth/ancestors 62/62 and a full run 418/421 before the
 script was updated for the new rules, check:touch clean, check:clipping only
 the pre-existing Combat finding.
 
+Same night, also DEPLOYED: #338 as 1.0.1685 / client 1.60.0 (backup
+`folkidle-20261113T001850Z.dump`), #339 **Rebirth Trials** (Want, Slow Hand,
+Frailty, Iron - chosen at rebirth, finished by the rebirth that ends that life,
+each pays once) and **life records** as 1.0.1687 / 1.61.0 (backup
+`folkidle-20261113T011439Z.dump`), #340 the **Fastest lives** leaderboard tab
+(1.62.0). Design doc sections 7-8. Correction recorded in the review: most
+nameless level-1 accounts on production are `smoke:screens` guests.
+
 Open: the owner's answers to the review's four questions; the session payload
 of a FIELDED child still reads "child" until it works an hour or the player
 logs in again (the row is already adult - display only).

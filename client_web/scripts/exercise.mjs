@@ -3739,6 +3739,19 @@ await go('The Delve');
         selfId ? `#${selfId.Rank} ${selfId.Name}, floor ${selfId.Floor}; row "${(rowText ?? '').trim().replace(/\s+/g, ' ')}"` : `${board.length} rows, fixture not among them`,
       );
 
+      // --- the Fastest lives board (2026-11-13): the screen draws what the
+      // server ranks - every timed life, fastest first, or the empty line.
+      await page.getByRole('tab', { name: /Fastest lives/i }).first().click();
+      await page.getByTestId('lives-board').waitFor({ timeout: 6000 }).catch(() => {});
+      const livesApi = (await apiGet('/api/v1/leaderboard/lives'))?.Entries ?? [];
+      const livesRows = await page.locator('[data-testid="lives-board"] .board li').count();
+      const livesEmpty = /No timed life/.test(await page.getByTestId('lives-board').innerText().catch(() => ''));
+      record(
+        'the Fastest lives board draws the server\'s ranking',
+        livesApi.length === 0 ? livesEmpty : livesRows === livesApi.length,
+        `${livesRows} rows, server ${livesApi.length}`,
+      );
+
       // --- a title: granted, worn, seen in the profile, and taken off -------
       const granted = await apiPostStatus('/api/v1/dev/titles/grant', { Slug: 'deep_10' });
       await go('The Delve');

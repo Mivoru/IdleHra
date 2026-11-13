@@ -111,7 +111,7 @@
   .bar {
     height: 6px;
     border-radius: 3px;
-    background: color-mix(in srgb, currentColor 12%, transparent);
+    background: var(--border, rgba(127, 127, 127, 0.25));
     overflow: hidden;
   }
   .bar span {
