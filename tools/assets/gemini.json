@@ -974,6 +974,66 @@
       ],
       "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A wide Slavic river valley at dusk seen from a hilltop: a village with smoking chimneys far below, forests and distant mountains, the first stars, a carved wooden idol on the hill in the foreground edge, brass and dusky blue palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
       "note": "2026-11-13: generated 1376x768, saved whole at q60 into client/Assets/Images/SpritesWeb/Backgrounds/scene_home.webp - the fixed page background for the 'home' section (sections.ts sceneUrl, app.css body::before)."
+    },
+    {
+      "id": "banner_crafting",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/main_hub.webp"
+      ],
+      "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. Interior of a busy village craft workshop by day: a carpenter's bench with wood shavings, a tanner stretching leather, shelves of jars and tools, sunlight through a doorway, warm amber and blue palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=0 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_crafting.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
+    },
+    {
+      "id": "banner_forge",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/abyssal_breach.webp"
+      ],
+      "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. A pagan smithy at night: a roaring forge, a smith hammering a glowing sword on an anvil, sparks flying, runes glowing on a finished blade on the wall, molten orange against deep blue shadows. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=110 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_forge.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
+    },
+    {
+      "id": "banner_market",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/main_hub.webp"
+      ],
+      "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. A lively Slavic market square by day: colourful striped stalls, traders with furs, amber, pottery and weapons, banners, a wooden palisade gate, red, ochre and teal palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=10 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_market.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
+    },
+    {
+      "id": "banner_guild",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/main_hub.webp"
+      ],
+      "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. A great carved wooden hall of a warrior clan: shields of many colours on the walls, a long oak table with a map, a great hearth, clan banners with animal emblems, teal and gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=110 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_guild.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
+    },
+    {
+      "id": "banner_progress",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. An ancient open book of deeds on a stone lectern under a sacred oak, glowing runes rising from its pages, wax seals, candle light, starry sky through the branches, violet and gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=120 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_progress.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
+    },
+    {
+      "id": "banner_wiki",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/login_valley.webp"
+      ],
+      "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. A wise old volkhv's study in a log tower: shelves of scrolls and birch-bark letters, a carved world-tree map on the wall, an owl, herbs drying, a window over a valley at dusk, brass and dusky blue palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=40 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_wiki.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
     }
   ]
 }

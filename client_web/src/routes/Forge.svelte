@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber, formatGold } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
   import { play } from '../lib/ui/audio';
@@ -625,6 +626,8 @@
     refresh();
   }
 </script>
+
+<ScreenBanner art="banner_forge" line="Steel remembers every blow." />
 
 <div class="tabs" role="tablist" aria-label="Forge">
   <button role="tab" class="tab" class:active={tab === 'affixes'} aria-selected={tab === 'affixes'} data-testid="forge-tab-affixes" onclick={() => (tab = 'affixes')}>Affixes</button>

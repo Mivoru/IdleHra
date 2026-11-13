@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
@@ -231,6 +232,8 @@
     </div>
   </li>
 {/snippet}
+
+<ScreenBanner art="banner_crafting" line="What the village needs, it makes by hand." />
 
 <div class="wrap">
   <div class="tabs" role="tablist">

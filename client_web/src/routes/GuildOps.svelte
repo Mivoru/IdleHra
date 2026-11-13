@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber } from '../lib/ui/format';
   import { RANK_NAMES, RANK_WARDEN } from '../lib/ui/guildRanks';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
@@ -554,6 +555,8 @@
     }
   }
 </script>
+
+<ScreenBanner art="banner_guild" line="A clan is stronger than its strongest." />
 
 {#if !snap}
   <p class="dim pad">Waiting for the first state snapshot...</p>

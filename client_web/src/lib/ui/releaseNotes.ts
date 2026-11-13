@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.78.0',
+    date: '2026-11-13',
+    headline: 'Six more screens get a painting.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'Crafting, the Forge, the Market, the Guild, Progress and the Wiki open with a painted banner of their own.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.77.0',
     date: '2026-11-13',
     headline: 'Every part of the game has its own place now.',
