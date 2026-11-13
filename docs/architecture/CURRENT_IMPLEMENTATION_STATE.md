@@ -648,9 +648,11 @@ than silently deleting a region.
 ## 13. Races, Breeding and Sustain
 
 Six races exist (`RaceIds`). Every account starts with a **male/female Human
-pair**; `BreedingEngine` requires a male paternal and female maternal parent
-of the same race, so a lone character is a genetic dead end and a pair is a
-founding population. Each of the five region bosses' first kill unlocks one
+pair**; `BreedingEngine` requires a male paternal and a female maternal
+parent - of any races since 2026-11-13 (`BreedingGateRules.ResolveChildRace`;
+the child's race is picked from the parents' two and travels in the high
+nibble of `BreedingSelectionMask`) - so a lone character is a genetic dead
+end and a pair is a founding population. Each of the five region bosses' first kill unlocks one
 further race and grants a male/female pair of it
 (`RaceUnlockRegistry`, `CharacterGrantEngine`, detection in `CodexEngine`'s
 kill batch, which is the only place that knows a monster's prior kill count).
@@ -870,7 +872,8 @@ Four systems that share one purpose - giving a season something it leaves
 behind, when levels and gear are both wiped. The design is
 `LONG_GAME_SPEC.md`; this is where the pieces live.
 
-- **`DeedRegistry`** holds five chapters of six deeds, pure and static so
+- **`DeedRegistry`** holds six chapters of six deeds (chapter VI, The Long
+  Blood, since 2026-11-13), pure and static so
   every threshold is testable without a database. **`DeedProgressSource`**
   reads the twenty-odd numbers they ask about off the tables once, behind
   `/api/v1/deeds/snapshot`. **`SealEngine`** banks a Seal on that read -
@@ -889,6 +892,43 @@ behind, when levels and gear are both wiped. The design is
 - **`AssignCharacterSlot`** is the only thing in this server that has ever
   written a `SlotIndex` after creation. Without it every child bred past the
   third slot was permanently unplayable.
+
+## 19a. Lineage, rebirth and the endgame round (2026-11-13)
+
+Design: `docs/design/LINEAGE_REBIRTH_OVERHAUL.md` (sections 1-9) and
+`docs/design/ENDGAME_CONTENT_2026_11_13.md`. Where each piece lives:
+
+- **Breeding**: `BreedingAptitudes.SureGrowth` (a selected aptitude always
+  grows; related pairs get none), `SelectableCount` 1/2/3 at Grounds 1/4/7,
+  `BreedingMatchmaker` behind `GET /api/v1/breeding/suggest`.
+- **Children grow up on their own**: `ChildGrowth` - an UPDATE settled on
+  read (login, breeding, Hall, roster, suggest) from `characters.BornAtEpoch`,
+  plus the live payload (`AgesThisTick`, `AgeTicksOnLoad`).
+- **Aptitude milestones**: `AptitudeMilestones` (30/40/50), read by
+  `LiveCritMultiplier`, `LiveCombatStats` (block), `GatheringYieldFor` and
+  `CombatGoldReward.FactorsFor`; client mirror `APTITUDE_MILESTONES` pinned in
+  `serverMirrors.test.ts`.
+- **Rebirth**: unlimited (`RebirthRules.BloodlineRebirths` = 20 only for the
+  ceiling), shards = level^2/2, titles at 20/30/50; `RebirthTrials` (the
+  rule via the shared live/offline helpers, completion in `RebirthEngine`);
+  life records on `PlayerRecords` and `LifeRecordBoard`; Ancestral Boons =
+  `LegacyPerkResolver` + `LegacyStoreEngine` (several ranks per command:
+  `RequestedSlotIndex` = ranks, `RanksAffordable`).
+- **Expeditions**: table `Expeditions` (one row per trip, deleted on claim),
+  `ExpeditionRules` / `ExpeditionEngine`, REST `/api/v1/expeditions*` (dev
+  return at `/api/v1/expeditions/dev/return` - routes under `/api/v1/dev/*`
+  are taken by another handler first). Away = refused by
+  `HallOfAncestorsEngine.AssignSlotAsync` and resting for breeding.
+  `PlayerRecords.ExpeditionsClaimed` drives the titles.
+- **Home "Your road"**: `JourneyBoard` behind `GET /api/v1/player/journey`;
+  the Dungeon row's hint is a no-dodge forecast while online.
+- **Dungeon forecast**: one `DungeonRunner` run with `challenges: false` per
+  gate in the `/api/v1/dungeon` view.
+- **Boards that pay nothing**: Deepest, `LifeRecordBoard` (Fastest lives),
+  `BloodlineWeekBoard` (Best blood, week from `WorldBossCalendar.WeekStart`).
+- **Dead columns**: `PlayerRecords.DungeonBestStage / DungeonTickets /
+  DungeonTicketDay / DungeonFirstClearMask` are pre-rework and written by
+  nothing; the Dungeon lives in `DungeonProgress`.
 
 ## 19b. The world boss: the shield wheel and the weekly payout (task 36)
 
