@@ -35,6 +35,38 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.60.0',
+    date: '2026-11-13',
+    headline: 'Breeding and rebirth, rebuilt: any two races can marry, a chosen aptitude always grows, and rebirth never ends.',
+    sections: [
+      {
+        title: 'Breeding',
+        items: [
+          'Any two races can now have a child together. You pick which of the two races the child is born as; its aptitudes and traits carry over either way.',
+          'An aptitude you breed for always grows: +1 a generation, or +2 while it is far below your bloodline ceiling, and it never drops. Reaching 50 in all four is now a real goal instead of a lottery.',
+          'You can breed for one aptitude from Breeding Grounds level 1, two from level 4 and three from level 7.',
+          'Children grow up on their own within an hour of birth, online or away. No more giving up a working slot to raise them.',
+          'New: Best matches. Pick a hero and the game lists the five partners who would give the best child, and which aptitudes to breed for. One tap picks both.',
+        ],
+      },
+      {
+        title: 'Rebirth',
+        items: [
+          'There is no last rebirth any more. The bloodline ceiling still tops out at 50 after twenty rebirths.',
+          'Every rebirth pays Legacy Shards by the level your life reached: half its square, so a life ended at level 90 pays 4,050.',
+          'New: the Ancestral Boons on the Rebirth screen. Spend shards on +XP, +gold and +damage that last through every rebirth.',
+          'Titles at 20, 30 and 50 rebirths: Keeper of the Blood, The Undying and Wheel of Ages.',
+        ],
+      },
+      {
+        title: 'Book of Deeds',
+        items: [
+          'A sixth chapter, The Long Blood, opens after the Ledger of Legends: aptitudes at 30, 40 and 50 in all four, every race at 30, a tenth generation and twenty rebirths. It pays a Seal.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.59.0',
     date: '2026-11-09',
     headline: 'Rebirth now opens at level 50.',

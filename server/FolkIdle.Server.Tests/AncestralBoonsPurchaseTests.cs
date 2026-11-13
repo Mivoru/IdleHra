@@ -23,7 +23,15 @@ namespace FolkIdle.Server.Tests
         {
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
             db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), LegacyPerks = perks });
-            int eraId = await db.SeasonalEraRecords.Where(e => e.IsActive).Select(e => e.EraId).FirstOrDefaultAsync();
+            // The active era the store resolves, created the way it would be.
+            var era = await db.SeasonalEraRecords.Where(e => e.IsActive).OrderByDescending(e => e.EraId).FirstOrDefaultAsync();
+            if (era == null)
+            {
+                era = new SeasonalEraRecord { EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 90L * 86400L, IsActive = true };
+                db.SeasonalEraRecords.Add(era);
+                await db.SaveChangesAsync();
+            }
+            int eraId = era.EraId;
             db.PlayerLegacyLedgers.Add(new PlayerLegacyLedger { PlayerId = playerId, EraId = eraId, LegacyShardBalance = shards });
             await db.SaveChangesAsync();
         }
