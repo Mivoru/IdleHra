@@ -4698,6 +4698,14 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.Slot1_AgeTicks, ref parkedAgeTicks);
             Swap(ref payload.Slot1_AgePhase, ref parkedAgePhase);
             Swap(ref payload.Slot1_GeneticVector, ref parkedGeneticVector);
+            // The bloodline travels too (CharacterActivityState's note): aptitudes,
+            // traits and the epic mark are the character's, not slot 1's.
+            Swap(ref payload.Aptitude_Strength, ref parked.AptitudeStrength);
+            Swap(ref payload.Aptitude_Skill, ref parked.AptitudeSkill);
+            Swap(ref payload.Aptitude_Endurance, ref parked.AptitudeEndurance);
+            Swap(ref payload.Aptitude_Fortune, ref parked.AptitudeFortune);
+            Swap(ref payload.TraitMask, ref parked.TraitMask);
+            Swap(ref payload.IsEpicMutation, ref parked.IsEpicMutation);
         }
 
         private static void Swap<T>(ref T left, ref T right) where T : struct

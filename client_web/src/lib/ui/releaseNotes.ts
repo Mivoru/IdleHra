@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.74.0',
+    date: '2026-11-13',
+    headline: 'Every slot now plays with its own bloodline.',
+    sections: [
+      {
+        title: 'Bloodline',
+        items: [
+          'A character in your second or third slot used to fight and gather with the aptitudes, traits and epic mark of the character in slot 1. Each one now uses its own - so a bred gatherer in slot 2 gathers with its own Skill, and the Stats tab shows its real numbers.',
+          'In the breeding lab, an ancestor away on an expedition now says so instead of "resting".',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.73.0',
     date: '2026-11-13',
     headline: 'The Dungeon tells you how your next stage would go.',
