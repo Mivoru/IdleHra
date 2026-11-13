@@ -130,10 +130,41 @@ Due 1-2 weeks after 2026-10-30. Read-only query over `player_skill_tree`
 and `gold_spend_daily` (category 12, Respec): nodes bought, fork sides,
 keystones, gold respecs. Compare with the harness's predicted best builds.
 
+**First read 2026-11-13** (prod, `player_skill_tree`, the three real accounts):
+- **Keystones:** Ruin - Mivoru and (pro)boss; Perfect Sequence - Mivoru (with
+  Ruin, so two keystones); Golden Fleece - Tomda; **Living Fortress - nobody**.
+- **Mivoru:** War only, no Fortune column at all; Might/Precision/Guard deep
+  (Edge, First Strike, Executioner, Heavy Hand, Keen Eye, Cruel Edge, Echo,
+  Steady Hand, Vitality, Evasion at 5), affinities Power/Precision/Guard 3.
+  No Hearth.
+- **Tomda:** the widest build - every column of War partly, Fortune to Golden
+  Fleece, and nearly every Hearth node at 1-5 (Strong Blood 5, Nursery 3);
+  all four affinities at 1. Points spread thin rather than to the gates.
+- **(pro)boss:** Ruin build (Might column full) + Scavenger/Plenty, and a deep
+  gathering Hearth (Sharp Axe, Steady Swing, Prospector, Patient Line, Still
+  Water, Quick Hands, Batch Work, Salvager, Studious, Homebody at 5).
+- **Gold respecs (category 12): none ever.**
+Read: Ruin is the consensus damage keystone; Living Fortress is unpicked
+(its block-cap rise was also mis-shown on the stat sheet until #387). Tomda's
+spread suggests the gates and fork costs are not explained enough to steer a
+build - a "recommended path" hint is a candidate if the owner wants it.
+Still to do: compare with the harness's predicted best builds.
+
 ### 131. The gathering economy after #211 - MEASURE (roadmap 3.4)
 
 **First read 2026-10-30:** gathered per day 2.0-2.7M before #211, 2.69M on
 10-29 (one day after). Too early; re-run in a week with 111.
+
+**Second read 2026-11-13** (`material_flow_daily`, Gathered, per player per
+day): Mivoru 0.40M (10-20..28) -> 0.85M (10-29..11-04) -> 0.88M (11-05..12);
+Tomda 1.14M -> 1.32M -> 2.18M; (pro)boss 0.85M -> 0.63M -> 0.88M. Server
+total 2.4M -> 2.8M -> 3.9M a day. #211 roughly doubled Mivoru at once; Tomda's
+later jump lines up with the Hearth half (phase 4, his tree is Hearth-heavy -
+see 130). Warehouse-cap losses fell from ~180k to ~80k a day after 11-08.
+Spending is spiky (3.9M and 6.5M on 11-03/04 - the Forge and Hearth week)
+but stays under what is gathered. No sign of runaway: the extras multiply,
+the floors hold. Re-read once the Skill aptitude milestones (gather yield
++5/10/15%, live 2026-11-13) have a week.
 
 Material flow per active player before and after #211 (the extras now
 multiply). Run it with 111's queries. It feeds Hearth's D2.
