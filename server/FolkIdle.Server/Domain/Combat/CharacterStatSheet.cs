@@ -144,7 +144,7 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 Key = "attack_speed", Label = "Attack speed", Value = Math.Round(stats.AttackSpeedPct, 1), Unit = "pct", Cap = maxSpeedPct,
                 AtCap = stats.AttackSpeedPct >= maxSpeedPct,
-                Note = Invariant($"Shortens the {1500 / 1000.0:0.#} s swing. Anything above {maxSpeedPct:0}% does nothing."),
+                Note = Invariant($"Shortens the {SimulationEngine.BaseAttackIntervalMs / 1000.0:0.#} s swing. Anything above {maxSpeedPct:0}% does nothing."),
             });
             offence.Rows.Add(new StatSheetRow
             {
@@ -190,7 +190,11 @@ namespace FolkIdle.Server.Domain.Combat
                 Key = "armour", Label = "Armour", Value = stats.FlatPhysicalArmor,
                 Note = "Shrinks every monster hit; each region needs about three times more for the same effect.",
             });
-            float blockCap = 75f;
+            // Modul: THE TICK'S CAP, NOT 75 (2026-11-13 audit). PlayerBlockFraction
+            // clamps at 75% PLUS BlockCapBonusPct, so a character with that bonus
+            // was told "at cap, anything above 75% does nothing" while its extra
+            // block still counted in every fight.
+            float blockCap = 75f + stats.BlockCapBonusPct;
             float blockPct = SimulationEngine.PlayerBlockFraction(in stats) * 100f;
             defence.Rows.Add(new StatSheetRow
             {
@@ -227,7 +231,7 @@ namespace FolkIdle.Server.Domain.Combat
             rewards.Rows.Add(new StatSheetRow
             {
                 Key = "gold", Label = "Gold bonus", Value = Math.Round(CombatGoldReward.FactorsFor(in payload, stats.GoldAcquisitionMultiplierPct).TotalBonusPct, 1), Unit = "pct",
-                Note = "On gold from kills: race, Fortune, inheritance, guild, legacy and pet together.",
+                Note = "On gold from kills: race, Fortune, inheritance, guild, Ancestral Boons, pet, skill tree, Rebirth Trials and Fortune aptitude milestones together.",
             });
             rewards.Rows.Add(new StatSheetRow
             {

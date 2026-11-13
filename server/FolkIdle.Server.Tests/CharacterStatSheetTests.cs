@@ -52,6 +52,20 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void Block_Cap_IsTheClampTheTickUses_IncludingLivingFortress()
+        {
+            var payload = Character();
+            payload.SkillTreeVersion = 1;
+            payload.SkillRanks[WarTreeRegistry.LivingFortress] = 1;
+            var stats = SimulationEngine.LiveCombatStats(in payload);
+            Assert.True(stats.BlockCapBonusPct > 0, "Living Fortress should raise the block cap");
+
+            var row = Row(CharacterStatSheet.Build(payload, 0), "block");
+            Assert.Equal(75 + stats.BlockCapBonusPct, row.Cap!.Value, 3);
+            Assert.Equal(SimulationEngine.PlayerBlockFraction(in stats) * 100f >= 75 + stats.BlockCapBonusPct, row.AtCap);
+        }
+
+        [Fact]
         public void AttackSpeed_ReportsItsCap_OnlyWhenTheClampBinds()
         {
             var low = CharacterStatSheet.Build(Character(dex: 10), 0);

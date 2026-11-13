@@ -105,7 +105,9 @@
     {#if statistics.data}
       {@const st = statistics.data}
       <dl class="stats">
-        <div><dt>Level</dt><dd>{st.Level}</dd></div>
+        <!-- Modul: the live level, like gold below - the stored one waits for a
+             checkpoint and lagged a level-up by minutes. -->
+        <div><dt>Level</dt><dd>{snap ? snap.CurrentLevel : st.Level}</dd></div>
         <!-- Modul: ONE gold figure per screen.
              This read st.Gold, which is CommodityRecords - the durable balance,
              refreshed when this query runs. The header beside it reads the live
@@ -118,15 +120,24 @@
              only before the first packet arrives. -->
         <div><dt>Gold</dt><dd><Money amount={snap ? snap.Gold : st.Gold} /></dd></div>
         <div><dt>Diamonds</dt><dd><Money amount={snap ? snap.PremiumCurrencyBalance : st.PremiumDiamonds} kind="diamond" /></dd></div>
-        <div><dt>Login streak</dt><dd>{st.LoginStreakDays}</dd></div>
+        <!-- Modul: LoginStreakDays is the day of the 7-day login week, not a
+             run of days - it goes back to 1 after day 7 - so "Login streak 1"
+             read as a broken streak to a player who signs in daily. -->
+        <div><dt>Login week</dt><dd>day {st.LoginStreakDays} of 7</dd></div>
         <div><dt>Kills</dt><dd title={numberTitle(st.TotalKills)}>{formatNumber(st.TotalKills)}</dd></div>
         <div><dt>Bosses</dt><dd title={numberTitle(st.BossesSlain)}>{formatNumber(st.BossesSlain)}</dd></div>
         <div><dt>Crafted</dt><dd title={numberTitle(st.TotalItemsCrafted)}>{formatNumber(st.TotalItemsCrafted)}</dd></div>
         <div><dt>Deaths</dt><dd title={numberTitle(st.TotalDeaths)}>{formatNumber(st.TotalDeaths)}</dd></div>
-        <div><dt>Regions done</dt><dd>{st.RegionsCompletedCount}</dd></div>
+        <!-- Modul: a region counts here once its codex is complete (1,000 kills
+             of each regular, 100 of the boss - RegionCompletionRules), not once
+             it is reached; a level-90 account read "Regions done 0". -->
+        <div title="A region is mastered at 1,000 kills of each of its monsters and 100 of its boss. Each one gives +1% luck for good.">
+          <dt>Regions mastered</dt><dd>{st.RegionsCompletedCount} of 5</dd>
+        </div>
         <div><dt>Achievements</dt><dd>{st.AchievementsClaimedCount}</dd></div>
         <div><dt>Characters</dt><dd>{st.CharacterCount}</dd></div>
-        <div><dt>Played</dt><dd>{duration(st.TotalPlayTimeSeconds)}</dd></div>
+        <!-- Modul: the sum of signed-in sessions; offline progress is not in it. -->
+        <div><dt>Time online</dt><dd>{duration(st.TotalPlayTimeSeconds)}</dd></div>
       </dl>
       {#if st.GuildName}
         <p class="dim tiny">Guild: {st.GuildName}</p>
