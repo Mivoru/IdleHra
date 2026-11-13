@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
   import { PREF_WIKI_TAB, readPref, writePref } from '../lib/net/prefs';
@@ -297,6 +298,8 @@
     .catch(() => (treeError = true));
   const ROW_NAMES = ['First', 'Second', 'Third', 'Fourth', 'Fifth'];
 </script>
+
+<ScreenBanner art="banner_wiki" line="The volkhv has seen it all." />
 
 <div class="wrap">
   <div class="wiki-layout">

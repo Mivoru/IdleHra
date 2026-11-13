@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
@@ -85,6 +86,8 @@
     return `${hours}h`;
   }
 </script>
+
+<ScreenBanner art="banner_progress" line="Every deed is written down." />
 
 <div class="progress-tabs">
   <Tabs tabs={TABS.map((t) => ({ value: t.key, label: t.label }))} bind:value={tab} label="Progress" dataAttr="data-progress-tab" />

@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.78.0',
+    date: '2026-11-13',
+    headline: 'Six more screens get a painting, and the windows take colour.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'Crafting, the Forge, the Market, the Guild, Progress and the Wiki open with a painted banner of their own.',
+          'Windows are dyed a little with the colour of their part of the game - green in Gathering, blue in the Forge, violet for the hero - instead of all being brown.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.77.0',
     date: '2026-11-13',
     headline: 'Every part of the game has its own place now.',

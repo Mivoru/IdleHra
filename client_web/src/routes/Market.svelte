@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber, formatGold } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
   import CosmeticMarket from '../lib/ui/CosmeticMarket.svelte';
@@ -349,6 +350,8 @@
     return `${Math.floor(hours / 24)} days ago`;
   }
 </script>
+
+<ScreenBanner art="banner_market" line="Everything has a price at the gate." />
 
 <!-- Modul: UNDERLINED, because these are sub-tabs of the Market and the
      filled buttons made them look like the screen's own top tabs. -->
