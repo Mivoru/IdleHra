@@ -114,6 +114,16 @@ Endgame content (owner brief: what keeps endgame players busy; proposal
 Not built (owner did not pick them): B bounty board, D endless dungeon, E
 weekly modifier, F paragon/second prestige.
 
+Then: #364 Wiki "The endgame: your long goals" table; #365 Your road's
+Dungeon hint names the nearest next stage (online only, live payload);
+#366 gold economy note (`docs/design/GOLD_ECONOMY_2026_11_13.md`, owner
+decision); #367 Hall nudge to free expedition slots; #368 44px inline links
+(check:touch 0); #369 expedition send-all / claim-all. Full exercise on main
+(with FOLKIDLE_BOSS_MINIGAME=wheel and FOLKIDLE_DELVE_DEEP=on) 446/446;
+check:overlap 0, check:clipping only the old Combat span. First real use:
+Tomda bought Boons (gold maxed) and bred three mixed-race children within an
+hour of the overhaul reaching him.
+
 Open: the owner's answers to the review's questions (now five - gold
 inflation added).
 
