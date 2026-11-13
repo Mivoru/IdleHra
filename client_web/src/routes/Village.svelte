@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber } from '../lib/ui/format';
   import { play } from '../lib/ui/audio';
   import { createQuery } from '@tanstack/svelte-query';
@@ -185,6 +186,7 @@
   // What is left on this screen is the village itself.
 </script>
 
+<ScreenBanner art="banner_village" line="Every house you raise outlives a rebirth." />
 {#if !snap}
   <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
