@@ -63,6 +63,10 @@
     EQUIP_REQUIREMENT_PER_REGION_TIER,
     EXPEDITION_THIRD_SLOT_GROUNDS,
     EXPEDITION_MAX_BOUGHT_SLOTS,
+    EXPEDITION_SILVER_AT_8H_PCT,
+    EXPEDITION_GOLD_AT_12H_PCT,
+    EXPEDITION_APTITUDE_BONUS_MAX,
+    EXPEDITION_PROVISION_PCT,
   } from '../lib/net/commands';
   import WikiPets from '../lib/ui/WikiPets.svelte';
   import WikiRebirthLive from '../lib/ui/WikiRebirthLive.svelte';
@@ -1557,20 +1561,20 @@
               <thead><tr><th>Trip</th><th>Brings back</th></tr></thead>
               <tbody>
                 <tr><td>4 hours</td><td>A Bronze chest</td></tr>
-                <tr><td>8 hours</td><td>A Bronze chest; Silver at 25% plus up to 30% for aptitudes</td></tr>
-                <tr><td>12 hours</td><td>A Silver chest; Gold at 15% plus up to 30% for aptitudes</td></tr>
+                <tr><td>8 hours</td><td>A Bronze chest; Silver at {EXPEDITION_SILVER_AT_8H_PCT}% plus up to {EXPEDITION_APTITUDE_BONUS_MAX}% for aptitudes</td></tr>
+                <tr><td>12 hours</td><td>A Silver chest; Gold at {EXPEDITION_GOLD_AT_12H_PCT}% plus up to {EXPEDITION_APTITUDE_BONUS_MAX}% for aptitudes</td></tr>
               </tbody>
             </table>
           </div>
           <p class="dim tiny">
             The aptitude bonus grows with the ancestor's four aptitudes added up: nothing at a founder's 16, the full
-            30 points at 200 (50 in all four). Titles at 10, 50 and 100 expeditions claimed: Pathfinder, Far-Strider
+            {EXPEDITION_APTITUDE_BONUS_MAX} points at 200 (50 in all four). Titles at 10, 50 and 100 expeditions claimed: Pathfinder, Far-Strider
             and Lord of Long Roads.
           </p>
           <p class="dim tiny">
             <strong>Provisions:</strong> before sending, you can provision the party with gold - half the trip's
-            length in hours of your own income (2, 4 or 6 hours of it). A provisioned trip adds 25 points to the
-            chance of the better chest, and a 4-hour trip gets a 25% chance of Silver. It never pays a better tier
+            length in hours of your own income (2, 4 or 6 hours of it). A provisioned trip adds {EXPEDITION_PROVISION_PCT} points to the
+            chance of the better chest, and a 4-hour trip gets a {EXPEDITION_PROVISION_PCT}% chance of Silver. It never pays a better tier
             than the trip can reach.
           </p>
 
