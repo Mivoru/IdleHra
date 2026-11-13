@@ -62,6 +62,7 @@
     EQUIP_REQUIREMENT_PER_REGION_TIER,
   } from '../lib/net/commands';
   import WikiPets from '../lib/ui/WikiPets.svelte';
+  import WikiRebirthLive from '../lib/ui/WikiRebirthLive.svelte';
   import WikiRaces from '../lib/ui/WikiRaces.svelte';
   import { FIRST_CLEAR_HP_MULTIPLIERS, FIRST_CLEAR_ATTACK_MULTIPLIERS, BOSS_REQUIRED_QUALITY_TIER } from '../lib/ui/victories';
   import {
@@ -1191,6 +1192,13 @@
             </div>
           </div>
 
+          <p class="dim small">
+            <strong>Best matches.</strong> Once a hero is chosen (the lab picks your strongest free adult for you),
+            the lab ranks the partners who would make the best child - relatives marked - and a tap on one picks it
+            and draws the child before you pay. Any two races can marry; when they differ, you choose the child's
+            race.
+          </p>
+
           <h3 id="inherits">What a child inherits</h3>
           <p class="dim small">For each aptitude, independently:</p>
           <ol class="steps">
@@ -1332,8 +1340,9 @@
           </p>
           <h3 id="aging">Ageing, and why you replace a hero</h3>
           <p class="dim small">
-            A character only ages while it is <strong>fielded</strong> in one of
-            your slots. A benched ancestor does not get older. The phases are the
+            A grown character only ages while it is <strong>fielded</strong> in one of
+            your slots; a benched ancestor does not get older. A child is the
+            exception: it grows up within an hour of birth wherever it is. The phases are the
             reason to keep a bloodline going at all: a hero you have played for a
             week is past its best, and the child you bred is how you replace it.
           </p>
@@ -1343,7 +1352,7 @@
                 <tr><th>Phase</th><th class="num">Fielded for</th><th>Effect</th></tr>
               </thead>
               <tbody>
-                <tr><td><strong>Child</strong></td><td class="num">0–1h</td><td class="dim">Cannot breed yet. No penalty.</td></tr>
+                <tr><td><strong>Child</strong></td><td class="num">first hour after birth</td><td class="dim">Grows up on its own, fielded or not. Cannot breed yet.</td></tr>
                 <tr><td><strong>Adult</strong></td><td class="num">1–40h</td><td class="dim">Its prime. No penalty.</td></tr>
                 <tr><td><strong>Veteran</strong></td><td class="num">40–80h</td><td class="dim">−5% damage, health and attack speed.</td></tr>
                 <tr><td><strong>Elder</strong></td><td class="num">80h+</td><td class="dim">−10% damage, health and attack speed. It stops there.</td></tr>
@@ -1418,6 +1427,14 @@
           <ul class="styled-list">
             {#each REBIRTH_PAYS as line (line)}<li>{line}</li>{/each}
           </ul>
+
+          <h3 id="rebirth-trials">Rebirth Trials and Ancestral Boons</h3>
+          <WikiRebirthLive />
+          <p class="dim small">
+            Every life is also timed, from the rebirth that starts it to the one that ends it: your fastest life to a
+            rebirth at the Renown level and to one at a hundred are kept on the Rebirth screen and ranked on the
+            Fastest lives board.
+          </p>
 
           <h3 id="rebirth-roadmap">The road</h3>
           <div class="scroll">
@@ -1500,8 +1517,8 @@
           </p>
           <p class="dim small">
             The Hall is also where you <strong>field</strong> a character into one
-            of your played slots. This matters more than it sounds: only fielded
-            characters age, so a newborn stays a Child forever until you field it.
+            of your played slots. A newborn grows up on its own within an hour of its
+            birth, fielded or not; after that only fielded characters age.
           </p>
           <p class="dim small">
             If you hold more than the cap when you rebirth, the surplus is
@@ -1513,6 +1530,36 @@
           <p class="dim tiny">
             Marking more than the cap is legal — the same ranking resolves it. The
             Hall screen shows who would go if you rebirthed right now, faded.
+          </p>
+          <p class="dim small">
+            <strong>Marked members carry first.</strong> A better child bred after you set your marks would be
+            lost at the next rebirth, so the game says so: the birth banner offers to keep the child in the weakest
+            marked member's place, the Hall names who to unmark and has a <em>Swap the marks</em> button, and the
+            Rebirth screen repeats the warning before you confirm.
+          </p>
+
+          <h3 id="expeditions">Expeditions</h3>
+          <p class="dim small">
+            A grown ancestor on the bench can go on an expedition from the Bloodline screen's Expeditions tab, for
+            4, 8 or 12 hours, and comes back with a <strong>loot chest of your highest region</strong>. You have
+            two expedition slots, three from Breeding Grounds level 8. While away an ancestor cannot be fielded or
+            bred. <em>Send the strongest</em> fills every free slot and <em>Claim all</em> collects every chest
+            that is back.
+          </p>
+          <div class="scroll">
+            <table data-testid="wiki-expeditions">
+              <thead><tr><th>Trip</th><th>Brings back</th></tr></thead>
+              <tbody>
+                <tr><td>4 hours</td><td>A Bronze chest</td></tr>
+                <tr><td>8 hours</td><td>A Bronze chest; Silver at 25% plus up to 30% for aptitudes</td></tr>
+                <tr><td>12 hours</td><td>A Silver chest; Gold at 15% plus up to 30% for aptitudes</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="dim tiny">
+            The aptitude bonus grows with the ancestor's four aptitudes added up: nothing at a founder's 16, the full
+            30 points at 200 (50 in all four). Titles at 10, 50 and 100 expeditions claimed: Pathfinder, Far-Strider
+            and Lord of Long Roads.
           </p>
 
           <h3 id="inheritance">Inheritance</h3>
@@ -1568,6 +1615,12 @@
             run from the Rebirth screen, and a <em>renowned</em> rebirth - one taken halfway to
             level 100 or later - is one of the six deeds in the last chapter (a
             top-fifty season finish from before rebirths existed still counts).
+          </p>
+          <p class="dim small">
+            Beside the standing, three boards that pay nothing - they are for bragging rights:
+            <strong>Deepest</strong> (the deepest floor of the Deep this week), <strong>Fastest lives</strong>
+            (the quickest life to a rebirth at the Renown level, and to a hundred) and <strong>Best blood</strong> (each bloodline's
+            best child born since Monday, by its four aptitudes added up, then by its weakest one).
           </p>
 
         <!-- ================================================== GUILDS -->

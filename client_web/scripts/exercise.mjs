@@ -2790,6 +2790,20 @@ await go('Chest');
 if (want('wiki')) {
 await go('Wiki');
 {
+  // 2026-11-13: the Rebirth Trials and Ancestral Boons in the Wiki come from
+  // the server's rebirth preview, row for row - and the Expeditions section
+  // is there.
+  await page.locator('button.tab-btn', { hasText: /^The Long Game/ }).first().click().catch(() => {});
+  await page.getByTestId('wiki-trials').waitFor({ timeout: 10000 }).catch(() => {});
+  const pv = await apiGet('/api/v1/rebirth/preview').catch(() => null);
+  const trialRows = await page.locator('[data-testid="wiki-trials"] tbody tr').count();
+  const boonRows = await page.locator('[data-testid="wiki-boons"] tbody tr').count();
+  const expTable = await page.getByTestId('wiki-expeditions').count();
+  record('the Wiki lists the trials and boons the server has, and explains expeditions',
+    pv !== null && trialRows === (pv.Trials?.length ?? -1) && boonRows === (pv.Boons?.length ?? -1) && expTable === 1,
+    `trials ${trialRows}/${pv?.Trials?.length}, boons ${boonRows}/${pv?.Boons?.length}, expeditions table ${expTable}`);
+}
+{
   // 2026-10-11 (owner): the Wiki lists every pet, read live from PetRegistry.
   const combatTab = page.locator('button.tab-btn', { hasText: /^Combat/ }).first();
   await combatTab.click().catch(() => {});
