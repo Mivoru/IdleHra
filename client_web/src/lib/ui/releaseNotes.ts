@@ -35,6 +35,25 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.62.0',
+    date: '2026-11-13',
+    headline: 'A new leaderboard: Fastest lives.',
+    sections: [
+      {
+        title: 'Leaderboards',
+        items: [
+          'New tab, Fastest lives: who got from one rebirth to the next at level 50 the fastest, and the fastest to level 100 beside it. Glory only.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'The Bloodline steps and the Rebirth page no longer tell you to field children to raise them, or that rebirth stops at twenty.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.61.0',
     date: '2026-11-13',
     headline: 'Rebirth Trials: take on a harder life for a reward that lasts.',

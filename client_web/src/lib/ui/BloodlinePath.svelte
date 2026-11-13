@@ -29,7 +29,6 @@
 
   const members = $derived(hall?.Members ?? []);
   const growing = $derived(members.filter((m) => m.AgePhase === CHILD));
-  const benchedChildren = $derived(growing.filter((m) => m.PlayableSlot < 0).length);
   const carried = $derived(members.filter((m) => m.WouldCarry).length);
 </script>
 
@@ -44,17 +43,16 @@
         </span>
       </div>
     </li>
-    <li class="step" class:todo={benchedChildren > 0}>
+    <li class="step">
       <span class="num" aria-hidden="true">2</span>
       <div class="body">
         <strong>Raise</strong>
         <span class="dim tiny">
-          {#if benchedChildren > 0}
-            {benchedChildren} {benchedChildren === 1 ? 'child waits' : 'children wait'} to be fielded
-          {:else if growing.length > 0}
-            {growing.length} growing up in play
+          <!-- Children grow up on their own since 2026-11-13 (ChildGrowth). -->
+          {#if growing.length > 0}
+            {growing.length} growing up - grown within an hour of birth
           {:else}
-            Field a child and give it work; it is grown in an hour
+            A child grows up on its own within an hour
           {/if}
         </span>
       </div>

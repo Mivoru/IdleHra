@@ -15,8 +15,9 @@
     <p class="dim small">
       End this run whenever you choose and start again at level 1 - stronger. Every rebirth raises your
       <strong>bloodline ceiling</strong>, the highest an aptitude can be bred. The first ten also pay skill
-      points, faster levelling and, at the milestones, avatars, a second pet slot and the Phoenix. Twenty in all;
-      who your bloodline keeps is decided in the Hall of Ancestors, and every rule is in the Wiki.
+      points, faster levelling and, at the milestones, avatars, a second pet slot and the Phoenix. Every rebirth
+      pays Legacy Shards for the Ancestral Boons, and there is no last one. Who your bloodline keeps is decided in
+      the Hall of Ancestors, and every rule is in the Wiki.
     </p>
     <div class="links">
       <button type="button" onclick={() => requestScreen('ancestors')}>Hall of Ancestors</button>
