@@ -14,17 +14,18 @@ namespace FolkIdle.Server.Engine
 {
     /// <summary>One expedition as the screen shows it.</summary>
     public sealed record ExpeditionView(long Id, int Slot, Guid CharacterId, string Name, int Region, int Hours,
-        int AptitudeTotal, long StartedAtEpoch, long ReturnsAtEpoch, bool Returned);
+        int AptitudeTotal, long StartedAtEpoch, long ReturnsAtEpoch, bool Returned, bool Provisioned = false);
 
     /// <summary>An ancestor who could set out now.</summary>
     public sealed record ExpeditionCandidate(Guid CharacterId, string Name, int RaceId, int AptitudeTotal, int UpgradePct);
 
     public sealed record ExpeditionBoard(int Slots, int Region, int[] Durations, List<ExpeditionView> Active, List<ExpeditionCandidate> Candidates,
-        int Claimed = 0, string NextTitle = "", int NextTitleAt = 0, int SlotsBought = 0, long NextSlotCost = 0, int NextSlotHours = 0);
+        int Claimed = 0, string NextTitle = "", int NextTitleAt = 0, int SlotsBought = 0, long NextSlotCost = 0, int NextSlotHours = 0,
+        long[]? ProvisionCosts = null, int ProvisionUpgradePct = 0);
 
     public enum ExpeditionSlotPurchase { Bought, Maxed, NoGrounds, NotEnoughGold }
 
-    public enum ExpeditionStartResult { Started, NoSlot, NotEligible, BadDuration, NoGrounds }
+    public enum ExpeditionStartResult { Started, NoSlot, NotEligible, BadDuration, NoGrounds, NotEnoughGold }
 
     public sealed record ExpeditionClaim(bool Ok, string Tier, int Region, string Reason, int Claimed = 0, string Title = "");
 
@@ -61,6 +62,13 @@ namespace FolkIdle.Server.Engine
             return ExpeditionRules.NextSlotPrice(bought, perMinute);
         }
 
+        /// <summary>Provisions prices for each duration in ExpeditionRules.Durations, at this player's income now.</summary>
+        private static async Task<long[]> ProvisionCostsAsync(FolkIdleDbContext db, long playerId, int region)
+        {
+            double perMinute = await LootChestEngine.GoldPerMinuteAsync(db, playerId, region, GameClock.UtcNow);
+            return ExpeditionRules.Durations.Select(h => ExpeditionRules.ProvisionPrice(h, perMinute)).ToArray();
+        }
+
         public static async Task<ExpeditionBoard> BoardAsync(FolkIdleDbContext db, long playerId, long nowEpoch)
         {
             int bought = await BoughtAsync(db, playerId);
@@ -73,7 +81,7 @@ namespace FolkIdle.Server.Engine
 
             var active = rows.Select(r => new ExpeditionView(r.Id, r.Slot, r.CharacterId,
                 nameOf.TryGetValue(r.CharacterId, out var n) ? n : string.Empty, r.Region, r.Hours, r.AptitudeTotal,
-                r.StartedAtEpoch, r.ReturnsAtEpoch, r.ReturnsAtEpoch <= nowEpoch)).ToList();
+                r.StartedAtEpoch, r.ReturnsAtEpoch, r.ReturnsAtEpoch <= nowEpoch, r.Provisioned)).ToList();
 
             var away = rows.Select(r => r.CharacterId).ToHashSet();
             var benched = names.Where(c => c.SlotIndex >= CharacterSlotEngine.MaxCharacterSlots && c.AgePhase >= AgePhaseCurve.Adult
@@ -88,11 +96,13 @@ namespace FolkIdle.Server.Engine
             var next = ExpeditionRules.TitleMilestones.FirstOrDefault(m => m.Count > claimedSoFar);
             long nextCost = slots == 0 ? 0L : await NextSlotPriceAsync(db, playerId, bought, region);
             int nextHours = bought < ExpeditionRules.MaxBoughtSlots ? ExpeditionRules.BoughtSlotPriceHours[bought] : 0;
+            long[] provisionCosts = slots == 0 ? Array.Empty<long>() : await ProvisionCostsAsync(db, playerId, region);
             return new ExpeditionBoard(slots, region, ExpeditionRules.Durations, active, candidates,
-                claimedSoFar, next.Name ?? string.Empty, next.Count, bought, nextCost, nextHours);
+                claimedSoFar, next.Name ?? string.Empty, next.Count, bought, nextCost, nextHours,
+                provisionCosts, ExpeditionRules.ProvisionUpgradePct);
         }
 
-        public static async Task<ExpeditionStartResult> StartAsync(FolkIdleDbContext db, long playerId, Guid characterId, int hours, long nowEpoch)
+        public static async Task<ExpeditionStartResult> StartAsync(FolkIdleDbContext db, long playerId, Guid characterId, int hours, long nowEpoch, bool provision = false)
         {
             if (!ExpeditionRules.IsDuration(hours)) return ExpeditionStartResult.BadDuration;
             int slots = ExpeditionRules.SlotsFor(await GroundsLevelAsync(db, playerId), await BoughtAsync(db, playerId));
@@ -122,12 +132,31 @@ namespace FolkIdle.Server.Engine
                 return ExpeditionStartResult.NoSlot;
             }
 
+            int region = await RegionAsync(db, playerId);
+            if (provision)
+            {
+                // Re-priced here, inside the transaction, never trusted from the
+                // client; the caller reloads the live session so the wallet shows it.
+                long price = ExpeditionRules.ProvisionPrice(hours, await LootChestEngine.GoldPerMinuteAsync(db, playerId, region, GameClock.UtcNow));
+                var gold = await db.CommodityRecords
+                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                    .SingleOrDefaultAsync();
+                if (gold == null || gold.Quantity < price)
+                {
+                    await tx.SafeRollbackAsync();
+                    return ExpeditionStartResult.NotEnoughGold;
+                }
+                gold.Quantity -= price;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Expedition, price);
+            }
+
             var lineage = await db.CharacterLineages.AsNoTracking().FirstOrDefaultAsync(l => l.CharacterId == characterId);
             long returns = nowEpoch + hours * 3600L;
             db.Expeditions.Add(new Expedition
             {
-                PlayerId = playerId, CharacterId = characterId, Slot = slot, Region = await RegionAsync(db, playerId), Hours = hours,
+                PlayerId = playerId, CharacterId = characterId, Slot = slot, Region = region, Hours = hours,
                 AptitudeTotal = lineage?.AptitudeVector().Sum() ?? 0, StartedAtEpoch = nowEpoch, ReturnsAtEpoch = returns,
+                Provisioned = provision,
             });
             // Away means away: resting for breeding until the return (the
             // breeding gate already refuses a resting parent and says so).
@@ -155,7 +184,7 @@ namespace FolkIdle.Server.Engine
                 return new ExpeditionClaim(false, string.Empty, row.Region, "Not back yet.");
             }
 
-            var tier = ExpeditionRules.ChestFor(row.Hours, row.AptitudeTotal, rng.Next(100));
+            var tier = ExpeditionRules.ChestFor(row.Hours, row.AptitudeTotal, rng.Next(100), row.Provisioned);
             LootChestEngine.Stage(db, playerId, tier, row.Region, LootChestSource.Expedition, utcNow);
             db.Expeditions.Remove(row);
             await db.SaveChangesAsync();

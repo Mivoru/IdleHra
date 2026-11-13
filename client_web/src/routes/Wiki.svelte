@@ -1545,8 +1545,9 @@
           <p class="dim small">
             A grown ancestor on the bench can go on an expedition from the Bloodline screen's Expeditions tab, for
             4, 8 or 12 hours, and comes back with a <strong>loot chest of your highest region</strong>. You have
-            two expedition slots, three from Breeding Grounds level 8. While away an ancestor cannot be fielded or
-            bred. <em>Send the strongest</em> fills every free slot and <em>Claim all</em> collects every chest
+            two expedition slots, three from Breeding Grounds level 8, and up to two more bought with gold (the
+            first costs about a day of your own income, the second about three days). While away an ancestor cannot
+            be fielded or bred. <em>Send the strongest</em> fills every free slot and <em>Claim all</em> collects every chest
             that is back.
           </p>
           <div class="scroll">
@@ -1563,6 +1564,12 @@
             The aptitude bonus grows with the ancestor's four aptitudes added up: nothing at a founder's 16, the full
             30 points at 200 (50 in all four). Titles at 10, 50 and 100 expeditions claimed: Pathfinder, Far-Strider
             and Lord of Long Roads.
+          </p>
+          <p class="dim tiny">
+            <strong>Provisions:</strong> before sending, you can provision the party with gold - half the trip's
+            length in hours of your own income (2, 4 or 6 hours of it). A provisioned trip adds 25 points to the
+            chance of the better chest, and a 4-hour trip gets a 25% chance of Silver. It never pays a better tier
+            than the trip can reach.
           </p>
 
           <h3 id="inheritance">Inheritance</h3>

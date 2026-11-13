@@ -37,18 +37,25 @@ namespace FolkIdle.Server.Network
                 {
                     Guid characterId;
                     int hours;
+                    bool provision;
                     try
                     {
                         string body = await ReadBodyAsync(context);
                         using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
                         var root = parsed.RootElement;
                         hours = IntOf(root, "Hours");
+                        provision = root.TryGetProperty("Provision", out var pv) && pv.ValueKind == JsonValueKind.True;
                         string? id = root.TryGetProperty("CharacterId", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
                         if (!Guid.TryParse(id, out characterId)) { context.Response.StatusCode = 400; return true; }
                     }
                     catch (JsonException) { context.Response.StatusCode = 400; return true; }
 
-                    var result = await ExpeditionEngine.StartAsync(db, playerId, characterId, hours, now);
+                    var result = await ExpeditionEngine.StartAsync(db, playerId, characterId, hours, now, provision);
+                    if (provision && result == ExpeditionStartResult.Started)
+                    {
+                        // Provisions took gold from the database; the live wallet follows on reload.
+                        CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                    }
                     await WriteJsonAsync(context, new { Result = result.ToString() });
                     return true;
                 }

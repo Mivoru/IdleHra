@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.79.0',
+    date: '2026-11-13',
+    headline: 'Provision your expeditions for a better haul.',
+    sections: [
+      {
+        title: 'Expeditions',
+        items: [
+          'Before sending a party you can provision it with gold. It costs half the trip in hours of your own income and adds 25 points to the chance of the better chest - a 4-hour trip can now bring back Silver.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.78.0',
     date: '2026-11-13',
     headline: 'Six more screens get a painting, and the windows take colour.',
