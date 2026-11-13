@@ -50,6 +50,8 @@
     APTITUDES,
     APTITUDE_MAX,
     APTITUDE_VILLAGE_CEILING,
+    APTITUDE_MILESTONE_AT,
+    APTITUDE_MILESTONES,
     aptitudeBonusPercent,
     selectableAptitudeCount,
     upMutationPercent,
@@ -1275,6 +1277,18 @@
             from 36 to {APTITUDE_MAX}. Deliberately diminishing, so a veteran's
             advantage is visible but never decisive on a shared leaderboard.
           </p>
+          <p class="dim small">
+            <strong>Milestones.</strong> At {APTITUDE_MILESTONE_AT.join(', ')} points each aptitude also unlocks a
+            second bonus of its own kind, so the climb past 35 still pays:
+          </p>
+          <ul class="dim small" data-testid="wiki-aptitude-milestones">
+            {#each APTITUDES as apt (apt.field)}
+              <li>
+                <strong>{apt.name} - {APTITUDE_MILESTONES[apt.field].name}:</strong>
+                {APTITUDE_MILESTONES[apt.field].effects.map((e, i) => `${APTITUDE_MILESTONE_AT[i]}: ${e}`).join(' · ')}
+              </li>
+            {/each}
+          </ul>
 
           <h4>Race</h4>
           <p class="dim small">

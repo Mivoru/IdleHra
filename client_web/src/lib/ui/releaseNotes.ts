@@ -35,6 +35,23 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.70.0',
+    date: '2026-11-13',
+    headline: 'Aptitude milestones: 30, 40 and 50 points each unlock a second bonus.',
+    sections: [
+      {
+        title: 'Bloodline',
+        items: [
+          'Strength - Keen Edge: +0.10x / +0.20x / +0.30x crit damage at 30 / 40 / 50.',
+          'Skill - Deft Hands: +5% / +10% / +15% gathering yield.',
+          'Endurance - Stout Frame: +3% / +6% / +10% block.',
+          'Fortune - Lucky Purse: +5% / +10% / +15% gold from kills.',
+          'The Bloodline panel shows each step and lights the ones your playing character has reached. The climb past 35 is worth it now.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.69.0',
     date: '2026-11-13',
     headline: 'Keep a better child the moment it is born.',
