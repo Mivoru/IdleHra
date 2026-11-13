@@ -143,6 +143,26 @@ rebirth let-go list is a count and twelve names (was ~290), and the 44px
 inline links lost the global button rim that drew a line through the text
 above them.
 
+Evening (owner: "is it all in the handoff, docs and Wiki; audit every
+feature; work till 17:00"): #379 **Wiki caught up** - Rebirth Trials and
+Ancestral Boons rendered from the server's rebirth preview
+(`WikiRebirthLive`), Expeditions, the three no-pay boards, Best matches,
+marks, and two stale ageing lines fixed; #380 `CURRENT_IMPLEMENTATION_STATE`
+section 19a (where every new system lives) + two stale lines; #381 an
+ancestor on an expedition reads "away" in the breeding picker, not
+"resting"; #382 **every slot plays with its own bloodline** - aptitudes,
+traits and the epic mark lived on the payload as slot 1's and were never
+swapped, so slots 2-3 fought and gathered with slot 1's blood; now on
+`CharacterActivityState` and exchanged by `SwapRegisterWith` (1.74.0);
+#383 **painted banners** (`ScreenBanner`) for Breeding, Hall, Expeditions,
+Rebirth and Village, generated with `gemini-3-pro-image` against the game's
+own scenes as style references (prompts in `tools/assets/gemini.json`;
+ElevenLabs images still need Pro) (1.75.0).
+
+Image keys: the env `GEMINI_API_KEY` is free tier (images limit 0); the
+owner supplied a working key in chat on 2026-11-13 - **rotate it** - and
+`tools/assets/gemini.mjs` reads `%USERPROFILE%/skola2025/geminiAPI/apiGEM.txt`.
+
 Open: the owner's answers to the review's questions (now five - gold
 inflation added).
 
