@@ -1807,6 +1807,12 @@ if (want('dungeon')) {
     const f = sel?.Forecast;
     const says = !f ? false : f.Won ? /would win/.test(line) : f.ReachedBoss ? line.includes(`${f.BossHpLeftPct}%`) : line.includes(`wave ${f.WavesCleared + 1}`);
     record('the Dungeon forecasts the next stage as the server simulated it', forecasts.length > 0 && says, line.slice(0, 120) || `${forecasts.length} forecasts, no line`);
+    const road = (await apiGet('/api/v1/player/journey').catch(() => null))?.Rows ?? [];
+    const dungeonRow = road.find((r) => r.Key === 'dungeon');
+    // The road row is gated on bosses really beaten; the dev unlock above only
+    // opens the Dungeon screen, so on the fixture the row may be absent.
+    if (dungeonRow) record('Your road names the nearest next Dungeon stage', /stage \d+/.test(dungeonRow.Hint), dungeonRow.Hint);
+    else record('Your road dungeon hint (skipped: the fixture has not beaten the region 2 boss)', true);
   }
   record('each gate shows its own loaded ticket picture', ticketArt.length === 3
     && new Set(ticketArt).size === 3 && ticketArt.every((t) => t.endsWith(':ok')), ticketArt.join(' ') || 'none');
