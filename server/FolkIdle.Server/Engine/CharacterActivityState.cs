@@ -27,6 +27,20 @@ namespace FolkIdle.Server.Engine
     // allocation on the 10Hz path.
     public struct CharacterActivityState
     {
+        // Modul: THE SLOT'S OWN BLOOD (2026-11-13). Aptitudes, traits and the
+        // epic mark were loaded from slot 1's lineage onto the payload and never
+        // swapped, so a bred character fielded in slot 2 or 3 fought and
+        // gathered with slot 1's aptitudes - the bloodline counted on one
+        // character only, and slot 2's stat sheet showed somebody else's
+        // numbers. They travel with the character now, like its gear
+        // (SimulationEngine.SwapRegisterWith).
+        public byte AptitudeStrength;
+        public byte AptitudeSkill;
+        public byte AptitudeEndurance;
+        public byte AptitudeFortune;
+        public long TraitMask;
+        public bool IsEpicMutation;
+
         public long ActiveActivityId;
         public int CurrentProgressTicks;
         public int RequiredProgressTicks;

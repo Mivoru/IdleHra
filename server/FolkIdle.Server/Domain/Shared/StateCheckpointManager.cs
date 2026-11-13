@@ -568,6 +568,23 @@ namespace FolkIdle.Server.Domain.Shared
         // payload naming a benched character still describes that character's
         // age correctly. FORWARD ONLY, because a stale snapshot is older than
         // the row by definition and must never take time back off it.
+        /// <summary>
+        /// A parked slot's own aptitudes, traits and epic mark (2026-11-13), the
+        /// same defaults slot 1 gets: an unbred founder is ordinary, not zero.
+        /// SimulationEngine.SwapRegisterWith exchanges them with the payload's
+        /// when the slot takes the register.
+        /// </summary>
+        internal static Engine.CharacterActivityState WithBlood(Engine.CharacterActivityState state, CharacterLineageRegistry? lineage)
+        {
+            state.AptitudeStrength = (byte)(lineage?.AptitudeStrength ?? Engine.BreedingAptitudes.StartingValue);
+            state.AptitudeSkill = (byte)(lineage?.AptitudeSkill ?? Engine.BreedingAptitudes.StartingValue);
+            state.AptitudeEndurance = (byte)(lineage?.AptitudeEndurance ?? Engine.BreedingAptitudes.StartingValue);
+            state.AptitudeFortune = (byte)(lineage?.AptitudeFortune ?? Engine.BreedingAptitudes.StartingValue);
+            state.TraitMask = lineage?.TraitMask ?? 0L;
+            state.IsEpicMutation = lineage?.IsEpicMutation ?? false;
+            return state;
+        }
+
         private static async Task PersistFieldedAgesAsync(FolkIdleDbContext dbContext, TickStatePayload state)
         {
             await PersistFieldedAgeAsync(dbContext, state.PlayerId, state.Slot1_CharacterId, state.Slot1_AgeTicks, state.Slot1_AgePhase);
@@ -1680,6 +1697,7 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot2Activity.RestedHpPending = true;
                 payload.Slot2Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
                 payload.Slot2Activity = await HydrateSlotEquipmentAsync(dbContext, characters[1], payload.Slot2Activity);
+                payload.Slot2Activity = WithBlood(payload.Slot2Activity, characters[1].Lineage);
             }
             if (characters.Count > 2)
             {
@@ -1694,6 +1712,7 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot3Activity.RestedHpPending = true;
                 payload.Slot3Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
                 payload.Slot3Activity = await HydrateSlotEquipmentAsync(dbContext, characters[2], payload.Slot3Activity);
+                payload.Slot3Activity = WithBlood(payload.Slot3Activity, characters[2].Lineage);
             }
 
             // Modul: one character per kind of work (2026-10-08). An account
