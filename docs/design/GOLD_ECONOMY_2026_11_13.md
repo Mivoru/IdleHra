@@ -47,3 +47,18 @@ other two.
 Option 1, starting with the expedition slots (they have no diamond price to
 undercut) at 250M / 625M, then decide on a gold-priced Hall slot after a week
 of data. Needs the owner's yes before anything is built.
+
+## Decided and built (2026-11-13, PR #385, client 1.76.0)
+
+The owner approved the expedition slots, priced by income instead of flat:
+the 1st bought slot costs 24 hours of the player's own gold income, the 2nd
+72 hours (`ExpeditionRules.BoughtSlotPriceHours`, `NextSlotPrice`, rounded to
+1,000), at most two (`MaxBoughtSlots`). Income is `LootChestEngine.
+GoldPerMinuteAsync`, the same measure the Delve stake uses, so the price
+follows Tomda's income as well as Mivoru's. Spending lands in the ledger as
+`GoldSpendCategory.Expedition`.
+
+Correction from the owner: Tomda and (pro)boss do not spend on the Vault's
+equipment transfer after a rebirth either, so option 2's Vault line would
+not reach them. A gold-priced upgrade to an expedition (better chest odds),
+priced by income the same way, is the next candidate if gold still piles up.
