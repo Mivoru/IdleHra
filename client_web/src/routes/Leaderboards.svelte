@@ -8,7 +8,9 @@
     fetchLeaderboard,
     fetchGuildLeaderboard,
     fetchDeepestBoard,
+    fetchLifeRecordBoard,
   } from '../lib/net/rest';
+  import { formatDuration } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { profileLink, guildLink } from '../lib/ui/profileLink';
@@ -24,11 +26,17 @@
     Its own tab rather than a third panel, because it is a different question
     ("how far down did anyone get this week") and it resets weekly.
   */
-  let tab = $state<'standing' | 'deepest'>('standing');
+  let tab = $state<'standing' | 'deepest' | 'lives'>('standing');
   const deepest = createQuery(() => ({
     queryKey: queryKeys.deepestBoard,
     queryFn: fetchDeepestBoard,
     enabled: tab === 'deepest',
+  }));
+  // The Fastest lives board (2026-11-13): life records, glory only.
+  const lives = createQuery(() => ({
+    queryKey: queryKeys.lifeRecordBoard,
+    queryFn: fetchLifeRecordBoard,
+    enabled: tab === 'lives',
   }));
 </script>
 
@@ -42,11 +50,44 @@
     tabs={[
       { value: 'standing', label: 'Standing' },
       { value: 'deepest', label: 'Deepest this week' },
+      { value: 'lives', label: 'Fastest lives' },
     ]}
   />
 </div>
 
-{#if tab === 'deepest'}
+{#if tab === 'lives'}
+  <div class="grid">
+    <section class="panel deepest" data-testid="lives-board">
+      <h2>Fastest lives</h2>
+      <p class="dim tiny">
+        The fastest life that ended in a rebirth at level 50 - from the rebirth that began it to the one that
+        ended it - and the fastest to a level-100 rebirth beside it. Glory only: this board pays nothing.
+      </p>
+      {#if lives.isPending}
+        <Skeleton />
+      {:else if lives.isError}
+        <p class="warn">Could not load the leaderboard.</p>
+        <button class="retry" onclick={() => lives.refetch()}>Retry</button>
+      {:else if (lives.data ?? []).length === 0}
+        <p class="dim">No timed life has ended in a rebirth yet. The clock starts at a rebirth.</p>
+      {:else}
+        <ol class="board">
+          {#each lives.data ?? [] as row (row.PlayerId)}
+            <li class:self={row.PlayerId === connection.currentPlayerId}>
+              <span class="rank dim">#{row.Rank}</span>
+              <button class="who who-btn" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>
+                <PlayerAvatar playerId={row.PlayerId} size="sm" />
+                {row.Name}
+                <PlayerTitle playerId={row.PlayerId} />
+              </button>
+              <span class="xp">{formatDuration(row.BestTo50)}{#if row.BestTo100 > 0} &middot; 100 in {formatDuration(row.BestTo100)}{/if}</span>
+            </li>
+          {/each}
+        </ol>
+      {/if}
+    </section>
+  </div>
+{:else if tab === 'deepest'}
   <div class="grid">
     <section class="panel deepest">
       <h2>Deepest this week</h2>

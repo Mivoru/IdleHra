@@ -45,6 +45,7 @@ export const queryKeys = {
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
   deepestBoard: ['meta', 'leaderboard', 'deepest'] as const,
+  lifeRecordBoard: ['meta', 'leaderboard', 'lives'] as const,
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
@@ -2189,6 +2190,23 @@ export interface DeepestBoardRow {
 
 export function fetchDeepestBoard(): Promise<DeepestBoardRow[]> {
   return authedGet<{ Entries: DeepestBoardRow[] }>('/api/v1/leaderboard/deepest').then((r) => r?.Entries ?? []);
+}
+
+/** One row of the Fastest lives board (LifeRecordBoard on the server, 2026-11-13). Pays nothing. */
+export interface LifeRecordBoardRow {
+  Rank: number;
+  PlayerId: number;
+  Name: string;
+  /** Fastest life to a level-50 rebirth, seconds. */
+  BestTo50: number;
+  /** Fastest life to a level-100 rebirth, seconds, or 0. */
+  BestTo100: number;
+  RebirthCount: number;
+  Title: string | null;
+}
+
+export function fetchLifeRecordBoard(): Promise<LifeRecordBoardRow[]> {
+  return authedGet<{ Entries: LifeRecordBoardRow[] }>('/api/v1/leaderboard/lives').then((r) => r?.Entries ?? []);
 }
 
 // ---------------------------------------------------------------------------
