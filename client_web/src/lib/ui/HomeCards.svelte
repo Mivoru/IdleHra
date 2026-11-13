@@ -59,8 +59,8 @@
   const deeds = createQuery(() => ({ queryKey: queryKeys.deeds, queryFn: fetchDeeds, refetchInterval: 60_000 }));
 
   // Modul: YOUR ROAD (2026-11-13). The endgame tracks side by side - the two
-  // 20-rebirth accounts had never opened the Dungeon and held 2-3 Seals while
-  // asking for something to do. Every row is the server's (JourneyBoard); an
+  // 20-rebirth accounts held 2-3 of six Seals and one had never entered the
+  // Delve, while asking for something to do. Every row is the server's (JourneyBoard); an
   // account below level 40 that has never rebirthed gets no rows and no card.
   const journey = createQuery(() => ({ queryKey: queryKeys.journey, queryFn: fetchJourney, refetchInterval: 120_000 }));
   const road = $derived(journey.data ?? []);
