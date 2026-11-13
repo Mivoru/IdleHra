@@ -141,6 +141,41 @@ namespace FolkIdle.Server.Network
             }
         }
 
+        /// <summary>
+        /// "Your road": the gate whose next stage comes closest - a win first,
+        /// then the boss left lowest, then the most waves - as one line.
+        /// </summary>
+        private async Task<string?> DungeonRoadHintAsync(FolkIdleDbContext db, long playerId)
+        {
+            var snapshot = await MainCharacterSnapshotAsync(playerId);
+            if (snapshot == null) return null;
+            var payload = snapshot.Value.Payload;
+            byte mask = DungeonBossMask(playerId, payload.DefeatedRegionBossMask);
+            if (!DungeonEngine.IsOpen(mask)) return null;
+            var stored = await db.DungeonProgress.AsNoTracking().Where(d => d.PlayerId == playerId).ToListAsync();
+
+            (int Score, string Line)? best = null;
+            foreach (var kind in DungeonBoss.All)
+            {
+                int bestStage = stored.FirstOrDefault(r => r.Kind == (int)kind)?.BestStage ?? 0;
+                int next = bestStage + 1;
+                if (next > DungeonSimulator.StageCount || DungeonEngine.StageLockedReason(next, mask, bestStage) != null) continue;
+                var party = Enumerable.Range(0, Math.Min(3, DungeonEngine.PartySlotsOpen(bestStage))).Where(s => SlotHoldsCharacter(in payload, s)).ToList();
+                if (party.Count == 0) party.Add(0);
+                var food = DungeonEngine.BestFood(in payload);
+                var runner = new DungeonRunner(payload, kind, next, food.ItemId, food.Count, party, challenges: false);
+                runner.Advance();
+                var r = runner.Result!;
+                var boss = DungeonBoss.For(kind);
+                int score = r.Won ? 1000 : r.ReachedBoss ? 500 + (100 - r.BossHpLeftPct) : r.WavesCleared * 10;
+                string line = r.Won ? $"{boss.DungeonName} stage {next} is yours to take"
+                    : r.ReachedBoss ? $"{boss.DungeonName} stage {next}: {boss.BossName} would keep {r.BossHpLeftPct}% without dodges"
+                    : $"{boss.DungeonName} stage {next}: you would fall in wave {r.WavesCleared + 1} without dodges";
+                if (best == null || score > best.Value.Score) best = (score, line);
+            }
+            return best?.Line;
+        }
+
         private static object ForecastFor(TickStatePayload payload, DungeonKind kind, int stage, int partySlotsOpen)
         {
             var party = Enumerable.Range(0, Math.Min(3, partySlotsOpen)).Where(slot => SlotHoldsCharacter(in payload, slot)).ToList();

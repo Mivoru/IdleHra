@@ -8282,6 +8282,16 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // The Dungeon row's hint names the nearest next stage, forecast
+                // (2026-11-13) - only while the player is online, because the
+                // forecast fights with the live payload.
+                int dungeonRow = rows.FindIndex(r => r.Key == "dungeon");
+                if (dungeonRow >= 0)
+                {
+                    string? hint = await DungeonRoadHintAsync(db, playerId);
+                    if (hint != null) rows[dungeonRow] = rows[dungeonRow] with { Hint = hint };
+                }
+
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Rows = rows });
