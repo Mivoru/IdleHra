@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.68.0',
+    date: '2026-11-13',
+    sections: [
+      {
+        title: 'Bloodline and Rebirth',
+        items: [
+          'The Hall of Ancestors warns you when an ancestor better than one you marked to keep would be lost at your next rebirth, and names who to unmark and who to mark.',
+          'Ancestral Boons can be bought several ranks at once: a second button buys as many ranks as your shards cover, in one go.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.67.0',
     date: '2026-11-13',
     sections: [

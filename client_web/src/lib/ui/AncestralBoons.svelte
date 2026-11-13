@@ -23,9 +23,9 @@
 
   let pending = $state<number | null>(null);
 
-  function buy(boon: BoonView) {
+  function buy(boon: BoonView, ranks = 1) {
     if (pending !== null || boon.NextCost < 0 || boon.NextCost > shards) return;
-    const outcome = purchaseLegacyUnlock(boon.UnlockId);
+    const outcome = purchaseLegacyUnlock(boon.UnlockId, ranks);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     pending = boon.UnlockId;
     // The command result (73/74/75) says what happened; the preview re-reads
@@ -67,6 +67,19 @@
             >
               {pending === boon.UnlockId ? 'Buying…' : `+1% for ${formatNumber(boon.NextCost)}`}
             </button>
+            <!-- Several ranks in one command (2026-11-13): sixty single taps was
+                 the macro detector's rhythm. The count and price are the
+                 server's (BoonView.AffordableRanks / AffordableCost). -->
+            {#if (boon.AffordableRanks ?? 0) > 1}
+              <button
+                type="button"
+                data-testid="boon-buy-all"
+                disabled={pending !== null}
+                onclick={() => buy(boon, boon.AffordableRanks ?? 1)}
+              >
+                +{boon.AffordableRanks}% for {formatNumber(boon.AffordableCost ?? 0)}
+              </button>
+            {/if}
           {/if}
         </div>
       </li>

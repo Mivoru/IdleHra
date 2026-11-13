@@ -6250,6 +6250,18 @@ await go('Ancestors');
       shown === expected && opened,
       `expected ${expected}, shown ${shown}, sheet ${opened}${best ? `, best ${best.Name} ${total(best)} vs slot 1 ${slotOne ? total(slotOne) : '-'}` : ''}`,
     );
+
+  // The lost-blood nudge (2026-11-13): shown exactly when the strongest
+  // member who does not carry beats the weakest marked one (server WouldCarry).
+  {
+    const hallLost = await apiGet('/api/v1/ancestors/hall').catch(() => null);
+    const tot = (m) => m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
+    const marked = (hallLost?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter).map(tot);
+    const left = (hallLost?.Members ?? []).filter((m) => !m.WouldCarry).map(tot);
+    const should = marked.length > 0 && left.length > 0 && Math.max(...left) > Math.min(...marked);
+    const shown = (await page.getByTestId('hall-lost-nudge').count()) > 0;
+    record('the Hall warns when better blood than the marked would be lost', hallLost !== null && shown === should, `should ${should}, shown ${shown}`);
+  }
   }
 
   // Modul: THE BRED CHILD'S OWN TRAITS, not just the preview that promised it.
@@ -6563,6 +6575,11 @@ await go('Ancestors');
     before !== null && boonRows === (before.Boons?.length ?? -1) && boonRows === 3 && boonShards === String(before.ShardBalance),
     `${boonRows} boons, shards ${boonShards} (server ${before?.ShardBalance})`,
   );
+  // "Buy all" (several ranks in one command) shows exactly on the rows the
+  // server says the balance covers more than one rank of.
+  const buyAll = await panel.locator('[data-testid="boon-buy-all"]').count();
+  const wantAll = (before?.Boons ?? []).filter((b) => (b.AffordableRanks ?? 0) > 1).length;
+  record('a Boon offers "buy all" exactly where the shards cover several ranks', before !== null && buyAll === wantAll, `${buyAll} buttons, server ${wantAll}`);
 
   // Life records (2026-11-13): three numbers, each a time or a dash.
   const records = (await panel.locator('[data-testid="rebirth-records"]').innerText().catch(() => '')).replace(/\s+/g, ' ');

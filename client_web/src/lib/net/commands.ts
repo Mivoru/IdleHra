@@ -1827,9 +1827,12 @@ export function purchaseBattlePass(): CommandOutcome {
  * Mirrors ValidateLegacyStoreRequest: fourteen fields must be zero, so this
  * sends TargetUnlockId alone.
  */
-export function purchaseLegacyUnlock(unlockId: number): CommandOutcome {
+export function purchaseLegacyUnlock(unlockId: number, ranks = 1): CommandOutcome {
   if (!Number.isInteger(unlockId) || unlockId <= 0) return refuse('Pick an unlock.');
-  connection.send({ Command: CommandType.PurchaseLegacyUnlocks, TargetUnlockId: unlockId });
+  // A Boon (perk) purchase reads RequestedSlotIndex as how many ranks to buy,
+  // as many as the shards cover (LegacyStoreEngine.RanksAffordable); 1 = one.
+  const count = Math.max(1, Math.min(25, Math.floor(ranks)));
+  connection.send({ Command: CommandType.PurchaseLegacyUnlocks, TargetUnlockId: unlockId, RequestedSlotIndex: count > 1 ? count : 0 });
   return OK;
 }
 

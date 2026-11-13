@@ -92,5 +92,37 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(1_000_000, shards);
             Assert.Equal((byte)FolkIdle.Server.Network.CommandResultCode.BoonMaxed, LastResultFor(id));
         }
+
+        [Fact]
+        public async Task SeveralRanksInOneCommand_BuyAsManyAsTheShardsCover()
+        {
+            const long id = 960_113_010L;
+            int off = LegacyPerkResolver.XpMultiplierBitOffset;
+            long fiveRanks = Enumerable.Range(0, 5).Sum(r => (long)LegacyPerkResolver.CalculatePerkRankCost(off, r));
+            // Enough for five ranks and a bit, not six; ask for twenty.
+            await SeedAsync(id, (int)fiveRanks + 10);
+            var engine = new LegacyStoreEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await engine.PurchaseLegacyUnlockAsync(id, LegacyStoreEngine.XpMultiplierPerkUnlockId, 20);
+
+            var (perks, shards) = await ReadAsync(id);
+            Assert.Equal(5, LegacyPerkResolver.GetXpBonusPct(perks));
+            Assert.Equal(10, shards);
+            Assert.Equal((byte)FolkIdle.Server.Network.CommandResultCode.BoonPurchased, LastResultFor(id));
+        }
+
+        [Fact]
+        public void RanksAffordable_StopsAtTheCapAndTheBalance()
+        {
+            int off = LegacyPerkResolver.CombatSpeedBitOffset;
+            int max = LegacyPerkResolver.MaxRankFor(off);
+            var (all, _) = LegacyStoreEngine.RanksAffordable(off, 0, long.MaxValue / 4, LegacyStoreEngine.MaxRanksPerPurchase);
+            Assert.Equal(max, all);
+            var (none, cost) = LegacyStoreEngine.RanksAffordable(off, 0, 0, 5);
+            Assert.Equal(0, none);
+            Assert.Equal(0, cost);
+            var view = BoonView.For(0L, LegacyPerkResolver.CalculatePerkRankCost(off, 0)).Single(b => b.UnlockId == LegacyStoreEngine.CombatSpeedPerkUnlockId);
+            Assert.Equal(1, view.AffordableRanks);
+        }
     }
 }

@@ -2951,6 +2951,9 @@ export interface BoonView {
   MaxRank: number;
   /** Shards for the next rank, or -1 at the cap. */
   NextCost: number;
+  /** Ranks the current balance buys at once, and their total cost. Absent on an older server. */
+  AffordableRanks?: number;
+  AffordableCost?: number;
 }
 
 export function fetchRebirthPreview(): Promise<RebirthPreview> {
