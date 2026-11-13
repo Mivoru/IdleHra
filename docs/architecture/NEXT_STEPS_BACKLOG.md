@@ -163,8 +163,33 @@ Image keys: the env `GEMINI_API_KEY` is free tier (images limit 0); the
 owner supplied a working key in chat on 2026-11-13 - **rotate it** - and
 `tools/assets/gemini.mjs` reads `%USERPROFILE%/skola2025/geminiAPI/apiGEM.txt`.
 
+Late evening (owner: "no daily board for now; the brown brick wall and
+brown panels look bad - more colour and ornament, like the Yggdrasil behind
+the skill tree; work till 22:00"): #385 **gold-bought expedition slots** -
+two more, priced at 24 h and 72 h of the player's own income
+(`ExpeditionRules.BoughtSlotPriceHours`, `LootChestEngine.GoldPerMinuteAsync`),
+additive migration `ExpeditionSlotsBought` (1.76.0, deployed with a backup).
+#386 **a painted scene per section** replaces the tiled `--cobble` page
+background: `scene_<section>.webp` (Gemini, prompts in
+`tools/assets/gemini.json`) under a dark wash, a paper wash on the light
+scheme; `sections.ts` sets `--scene` because sprites come from the game
+server's origin (locally: rebuild the server so `bin/Sprites` has them).
+Panels are 88% opaque (no backdrop-filter - perf), carry a stitch hem in the
+section colour, and a folk-diamond band under the header is masked in
+`--section` (1.77.0). Underground (Delve) keeps its stones. #387 **stat
+sheet and Statistics audit**: the block cap now reads the tick's clamp
+(75 + `BlockCapBonusPct`, Living Fortress); Statistics said "Login streak 1"
+for day 1 of the 7-day login week, "Regions done 0" for codex mastery
+(1,000/100 kills) at level 93, and "Played" for online time only - all
+relabelled, and Level reads the live snapshot.
+
+Daily activity board (owner's idea: dungeon, delve, world boss, auto-eat
+low, children, village hints) - **owner said not now**; Home's "Your road"
+card is the nearest existing thing.
+
 Open: the owner's answers to the review's questions (now five - gold
-inflation added).
+inflation added). Next gold sink candidate if gold still piles up: a
+gold-priced expedition upgrade (better chest odds), priced by income.
 
 ---
 
