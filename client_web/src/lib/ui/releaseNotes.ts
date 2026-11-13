@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.67.0',
+    date: '2026-11-13',
+    sections: [
+      {
+        title: 'Bloodline and Rebirth',
+        items: [
+          'The breeding lab opens with your strongest free adult already chosen as the hero, so Best matches is there straight away.',
+          'The road on the Rebirth screen shows your next four steps and the last one instead of every card. A button opens the whole road.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.66.0',
     date: '2026-11-13',
     sections: [

@@ -240,7 +240,7 @@
         <span><strong>{p.RebirthCount}</strong> {p.RebirthCount === 1 ? 'rebirth' : 'rebirths'} taken</span>
       </div>
       <div class="stats">
-        <span class="stat"><strong>{p.BloodlineCeilingNow}</strong> bloodline ceiling{#if p.BloodlineCeilingAfter > p.BloodlineCeilingNow} ({p.BloodlineCeilingAfter} after the next){:else} (the highest){/if}</span>
+        <span class="stat"><strong>{p.BloodlineCeilingNow}</strong> bloodline ceiling{#if p.BloodlineCeilingAfter > p.BloodlineCeilingNow}&nbsp;({p.BloodlineCeilingAfter} after the next){:else} (the highest){/if}</span>
         <span class="stat"><strong>{p.SkillPointsFromRebirthsNow}</strong> skill points from rebirths</span>
         <span class="stat"><strong>+{p.DamageBonusPctNow}%</strong> damage (Renown {p.RenownedRebirths})</span>
         <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below the level your last life reached ({p.PeakLevelAfter} after the next rebirth)</span>

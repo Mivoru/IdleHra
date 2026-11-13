@@ -5675,9 +5675,18 @@ await go('Breeding');
     return options;
   }
 
+  // A hero is chosen when the lab opens (2026-11-13): the strongest free
+  // adult, so Best matches shows without a first tap.
+  await page.waitForTimeout(800);
+  const preselected = (await heroPicker.innerText().catch(() => '')).trim();
+  record(
+    'the breeding lab opens with a hero already chosen',
+    preselected.length > 0 && !/Choose a hero/i.test(preselected),
+    preselected.replace(/\s+/g, ' ').slice(0, 60) || 'empty',
+  );
+
   // Modul: ONE QUESTION, NOT TWO TABS. The partner list carries both the
   // village and the player's own line, grouped.
-  await page.waitForTimeout(800);
   await openPicker(heroPicker);
   const firstHero = listOf(heroPicker).locator('[role="option"]:not([disabled])').first();
   if ((await firstHero.count()) > 0) await firstHero.click();
@@ -6505,19 +6514,26 @@ await go('Ancestors');
     before ? `rebirths ${before.RebirthCount}, level ${before.Level}, ${before.ShardsEarned} shards, renowned ${before.Renowned}` : 'no answer',
   );
 
-  // The road to twenty (server-built roadmap) and the Vault, before any terms.
-  const steps = await page.locator('[data-testid^="rebirth-step-"]').count();
+  // The road (server-built roadmap) and the Vault, before any terms. Folded
+  // by default since 2026-11-13: the next four steps and the final one, then
+  // the toggle opens every card. "Next" is the first step still ahead (the
+  // road has gaps past twenty).
+  const folded = await page.locator('[data-testid^="rebirth-step-"]').count();
   const next = await page.locator('[data-testid^="rebirth-step-"][data-state="next"]').getAttribute('data-testid').catch(() => null);
+  const ahead = before ? before.Roadmap.filter((st) => st.Rebirth > before.RebirthCount).length : 0;
+  const expectedFolded = before ? Math.min(4, ahead) + (ahead > 4 ? 1 : 0) : -1;
+  await page.getByTestId('rebirth-road-toggle').click().catch(() => {});
+  await page.waitForTimeout(300);
+  const steps = await page.locator('[data-testid^="rebirth-step-"]').count();
   const portraits = await page.locator('[data-testid="rebirth-roadmap"] img').count();
   record(
-    'the Rebirth screen draws the whole road, the next step marked',
-    // The road has gaps past twenty (title milestones), so "next" is the first
-    // step still ahead (2026-11-13).
-    before !== null && steps === before.Roadmap.length
+    'the Rebirth screen folds the road to the next steps, and opens the whole of it',
+    before !== null && folded === expectedFolded && steps === before.Roadmap.length
       && next === `rebirth-step-${(before.Roadmap.find((st) => st.Rebirth > before.RebirthCount) ?? { Rebirth: -1 }).Rebirth}`
       && portraits >= 5,
-    `${steps} steps, next ${next}, ${portraits} pictures`,
+    `folded ${folded} (want ${expectedFolded}), open ${steps} of ${before?.Roadmap.length}, next ${next}, ${portraits} pictures`,
   );
+  await page.getByTestId('rebirth-road-toggle').click().catch(() => {});
   const vaultPrices = await page.locator('[data-testid="rebirth-vault-prices"] .price-chip').count();
   record('the Vault lists its price for every rarity', vaultPrices === 14, `${vaultPrices} rarities`);
 

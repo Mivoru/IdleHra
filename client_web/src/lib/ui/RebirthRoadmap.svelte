@@ -23,6 +23,20 @@
   const nextRebirth = $derived(steps.find((s) => s.Rebirth > taken)?.Rebirth ?? -1);
   const lastRebirth = $derived(steps.length > 0 ? steps[steps.length - 1].Rebirth : -1);
 
+  // Modul: FOLDED BY DEFAULT (2026-11-13). Twenty-two full cards made the
+  // Rebirth screen over 6,000px tall on a phone, and a 20-rebirth account
+  // scrolled past twenty taken steps to find the one that matters. The road
+  // shows the next few steps and the final one; "Show the whole road" opens
+  // every card, taken ones included.
+  const UPCOMING_SHOWN = 4;
+  let showAll = $state(false);
+  const upcoming = $derived(steps.filter((s) => s.Rebirth > taken).slice(0, UPCOMING_SHOWN).map((s) => s.Rebirth));
+  const visible = $derived(
+    showAll ? steps : steps.filter((s) => upcoming.includes(s.Rebirth) || s.Rebirth === lastRebirth),
+  );
+  const hiddenCount = $derived(steps.length - visible.length);
+  const takenCount = $derived(steps.filter((s) => s.Rebirth <= taken).length);
+
   function stateOf(n: number): 'done' | 'next' | 'ahead' {
     if (n <= taken) return 'done';
     return n === nextRebirth ? 'next' : 'ahead';
@@ -38,8 +52,11 @@
   };
 </script>
 
-<div class="roadmap" data-testid="rebirth-roadmap">
-  {#each steps as step (step.Rebirth)}
+{#if !showAll && takenCount > 0}
+  <p class="dim tiny road-note">{takenCount} {takenCount === 1 ? 'step' : 'steps'} of the road already taken.</p>
+{/if}
+<div class="roadmap" data-testid="rebirth-roadmap" data-expanded={showAll}>
+  {#each visible as step (step.Rebirth)}
     {@const state = stateOf(step.Rebirth)}
     {@const big = step.Rewards.some((r) => r.Kind !== 'skill_points' && r.Kind !== 'bloodline')}
     <div class="step {state}" class:big class:final={step.Rebirth === lastRebirth} data-testid="rebirth-step-{step.Rebirth}" data-state={state}>
@@ -65,8 +82,22 @@
     </div>
   {/each}
 </div>
+{#if hiddenCount > 0 || showAll}
+  <button type="button" class="road-toggle" data-testid="rebirth-road-toggle" onclick={() => (showAll = !showAll)}>
+    {showAll ? 'Show only the next steps' : `Show the whole road (${steps.length} steps)`}
+  </button>
+{/if}
 
 <style>
+  .road-note {
+    margin: 0 0 0.4rem;
+  }
+
+  .road-toggle {
+    margin-top: 0.6rem;
+    min-height: 44px;
+  }
+
   .roadmap {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
