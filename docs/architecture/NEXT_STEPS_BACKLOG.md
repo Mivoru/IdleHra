@@ -183,13 +183,20 @@ for day 1 of the 7-day login week, "Regions done 0" for codex mastery
 (1,000/100 kills) at level 93, and "Played" for online time only - all
 relabelled, and Level reads the live snapshot.
 
+Then #389 **six more banners** (Crafting, Forge, Market, Guild, Progress,
+Wiki) and **panels dyed with their section colour** (1.78.0), and #390
+**expedition Provisions** - gold at send time, half the trip in hours of own
+income, +25 points on the better chest and a 25% Silver on 4 h trips;
+additive migration `Expeditions.Provisioned`, deployed with a backup
+(1.79.0). exercise.mjs spends ~108k fixture gold per run on it.
+
 Daily activity board (owner's idea: dungeon, delve, world boss, auto-eat
 low, children, village hints) - **owner said not now**; Home's "Your road"
 card is the nearest existing thing.
 
 Open: the owner's answers to the review's questions (now five - gold
-inflation added). Next gold sink candidate if gold still piles up: a
-gold-priced expedition upgrade (better chest odds), priced by income.
+inflation added). Gold sinks now: bought slots (one-off) and Provisions
+(repeating); read the ledger's Expedition category after a week.
 
 ---
 
