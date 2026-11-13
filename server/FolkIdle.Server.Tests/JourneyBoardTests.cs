@@ -29,9 +29,9 @@ namespace FolkIdle.Server.Tests
                 LegacyPerks = LegacyPerkResolver.SetPerkRank(0L, LegacyPerkResolver.XpMultiplierBitOffset, 3),
             };
             var gates = new[] { new DungeonGateStanding(5, 0), new DungeonGateStanding(8, 0), new DungeonGateStanding(9, 4) };
-            var rows = JourneyBoard.Build(Deeds(0b11111, 19), player, 55_455, gates);
+            var rows = JourneyBoard.Build(Deeds(0b11111, 19), player, 55_455, gates, ascensionSteps: 2);
 
-            Assert.Equal(new[] { "dungeon", "delve", "deeds", "bloodline", "trials", "boons" }, rows.Select(r => r.Key));
+            Assert.Equal(new[] { "dungeon", "delve", "ascension", "deeds", "bloodline", "trials", "boons" }, rows.Select(r => r.Key));
             var dungeon = rows.Single(r => r.Key == "dungeon");
             Assert.Equal(22, dungeon.Value);
             Assert.Equal(45, dungeon.Max);
@@ -42,6 +42,8 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(1, rows.Single(r => r.Key == "trials").Value);
             Assert.Equal(3, rows.Single(r => r.Key == "boons").Value);
             Assert.Contains("55,455 shards", rows.Single(r => r.Key == "boons").Hint);
+            Assert.Equal(2, rows.Single(r => r.Key == "ascension").Value);
+            Assert.Equal(50, rows.Single(r => r.Key == "ascension").Max);
             Assert.All(rows, r => Assert.InRange(r.Value, 0, r.Max));
         }
 

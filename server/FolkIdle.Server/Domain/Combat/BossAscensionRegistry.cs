@@ -51,10 +51,11 @@ namespace FolkIdle.Server.Domain.Combat
     /// Task 87 (owner decision 2026-09-30): the Boss Ascension ladder. Every
     /// region boss can be fought again at ten steps; each step is the step
     /// below it PLUS one more modifier, and the first time a step is cleared it
-    /// pays a title, and at steps 5 and 10 a bound frame. Cosmetics and titles
-    /// ONLY: no gold, no diamonds, no gear and no chest (a chest is a
-    /// tradeable cosmetic, which is gold by the back door), so PowerCeilingTests
-    /// has no lever to add and the ladder cannot become part of the economy.
+    /// pays a title, and at steps 5 and 10 a bound frame. (The original rule was
+    /// cosmetics only; since the owner's A1/A2 decision on 2026-10-30 every new
+    /// step also stages a loot chest - LootChestEngine.RollAscensionChest - and
+    /// step 10 grants +2% damage against that region. Player-facing copy said
+    /// "cosmetics only" until 2026-11-13 and is corrected.)
     ///
     /// Modul: THE LADDER IS <see cref="Steps"/>. Every number a step means lives
     /// in that one table; the tick, the projection, the client's ladder and the

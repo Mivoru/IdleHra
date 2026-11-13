@@ -213,7 +213,7 @@ namespace FolkIdle.Server.Domain.Progression
                 f => f.HasWorldBossAttemptRow),
 
             new(Ascension, 11, "Clear a boss Ascension step",
-                "Every region boss can be fought again, stronger, at ten steps. Each first clear pays a title. Cosmetics only.",
+                "Every region boss can be fought again, stronger, at ten steps. Each first clear pays a title and a loot chest; step 10 adds +2% damage against that region for good.",
                 "combat", new[] { "ascension-start", "ascension" }, "Defeat the first region's boss",
                 f => f.HighestUnlockedRegion >= 2,
                 f => f.HighestAscensionStep >= 1),
