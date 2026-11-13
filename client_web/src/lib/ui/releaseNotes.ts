@@ -50,6 +50,7 @@ export const RELEASE_NOTES: readonly Release[] = [
   {
     version: '1.68.0',
     date: '2026-11-13',
+    headline: 'Buy Ancestral Boons several ranks at once, and a warning before better blood is lost.',
     sections: [
       {
         title: 'Bloodline and Rebirth',
@@ -63,6 +64,7 @@ export const RELEASE_NOTES: readonly Release[] = [
   {
     version: '1.67.0',
     date: '2026-11-13',
+    headline: 'A quicker breeding lab and a shorter Rebirth screen.',
     sections: [
       {
         title: 'Bloodline and Rebirth',
@@ -77,6 +79,7 @@ export const RELEASE_NOTES: readonly Release[] = [
   {
     version: '1.66.0',
     date: '2026-11-13',
+    headline: 'The Stats tab lists your lifetime bonuses.',
     sections: [
       {
         title: 'Character',
