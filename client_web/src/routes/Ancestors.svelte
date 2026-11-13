@@ -50,6 +50,26 @@
   const sections = $derived(splitHall(members));
   const claimed = $derived(claimedCount(members));
 
+  // Modul: YOUR BEST BLOOD ON THE BENCH (2026-11-13). Aptitudes pay only on
+  // the character who plays, and the production accounts were playing their
+  // 4/4/4/4 founder in slot 1 while bred adults with totals of 40+ sat on the
+  // bench - the bloodline was invisible in combat and nothing said so. The
+  // nudge names the strongest grown member when it clearly beats whoever
+  // stands in slot 1 (8+ points of total, two aptitudes' worth).
+  const BENCH_NUDGE_GAP = 8;
+  const slotOne = $derived(members.find((m) => m.PlayableSlot === 0));
+  const bestAdult = $derived(
+    members
+      .filter((m) => m.AgePhase >= 1)
+      .reduce<HallMember | undefined>((best, m) => (!best || aptitudeTotal(m) > aptitudeTotal(best) ? m : best), undefined),
+  );
+  const benchNudge = $derived(
+    slotOne && bestAdult && bestAdult.CharacterId !== slotOne.CharacterId
+      && aptitudeTotal(bestAdult) - aptitudeTotal(slotOne) >= BENCH_NUDGE_GAP
+      ? { best: bestAdult, playing: slotOne }
+      : null,
+  );
+
   // The lost list is collapsed and paged: it grows with every breeding, and it
   // is the part of the page a player reads least.
   const LOST_PAGE = 20;
@@ -145,10 +165,9 @@
         <span class="tags">
           <span class="gen">{generationTag(m)}</span>
           <span class="badge {badge.kind}">{badge.text}</span>
-          <!-- 2026-10-14: a benched child never grows up (only played slots
-               age), and the row did not say so - the step the whole loop
-               hangs on was a paragraph in the header. -->
-          {#if m.AgePhase === 0 && m.PlayableSlot < 0}<span class="badge raise" data-testid="hall-raise">Field to raise</span>{/if}
+          <!-- Children grow up on their own within an hour of birth since
+               2026-11-13 (ChildGrowth); "Field to raise" no longer applies. -->
+          {#if m.AgePhase === 0}<span class="badge raise" data-testid="hall-raise">Growing up</span>{/if}
         </span>
       </span>
       <!-- Modul: labelled once, by the column header above the list, and per
@@ -191,7 +210,8 @@
   <div class="cols" aria-hidden="true">
     <span class="cols-who"></span>
     <span class="apts">
-      {#each APTITUDES as apt (apt.short)}<span title={apt.name}>{apt.short[0]}</span>{/each}
+      <!-- Two letters, not one: Strength and Skill both began with S. -->
+      {#each APTITUDES as apt (apt.short)}<span title={apt.name}>{apt.short.slice(0, 2)}</span>{/each}
       <span class="sum" title="Total, of {APTITUDE_MAX * 4}">Total</span>
     </span>
     <span class="cols-pin">Keep</span>
@@ -242,6 +262,17 @@
         </div>
       {/if}
     </header>
+
+    {#if benchNudge}
+      <p class="bench-nudge" data-testid="hall-bench-nudge">
+        <strong>Your best blood is on the bench.</strong>
+        {nameOf(benchNudge.best)} has an aptitude total of <strong>{aptitudeTotal(benchNudge.best)}</strong>;
+        {nameOf(benchNudge.playing)}, playing in slot 1, has {aptitudeTotal(benchNudge.playing)}. Aptitudes only
+        count on the character who plays - tap
+        <button type="button" class="inline-link" onclick={() => (sheetId = benchNudge.best.CharacterId)}>{nameOf(benchNudge.best)}</button>
+        to field them.
+      </p>
+    {/if}
 
     <!-- Modul: WHAT THE ROLLOVER ACTUALLY DOES, one tap away rather than three
          paragraphs above the list. A disclosure built on {#if}, not <details>
@@ -364,8 +395,9 @@
   <section class="panel rebirth-link" data-testid="rebirth-link">
     <h2>Rebirth</h2>
     <p class="dim small">
-      Start again at level 1, stronger: skill points, faster levelling, avatars, a second pet slot and the
-      Phoenix along the road to ten rebirths - and the Vault keeps the gear you choose.
+      Start again at level 1, stronger: a higher bloodline ceiling, Legacy Shards for the Ancestral Boons, a
+      Rebirth Trial if you want one, and skill points, avatars and the Phoenix along the way. The Vault keeps the
+      gear you choose.
     </p>
     <button type="button" onclick={() => requestScreen('rebirth')}>Open Rebirth</button>
   </section>
@@ -865,5 +897,24 @@
     .apts > span {
       width: 1.35rem;
     }
+  }
+
+  .bench-nudge {
+    margin: 0.25rem 0 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--accent, #d4a64a);
+    background: color-mix(in srgb, var(--accent, #d4a64a) 10%, transparent);
+    border-radius: 6px;
+  }
+  .inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    min-height: 0;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
   }
 </style>
