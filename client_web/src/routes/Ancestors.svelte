@@ -962,11 +962,17 @@
     background: color-mix(in srgb, var(--accent, #d4a64a) 10%, transparent);
     border-radius: 6px;
   }
+  /* A link inside a sentence still needs a thumb-sized target (check:touch,
+     390px): 44px tall via inline-flex, with the extra height taken back by
+     negative margins so the line of text does not grow. */
   .inline-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin: -12px 0;
+    padding: 0 2px;
     background: none;
     border: none;
-    padding: 0;
-    min-height: 0;
     color: inherit;
     font: inherit;
     font-weight: 600;
