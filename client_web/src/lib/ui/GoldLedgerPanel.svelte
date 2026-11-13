@@ -20,7 +20,9 @@
   const ledger = createQuery(() => ({ queryKey: queryKeys.goldLedger, queryFn: fetchGoldLedger }));
 
   // Names only. An unknown category (one added on the server first) shows its
-  // raw name rather than disappearing.
+  // raw name rather than disappearing - which is how Respec, Refine,
+  // Expedition, LootChest and Dungeon read for weeks; serverMirrors.test.ts now
+  // fails when a GoldLedger.cs enum member has no label here.
   const SPEND_LABELS: Record<string, string> = {
     Reroll: 'Affix rerolls',
     Fusion: 'Forge fusions',
@@ -33,6 +35,9 @@
     Cosmetics: 'Cosmetics',
     Guild: 'Guild donations',
     GuildRaid: 'Guild raids',
+    Respec: 'Skill tree respecs',
+    Refine: 'Affix refines',
+    Expedition: 'Expedition slots and provisions',
   };
 
   const INCOME_LABELS: Record<string, string> = {
@@ -49,6 +54,8 @@
     Starter: 'Starting gold',
     Other: 'Delayed grants',
     QuestLine: 'Quest rewards',
+    LootChest: 'Loot chests',
+    Dungeon: 'The Gold dungeon',
   };
 
   type Window = 'Last7Days' | 'Last30Days' | 'SinceRecorded';

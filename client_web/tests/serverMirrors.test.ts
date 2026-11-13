@@ -985,3 +985,39 @@ describe('inheritance mirrors InheritanceRegistry', () => {
     }
   });
 });
+
+// Gold ledger (2026-11-13): every spend category and income source the server
+// records has a label on the Statistics tab. Five had none and showed as raw
+// enum names (Respec, Refine, Expedition, LootChest, Dungeon).
+describe('gold ledger labels', () => {
+  const ledger = read(serverRoot, 'Engine', 'GoldLedger.cs');
+  const panel = read(clientRoot, 'lib', 'ui', 'GoldLedgerPanel.svelte');
+  const members = (enumName: string) => {
+    // Not after(): its 1,200-character window cut GoldIncomeSource short of
+    // its last members, so a missing label there went unseen.
+    const at = ledger.indexOf(`enum ${enumName}`);
+    if (at < 0) throw new Error(`could not find ${enumName}`);
+    const body = ledger.slice(at, ledger.indexOf('}', at));
+    return [...body.matchAll(/^\s+([A-Z][A-Za-z]+) = \d+,/gm)].map((m) => m[1]);
+  };
+  const labels = (constName: string) => {
+    const at = panel.indexOf(constName);
+    if (at < 0) throw new Error(`could not find ${constName}`);
+    const body = panel.slice(at, panel.indexOf('};', at));
+    return new Set([...body.matchAll(/^\s+([A-Z][A-Za-z]+):/gm)].map((m) => m[1]));
+  };
+
+  it('names every spend category', () => {
+    const spend = labels('SPEND_LABELS');
+    const all = members('GoldSpendCategory');
+    expect(all.length).toBeGreaterThan(10);
+    expect(all.filter((m) => !spend.has(m))).toEqual([]);
+  });
+
+  it('names every income source', () => {
+    const income = labels('INCOME_LABELS');
+    const all = members('GoldIncomeSource');
+    expect(all.length).toBeGreaterThan(10);
+    expect(all.filter((m) => !income.has(m))).toEqual([]);
+  });
+});
