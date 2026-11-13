@@ -570,9 +570,10 @@
             even steps also put a clock on the kill - from twice the Swift
             challenge's limit at step 2 down to 120% of it at step 10. Step 10 is
             about as strong as the boss two regions further on. The first clear of
-            each step pays a title, and steps 5 and 10 also a frame. The ladder pays
-            <strong>only cosmetics</strong> - no gold, diamonds, gear or chests - so
-            climbing it is for the name, not for power.
+            each step pays a title and a <strong>loot chest</strong> of this region (higher
+            steps roll better chests; step 10 a Gold or Ancient one), and steps 5 and 10
+            also a frame. Clearing step 10 adds <strong>+2% damage against that region's
+            monsters</strong>, for good.
           </p>
 
           <h3 id="orders">Orders</h3>

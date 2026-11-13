@@ -39,7 +39,7 @@ namespace FolkIdle.Server.Engine
         /// <summary>The level from which the card is worth showing.</summary>
         public const int ShowFromLevel = 40;
 
-        public static List<JourneyRow> Build(in DeedContext deeds, PlayerRecord player, int shardBalance, IReadOnlyList<DungeonGateStanding> gates)
+        public static List<JourneyRow> Build(in DeedContext deeds, PlayerRecord player, int shardBalance, IReadOnlyList<DungeonGateStanding> gates, int ascensionSteps = 0)
         {
             var rows = new List<JourneyRow>();
 
@@ -58,6 +58,13 @@ namespace FolkIdle.Server.Engine
             rows.Add(new JourneyRow("delve", "The Delve", $"deepest floor {player.DelveDeepestFloor}",
                 player.DelveDeepestFloor, Math.Max(player.DelveDeepestFloor, 25), "delve",
                 player.DelveDeepestThisWeek > 0 ? $"floor {player.DelveDeepestThisWeek} this week" : "not entered this week"));
+
+            // Boss Ascension (2026-11-13): two of the three endgame accounts had
+            // not re-climbed it since the 10-30 reset, while its own screen said
+            // "cosmetics only" - it pays a chest a step and +2% region damage at 10.
+            int ascensionMax = (Domain.Combat.BossAscensionRegistry.LastRegion - Domain.Combat.BossAscensionRegistry.FirstRegion + 1) * Domain.Combat.BossAscensionRegistry.MaxStep;
+            rows.Add(new JourneyRow("ascension", "Boss Ascension", $"{ascensionSteps} of {ascensionMax} steps",
+                ascensionSteps, ascensionMax, "combat", "every new step pays a loot chest; step 10, +2% damage in that region"));
 
             int seals = DeedRegistry.SealCount(player.SealsEarnedMask);
             rows.Add(new JourneyRow("deeds", "Book of Deeds", $"{seals} of {DeedRegistry.ChapterCount} Seals",
@@ -105,7 +112,9 @@ namespace FolkIdle.Server.Engine
                 DungeonEngine.TopUpTickets(row, now);
                 gates.Add(new DungeonGateStanding(row.BestStage, row.Tickets));
             }
-            return Build(in deeds, player, shards, gates);
+            int ascension = await db.BossAscensionProgress.AsNoTracking()
+                .Where(p => p.PlayerId == playerId).SumAsync(p => (int)p.HighestStep);
+            return Build(in deeds, player, shards, gates, ascension);
         }
     }
 }

@@ -1,8 +1,9 @@
 <script lang="ts">
   // Task 87: a boss's Ascension ladder, under its region on the Combat screen.
   // Ten steps, each the one below it plus one more modifier; clearing a step for
-  // the first time pays a title (and at steps 5 and 10 a frame) - cosmetics
-  // only. Every word here is the server's: the effects, the time limit in
+  // the first time pays a title (and at steps 5 and 10 a frame), a loot chest
+  // (since 2026-10-30), and step 10 a lasting +2% damage against that region.
+  // Every word here is the server's: the effects, the time limit in
   // seconds and the reward names arrive with the ladder, and this file keeps no
   // copy of any of it. The steps are BUTTONS, not a <select> (a list whose
   // state changes as fights end is exactly what Android's system dialog drops).
@@ -46,7 +47,7 @@
   <p class="head">
     <strong>Boss Ascension</strong>
     <span class="dim tiny">
-      {boss.HighestStep} / {boss.Steps.length} cleared · cosmetics and titles only
+      {boss.HighestStep} / {boss.Steps.length} cleared · every new step pays a loot chest; step 10, +2% damage here for good
     </span>
   </p>
 
