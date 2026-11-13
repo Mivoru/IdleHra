@@ -6266,6 +6266,15 @@ if (want('ancestors')) {
 }
 await go('Ancestors');
 {
+  // The expedition nudge (2026-11-13): shown exactly when slots are free and
+  // grown ancestors wait on the bench (the Expeditions board's own numbers).
+  const eb = await apiGet('/api/v1/expeditions').catch(() => null);
+  await page.waitForTimeout(800);
+  const nudgeShown = (await page.getByTestId('hall-expedition-nudge').count()) > 0;
+  const nudgeWanted = Boolean(eb) && eb.Slots - eb.Active.length > 0 && eb.Candidates.length > 0;
+  record('the Hall points idle bench ancestors at free expedition slots', eb !== null && nudgeShown === nudgeWanted, `wanted ${nudgeWanted}, shown ${nudgeShown}`);
+}
+{
   const text = await page.evaluate(() => document.body.innerText);
   record('the Hall states what a season does not take', /does not take these/i.test(text));
   record(
