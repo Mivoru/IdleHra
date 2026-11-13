@@ -20,7 +20,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
-  import { queryKeys, fetchDeeds, fetchWorn, fetchBreedingRoster } from '../net/rest';
+  import { queryKeys, fetchDeeds, fetchWorn, fetchBreedingRoster, fetchJourney } from '../net/rest';
   import { isSameKindOfWork } from './slots';
   import { assignCharacterActivity } from '../net/commands';
   import { writePref } from '../net/prefs';
@@ -57,6 +57,13 @@
   // Refetched while the map is open, so the goal's counter can be watched
   // moving - that movement is the whole of the time estimate below.
   const deeds = createQuery(() => ({ queryKey: queryKeys.deeds, queryFn: fetchDeeds, refetchInterval: 60_000 }));
+
+  // Modul: YOUR ROAD (2026-11-13). The endgame tracks side by side - the two
+  // 20-rebirth accounts had never opened the Dungeon and held 2-3 Seals while
+  // asking for something to do. Every row is the server's (JourneyBoard); an
+  // account below level 40 that has never rebirthed gets no rows and no card.
+  const journey = createQuery(() => ({ queryKey: queryKeys.journey, queryFn: fetchJourney, refetchInterval: 120_000 }));
+  const road = $derived(journey.data ?? []);
 
   // ActivityHaltReason: 1 out of food, 2 died. The only two a player can fix
   // with one press; the rest (quarantine, no character) are explained on the
@@ -250,6 +257,24 @@
         </div>
       </section>
     {/if}
+
+    {#if road.length > 0}
+      <section class="card road" data-testid="home-road">
+        <h2>Your road</h2>
+        <ul class="road-rows">
+          {#each road as row (row.Key)}
+            <li data-testid="road-row" data-key={row.Key}>
+              <div class="road-head">
+                <strong>{row.Label}</strong>
+                <button type="button" onclick={() => requestScreen(row.Screen)}>Go</button>
+              </div>
+              <Bar value={Math.min(row.Value, row.Max)} max={Math.max(1, row.Max)} label={row.Progress} />
+              <span class="dim tiny">{row.Hint}</span>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
   </div>
 {/if}
 
@@ -367,5 +392,27 @@
   .dim {
     color: var(--text-dim);
     font-size: 0.85rem;
+  }
+
+  .road-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .road-rows li {
+    display: grid;
+    gap: 0.2rem;
+  }
+  .road-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .road-head button {
+    min-height: 44px;
+    min-width: 44px;
   }
 </style>

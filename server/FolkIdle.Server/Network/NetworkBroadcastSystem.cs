@@ -2405,6 +2405,13 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // "Your road" (2026-11-13): the endgame tracks side by side.
+            if (requestPath == "/api/v1/player/journey" && context.Request.HttpMethod == "GET")
+            {
+                await HandleJourney(context);
+                return;
+            }
+
             // The Fastest lives board (2026-11-13). Read-only SQL; pays nothing.
             if (requestPath == "/api/v1/leaderboard/lives" && context.Request.HttpMethod == "GET")
             {
@@ -8231,6 +8238,41 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Deepest board error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleJourney(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var rows = await Engine.JourneyBoard.LoadAsync(db, playerId);
+                if (rows == null)
+                {
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Rows = rows });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Journey error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally

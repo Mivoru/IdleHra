@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.64.0',
+    date: '2026-11-13',
+    headline: 'Your road: every long goal on one card.',
+    sections: [
+      {
+        title: 'Home',
+        items: [
+          'From level 40 (or after your first rebirth) the Home screen shows Your road: the Dungeon, the Delve, the Book of Deeds, your bloodline, the Rebirth Trials and the Ancestral Boons, each with how far you are and a button that takes you there.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.63.0',
     date: '2026-11-13',
     headline: 'The Hall of Ancestors tells you when your best blood is sitting on the bench.',

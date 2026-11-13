@@ -6083,6 +6083,23 @@ await go('Home');
   } else {
     record('the closest goal takes you to where it is done', false, 'no goal card - every open deed finished?');
   }
+
+  // "Your road" (2026-11-13): the card draws exactly the server's tracks, and a
+  // Go button leaves Home for that track's screen.
+  await go('Home');
+  await page.getByTestId('home-road').waitFor({ timeout: 8000 }).catch(() => {});
+  const roadApi = (await apiGet('/api/v1/player/journey'))?.Rows ?? [];
+  const roadKeys = await page.locator('[data-testid="road-row"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-key')));
+  record(
+    'Your road draws the server\'s endgame tracks',
+    roadApi.length > 0 && JSON.stringify(roadKeys) === JSON.stringify(roadApi.map((r) => r.Key)),
+    `${roadKeys.join(',')} | server ${roadApi.map((r) => r.Key).join(',')}`,
+  );
+  if (roadKeys.length > 0) {
+    await page.locator('[data-testid="road-row"]').first().getByRole('button', { name: 'Go', exact: true }).click();
+    await page.waitForTimeout(800);
+    record('a Your road row takes you to its track', !(await page.evaluate(() => /Your road/.test(document.body.innerText))));
+  }
 }
 
 // --- the Hall of Ancestors ---------------------------------------------------
