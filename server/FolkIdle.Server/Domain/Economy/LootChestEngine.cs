@@ -293,7 +293,7 @@ namespace FolkIdle.Server.Domain.Economy
         /// Modul: ONE DEFINITION OF EARNED (2026-11-14). This summed every
         /// source except the chests themselves, so Market sales, mail (where
         /// scaled rewards land), the guild payout, the Delve, the quest line and
-        /// the Gold dungeon all raised the base that chest gold, the Delve stake
+        /// the Gold dungeon all raised the base that chest gold
         /// and the expedition slot and provision prices are priced from - a
         /// second definition beside GoldRewardScale.EarnedSources, whose own
         /// note says a reward must never raise its own base. Measured on

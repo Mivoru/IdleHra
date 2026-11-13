@@ -8,7 +8,7 @@ using Xunit;
 namespace FolkIdle.Server.Tests
 {
     /// <summary>
-    /// The income measure chests, the Delve stake and the expedition prices are
+    /// The income measure chest gold and the expedition prices are
     /// sized from counts EARNED gold only - the same sources as
     /// GoldRewardScale.EarnedSources - so a reward cannot raise its own base.
     /// </summary>
