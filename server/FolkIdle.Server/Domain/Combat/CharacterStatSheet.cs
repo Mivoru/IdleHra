@@ -52,6 +52,62 @@ namespace FolkIdle.Server.Domain.Combat
     /// </summary>
     public static class CharacterStatSheet
     {
+        /// <summary>
+        /// What the account keeps through every rebirth, by source: the
+        /// Ancestral Boons, the Rebirth Trials finished, and this life's trial.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE TOTALS ABOVE ALREADY HOLD THESE (the Rewards and Offence
+        /// rows ask the same helpers the tick does), but nothing said where they
+        /// came from. Boons and Trials arrived on 2026-11-13 with shards worth
+        /// 40k-55k waiting on the endgame accounts; a player who spends them
+        /// should see each one on the sheet, not a percentage that moved by an
+        /// unexplained amount. Ranks and rewards are read from LegacyPerkResolver
+        /// and RebirthTrials - nothing is re-derived here.
+        /// </remarks>
+        private static StatSheetSection LifetimeSection(in TickStatePayload payload)
+        {
+            var section = new StatSheetSection { Title = "Lifetime bonuses" };
+            foreach (var boon in BoonView.For(payload.CachedLegacyPerks))
+            {
+                section.Rows.Add(new StatSheetRow
+                {
+                    Key = Invariant($"boon_{boon.UnlockId}"), Label = boon.Name, Value = boon.Rank, Unit = "pct",
+                    Cap = boon.MaxRank, AtCap = boon.Rank >= boon.MaxRank,
+                    Note = Invariant($"{boon.Effect} An Ancestral Boon: bought with Legacy Shards on the Rebirth screen, kept through every rebirth."),
+                });
+            }
+
+            var earned = new List<string>();
+            int finished = 0;
+            foreach (var trial in RebirthTrials.All)
+            {
+                if (!RebirthTrials.IsCompleted(payload.CompletedRebirthTrials, trial.Id)) continue;
+                finished++;
+                earned.Add(Invariant($"{trial.Reward} ({trial.Name})"));
+            }
+            section.Rows.Add(new StatSheetRow
+            {
+                Key = "trials_finished", Label = "Rebirth Trials finished", Value = finished,
+                Cap = RebirthTrials.All.Count, AtCap = finished >= RebirthTrials.All.Count,
+                Note = earned.Count > 0
+                    ? "Earned: " + string.Join("; ", earned) + "."
+                    : "None yet. Choose one when you are reborn; finishing it pays a small bonus for good and a title.",
+            });
+
+            var active = RebirthTrials.Find(payload.ActiveRebirthTrial);
+            if (active != null)
+            {
+                int penalty = active.GoldPctDuring + active.XpPctDuring + active.MaxHpPctDuring;
+                section.Rows.Add(new StatSheetRow
+                {
+                    Key = "trial_active", Label = Invariant($"This life: {active.Name}"), Value = penalty, Unit = "pct",
+                    Note = Invariant($"{active.Rule} It ends with the rebirth that ends this life, and pays {active.Reward.Replace(", for good", string.Empty)} for good."),
+                });
+            }
+            return section;
+        }
+
         public static StatSheetResponse Build(TickStatePayload payload, int slot)
         {
             CombatStats stats = SimulationEngine.LiveCombatStats(in payload);
@@ -196,7 +252,7 @@ namespace FolkIdle.Server.Domain.Combat
                 Note = "Multiplies every harvest's rolls.",
             });
 
-            return new StatSheetResponse { Slot = slot, Sections = { offence, defence, rewards, gathering } };
+            return new StatSheetResponse { Slot = slot, Sections = { offence, defence, rewards, LifetimeSection(in payload), gathering } };
         }
 
         private static readonly string[] ProfessionNames = { "Woodcutting", "Mining", "Fishing", "Herbalism" };

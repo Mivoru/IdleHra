@@ -113,5 +113,38 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(System.Math.Round(factors.TotalBonusPct, 1), Row(sheet, "gold").Value);
             Assert.True(Row(sheet, "gold").Value >= 5.0);
         }
+
+        [Fact]
+        public void LifetimeBonuses_NameEachBoonAndTrial_FromTheirOwnRegistries()
+        {
+            var payload = Character();
+            payload.CachedLegacyPerks = LegacyPerkResolver.SetPerkRank(0L, LegacyPerkResolver.XpMultiplierBitOffset, 7);
+            payload.CompletedRebirthTrials = RebirthTrials.BitOf(RebirthTrials.Want) | RebirthTrials.BitOf(RebirthTrials.Iron);
+            payload.ActiveRebirthTrial = RebirthTrials.SlowHand;
+
+            var sheet = CharacterStatSheet.Build(payload, 0);
+            var section = sheet.Sections.Single(s => s.Title == "Lifetime bonuses");
+
+            var boons = section.Rows.Where(r => r.Key.StartsWith("boon_")).ToList();
+            Assert.Equal(3, boons.Count);
+            Assert.Contains(boons, b => b.Value == LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks) && b.Cap == LegacyPerkResolver.XpMaxRank);
+
+            var trials = Row(sheet, "trials_finished");
+            Assert.Equal(2, trials.Value);
+            Assert.Contains("Trial of Want", trials.Note);
+            Assert.Contains("Trial of Iron", trials.Note);
+
+            var active = Row(sheet, "trial_active");
+            Assert.Equal(-40, active.Value);
+            Assert.Contains("Slow Hand", active.Label);
+        }
+
+        [Fact]
+        public void LifetimeBonuses_WithoutATrial_HasNoActiveRow()
+        {
+            var sheet = CharacterStatSheet.Build(Character(), 0);
+            Assert.DoesNotContain(sheet.Sections.SelectMany(s => s.Rows), r => r.Key == "trial_active");
+            Assert.Equal(0, Row(sheet, "trials_finished").Value);
+        }
     }
 }

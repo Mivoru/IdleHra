@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.66.0',
+    date: '2026-11-13',
+    sections: [
+      {
+        title: 'Character',
+        items: [
+          'The Stats tab has a new part, Lifetime bonuses: each Ancestral Boon with its rank, the Rebirth Trials you have finished and what each one pays, and the rule of the trial you are under this life.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.65.0',
     date: '2026-11-13',
     headline: 'Best blood this week: a weekly race for breeders.',

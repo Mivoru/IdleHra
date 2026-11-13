@@ -4496,6 +4496,17 @@ await go('Character');
   const speedCap = await panel.locator('[data-stat="attack_speed"] [data-testid="stat-cap"]').innerText().catch(() => '');
   record('attack speed names its 60% cap', /60/.test(speedCap), speedCap);
 
+  // Lifetime bonuses (2026-11-13): the Boons and Trials by source, as the
+  // server lists them - three boon rows and the trials-finished row.
+  const lifetime = sheet?.Sections?.find((s) => s.Title === 'Lifetime bonuses')?.Rows ?? [];
+  const boonRows = await panel.locator('[data-stat^="boon_"]').count();
+  const trialsRow = await panel.locator('[data-stat="trials_finished"]').count();
+  record(
+    'the Stats tab names each lifetime bonus by source',
+    lifetime.length >= 4 && boonRows === lifetime.filter((r) => r.Key.startsWith('boon_')).length && trialsRow === 1,
+    `server ${lifetime.length} rows, screen ${boonRows} boons + ${trialsRow} trials row`,
+  );
+
   const ev = (await apiGet('/api/v1/event').catch(() => null))?.Event ?? null;
   if (ev?.RarePet) {
     await page.getByTestId('event-chip').first().click().catch(() => {});
