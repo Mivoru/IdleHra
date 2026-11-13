@@ -5,6 +5,7 @@
   // region; a better bloodline rolls better chests. Every number - slots,
   // durations, the upgrade chance - is the server's (ExpeditionEngine); this
   // screen draws and sends, nothing else.
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchExpeditions, startExpedition, claimExpedition, type ExpeditionCandidate } from '../lib/net/rest';
   import { formatDuration } from '../lib/net/commands';
@@ -132,6 +133,8 @@
   }
 </script>
 
+<div class="exp-wrap">
+<ScreenBanner art="banner_expeditions" line="Beyond the bench, the roads are long." />
 <section class="panel expeditions" data-testid="expeditions">
   <h2>Expeditions</h2>
   <p class="dim small">
@@ -213,8 +216,13 @@
     </p>
   {/if}
 </section>
+</div>
 
 <style>
+  .exp-wrap {
+    max-width: 44rem;
+  }
+
   .expeditions {
     display: grid;
     gap: 0.5rem;

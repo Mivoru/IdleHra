@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.75.0',
+    date: '2026-11-13',
+    headline: 'New painted banners for Bloodline, Rebirth and the Village.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'New painted banners open Breeding (a cradle by the hearth), the Hall of Ancestors, Expeditions (the high roads), Rebirth (the phoenix at the world tree) and the Village.',
+          'The Wiki explains the Rebirth Trials, the Ancestral Boons, expeditions, the leaderboards and the marks that keep your best blood.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.74.0',
     date: '2026-11-13',
     headline: 'Every slot now plays with its own bloodline.',

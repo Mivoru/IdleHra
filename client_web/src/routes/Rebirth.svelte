@@ -5,11 +5,13 @@
   // and the Hall's own text still said a rebirth took "all gear" after the
   // Vault existed. Here it is the page: where you stand, the road to twenty, the
   // Vault, and the terms. Every number is the server's (RebirthPanel).
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import RebirthPanel from '../lib/ui/RebirthPanel.svelte';
   import { requestScreen } from '../lib/stores/navigation';
 </script>
 
 <div class="wrap" data-testid="rebirth-screen">
+  <ScreenBanner art="banner_rebirth" line="Every life ends. The blood goes on." />
   <section class="panel intro">
     <h2>Rebirth</h2>
     <p class="dim small">

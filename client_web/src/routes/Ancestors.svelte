@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber } from '../lib/ui/format';
   // Modul: THE HALL OF ANCESTORS - the roster that outlives a run.
   //
@@ -252,6 +253,7 @@
 {/snippet}
 
 <div class="wrap">
+  <ScreenBanner art="banner_hall" line="Ten carry through. The rest are remembered." />
   <section class="panel hall">
     <header>
       <div>

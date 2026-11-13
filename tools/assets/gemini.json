@@ -864,6 +864,56 @@
       "model": "gemini-3.1-flash-image",
       "aspectRatio": "1:1",
       "prompt": "Baba Yaga, the ancient witch of Slavic folklore, flying in a great wooden mortar and steering with a pestle, a birch broom tucked behind her, a long hooked nose, iron teeth bared in a grin, wild grey hair under a ragged headscarf, a necklace of tiny skulls, misty violet forest light with glowing skull-lanterns behind her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of their lair fading to near-black at the edges so the figure reads clearly on a small screen. No text."
+    },
+    {
+      "id": "banner_breeding",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/whispering_woods.webp"
+      ],
+      "prompt": "A wide panoramic banner for the breeding screen of a pagan Slavic-folklore idle RPG: interior of a warm log cottage at dusk, a carved wooden cradle with a sleeping infant in the centre, a young man and woman in early-medieval Slavic clothes kneeling beside it, embroidered red-white cloths, drying herbs, candle light, and on the wall a woven family-tree tapestry whose threads glow softly. Pagan only: carved wooden idols or solar symbols, absolutely no Christian icons, crosses or saints. (The model still drew icons top-left; the game crops the bottom 10:3 strip.) Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, cropped to a 1200x360 strip (10:3) at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_breeding.webp for ScreenBanner."
+    },
+    {
+      "id": "banner_hall",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/ancient_ruins.webp"
+      ],
+      "prompt": "A wide panoramic banner for the Hall of Ancestors in a Slavic-folklore idle RPG: a long timber-and-stone hall with carved wooden pillars, rows of painted ancestor portraits and carved idols along the walls, candles and votive embers, a ray of evening light falling on a carved family tree at the far end, solemn and warm. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, cropped to a 1200x360 strip (10:3) at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_hall.webp for ScreenBanner."
+    },
+    {
+      "id": "banner_expeditions",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/craggy_highlands.webp"
+      ],
+      "prompt": "A wide panoramic banner for an expeditions screen in a Slavic-folklore idle RPG: three travellers with packs, spears and a lantern walking a winding mountain road at golden hour, a distant ruined watchtower and misty valleys ahead, banners fluttering, sense of a long journey. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, cropped to a 1200x360 strip (10:3) at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_expeditions.webp for ScreenBanner."
+    },
+    {
+      "id": "banner_rebirth",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/yggdrasil.webp"
+      ],
+      "prompt": "A wide panoramic banner for the rebirth screen of a pagan Slavic-folklore idle RPG: a great world tree glowing with runes at night, a fiery phoenix rising from its roots in a spiral of embers, a lone warrior silhouette kneeling before it, the old life burning away into light, deep teal and gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, cropped to a 1200x360 strip (10:3) at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_rebirth.webp for ScreenBanner."
+    },
+    {
+      "id": "banner_village",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/main_hub.webp"
+      ],
+      "prompt": "A wide panoramic banner for the village screen of a pagan Slavic-folklore idle RPG: a lively early-medieval village of log houses with thatched roofs, a forge with sparks, a mill, a breeding grounds paddock, villagers at work, a wooden palisade and forest beyond, warm afternoon light. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1584x672, cropped to a 1200x360 strip (10:3) at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_village.webp for ScreenBanner."
     }
   ]
 }
