@@ -6534,6 +6534,21 @@ await go('Ancestors');
     `folded ${folded} (want ${expectedFolded}), open ${steps} of ${before?.Roadmap.length}, next ${next}, ${portraits} pictures`,
   );
   await page.getByTestId('rebirth-road-toggle').click().catch(() => {});
+  // The lost-best warning (2026-11-13) shows exactly when the Hall's
+  // strongest non-carrier beats its weakest carrier - read from the server's
+  // WouldCarry, so the screen and the Hall cannot disagree.
+  const hallNow = await apiGet('/api/v1/ancestors/hall').catch(() => null);
+  const totalOf = (m) => m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
+  const carriedNow = (hallNow?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && m.PlayableSlot < 0).map(totalOf);
+  const leftNow = (hallNow?.Members ?? []).filter((m) => !m.WouldCarry).map(totalOf);
+  const shouldWarn = carriedNow.length > 0 && leftNow.length > 0 && Math.max(...leftNow) > Math.min(...carriedNow);
+  const warned = (await page.getByTestId('rebirth-lost-best').count()) > 0;
+  record(
+    'the Rebirth screen warns when the best blood would not carry',
+    hallNow !== null && warned === shouldWarn,
+    `should ${shouldWarn} (best left ${leftNow.length ? Math.max(...leftNow) : '-'}, weakest carried ${carriedNow.length ? Math.min(...carriedNow) : '-'}), shown ${warned}`,
+  );
+
   const vaultPrices = await page.locator('[data-testid="rebirth-vault-prices"] .price-chip').count();
   record('the Vault lists its price for every rarity', vaultPrices === 14, `${vaultPrices} rarities`);
 

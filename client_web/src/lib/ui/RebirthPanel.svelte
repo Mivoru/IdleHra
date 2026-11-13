@@ -52,6 +52,7 @@
   import RebirthRoadmap from './RebirthRoadmap.svelte';
   import AncestralBoons from './AncestralBoons.svelte';
   import { formatDuration } from '../net/commands';
+  import { requestScreen } from '../stores/navigation';
 
   const client = useQueryClient();
   const preview = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
@@ -69,6 +70,28 @@
       .sort((a, b) => b.total - a.total)
       .slice(0, 4),
   );
+
+  // Modul: YOUR BEST BLOOD WOULD BE LOST (2026-11-13). Members marked "keep"
+  // carry first, so a player who pinned ten and then bred a better child loses
+  // that child at the rebirth - and the list above shows only who carries, so
+  // nothing on this screen said so. On the dev fixture the strongest member
+  // (54) sat outside a carried ten of 35-42. The warning names the strongest
+  // member who will NOT carry when they beat the weakest who will; WouldCarry
+  // is the server's own answer, nothing is re-ranked here.
+  const lostBest = $derived.by(() => {
+    const members = (hall.data?.Members ?? []).map((m) => ({
+      ...m,
+      total: m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune,
+    }));
+    // Compared with the weakest MARKED member on the bench: whoever plays in a
+    // slot carries regardless, and cannot be unmarked to make room.
+    const carried = members.filter((m) => m.WouldCarry && m.IsKept && m.PlayableSlot < 0);
+    const left = members.filter((m) => !m.WouldCarry);
+    if (carried.length === 0 || left.length === 0) return null;
+    const weakestCarried = carried.reduce((a, b) => (b.total < a.total ? b : a));
+    const best = left.reduce((a, b) => (b.total > a.total ? b : a));
+    return best.total > weakestCarried.total ? { best, weakest: weakestCarried } : null;
+  });
 
   let confirming = $state(false);
 
@@ -309,6 +332,14 @@
 
     {#if carriers.length > 0}
       <h3>Your line after the rebirth</h3>
+      {#if lostBest}
+        <p class="warn lost-best" data-testid="rebirth-lost-best">
+          <strong>{lostBest.best.Name || 'Your strongest member'}</strong> (aptitude total {lostBest.best.total}) will
+          <strong>not</strong> carry: the members marked to keep go first, and {lostBest.weakest.Name || 'one of them'} has
+          only {lostBest.weakest.total}. Unmark someone in the Hall to keep the better blood.
+          <button type="button" class="inline-link" onclick={() => requestScreen('ancestors')}>Open the Hall</button>
+        </p>
+      {/if}
       <ul class="carriers" data-testid="rebirth-carriers">
         {#each carriers as m (m.CharacterId)}
           <li>
@@ -432,6 +463,12 @@
           level 1 and loses the gear, gold and materials listed below, for good.
           Read it through before you confirm.
         </p>
+        {#if lostBest}
+          <p class="danger-note" data-testid="rebirth-terms-lost-best">
+            <strong>{lostBest.best.Name || 'Your strongest member'}</strong> ({lostBest.best.total}) is not among those
+            who carry and will be lost.
+          </p>
+        {/if}
         <div class="columns">
           <div class="col lose">
             <strong>You lose</strong>
@@ -857,5 +894,21 @@
     align-items: flex-start;
     min-height: 44px;
     padding: 0.2rem 0;
+  }
+
+  .lost-best {
+    margin: 0.2rem 0 0.5rem;
+  }
+
+  .inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    min-height: 44px;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
   }
 </style>
