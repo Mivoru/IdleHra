@@ -114,7 +114,13 @@ The `client` CI job never ran vitest, so four guard tests stayed red on
 `check:ratchet`. Acceptance: a deliberately broken guard turns the PR red,
 and the revert turns it green.
 
-### 129. Flaky server tests - BUG (roadmap 2.2)
+### 129. Flaky server tests - BUG (roadmap 2.2) - DONE (2026-11-14)
+
+**Acceptance met:** five consecutive full local runs on main (6c248a31) were
+green, 2241/2241 each, 8.5-8.8 min (2026-11-13/14 night). Every class that
+runs a live tick or touches the static loot queues sits in the Postgres or
+the "Static loot queues" collection (checked by grep; no free-standing one
+left). If a parity row fails again, start from that collection rule.
 
 `OfflineCombatParityTests` and
 `AutomationAutoFuseTests.TheWorker_FusesTheStacksARequestsDropsLandedIn`
