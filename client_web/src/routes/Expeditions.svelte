@@ -75,7 +75,10 @@
     busy = true;
     try {
       const r = await claimExpedition(id);
-      if (r?.Ok) pushLocalNotice(`The expedition brought back a ${r.Tier} chest - open it on the Chest screen.`, 'info');
+      if (r?.Ok) {
+        pushLocalNotice(`The expedition brought back a ${r.Tier} chest - open it on the Chest screen.`, 'info');
+        if (r.Title) pushLocalNotice(`New title: ${r.Title} - ${r.Claimed} expeditions.`, 'info');
+      }
       else pushLocalNotice(r?.Reason || 'Could not claim that expedition.', 'error');
     } finally {
       busy = false;
@@ -101,6 +104,9 @@
   {:else if data.Slots === 0}
     <p class="warn">Expeditions open with the Breeding Grounds in your village.</p>
   {:else}
+    <p class="tiny" data-testid="expedition-tally">
+      {data.Claimed ?? 0} expeditions done{#if data.NextTitle}&nbsp;&middot; the title <strong>{data.NextTitle}</strong> at {data.NextTitleAt}{:else}&nbsp;&middot; every expedition title earned{/if}
+    </p>
     <h3>Away <span class="dim tiny">{data.Active.length} of {data.Slots} slots</span></h3>
     {#if data.Active.length === 0}
       <p class="dim">Nobody is away.</p>

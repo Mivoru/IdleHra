@@ -3202,6 +3202,10 @@ export interface ExpeditionBoard {
   Durations: number[];
   Active: ExpeditionView[];
   Candidates: ExpeditionCandidate[];
+  /** Expeditions claimed ever, and the next title's name and count ('' / 0 when all are earned). */
+  Claimed?: number;
+  NextTitle?: string;
+  NextTitleAt?: number;
 }
 
 export function fetchExpeditions(): Promise<ExpeditionBoard | null> {
@@ -3212,6 +3216,6 @@ export function startExpedition(characterId: string, hours: number): Promise<{ R
   return authedPost<{ Result: string }>('/api/v1/expeditions/start', { CharacterId: characterId, Hours: hours });
 }
 
-export function claimExpedition(id: number): Promise<{ Ok: boolean; Tier: string; Region: number; Reason: string } | null> {
+export function claimExpedition(id: number): Promise<{ Ok: boolean; Tier: string; Region: number; Reason: string; Claimed?: number; Title?: string } | null> {
   return authedPost('/api/v1/expeditions/claim', { Id: id });
 }

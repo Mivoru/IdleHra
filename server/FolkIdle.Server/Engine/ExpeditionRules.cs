@@ -35,6 +35,14 @@ namespace FolkIdle.Server.Engine
 
         public static bool IsDuration(int hours) => Array.IndexOf(Durations, hours) >= 0;
 
+        /// <summary>Titles for expeditions claimed (a long-term goal for the bench), at-or-past and idempotent.</summary>
+        public static readonly (int Count, string Slug, string Name)[] TitleMilestones =
+        {
+            (10, "expedition_10", "Pathfinder"),
+            (50, "expedition_50", "Far-Strider"),
+            (100, "expedition_100", "Lord of Long Roads"),
+        };
+
         /// <summary>
         /// The upgrade chance, in percent, a party's aptitude total adds: 0 at
         /// the founder's 16, +30 at 200 (50 in all four), linear between.
