@@ -6261,6 +6261,49 @@ await go('Ancestors');
     const should = marked.length > 0 && left.length > 0 && Math.max(...left) > Math.min(...marked);
     const shown = (await page.getByTestId('hall-lost-nudge').count()) > 0;
     record('the Hall warns when better blood than the marked would be lost', hallLost !== null && shown === should, `should ${should}, shown ${shown}`);
+
+    // "Swap the marks" round-trips: the better member becomes kept, the weaker
+    // unmarked - then both are put back, so the fixture keeps its marks.
+    if (shown) {
+      const members = hallLost.Members;
+      const markedM = members.filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter);
+      const leftM = members.filter((m) => !m.WouldCarry);
+      const weak = markedM.reduce((a, b) => (tot(b) < tot(a) ? b : a));
+      const best = leftM.reduce((a, b) => (tot(b) > tot(a) ? b : a));
+      await page.getByTestId('hall-swap-marks').click();
+      await page.waitForTimeout(2500);
+      const afterSwap = (await apiGet('/api/v1/ancestors/hall').catch(() => null))?.Members ?? [];
+      const bestNow = afterSwap.find((m) => m.CharacterId === best.CharacterId);
+      const weakNow = afterSwap.find((m) => m.CharacterId === weak.CharacterId);
+      record(
+        '"Swap the marks" keeps the better blood and unmarks the weaker',
+        Boolean(bestNow?.IsKept) && weakNow?.IsKept === false,
+        `${best.Name} kept ${bestNow?.IsKept}, ${weak.Name} kept ${weakNow?.IsKept}`,
+      );
+      // Put the marks back through the rows' own pin buttons, found by id
+      // (names repeat). The lost list is collapsed and paged: open and page it.
+      const pinOf = (id) => page.locator(`li[data-character-id="${id}"] button[aria-pressed]`).first();
+      await pinOf(best.CharacterId).click().catch(() => {});
+      await page.waitForTimeout(1500);
+      const lostToggle = page.getByRole('button', { name: /Lost at rebirth/ }).first();
+      if ((await lostToggle.getAttribute('aria-expanded').catch(() => 'true')) !== 'true') {
+        await lostToggle.click().catch(() => {});
+        await page.waitForTimeout(800);
+      }
+      for (let i = 0; i < 20 && (await pinOf(weak.CharacterId).count()) === 0; i++) {
+        await page.getByTestId('hall-lost-more').click().catch(() => {});
+        await page.waitForTimeout(300);
+      }
+      await pinOf(weak.CharacterId).click().catch(() => {});
+      await page.waitForTimeout(2500);
+      const restored = (await apiGet('/api/v1/ancestors/hall').catch(() => null))?.Members ?? [];
+      record(
+        'the swapped marks are put back',
+        restored.find((m) => m.CharacterId === weak.CharacterId)?.IsKept === true
+          && restored.find((m) => m.CharacterId === best.CharacterId)?.IsKept === false,
+        `${weak.Name} kept ${restored.find((m) => m.CharacterId === weak.CharacterId)?.IsKept}, ${best.Name} kept ${restored.find((m) => m.CharacterId === best.CharacterId)?.IsKept}`,
+      );
+    }
   }
   }
 

@@ -111,6 +111,17 @@
     refresh();
   }
 
+  // One tap for the fix the lost-blood nudge names: unmark the weaker, mark
+  // the better. Two ordinary keep commands, in that order.
+  function swapMarks(weaker: HallMember, better: HallMember) {
+    const off = setAncestorKept(weaker.CharacterId, false);
+    if (!off.ok) return pushLocalNotice(off.reason, 'error');
+    const on = setAncestorKept(better.CharacterId, true);
+    if (!on.ok) return pushLocalNotice(on.reason, 'error');
+    pushLocalNotice(`${nameOf(better)} will carry instead of ${nameOf(weaker)}.`, 'info');
+    refresh();
+  }
+
   function field(m: HallMember, slotIndex: number) {
     const outcome = assignCharacterSlot(m.CharacterId, slotIndex);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
@@ -295,7 +306,9 @@
         {nameOf(lostNudge.weakest)} ({aptitudeTotal(lostNudge.weakest)}) is marked to keep. Unmark
         <button type="button" class="inline-link" onclick={() => (sheetId = lostNudge.weakest.CharacterId)}>{nameOf(lostNudge.weakest)}</button>
         and mark
-        <button type="button" class="inline-link" onclick={() => (sheetId = lostNudge.best.CharacterId)}>{nameOf(lostNudge.best)}</button>.
+        <button type="button" class="inline-link" onclick={() => (sheetId = lostNudge.best.CharacterId)}>{nameOf(lostNudge.best)}</button>,
+        or
+        <button type="button" class="swap" data-testid="hall-swap-marks" onclick={() => swapMarks(lostNudge.weakest, lostNudge.best)}>Swap the marks</button>
       </p>
     {/if}
 
@@ -941,5 +954,10 @@
     font-weight: 600;
     text-decoration: underline;
     cursor: pointer;
+  }
+
+  .swap {
+    min-height: 44px;
+    margin-left: 0.25rem;
   }
 </style>
