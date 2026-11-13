@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.68.0',
+    date: '2026-11-13',
+    sections: [
+      {
+        title: 'Bloodline and Rebirth',
+        items: [
+          'The Hall of Ancestors warns you when an ancestor better than one you marked to keep would be lost at your next rebirth, and names who to unmark and who to mark.',
+          'Ancestral Boons can be bought several ranks at once: a second button buys as many ranks as your shards cover, in one go.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.67.0',
     date: '2026-11-13',
     sections: [
@@ -43,7 +56,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         items: [
           'The breeding lab opens with your strongest free adult already chosen as the hero, so Best matches is there straight away.',
           'The road on the Rebirth screen shows your next four steps and the last one instead of every card. A button opens the whole road.',
-          'The Rebirth screen now warns you when your strongest ancestor would be lost because weaker ones are marked to keep, and says so again before you confirm. The Hall of Ancestors names who to unmark and who to mark.',
+          'The Rebirth screen now warns you when your strongest ancestor would be lost because weaker ones are marked to keep, and says so again before you confirm.',
         ],
       },
     ],
