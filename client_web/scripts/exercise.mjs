@@ -3723,6 +3723,16 @@ await go('The Delve');
         );
       }
 
+      // A leaderboard panel has answered when it shows rows or its empty line.
+      const settledBoard = (testId, emptyText) => page.waitForFunction(
+        ([id, src]) => {
+          const el = document.querySelector(`[data-testid="${id}"]`);
+          return Boolean(el) && (el.querySelectorAll('.board li').length > 0 || new RegExp(src).test(el.textContent ?? ''));
+        },
+        [testId, emptyText.source],
+        { timeout: 8000 },
+      ).catch(() => {});
+
       // --- the Deepest board shows the record, on the screen -----------------
       await go('Leaderboards');
       await page.getByRole('tab', { name: /Deepest this week/i }).first().click();
@@ -3743,6 +3753,10 @@ await go('The Delve');
       // server ranks - every timed life, fastest first, or the empty line.
       await page.getByRole('tab', { name: /Fastest lives/i }).first().click();
       await page.getByTestId('lives-board').waitFor({ timeout: 6000 }).catch(() => {});
+      // The section exists while the query is still pending (a skeleton), so
+      // wait for the answer - rows or the empty line - not for the frame.
+      // Reading straight after the click failed a full run on a working board.
+      await settledBoard('lives-board', /No timed life/);
       const livesApi = (await apiGet('/api/v1/leaderboard/lives'))?.Entries ?? [];
       const livesRows = await page.locator('[data-testid="lives-board"] .board li').count();
       const livesEmpty = /No timed life/.test(await page.getByTestId('lives-board').innerText().catch(() => ''));
@@ -3756,8 +3770,8 @@ await go('The Delve');
       // screen draws every row the server ranks, or the empty line.
       await page.getByRole('tab', { name: /Best blood this week/i }).first().click();
       await page.getByTestId('bloodline-board').waitFor({ timeout: 6000 }).catch(() => {});
+      await settledBoard('bloodline-board', /No child has been born/);
       const bloodApi = (await apiGet('/api/v1/leaderboard/bloodline'))?.Entries ?? [];
-      await page.waitForTimeout(800);
       const bloodRows = await page.locator('[data-testid="bloodline-board"] .board li').count();
       const bloodEmpty = /No child has been born/.test(await page.getByTestId('bloodline-board').innerText().catch(() => ''));
       record(

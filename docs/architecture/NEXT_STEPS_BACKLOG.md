@@ -65,9 +65,20 @@ each pays once) and **life records** as 1.0.1687 / 1.61.0 (backup
 (1.62.0). Design doc sections 7-8. Correction recorded in the review: most
 nameless level-1 accounts on production are `smoke:screens` guests.
 
-Open: the owner's answers to the review's four questions; the session payload
-of a FIELDED child still reads "child" until it works an hour or the player
-logs in again (the row is already adult - display only).
+Later the same night, DEPLOYED as 1.0.1703 / client 1.65.0 (backup
+`folkidle-20261113T041225Z.dump`): #341 Hall bench nudge, #342 the Home
+**Your road** card (`JourneyBoard`), #343 its Dungeon row reads the per-gate
+`DungeonProgress` rows, #344 a **fielded child grows up on the live payload**
+(`ChildGrowth.AgesThisTick` / `AgeTicksOnLoad`), #345 the **Best blood this
+week** leaderboard (`BloodlineWeekBoard`, glory only).
+
+**Dead-column trap:** `PlayerRecord.DungeonBestStage`, `DungeonTickets`,
+`DungeonTicketDay` and `DungeonFirstClearMask` are pre-rework columns that
+nothing writes. The Dungeon lives in `DungeonProgress`, one row per gate. A
+review finding ("the endgame accounts never played the Dungeon") came from
+those columns and was wrong: on production the gates stand at 5-13.
+
+Open: the owner's answers to the review's four questions.
 
 ---
 
