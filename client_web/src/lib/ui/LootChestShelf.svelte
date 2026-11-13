@@ -172,6 +172,10 @@
     background: #0d0c10 url('/chest/bg-pc.jpg') center 60% / cover;
   }
   .reveal { width: min(92vw, 420px); text-align: center; }
+  /* A centred heading: the global brass lozenge sits at the left edge, far
+     from the words, so it is dropped here (and its padding with it). */
+  .reveal h3 { padding-left: 0; }
+  .reveal h3::before { display: none; }
   .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 6px; justify-items: center; }
   .reveal li { display: inline-flex; align-items: center; gap: 8px; }
   .reveal .gold { color: var(--gold); font-weight: 600; }
