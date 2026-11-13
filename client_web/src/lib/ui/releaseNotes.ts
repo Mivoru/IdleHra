@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.77.0',
+    date: '2026-11-13',
+    headline: 'Every part of the game has its own place now.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'The brick wall behind every screen is gone. Each part of the game paints its own scene behind the windows: a blood-moon field for Combat, a misty river wood for Gathering, the hero chamber, the village forge, the longhouse and a valley at dusk for Home.',
+          'Windows are slightly see-through so the scene shows behind them, and each one has an embroidered hem in its section colour along the top.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.76.0',
     date: '2026-11-13',
     headline: 'Buy more expedition slots with gold.',

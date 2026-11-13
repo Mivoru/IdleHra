@@ -809,15 +809,22 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  /* Candle-light from above, dark at the edges - the oldest trick for making
-     a flat page feel like a lit room. */
+  /* Modul: A PAINTED PLACE, NOT A BRICK WALL (2026-11-13). The layer tiled
+     --cobble on every screen, which the owner read as a brown brick wall.
+     It now shows the section's scene (--scene, set by sections.ts) under a
+     dark wash - the Skill Tree's Yggdrasil recipe - with the candle-light
+     from above and the dark at the edges kept on top. The wash deepens
+     downwards, where the long lists and their small text sit. Before the
+     scene loads (or if it fails) the page is the plain --bg it always was. */
   background-image:
     var(--grain),
-    var(--cobble),
     radial-gradient(120% 80% at 50% -10%, rgba(201, 162, 39, 0.09), transparent 60%),
-    radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 55%);
-  /* The stones tile; the light does not. */
-  background-repeat: repeat, repeat, no-repeat, no-repeat;
+    radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 55%),
+    linear-gradient(180deg, rgb(10 8 6 / 0.4), rgb(10 8 6 / 0.66) 45%, rgb(10 8 6 / 0.86)),
+    var(--scene, none);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: auto, auto, auto, auto, cover;
+  background-position: 0 0, 0 0, 0 0, 0 0, center 30%;
 }
 
 
@@ -1179,7 +1186,10 @@ summary:focus-visible,
    that had one. A component now writes only what DIFFERS (its own padding, a
    max-width); a scoped rule still wins over this one. */
 .panel {
-  background: var(--bg-panel);
+  /* Slightly see-through, so the section's scene (body::before) is felt
+     behind a card without ever competing with its text. No backdrop-filter:
+     a blur over a fixed layer repaints on every scroll frame (check:perf). */
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem;
@@ -1215,14 +1225,16 @@ summary:focus-visible,
    and it has to be far weaker or the page looks scorched. */
 /* Light scheme: [data-scheme] on <html>, set by appearance.ts and boot.js. */
 /* The panel's carved edge has its own parchment value: --shadow-panel. */
-/* On parchment the cobbles read as dirt rather than as stone, so the page
-   keeps its paper and only the beam stays timber. On the fixed layer, not on
-   body - see body::before. */
+/* On parchment the scene sits under a heavy paper wash: a hint of the place,
+   never a dark picture behind dark ink. On the fixed layer, not on body - see
+   body::before. */
 :where(:root[data-scheme='light']) body::before {
   background-image:
     var(--grain),
     radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.5), transparent 55%),
-    radial-gradient(100% 100% at 50% 120%, rgba(120, 92, 46, 0.16), transparent 60%);
+    radial-gradient(100% 100% at 50% 120%, rgba(120, 92, 46, 0.16), transparent 60%),
+    linear-gradient(180deg, rgb(240 229 204 / 0.7), rgb(232 220 192 / 0.84) 50%, rgb(232 220 192 / 0.92)),
+    var(--scene, none);
 }
 
 :where(:root[data-scheme='light']) #app > header {
@@ -1953,11 +1965,23 @@ input[type='radio']:disabled {
   background-image:
     var(--corner-tl), var(--corner-tr), var(--corner-bl), var(--corner-br),
     var(--grain), var(--weave),
+    var(--stitch),
     linear-gradient(180deg, color-mix(in srgb, var(--section) 13%, transparent), transparent 6rem) !important;
   background-repeat:
-    no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, no-repeat !important;
+    no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, no-repeat, no-repeat !important;
   background-position:
-    4px 4px, right 4px top 4px, left 4px bottom 4px, right 4px bottom 4px, 0 0, 0 0, 0 0 !important;
+    4px 4px, right 4px top 4px, left 4px bottom 4px, right 4px bottom 4px, 0 0, 0 0, center 5px, 0 0 !important;
+  background-size:
+    auto, auto, auto, auto, auto, auto, calc(100% - 2.6rem) 2px, auto !important;
+}
+
+/* Modul: AN EMBROIDERED HEM. A running stitch in the section's colour just
+   under each panel's top edge, stopping short of the corner brackets - the folk
+   trim a woven cloth has along its border. It is a background layer, not a
+   pseudo-element, because several screens already use .panel::before for
+   their own art (the Skill Tree's Yggdrasil). */
+:root {
+  --stitch: repeating-linear-gradient(90deg, color-mix(in srgb, var(--section) 55%, transparent) 0 6px, transparent 6px 10px);
 }
 
 .panel.panel--sunken {

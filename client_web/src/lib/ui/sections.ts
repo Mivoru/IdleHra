@@ -1,3 +1,5 @@
+import { backgroundUrl } from './spriteUrl';
+
 // Modul: EVERY PART OF THE GAME HAS A COLOUR (owner, 2026-10-28: "more colour,
 // so the eye tells the buttons and windows apart").
 //
@@ -18,6 +20,7 @@ const SECTION_OF: Record<string, Section> = {
   combat: 'combat',
   worldboss: 'combat',
   delve: 'combat',
+  dungeon: 'combat',
   gathering: 'gather',
   character: 'hero',
   skills: 'hero',
@@ -30,6 +33,7 @@ const SECTION_OF: Record<string, Section> = {
   forge: 'make',
   breeding: 'make',
   ancestors: 'make',
+  expeditions: 'make',
   inheritance: 'make',
   codex: 'make',
   social: 'community',
@@ -43,6 +47,29 @@ export function sectionOf(screen: string | null | undefined): Section {
   return (screen && SECTION_OF[screen]) || 'home';
 }
 
+// Modul: EACH SECTION HAS ITS OWN PLACE (owner, 2026-11-13: "the brown brick
+// wall does not look good ... I really like the skill tree with Yggdrasil
+// behind it"). The page's fixed layer drew a tiled cobble pattern on every
+// screen; it now draws a painted scene per section - a blood-moon field for
+// Combat, a river wood for Gathering, the hero's chamber, the forge, the
+// longhouse, the valley for Home - under a dark wash, the same recipe as the
+// Skill Tree's Yggdrasil. The URL has to come from here rather than from
+// app.css because sprites are served by the game server, whose origin differs
+// from the client's in development (spriteUrl).
+const sceneUrls = new Map<Section, string>();
+
+export function sceneUrl(section: Section): string {
+  let url = sceneUrls.get(section);
+  if (!url) {
+    url = `url("${backgroundUrl(`scene_${section}`)}")`;
+    sceneUrls.set(section, url);
+  }
+  return url;
+}
+
 export function applySection(screen: string | null | undefined): void {
-  document.documentElement.dataset.section = sectionOf(screen);
+  const section = sectionOf(screen);
+  const root = document.documentElement;
+  root.dataset.section = section;
+  root.style.setProperty('--scene', sceneUrl(section));
 }
