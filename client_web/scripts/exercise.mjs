@@ -3768,7 +3768,7 @@ await go('The Delve');
 
       // --- the Bloodline week board (2026-11-13): the same contract - the
       // screen draws every row the server ranks, or the empty line.
-      await page.getByRole('tab', { name: /Best blood this week/i }).first().click();
+      await page.getByRole('tab', { name: /Best blood/i }).first().click();
       await page.getByTestId('bloodline-board').waitFor({ timeout: 6000 }).catch(() => {});
       await settledBoard('bloodline-board', /No child has been born/);
       const bloodApi = (await apiGet('/api/v1/leaderboard/bloodline'))?.Entries ?? [];
