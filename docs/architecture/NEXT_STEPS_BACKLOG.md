@@ -87,6 +87,13 @@ and **Boons bought several ranks per command** (`RequestedSlotIndex` = ranks,
 build-cache cap in `deploy.sh`, task 37 re-measured. On production the owner's
 account had a 75 outside a marked ten whose weakest was 46 (Tomda 60 vs 57).
 
+Late morning: #351 **Swap the marks** (Hall, one tap), #352 **keep a better
+child at birth** (birth banner) (1.69.0); #353 **What's new digest** - one
+line per release when four or more are waiting; #354 **aptitude milestones**
+(owner decision: four aptitudes + milestones at 30/40/50 - crit damage,
+gathering yield, block, kill gold; `AptitudeMilestones`, design doc section 9)
+(1.70.0).
+
 Open: the owner's answers to the review's questions (now five - gold
 inflation added).
 
