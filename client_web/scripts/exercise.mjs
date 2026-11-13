@@ -5685,6 +5685,22 @@ await go('Breeding');
     preselected.replace(/\s+/g, ' ').slice(0, 60) || 'empty',
   );
 
+  // Aptitude milestones (2026-11-13): one row per aptitude on the Bloodline
+  // panel, and the lit steps are exactly the thresholds the playing
+  // character's aptitude has reached (read from the live state the panel draws).
+  {
+    const msRows = page.getByTestId('aptitude-milestones');
+    const msCount = await msRows.count();
+    const perRow = await page.locator('section.apt li').evaluateAll((lis) => lis.map((li) => ({
+      value: Number((li.querySelector('.num')?.textContent ?? '').split('/')[0].trim()),
+      lit: li.querySelectorAll('.ms.on').length,
+    })));
+    const lit = perRow.reduce((n, r) => n + r.lit, 0);
+    const wantLit = perRow.reduce((n, r) => n + [30, 40, 50].filter((t) => r.value >= t).length, 0);
+    const apts = perRow.map((r) => r.value);
+    record('the Bloodline panel lists each aptitude\'s milestones, lit where reached', msCount === 4 && lit === wantLit, `${msCount} rows, ${lit} lit${apts ? ` (aptitudes ${apts.join('/')})` : ''}`);
+  }
+
   // Modul: ONE QUESTION, NOT TWO TABS. The partner list carries both the
   // village and the player's own line, grouped.
   await openPicker(heroPicker);

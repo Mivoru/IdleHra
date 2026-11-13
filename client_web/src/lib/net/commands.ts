@@ -1386,6 +1386,19 @@ export const APTITUDES: readonly {
 ];
 
 /**
+ * AptitudeMilestones (owner 2026-11-13): at 30, 40 and 50 points each aptitude
+ * unlocks a second bonus. MIRRORED BY HAND and pinned to the server's strings
+ * in serverMirrors.test.ts - the server applies them; this only draws them.
+ */
+export const APTITUDE_MILESTONE_AT = [30, 40, 50] as const;
+export const APTITUDE_MILESTONES: Readonly<Record<string, { name: string; effects: readonly string[] }>> = {
+  Aptitude_Strength: { name: 'Keen Edge', effects: ['+0.10x crit damage', '+0.20x crit damage', '+0.30x crit damage'] },
+  Aptitude_Skill: { name: 'Deft Hands', effects: ['+5% gathering yield', '+10% gathering yield', '+15% gathering yield'] },
+  Aptitude_Endurance: { name: 'Stout Frame', effects: ['+3% block', '+6% block', '+10% block'] },
+  Aptitude_Fortune: { name: 'Lucky Purse', effects: ['+5% gold from kills', '+10% gold from kills', '+15% gold from kills'] },
+};
+
+/**
  * BreedingAptitudes.SelectableCount - how many aptitudes the Breeding Grounds
  * lets you breed FOR, by its level.
  *

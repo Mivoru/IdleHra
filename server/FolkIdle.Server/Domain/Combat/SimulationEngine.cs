@@ -4101,6 +4101,9 @@ namespace FolkIdle.Server.Domain.Combat
             // armour): here, so the live tick, the away projection, the dungeon
             // and the stats sheet all fight with them.
             InheritanceMilestones.ApplyCombatStats(ref stats, in payload);
+            // Aptitude milestones: Endurance's Stout Frame (block; the tick's
+            // 75% block cap still applies in PlayerBlockFraction).
+            stats.BlockStrengthPct += AptitudeMilestones.BlockPct(payload.Aptitude_Endurance);
             return stats;
         }
 
@@ -4324,7 +4327,9 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>A crit's multiplier before Double Strike: the stat, Cruelty, Guile.</summary>
         internal static float LiveCritMultiplier(in TickStatePayload payload, in CombatStats combatStats)
             => StatsCalculator.ComputeCritMultiplier(combatStats)
-                + (WarTreeRegistry.Resolve(in payload).CritDamageTenthsPct / 1000f);
+                + (WarTreeRegistry.Resolve(in payload).CritDamageTenthsPct / 1000f)
+                // Aptitude milestones: Strength's Keen Edge.
+                + AptitudeMilestones.CritDamageBonus(payload.Aptitude_Strength);
 
         // Modul: THE MONSTER'S SWING, ONE DEFINITION FOR EVERY PATH THAT PRICES IT.
         //
@@ -6701,6 +6706,8 @@ namespace FolkIdle.Server.Domain.Combat
             // 2026-09-13 - percentage points of extra harvest rolls, the
             // same units as the race-mastery bonuses above.
             additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
+            // Aptitude milestones: Skill's Deft Hands.
+            additionalYieldBonus += AptitudeMilestones.GatherYieldPct(payload.Aptitude_Skill);
 
             // Modul: task 84 - the Great Works. Whole percentage points from
             // every built stage, capped at GreatWorksRegistry.MaxYieldPct

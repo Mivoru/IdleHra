@@ -205,3 +205,23 @@ ends a life at level 50+ (100+) keeps the fastest such life
 (`BestLifeSecondsTo50` / `To100`, `RebirthRules.LifeRecord`). Decided only in
 `RebirthEngine`. Lives begun before the column are untimed. Shown on the
 Rebirth screen; a leaderboard is the natural next step.
+
+
+## 9. Aptitude milestones (owner decision 2026-11-13)
+
+Asked whether four inherited aptitudes are right, or should be split, added
+to, or given sub-stats. Measured: the main bonus falls to 0.3% a point past 35,
+so the last fifteen points of an aptitude paid +4.5% together - while the
+overhaul made 50/50/50/50 a month-long goal. Options put to the owner: a fifth
+and sixth aptitude, splitting each into sub-stats, retuning the curve, or
+keeping four and adding milestones. **Chosen: four aptitudes + milestones.**
+
+At 30 / 40 / 50 each aptitude unlocks a second bonus (`AptitudeMilestones`):
+Strength +0.10/0.20/0.30x crit damage, Skill +5/10/15% gathering yield,
+Endurance +3/6/10% block (the 75% block cap still applies), Fortune +5/10/15%
+gold from kills. Read by LiveCritMultiplier, LiveCombatStats,
+GatheringYieldFor and CombatGoldReward.FactorsFor, so live, offline, dungeon
+and the stat sheet agree. The client mirror (`APTITUDE_MILESTONES`) is pinned
+to the server's strings in `serverMirrors.test.ts`. No new breeding axis, no
+migration. The three dead loci (Speed/Crit/Yield) remain unread; removing them
+is a separate cleanup.

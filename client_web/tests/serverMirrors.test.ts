@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as wiki from '../src/lib/ui/wikiData';
 import {
+  APTITUDE_MILESTONE_AT,
+  APTITUDE_MILESTONES,
   aptitudeBonusPercent,
   APTITUDE_MAX,
   APTITUDE_VILLAGE_CEILING,
@@ -118,6 +120,22 @@ describe('the numbers the client mirrors still match the server', () => {
   // price (AffixRerollEngine.GoldCostFor); the region table's remaining copy is
   // the Wiki's, compared in wiki.test.ts. The rarity factor is new and is
   // compared here, entry by entry.
+  it('lineage: the aptitude milestones', () => {
+    const server = read(serverRoot, 'Engine', 'AptitudeMilestones.cs');
+    const at = server.match(/Thresholds = \{ ([\d, ]+) \}/)![1].split(',').map((x) => Number(x.trim()));
+    expect([...APTITUDE_MILESTONE_AT]).toEqual(at);
+    const arrays: Record<string, string> = { crit: 'Aptitude_Strength', yield: 'Aptitude_Skill', block: 'Aptitude_Endurance', gold: 'Aptitude_Fortune' };
+    for (const [name, field] of Object.entries(arrays)) {
+      const m = server.match(new RegExp(`string\\[\\] ${name} = \\{ ([^}]+) \\}`))!;
+      const effects = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+      expect(APTITUDE_MILESTONES[field].effects, field).toEqual(effects);
+    }
+    for (const [field, label] of Object.entries({ Aptitude_Strength: 'Strength', Aptitude_Skill: 'Skill', Aptitude_Endurance: 'Endurance', Aptitude_Fortune: 'Fortune' })) {
+      const named = server.match(new RegExp(`BreedingAptitudes\\.${label}, Thresholds\\[i\\], "([^"]+)"`))![1];
+      expect(APTITUDE_MILESTONES[field].name, field).toBe(named);
+    }
+  });
+
   it('reroll: the item-rarity factor', () => {
     const affixes = read(serverRoot, 'Engine', 'AffixRegistry.cs');
     const body = after(affixes, 'public static readonly int[] RerollRarityFactor', 'server rarity factor');

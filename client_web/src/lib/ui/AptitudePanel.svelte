@@ -15,6 +15,8 @@
     aptitudeBonusPercent,
     APTITUDE_MAX,
     APTITUDE_VILLAGE_CEILING,
+    APTITUDE_MILESTONE_AT,
+    APTITUDE_MILESTONES,
   } from '../net/commands';
 
   const snap = $derived($playerState);
@@ -66,6 +68,19 @@
         </div>
 
         <p class="dim tiny">{row.blurb} &middot; next point +{row.next.toFixed(1)}%</p>
+
+        <!-- Aptitude milestones (2026-11-13): the second bonus each aptitude
+             unlocks at 30, 40 and 50 - why the tail past 35 is worth climbing. -->
+        {#if APTITUDE_MILESTONES[row.field]}
+          <div class="milestones" data-testid="aptitude-milestones">
+            <span class="tiny ms-name">{APTITUDE_MILESTONES[row.field].name}</span>
+            {#each APTITUDE_MILESTONE_AT as at, i (at)}
+              <span class="ms tiny" class:on={row.value >= at} title={`${at} points`}>
+                {at}: {APTITUDE_MILESTONES[row.field].effects[i]}
+              </span>
+            {/each}
+          </div>
+        {/if}
       </li>
     {/each}
   </ul>
@@ -169,5 +184,30 @@
 
   .foot {
     margin: 0;
+  }
+
+  .milestones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.4rem;
+    align-items: center;
+    margin-top: 0.2rem;
+  }
+
+  .ms-name {
+    font-weight: 600;
+  }
+
+  .ms {
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    opacity: 0.6;
+  }
+
+  .ms.on {
+    opacity: 1;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
 </style>
