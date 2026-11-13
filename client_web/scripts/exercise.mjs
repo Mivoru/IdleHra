@@ -6315,6 +6315,40 @@ if (want('ancestors')) {
   } else {
     record('expedition bulk round trip (skipped: fewer than two free slots or ancestors)', true);
   }
+
+  // Claim-and-resend (2026-11-13): one tap brings everyone back and sends the
+  // strongest out again. Round trip: send all, return, claim-and-resend, then
+  // return and claim-all so the bench ends as it began.
+  await go('Expeditions');
+  const pre2 = await apiGet('/api/v1/expeditions').catch(() => null);
+  if (pre2 && pre2.Slots - pre2.Active.length > 1 && pre2.Candidates.length > 1) {
+    await page.getByTestId('expedition-send-all').click().catch(() => {});
+    await page.waitForTimeout(2500);
+    const sent = (await apiGet('/api/v1/expeditions').catch(() => null))?.Active.length ?? 0;
+    await apiPostStatus('/api/v1/expeditions/dev/return', {}).catch(() => 0);
+    await page.reload({ waitUntil: 'networkidle' });
+    await dismissOfflineSummary(3000);
+    await go('Expeditions');
+    await page.getByTestId('expedition-claim-resend').waitFor({ timeout: 8000 }).catch(() => {});
+    await page.getByTestId('expedition-claim-resend').click().catch(() => {});
+    await page.waitForTimeout(4000);
+    const again = await apiGet('/api/v1/expeditions').catch(() => null);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const outAgain = again ? again.Active.filter((e) => e.ReturnsAtEpoch > nowSec).length : 0;
+    record('claim-and-resend brings everyone back and sends them out again', sent > 1 && outAgain === sent,
+      `sent ${sent}, out again ${outAgain}, active ${again?.Active.length}`);
+    await apiPostStatus('/api/v1/expeditions/dev/return', {}).catch(() => 0);
+    await page.reload({ waitUntil: 'networkidle' });
+    await dismissOfflineSummary(3000);
+    await go('Expeditions');
+    await page.getByTestId('expedition-claim-all').waitFor({ timeout: 8000 }).catch(() => {});
+    await page.getByTestId('expedition-claim-all').click().catch(() => {});
+    await page.waitForTimeout(3000);
+    const clean = await apiGet('/api/v1/expeditions').catch(() => null);
+    record('the claim-and-resend round trip leaves nobody away', clean !== null && clean.Active.length === 0, `away ${clean?.Active.length}`);
+  } else {
+    record('claim-and-resend round trip (skipped: fewer than two free slots or ancestors)', true);
+  }
 }
 await go('Ancestors');
 {

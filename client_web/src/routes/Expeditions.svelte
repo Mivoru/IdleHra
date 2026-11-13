@@ -128,6 +128,15 @@
     }
   }
 
+  // The whole endgame check-in in one tap (2026-11-13): bring everyone back,
+  // then send the strongest free ancestors out again for the chosen length
+  // (and provisions, if the toggle is on). The same two calls in a row;
+  // sendAll reads the board that claimAll's refetch just brought.
+  async function claimAndResend() {
+    await claimAll();
+    await sendAll();
+  }
+
   const returnedCount = $derived(data ? data.Active.filter((e) => e.ReturnsAtEpoch <= nowSeconds).length : 0);
 
   async function buySlot() {
@@ -185,6 +194,11 @@
     {/if}
     {#if returnedCount > 1}
       <button type="button" class="claim" data-testid="expedition-claim-all" disabled={busy} onclick={claimAll}>Claim all {returnedCount} chests</button>
+    {/if}
+    {#if returnedCount > 0 && data.Candidates.length > 0}
+      <button type="button" class="claim primary" data-testid="expedition-claim-resend" disabled={busy} onclick={claimAndResend}>
+        Claim {returnedCount === 1 ? 'the chest' : `all ${returnedCount}`} and send the strongest again ({pickedHours} h{provision && provisionCost > 0 ? ', provisioned' : ''})
+      </button>
     {/if}
     {#if data.Active.length === 0}
       <p class="dim">Nobody is away.</p>
