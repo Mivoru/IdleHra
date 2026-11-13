@@ -56,9 +56,9 @@ export function sectionOf(screen: string | null | undefined): Section {
 // Skill Tree's Yggdrasil. The URL has to come from here rather than from
 // app.css because sprites are served by the game server, whose origin differs
 // from the client's in development (spriteUrl).
-const sceneUrls = new Map<Section, string>();
+const sceneUrls = new Map<string, string>();
 
-export function sceneUrl(section: Section): string {
+export function sceneUrl(section: Section | 'underground'): string {
   let url = sceneUrls.get(section);
   if (!url) {
     url = `url("${backgroundUrl(`scene_${section}`)}")`;
@@ -72,4 +72,7 @@ export function applySection(screen: string | null | undefined): void {
   const root = document.documentElement;
   root.dataset.section = section;
   root.style.setProperty('--scene', sceneUrl(section));
+  // The Delve's underground mood (app.css [data-mood='underground']) paints a
+  // cavern instead; set once here so the mood rule only has to name it.
+  root.style.setProperty('--scene-underground', sceneUrl('underground'));
 }

@@ -1034,6 +1034,16 @@
       ],
       "prompt": "A wide panoramic banner for a pagan Slavic-folklore idle RPG, pixel-painted, rich colour, the interest spread across the width, the bottom third calmer for a line of text. Pagan only: no Christian icons, crosses, churches or saints. A wise old volkhv's study in a log tower: shelves of scrolls and birch-bark letters, a carved world-tree map on the wall, an owl, herbs drying, a window over a valley at dusk, brass and dusky blue palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
       "note": "2026-11-13: generated 1584x672, a 10:3 strip from y=40 resized to 1200x360 at q72 into client/Assets/Images/SpritesWeb/Backgrounds/banner_wiki.webp for ScreenBanner. The model left the bottom third blank on some renders, hence the crop offsets."
+    },
+    {
+      "id": "scene_underground",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/abyssal_breach.webp"
+      ],
+      "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A deep cavern beneath a Slavic land: ancient tree roots breaking through the rock ceiling, a carved stone stairway descending into darkness, glowing pale-gold crystals and old torches in iron brackets, faint runes on the walls, dripping water, umber and dim gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-13: generated 1376x768, saved whole at q60 - the Delve's underground mood background (app.css [data-mood='underground'], --scene-underground from sections.ts)."
     }
   ]
 }

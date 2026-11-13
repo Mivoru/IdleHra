@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.80.0',
+    date: '2026-11-13',
+    headline: 'The Delve goes underground for real.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'The Delve is a torch-lit cavern now, not a brick wall, and section headings carry their section colour.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.79.0',
     date: '2026-11-13',
     headline: 'Provision your expeditions for a better haul.',
