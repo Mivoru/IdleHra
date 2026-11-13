@@ -258,8 +258,8 @@
           </p>
           <!-- Modul: the interlock, said where it bites. -->
           <p class="dim tiny">
-            Marry one in on the Breeding screen: any grown adult of the same race
-            and the opposite sex &mdash; there is no level requirement. Everybody
+            Marry one in on the Breeding screen: any grown adult of the opposite
+            sex, of any race &mdash; there is no level requirement. Everybody
             marries <strong>once</strong>. None of them survives a rebirth, so
             blood you do not marry in is blood you lose.
           </p>

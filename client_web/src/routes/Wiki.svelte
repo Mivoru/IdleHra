@@ -650,11 +650,10 @@
           <p class="dim small">
             A character in one of your played slots ages while that slot is
             working — fighting, gathering or crafting — online and offline alike:
-            {AGE_PHASES.join(' → ')}. An hour of work makes a Child an Adult.
-            <strong>A character that is idle, or not in a played slot, does not
-            age at all</strong>, which is the single most surprising rule in the
-            game — a newborn stays a Child until you field it from the Hall of
-            Ancestors and give it a job.
+            {AGE_PHASES.join(' → ')}. <strong>An adult that is idle, or not in a
+            played slot, does not age at all.</strong> Children are the exception:
+            a newborn grows up on its own within an hour of birth, online or
+            away, whether or not it works.
           </p>
 
         <!-- ================================================== SKILLS -->
@@ -942,8 +941,9 @@
           </div>
           <p class="dim tiny">
             Human needs no unlock. A locked race never appears among the newcomers
-            at the Inn, because breeding refuses a mixed-race pair and a newcomer
-            of a race you own nobody of would be a portrait and nothing else.
+            at the Inn. Any two races may marry, and the child is born as either
+            parent's race - so one strong line can carry its aptitudes into every
+            race you have unlocked.
           </p>
 
           <h3 id="regions">The five regions</h3>
@@ -1130,7 +1130,7 @@
               <tbody>
                 <tr><td><strong>aptitude</strong></td><td>One of the four bred numbers: Strength, Skill, Endurance, Fortune.</td></tr>
                 <tr><td><strong>bloodline</strong></td><td>The four aptitudes your line carries, collectively.</td></tr>
-                <tr><td><strong>gene</strong></td><td>One of the four dominant/recessive pairs: Race, Speed, Crit, Yield.</td></tr>
+                <tr><td><strong>gene</strong></td><td>The race a character carries, as two copies; the child is born as one of its parents' races.</td></tr>
                 <tr><td><strong>copy</strong></td><td>One half of a gene — the dominant copy and the recessive copy.</td></tr>
                 <tr><td><strong>ancestor</strong></td><td>Anyone on the Hall of Ancestors roster.</td></tr>
                 <tr><td><strong>newcomer</strong></td><td>Somebody who has arrived at the Inn and has not married.</td></tr>
@@ -1276,14 +1276,13 @@
             advantage is visible but never decisive on a shared leaderboard.
           </p>
 
-          <h4>The four genes</h4>
+          <h4>Race</h4>
           <p class="dim small">
-            Race, Speed, Crit and Yield, each a dominant and a recessive copy. Each
-            parent passes one of its two at random; the higher of the two received
-            becomes the child's dominant. Speed and Crit feed attack speed and crit
-            chance, Yield adds +4% gathering yield per point, and a pair whose Race
-            dominants differ cannot breed at all. Genes are a slow curiosity;
-            aptitudes are the axis a rebirth leaves standing.
+            A child is born as one of its parents' races - you pick which when the
+            two differ - and keeps the other as a hidden second copy. The race
+            decides the racial passives and mastery; the four aptitudes and the
+            traits are what breeding is for, and they carry over whichever race
+            you pick.
           </p>
 
           <h3 id="genepool">The Inn and the gene pool</h3>
