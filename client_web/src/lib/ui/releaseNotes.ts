@@ -35,6 +35,26 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.71.0',
+    date: '2026-11-13',
+    headline: 'Expeditions: your benched ancestors bring back loot chests.',
+    sections: [
+      {
+        title: 'Bloodline',
+        items: [
+          'New tab, Expeditions. Send a grown ancestor from the bench away for 4, 8 or 12 hours; they come back with a loot chest of your highest region. Longer trips and better aptitudes roll better chests - a 12-hour trip brings a Silver chest, or a Gold one.',
+          'Two expedition slots, three from Breeding Grounds level 8. An ancestor who is away cannot be fielded or bred until they return.',
+        ],
+      },
+      {
+        title: 'Boss Ascension',
+        items: [
+          'The Ascension panel and the Wiki now say what it really pays: a loot chest for every new step, and +2% damage against that region for good at step 10. It used to say cosmetics only.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.70.0',
     date: '2026-11-13',
     headline: 'Aptitude milestones: 30, 40 and 50 points each unlock a second bonus.',

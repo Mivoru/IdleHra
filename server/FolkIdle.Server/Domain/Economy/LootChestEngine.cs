@@ -20,6 +20,8 @@ namespace FolkIdle.Server.Domain.Economy
         AscensionStep = 3,
         // The equipment dungeon (2026-10-31): a won stage, or a lost run's consolation.
         Dungeon = 4,
+        // Expeditions (2026-11-13): an ancestor's haul (ExpeditionEngine).
+        Expedition = 5,
     }
 
     /// <summary>

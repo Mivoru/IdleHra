@@ -48,6 +48,7 @@ export const queryKeys = {
   lifeRecordBoard: ['meta', 'leaderboard', 'lives'] as const,
   bloodlineWeekBoard: ['meta', 'leaderboard', 'bloodline'] as const,
   journey: ['player', 'journey'] as const,
+  expeditions: ['player', 'expeditions'] as const,
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
@@ -1471,6 +1472,8 @@ export interface HallMember {
   WouldCarry: boolean;
 
   IsMainCharacter: boolean;
+  /** Away on an expedition: cannot be fielded or bred until back. Absent on an older server. */
+  IsAway?: boolean;
   AptitudeStrength: number;
   AptitudeSkill: number;
   AptitudeEndurance: number;
@@ -3164,4 +3167,51 @@ export async function openLootChests(tier: number, count: number): Promise<LootC
   const res = await authedPost<LootChestOpenResult>('/api/v1/chests/open', { Tier: tier, Count: count });
   if (!res) throw new AuthError('POST /api/v1/chests/open answered nothing', 500);
   return res;
+}
+
+// ---------------------------------------------------------------------------
+// Expeditions (2026-11-13): benched ancestors away for a loot chest.
+// ExpeditionEngine on the server; REST DTOs are hand-written by design.
+// ---------------------------------------------------------------------------
+
+export interface ExpeditionView {
+  Id: number;
+  Slot: number;
+  CharacterId: string;
+  Name: string;
+  Region: number;
+  Hours: number;
+  AptitudeTotal: number;
+  StartedAtEpoch: number;
+  ReturnsAtEpoch: number;
+  Returned: boolean;
+}
+
+export interface ExpeditionCandidate {
+  CharacterId: string;
+  Name: string;
+  RaceId: number;
+  AptitudeTotal: number;
+  /** Extra percent toward a better chest, from the aptitude total. */
+  UpgradePct: number;
+}
+
+export interface ExpeditionBoard {
+  Slots: number;
+  Region: number;
+  Durations: number[];
+  Active: ExpeditionView[];
+  Candidates: ExpeditionCandidate[];
+}
+
+export function fetchExpeditions(): Promise<ExpeditionBoard | null> {
+  return authedGet<ExpeditionBoard>('/api/v1/expeditions');
+}
+
+export function startExpedition(characterId: string, hours: number): Promise<{ Result: string } | null> {
+  return authedPost<{ Result: string }>('/api/v1/expeditions/start', { CharacterId: characterId, Hours: hours });
+}
+
+export function claimExpedition(id: number): Promise<{ Ok: boolean; Tier: string; Region: number; Reason: string } | null> {
+  return authedPost('/api/v1/expeditions/claim', { Id: id });
 }

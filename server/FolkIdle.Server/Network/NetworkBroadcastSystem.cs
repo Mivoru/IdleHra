@@ -2455,6 +2455,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Expeditions - see NetworkBroadcastSystem.Expeditions.cs.
+            if (await TryHandleExpeditionsAsync(context, requestPath))
+            {
+                return;
+            }
+
             // The skill tree screen's definition, draft preview and commit -
             // see NetworkBroadcastSystem.SkillTree.cs.
             if (await TryHandleSkillTreeAsync(context, requestPath))
@@ -6960,6 +6966,7 @@ namespace FolkIdle.Server.Network
 
                 var carried = new System.Collections.Generic.HashSet<Guid>(
                     Engine.HallOfAncestorsRules.ChooseSurvivors(ranking, cap));
+                var awayIds = await Engine.ExpeditionEngine.AwayIdsAsync(db, playerId);
 
                 int townHallLevel = await db.VillageInfrastructures
                     .AsNoTracking()
@@ -7007,6 +7014,8 @@ namespace FolkIdle.Server.Network
                             TraitMask = lineage?.TraitMask ?? 0L,
                             IsKept = lineage?.IsKeptAtRollover ?? false,
                             WouldCarry = carried.Contains(c.Id),
+                            // Away on an expedition: cannot be fielded or bred until back.
+                            IsAway = awayIds.Contains(c.Id),
                             IsMainCharacter = c.Id == player.PlayerGuid,
                             AptitudeStrength = lineage?.AptitudeStrength ?? 0,
                             AptitudeSkill = lineage?.AptitudeSkill ?? 0,

@@ -736,6 +736,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Ancestors', label: 'Hall of Ancestors', status: 'documented', tab: 'longgame', note: 'The roster, the cap, fielding, and who survives the cull.' },
   { screen: 'Rebirth', label: 'Rebirth', status: 'documented', tab: 'longgame', note: 'What each rebirth pays, the road to ten, the Vault and its prices.' },
   { screen: 'Inheritance', label: 'Inheritance', status: 'documented', tab: 'longgame', note: 'The six permanent bonuses diamonds buy, and their cost curve.' },
+  { screen: 'Expeditions', label: 'Expeditions', status: 'documented', tab: 'longgame', note: 'Benched grown ancestors go away 4, 8 or 12 hours (2 slots, 3 from Breeding Grounds 8) and bring back a loot chest of your highest region: 4 h Bronze; 8 h Bronze, Silver at 25% plus up to 30% for aptitudes; 12 h Silver, Gold at 15% plus the same. Away means not fielded and not bred.' },
   { screen: 'Leaderboards', label: 'Leaderboards', status: 'documented', tab: 'longgame', note: 'Seasonal ranking and what a placement is worth.' },
   { screen: 'GuildOps', label: 'Guild', status: 'documented', tab: 'guilds', note: 'Roles, the depot, buff tiers and the guild tax.' },
   { screen: 'Social', label: 'Friends', status: 'documented', tab: 'guilds', note: 'Friends, blocking and profiles.' },

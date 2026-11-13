@@ -65,6 +65,7 @@ export const SCREENS = [
   'Market · cosmetics',
   'Bloodline · Ancestors',
   'Bloodline · Inheritance',
+  'Bloodline · Expeditions',
   // Before the More sheet: that one is measured OPEN and left open, so it
   // must stay the last destination.
   'Home · event shop',
@@ -109,6 +110,7 @@ function subTab(screen, key) {
 export const OVERLAYS = {
   'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
   'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
+  'Bloodline · Expeditions': subTab('Bloodline', 'expeditions'),
   'Leaderboards': subTab('Community', 'leaderboards'),
   // Task 95: the phone's More sheet, measured OPEN - its tiles, the tab bar
   // under it and the header over it are what check:touch and check:overlap

@@ -205,6 +205,7 @@
         { key: 'breeding', label: 'Breeding' },
         { key: 'ancestors', label: 'Ancestors' },
         { key: 'inheritance', label: 'Inheritance' },
+        { key: 'expeditions', label: 'Expeditions' },
       ],
     },
     social: {
@@ -217,7 +218,7 @@
       ],
     },
   };
-  const TAB_ONLY_KEYS = ['ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
+  const TAB_ONLY_KEYS = ['ancestors', 'inheritance', 'expeditions', 'market', 'guildops', 'leaderboards'] as const;
 
   // Modul: SCREENS REACHED THROUGH A HEADER CHIP, not a menu entry. The
   // seasonal event's screen exists only while an event runs, and a menu
@@ -340,6 +341,7 @@
     ancestors: () => import('./routes/Ancestors.svelte'),
     rebirth: () => import('./routes/Rebirth.svelte'),
     inheritance: () => import('./routes/Inheritance.svelte'),
+    expeditions: () => import('./routes/Expeditions.svelte'),
     delve: () => import('./routes/Delve.svelte'),
     dungeon: () => import('./routes/Dungeon.svelte'),
     store: () => import('./routes/Store.svelte'),
