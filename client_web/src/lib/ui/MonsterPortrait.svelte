@@ -51,6 +51,11 @@
 <style>
   .portrait {
     display: inline-grid;
+    /* One cell the size of the box, not an auto row: an auto row grows to the
+       image's own height, so `height: 100%` on the img resolved to that and a
+       boss portrait in a 64px frame was 71px tall, its feet cut off
+       (check:clipping, Combat, a finding that stood for weeks). */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     flex: none;
     border: 1px solid var(--border);
