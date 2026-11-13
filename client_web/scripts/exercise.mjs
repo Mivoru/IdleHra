@@ -6263,6 +6263,29 @@ if (want('ancestors')) {
   } else {
     record('expedition round trip (skipped: no free ancestor or slot)', true);
   }
+
+  // Bulk (2026-11-13): send the strongest to every free slot, bring them back,
+  // claim them all in one tap - and the bench is whole again.
+  await go('Expeditions');
+  const pre = await apiGet('/api/v1/expeditions').catch(() => null);
+  if (pre && pre.Slots - pre.Active.length > 1 && pre.Candidates.length > 1) {
+    await page.getByTestId('expedition-send-all').click().catch(() => {});
+    await page.waitForTimeout(2500);
+    const full = await apiGet('/api/v1/expeditions').catch(() => null);
+    const sentAll = full ? full.Active.length === full.Slots : false;
+    await apiPostStatus('/api/v1/expeditions/dev/return', {}).catch(() => 0);
+    await page.reload({ waitUntil: 'networkidle' });
+    await dismissOfflineSummary(3000);
+    await go('Expeditions');
+    await page.getByTestId('expedition-claim-all').waitFor({ timeout: 8000 }).catch(() => {});
+    await page.getByTestId('expedition-claim-all').click().catch(() => {});
+    await page.waitForTimeout(3000);
+    const after = await apiGet('/api/v1/expeditions').catch(() => null);
+    record('send-all fills every slot and claim-all brings everyone back', sentAll && after !== null && after.Active.length === 0,
+      `sent all ${sentAll} (${full?.Active.length}/${full?.Slots}), away after claim-all ${after?.Active.length}`);
+  } else {
+    record('expedition bulk round trip (skipped: fewer than two free slots or ancestors)', true);
+  }
 }
 await go('Ancestors');
 {

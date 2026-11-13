@@ -70,6 +70,50 @@
     }
   }
 
+  // Bulk (2026-11-13): an endgame check-in is "claim everything, send
+  // everyone" - one tap each, the same calls in a row (claims first, so the
+  // slots they free are filled by the send).
+  async function claimAll() {
+    if (busy || !data) return;
+    busy = true;
+    let chests = 0;
+    try {
+      for (const e of data.Active.filter((x) => x.ReturnsAtEpoch <= nowSeconds)) {
+        const r = await claimExpedition(e.Id);
+        if (r?.Ok) {
+          chests += 1;
+          if (r.Title) pushLocalNotice(`New title: ${r.Title} - ${r.Claimed} expeditions.`, 'info');
+        }
+      }
+      if (chests > 0) pushLocalNotice(`${chests} ${chests === 1 ? 'chest' : 'chests'} brought back - open them on the Chest screen.`, 'info');
+    } finally {
+      busy = false;
+      await client.invalidateQueries({ queryKey: queryKeys.expeditions });
+      client.invalidateQueries({ queryKey: queryKeys.ancestorsHall });
+    }
+  }
+
+  async function sendAll() {
+    if (busy || !data) return;
+    busy = true;
+    let sent = 0;
+    try {
+      const free = data.Slots - data.Active.length;
+      for (const c of data.Candidates.slice(0, Math.max(0, free))) {
+        const r = await startExpedition(c.CharacterId, pickedHours);
+        if (r?.Result === 'Started') sent += 1;
+      }
+      if (sent > 0) pushLocalNotice(`${sent} ${sent === 1 ? 'ancestor sets' : 'ancestors set'} out for ${pickedHours} hours.`, 'info');
+      pickedId = '';
+    } finally {
+      busy = false;
+      await client.invalidateQueries({ queryKey: queryKeys.expeditions });
+      client.invalidateQueries({ queryKey: queryKeys.ancestorsHall });
+    }
+  }
+
+  const returnedCount = $derived(data ? data.Active.filter((e) => e.ReturnsAtEpoch <= nowSeconds).length : 0);
+
   async function claim(id: number) {
     if (busy) return;
     busy = true;
@@ -108,6 +152,9 @@
       {data.Claimed ?? 0} expeditions done{#if data.NextTitle}&nbsp;&middot; the title <strong>{data.NextTitle}</strong> at {data.NextTitleAt}{:else}&nbsp;&middot; every expedition title earned{/if}
     </p>
     <h3>Away <span class="dim tiny">{data.Active.length} of {data.Slots} slots</span></h3>
+    {#if returnedCount > 1}
+      <button type="button" class="claim" data-testid="expedition-claim-all" disabled={busy} onclick={claimAll}>Claim all {returnedCount} chests</button>
+    {/if}
     {#if data.Active.length === 0}
       <p class="dim">Nobody is away.</p>
     {:else}
@@ -154,6 +201,11 @@
           <p class="tiny">{nameOf(picked)} brings back {chestLine(pickedHours, picked.UpgradePct)}.</p>
         {/if}
         <button type="button" class="go" data-testid="expedition-send" disabled={!picked || busy} onclick={send}>Send on expedition</button>
+        {#if freeSlots > 1 && data.Candidates.length > 1}
+          <button type="button" class="go" data-testid="expedition-send-all" disabled={busy} onclick={sendAll}>
+            Send the {Math.min(freeSlots, data.Candidates.length)} strongest for {pickedHours} h
+          </button>
+        {/if}
       </div>
     {/if}
     <p class="dim tiny">
