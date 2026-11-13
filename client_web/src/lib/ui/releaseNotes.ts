@@ -37,6 +37,7 @@ export const RELEASE_NOTES: readonly Release[] = [
   {
     version: '1.69.0',
     date: '2026-11-13',
+    headline: 'Keep a better child the moment it is born.',
     sections: [
       {
         title: 'Bloodline',
