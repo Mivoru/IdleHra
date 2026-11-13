@@ -61,6 +61,8 @@
     ATTRIBUTES,
     ATTRIBUTE_MILESTONES,
     EQUIP_REQUIREMENT_PER_REGION_TIER,
+    EXPEDITION_THIRD_SLOT_GROUNDS,
+    EXPEDITION_MAX_BOUGHT_SLOTS,
   } from '../lib/net/commands';
   import WikiPets from '../lib/ui/WikiPets.svelte';
   import WikiRebirthLive from '../lib/ui/WikiRebirthLive.svelte';
@@ -1545,7 +1547,7 @@
           <p class="dim small">
             A grown ancestor on the bench can go on an expedition from the Bloodline screen's Expeditions tab, for
             4, 8 or 12 hours, and comes back with a <strong>loot chest of your highest region</strong>. You have
-            two expedition slots, three from Breeding Grounds level 8, and up to two more bought with gold (the
+            two expedition slots, three from Breeding Grounds level {EXPEDITION_THIRD_SLOT_GROUNDS}, and up to {EXPEDITION_MAX_BOUGHT_SLOTS} more bought with gold (the
             first costs about a day of your own income, the second about three days). While away an ancestor cannot
             be fielded or bred. <em>Send the strongest</em> fills every free slot and <em>Claim all</em> collects every chest
             that is back.
