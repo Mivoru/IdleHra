@@ -124,6 +124,15 @@ check:overlap 0, check:clipping only the old Combat span. First real use:
 Tomda bought Boons (gold maxed) and bred three mixed-race children within an
 hour of the overhaul reaching him.
 
+Afternoon: #371 monster portraits fit their frame - **check:clipping is 0
+on every screen and width** for the first time (the Combat finding stood
+for weeks); #372 a visual design pass (24 screens at 390px, 10 at 1500px,
+6 in the dark scheme): stale Breeding Grounds copy now derived from
+`SELECTION_UNLOCK_LEVELS`, family tabs wrap on phones (Expeditions was cut
+off), Leaderboards' Deepest tab label, Forge/Codex copy. check:touch,
+check:overlap, check:safearea 0; check:perf within budget. Tomda started
+his first three expeditions (12 h, region 5) at 09:39 UTC.
+
 Open: the owner's answers to the review's questions (now five - gold
 inflation added).
 
