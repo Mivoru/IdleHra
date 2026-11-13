@@ -137,6 +137,15 @@
     await sendAll();
   }
 
+  // The wall-clock time of a return, in the player's own locale - "back in
+  // 7 h 12 min" answers "how long", this answers "will it be back before I go
+  // to bed". A day name is added when the return is not today.
+  function returnClock(epoch: number): string {
+    const at = new Date(epoch * 1000);
+    const time = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return at.toDateString() === new Date().toDateString() ? time : `${at.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+  }
+
   const returnedCount = $derived(data ? data.Active.filter((e) => e.ReturnsAtEpoch <= nowSeconds).length : 0);
 
   async function buySlot() {
@@ -214,7 +223,7 @@
             {#if left === 0}
               <button type="button" class="claim primary" data-testid="expedition-claim" disabled={busy} onclick={() => claim(e.Id)}>Claim the chest</button>
             {:else}
-              <span class="tiny">back in {formatDuration(left)}</span>
+              <span class="tiny">back in {formatDuration(left)} <span class="dim">&middot; at {returnClock(e.ReturnsAtEpoch)}</span></span>
             {/if}
           </li>
         {/each}

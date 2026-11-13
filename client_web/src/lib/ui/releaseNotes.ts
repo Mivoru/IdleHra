@@ -43,6 +43,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         title: 'Expeditions',
         items: [
           'When a party is back, one button claims every chest and sends your strongest free ancestors out again for the length you picked - provisioned too, if you turned provisions on.',
+          'A party away now shows the time it comes back, not only how long is left.',
         ],
       },
     ],
