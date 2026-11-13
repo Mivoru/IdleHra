@@ -101,6 +101,7 @@ const SUB_TABS = {
   Breeding: ['Bloodline', 'breeding'],
   Ancestors: ['Bloodline', 'ancestors'],
   Inheritance: ['Bloodline', 'inheritance'],
+  Expeditions: ['Bloodline', 'expeditions'],
   // Task 76 made Friends, Market, Guild and Leaderboards one family. Task 95
   // gave Community (which opens Friends), Market and Guild menu entries of
   // their own; Leaderboards is still only a tab.
@@ -6196,6 +6197,50 @@ await go('Home');
 // long game is built on, impossible to perform.
 }
 if (want('ancestors')) {
+
+// --- Expeditions (2026-11-13) ---------------------------------------------
+// Send the strongest free ancestor, see the Hall lock them, bring them back
+// with the dev tool, claim the chest, and see them free again. Round-trips the
+// character; leaves one extra loot chest on the fixture (chests accumulate
+// harmlessly and the Chest checks count relative to their own start).
+{
+  await go('Expeditions');
+  const panel = page.getByTestId('expeditions');
+  await panel.waitFor({ timeout: 10000 }).catch(() => {});
+  const before = await apiGet('/api/v1/expeditions').catch(() => null);
+  record('the Expeditions tab shows the server board', before !== null && (await panel.count()) > 0 && before.Slots >= 2,
+    before ? `${before.Slots} slots, ${before.Active.length} away, ${before.Candidates.length} free, region ${before.Region}` : 'no board');
+
+  if (before && before.Candidates.length > 0 && before.Active.length < before.Slots) {
+    const target = before.Candidates[0];
+    await page.getByTestId('expedition-send').click().catch(() => {});
+    await page.waitForTimeout(2000);
+    const after = await apiGet('/api/v1/expeditions').catch(() => null);
+    const away = (after?.Active ?? []).find((e) => e.CharacterId === target.CharacterId) ?? null;
+    const hall = await apiGet('/api/v1/ancestors/hall').catch(() => null);
+    const inHall = (hall?.Members ?? []).find((m) => m.CharacterId === target.CharacterId);
+    record('sending an ancestor puts them away and the Hall says so', away !== null && inHall?.IsAway === true,
+      `${target.Name} away ${away !== null} (${away?.Hours ?? '-'} h), hall IsAway ${inHall?.IsAway}`);
+
+    const returned = await apiPostStatus('/api/v1/expeditions/dev/return', {}).catch(() => 0);
+    await page.reload({ waitUntil: 'networkidle' });
+    await dismissOfflineSummary(3000);
+    await go('Expeditions');
+    const targetClaim = page.locator(`[data-testid="expedition-row"][data-character-id="${target.CharacterId}"] [data-testid="expedition-claim"]`);
+    await targetClaim.waitFor({ timeout: 8000 }).catch(() => {});
+    const claimButtons = await targetClaim.count();
+    await targetClaim.click().catch(() => {});
+    await page.waitForTimeout(2000);
+    const done = await apiGet('/api/v1/expeditions').catch(() => null);
+    const hallAfter = await apiGet('/api/v1/ancestors/hall').catch(() => null);
+    const free = (hallAfter?.Members ?? []).find((m) => m.CharacterId === target.CharacterId);
+    record('a returned expedition is claimed for a chest and the ancestor is free again',
+      returned === 200 && claimButtons > 0 && !(done?.Active ?? []).some((e) => e.CharacterId === target.CharacterId) && free?.IsAway === false,
+      `dev return ${returned}, claim buttons ${claimButtons}, still away ${(done?.Active ?? []).some((e) => e.CharacterId === target.CharacterId)}, hall IsAway ${free?.IsAway}`);
+  } else {
+    record('expedition round trip (skipped: no free ancestor or slot)', true);
+  }
+}
 await go('Ancestors');
 {
   const text = await page.evaluate(() => document.body.innerText);

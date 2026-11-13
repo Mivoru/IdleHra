@@ -208,6 +208,14 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Away on an expedition (2026-11-13): back when it returns.
+                if (await ExpeditionEngine.IsAwayAsync(db, characterId))
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 75, Value2 = 9, Timestamp = Environment.TickCount64 });
+                    await transaction.SafeRollbackAsync();
+                    return;
+                }
+
                 // An escrowed character is mid-trade and its ownership is not
                 // settled; moving it into a playable slot would field somebody
                 // who may be about to belong to someone else.

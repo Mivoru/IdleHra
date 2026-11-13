@@ -729,6 +729,49 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("EventHorizonPremiumLedgers");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.Expedition", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AptitudeTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Hours")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Region")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("ReturnsAtEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Slot")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("StartedAtEpoch")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CharacterId")
+                        .IsUnique();
+
+                    b.HasIndex("PlayerId", "Slot")
+                        .IsUnique();
+
+                    b.ToTable("Expeditions");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.FeatureUnlock", b =>
                 {
                     b.Property<string>("FeatureKey")

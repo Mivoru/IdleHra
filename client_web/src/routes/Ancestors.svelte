@@ -193,6 +193,7 @@
           <!-- Children grow up on their own within an hour of birth since
                2026-11-13 (ChildGrowth); "Field to raise" no longer applies. -->
           {#if m.AgePhase === 0}<span class="badge raise" data-testid="hall-raise">Growing up</span>{/if}
+          {#if m.IsAway}<span class="badge raise">On expedition</span>{/if}
         </span>
       </span>
       <!-- Modul: labelled once, by the column header above the list, and per
@@ -487,6 +488,8 @@
     <div class="sheet-actions">
       {#if m.PlayableSlot >= 0}
         <span class="fielded">In slot {m.PlayableSlot + 1}</span>
+      {:else if m.IsAway}
+        <span class="dim small" data-testid="hall-away">Away on an expedition - back when it returns.</span>
       {:else}
         <span class="field" role="group" aria-label="Field {nameOf(m)} into a slot">
           <span class="dim small">Field into slot</span>

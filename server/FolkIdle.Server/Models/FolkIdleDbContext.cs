@@ -64,6 +64,7 @@ namespace FolkIdle.Server.Models
         public DbSet<LootChestWeek> LootChestWeeks { get; set; }
         public DbSet<BuildPreset> BuildPresets { get; set; }
         public DbSet<DungeonProgress> DungeonProgress { get; set; }
+        public DbSet<Expedition> Expeditions { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
         public DbSet<PlayerChroniclePass> PlayerChroniclePasses { get; set; }
@@ -518,6 +519,13 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<DungeonProgress>()
                 .HasKey(d => new { d.PlayerId, d.Kind });
+
+            modelBuilder.Entity<Expedition>(b =>
+            {
+                b.HasKey(e => e.Id);
+                b.HasIndex(e => new { e.PlayerId, e.Slot }).IsUnique();
+                b.HasIndex(e => e.CharacterId).IsUnique();
+            });
 
             modelBuilder.Entity<PlayerLifetimeAchievement>()
                 .HasKey(p => new { p.PlayerId, p.AchievementId });
