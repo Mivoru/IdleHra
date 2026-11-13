@@ -6321,6 +6321,8 @@ namespace FolkIdle.Server.Network
             public int GenerationIndex { get; set; }
             public bool IsBreedingActive { get; set; }
             public long BreedingCooldownEndEpoch { get; set; }
+            /// <summary>Away on an expedition (2026-11-13): resting for breeding until it returns.</summary>
+            public bool IsAway { get; set; }
             public bool IsEpicMutation { get; set; }
             public bool IsInbred { get; set; }
 
@@ -7084,6 +7086,7 @@ namespace FolkIdle.Server.Network
                 }
 
                 var response = new System.Collections.Generic.List<BreedingRosterEntryResponse>(characters.Count);
+                var awayOnExpedition = await Engine.ExpeditionEngine.AwayIdsAsync(db, playerId);
                 for (int i = 0; i < characters.Count; i++)
                 {
                     var character = characters[i];
@@ -7102,6 +7105,9 @@ namespace FolkIdle.Server.Network
                         GenerationIndex = lineage.GenerationIndex,
                         IsBreedingActive = character.IsBreedingActive,
                         BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
+                        // Away on an expedition (the cooldown runs to the return,
+                        // so the picker can say why rather than "resting").
+                        IsAway = awayOnExpedition.Contains(character.Id),
                         IsEpicMutation = lineage.IsEpicMutation,
                         IsInbred = lineage.IsInbred,
                         IsFemale = character.IsFemale,

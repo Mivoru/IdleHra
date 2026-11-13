@@ -70,6 +70,8 @@ describe('breeding picker', () => {
   it('refuses a child and a resting hero, with the reason', () => {
     expect(heroBlockedReason(candidate({ AgePhase: 0 }), 0)).toMatch(/child/);
     expect(heroBlockedReason(candidate({ BreedingCooldownEndEpoch: 600 }), 0)).toMatch(/resting, 10 min/);
+    // Away on an expedition: the rest runs to the return, but the reason says where they are.
+    expect(heroBlockedReason(candidate({ IsAway: true, BreedingCooldownEndEpoch: 43_200 }), 0)).toBe('away on an expedition');
     expect(heroBlockedReason(candidate(), 0)).toBeNull();
   });
 

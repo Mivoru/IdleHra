@@ -1394,6 +1394,8 @@ export function fetchMetadata(): Promise<PlayerMetadata> {
 }
 
 export interface BreedingCandidate {
+  /** Away on an expedition - resting for breeding until it returns. Absent on an older server. */
+  IsAway?: boolean;
   CharacterId: string;
   /** Modul: a person, not a GUID prefix. See FolkNameRegistry. */
   Name: string;

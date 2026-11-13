@@ -56,6 +56,8 @@ function restingReason(cooldownEndEpoch: number, nowSeconds: number): string | n
 /** Why a character cannot be the hero of a pairing, or null. */
 export function heroBlockedReason(candidate: BreedingCandidate, nowSeconds: number): string | null {
   if (candidate.AgePhase < 1) return 'still a child - grown within an hour of birth';
+  // An expedition raises the breeding rest to its return; say where they are.
+  if (candidate.IsAway) return 'away on an expedition';
   return restingReason(candidate.BreedingCooldownEndEpoch, nowSeconds);
 }
 
@@ -81,7 +83,7 @@ export function characterPartnerBlockedReason(
 ): string | null {
   if (hero && candidate.CharacterId === hero.CharacterId) return 'that is your hero';
   if (candidate.AgePhase < 1) return 'still a child';
-  const resting = restingReason(candidate.BreedingCooldownEndEpoch, nowSeconds);
+  const resting = candidate.IsAway ? 'away on an expedition' : restingReason(candidate.BreedingCooldownEndEpoch, nowSeconds);
   if (resting) return resting;
   if (!hero) return null;
   if (hero.IsFemale === candidate.IsFemale) return `both ${candidate.IsFemale ? 'women' : 'men'}`;
