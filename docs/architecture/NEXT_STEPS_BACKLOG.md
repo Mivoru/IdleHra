@@ -188,7 +188,13 @@ Wiki) and **panels dyed with their section colour** (1.78.0), and #390
 **expedition Provisions** - gold at send time, half the trip in hours of own
 income, +25 points on the better chest and a 25% Silver on 4 h trips;
 additive migration `Expeditions.Provisioned`, deployed with a backup
-(1.79.0). exercise.mjs spends ~108k fixture gold per run on it.
+(1.79.0). exercise.mjs spends ~108k fixture gold per run on it. #392 the
+Delve's underground mood paints a cavern (`scene_underground`) and `--cobble`
+is gone; h3 diamonds take `--section` (1.80.0). #393 the gold ledger labels
+Respec, Refine, Expedition, LootChest and Dungeon (raw enum names before),
+guarded by serverMirrors. #395 embers drift over Combat and Make
+(compositor-only `body::after`, off for reduced motion and the light scheme)
+(1.81.0). Full exercise on main after #394: 451/451.
 
 Daily activity board (owner's idea: dungeon, delve, world boss, auto-eat
 low, children, village hints) - **owner said not now**; Home's "Your road"
