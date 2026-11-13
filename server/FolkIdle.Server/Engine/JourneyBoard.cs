@@ -49,7 +49,7 @@ namespace FolkIdle.Server.Engine
             if (expeditionSlots > 0)
             {
                 string hint = expeditionsBack > 0 ? $"{expeditionsBack} back - claim the chest"
-                    : expeditionsAway < expeditionSlots ? $"{expeditionSlots - expeditionsAway} slot free - send an ancestor"
+                    : expeditionsAway < expeditionSlots ? $"{expeditionSlots - expeditionsAway} {(expeditionSlots - expeditionsAway == 1 ? "slot" : "slots")} free - send an ancestor"
                     : "everyone is away";
                 rows.Add(new JourneyRow("expeditions", "Expeditions", $"{expeditionsAway} of {expeditionSlots} away",
                     expeditionsAway, expeditionSlots, "expeditions", hint));

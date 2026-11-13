@@ -3757,7 +3757,7 @@ await go('The Delve');
 
       // --- the Deepest board shows the record, on the screen -----------------
       await go('Leaderboards');
-      await page.getByRole('tab', { name: /Deepest this week/i }).first().click();
+      await page.getByRole('tab', { name: /^Deepest/i }).first().click();
       await page.waitForTimeout(1500);
       const board = (await apiGet('/api/v1/leaderboard/deepest'))?.Entries ?? [];
       // The fixture's username is DevFixtureSeeder.Username, 'dev'.
@@ -3818,7 +3818,7 @@ await go('The Delve');
         record('wearing a title is saved on the server', worn?.Active?.Slug === 'deep_10', worn?.Active ? worn.Active.Name : 'no active title');
 
         await go('Leaderboards');
-        await page.getByRole('tab', { name: /Deepest this week/i }).first().click();
+        await page.getByRole('tab', { name: /^Deepest/i }).first().click();
         await page.waitForTimeout(1200);
         const nameButton = selfId ? page.locator('.deepest .who-btn', { hasText: selfId.Name }).first() : null;
         let modalTitle = '';

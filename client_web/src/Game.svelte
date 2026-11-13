@@ -1243,10 +1243,15 @@
   .screen-tabs::-webkit-scrollbar {
     display: none;
   }
-  /* On a phone the four tabs fit without scrolling at a slimmer padding. */
+  /* On a phone the tabs WRAP rather than scroll: Bloodline's fourth tab
+     (Expeditions, 2026-11-13) was cut to "Expedit" at 390px, and a tab
+     nobody can see is a feature nobody finds. Community's four still fit
+     on one line at the slimmer padding. */
   @media (max-width: 420px) {
     .screen-tabs {
       gap: 0.3rem;
+      flex-wrap: wrap;
+      overflow-x: visible;
     }
     .screen-tabs > button {
       padding: 0.4rem 0.6rem;

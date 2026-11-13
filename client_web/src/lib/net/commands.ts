@@ -1624,7 +1624,9 @@ export const BUILDINGS: readonly {
     costKind: 'service',
     // Breeding refuses a mixed-race pair outright, so it cannot make a race
     // rarer - the old blurb promised something the engine forbids.
-    what: 'Required to breed at all, and its level decides how many aptitudes you may breed FOR - one at 4, two at 7, three at 10.',
+    // From SELECTION_UNLOCK_LEVELS, not written out: the literal "one at 4,
+    // two at 7, three at 10" outlived the 2026-11-13 change to 1/4/7 here.
+    what: `Required to breed at all. Its level decides how many aptitudes you may breed FOR - one from level ${SELECTION_UNLOCK_LEVELS[0]}, two from ${SELECTION_UNLOCK_LEVELS[1]}, three from ${SELECTION_UNLOCK_LEVELS[2]} - and opens a third expedition slot at 8.`,
   },
   {
     id: 5,
