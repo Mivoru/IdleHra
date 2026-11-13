@@ -44,7 +44,23 @@ lock until their requirement (`client_web/src/lib/ui/unlocks.ts`, bound in
 "Closest goal" card (`DeedCloseness`), and onboarding has a quest line. So the
 loss is not explained by a missing feature from the usual list.
 
+What a new account actually meets (registered locally 2026-11-13, phone
+width, screenshots every few seconds): the Home screen with the character
+**idle**, "Give a job", "Closest goal: reach level 10", and a guided card
+"Load your fish into the larder ... Go to Auto-Eat" covering everything else.
+Nothing moves until the player has stocked a larder - an idle game's first
+impression is a chore, not a fight. The guided first minute
+(`stores/guided.ts`) is two steps, StockTheLarder then EquipADrop.
+
 Recommendations:
+- **Start the first fight for them**: seed the starter fish straight into the
+  larder at registration (the reason the larder step exists is the
+  2026-09-02 "died to the first monster" defect, which a pre-stocked larder
+  solves just as well) and put the founder on the first monster, so the very
+  first screen shows a fight, damage numbers and a level-up within seconds.
+  The guided steps then start at "equip the drop you just got". Needs the
+  owner's yes - it rewrites onboarding the owner designed, and exercise's
+  new-player checks follow the current flow.
 - **Measure before redesigning**: funnel telemetry for the first ten steps
   (signed in, first kill, first level, first equip, first boss...), with the
   smoke-test guests excluded, then fix the step where people stop.
