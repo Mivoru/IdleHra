@@ -93,8 +93,8 @@ namespace FolkIdle.Server.Engine
         // ------------------------------------------------------------------
 
         /// <summary>
-        /// Rebirths an account may take. Past RewardedRebirths a rebirth pays
-        /// nothing but a higher bloodline ceiling (BreedingAptitudes.CeilingFor).
+        /// The rebirths that raise the bloodline ceiling: it reaches
+        /// BreedingAptitudes.MaxValue at this count (BreedingAptitudes.CeilingFor).
         /// </summary>
         /// <remarks>
         /// Modul: TWENTY, BUT THE POWER STOPS AT TEN (owner 2026-10-14). The
@@ -102,8 +102,14 @@ namespace FolkIdle.Server.Engine
         /// damage bonus, the skill points, the avatars and the Phoenix all
         /// stop at ten, because every one of them multiplies by the count and
         /// ten is the ceiling that keeps a newcomer within reach of a veteran.
+        ///
+        /// Modul: NO LONGER A CAP ON REBIRTH (2026-11-13). This was MaxRebirths
+        /// and the rebirth refused past it, so both 20-rebirth accounts had
+        /// nothing left to rebirth for. Rebirth is unlimited now: past twenty it
+        /// pays Legacy Shards (ShardsForLevel, spent on the Ancestral Boons) and
+        /// the title milestones below - never power that multiplies by the count.
         /// </remarks>
-        public const int MaxRebirths = 20;
+        public const int BloodlineRebirths = 20;
 
         /// <summary>
         /// The last rebirth that pays anything besides the bloodline ceiling:
@@ -137,7 +143,39 @@ namespace FolkIdle.Server.Engine
         /// <summary>The highest quality tier an item can have (RarityTier.Transcendent).</summary>
         public const int TopQualityTier = 14;
 
-        public static bool IsCapped(int rebirthCount) => rebirthCount >= MaxRebirths;
+        // ------------------------------------------------------------------
+        // Modul: SHARDS BY HOW FAR THE LIFE WENT (2026-11-13). The payout was
+        // 12.5 log10(gold) + 0.05 level^2 + 1.5 x inventory score, and the
+        // inventory term dominated (about 2,000 of a typical 2,800): hoarding
+        // gear right before a rebirth paid, the level barely did, and nobody
+        // could have predicted the number. Now it is the level the life
+        // reached, squared and halved - shown in the preview before the player
+        // types REBIRTH. A level-50 life pays 1,250, a level-90 life 4,050,
+        // level 100 pays 5,000. The level-50 floor (MinimumLevel) still stops
+        // a rebirth taken for its own sake.
+        // ------------------------------------------------------------------
+
+        /// <summary>Legacy Shards a rebirth taken at this level pays.</summary>
+        public static int ShardsForLevel(int level)
+        {
+            long l = Math.Max(0, level);
+            return (int)Math.Min(int.MaxValue, l * l / 2);
+        }
+
+        public sealed record TitleMilestone(int Rebirths, string TitleSlug, string Name);
+
+        /// <summary>
+        /// The titles past the rewarded ten: cosmetic only, so the count can keep
+        /// climbing without the power gap growing. Granted when a rebirth brings
+        /// the count to or past the milestone (idempotent), so an account that
+        /// was already there before this list existed gets it on its next rebirth.
+        /// </summary>
+        public static readonly System.Collections.Generic.IReadOnlyList<TitleMilestone> TitleMilestones = new[]
+        {
+            new TitleMilestone(20, "rebirth_bloodline", "Keeper of the Blood"),
+            new TitleMilestone(30, "rebirth_undying", "The Undying"),
+            new TitleMilestone(50, "rebirth_wheel", "Wheel of Ages"),
+        };
 
         public sealed record AvatarMilestone(int Rebirths, string AvatarId, string Name, string Art);
 

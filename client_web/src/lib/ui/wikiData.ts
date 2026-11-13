@@ -166,7 +166,7 @@ export const VILLAGE_BUILDINGS: readonly {
       // wired the level into the mutation rolls and the aptitude selection.
       // The board task that quoted it was about to add a cooldown cut to a
       // building that already paid for its levels.
-      'Level 1 is required to breed at all. Every level adds 1% to each aptitude\'s chance to come out one higher (base 25%) and 1% to a child\'s chance of a brand-new trait (base 4%). At levels 4, 7 and 10 you choose 1, 2 or 3 aptitudes that take the better parent\'s value outright.',
+      'Level 1 is required to breed at all. Every level adds 1% to each aptitude\'s chance to come out one higher (base 25%) and 1% to a child\'s chance of a brand-new trait (base 4%). At levels 1, 4 and 7 you choose 1, 2 or 3 aptitudes that take the better parent\'s value and always grow, up to your bloodline ceiling.',
     source: 'BreedingEngine, BreedingAptitudes.UpMutationPercentFor / SelectableCount, BreedingTraits.MutationPercentFor',
   },
   {
@@ -394,6 +394,13 @@ export const DEED_CHAPTERS: readonly {
     about:
       'A renowned rebirth, five pieces of one set, level 100, Malakor down, a child raised and an epic child bred. Nobody finishes this in their first run.',
   },
+  {
+    index: 6,
+    title: 'The Long Blood',
+    reward: 'A Seal',
+    about:
+      'An aptitude at 30 and at 40, 50 in all four, every race at 30, a tenth generation and twenty rebirths. The endgame bloodline, opened when the Ledger is finished.',
+  },
 ];
 
 /** DeedRegistry.SkillPointsPerSeal. */
@@ -438,6 +445,7 @@ export const SEASON_CARRIES: readonly string[] = [
  * road to twenty, written out for the Wiki. serverMirrors.test.ts holds each
  * number against RebirthRules.cs, so the two cannot drift apart quietly.
  */
+/** RebirthRules.BloodlineRebirths: the rebirth that maxes the bloodline ceiling. Not a cap since 2026-11-13. */
 export const REBIRTH_MAX = 20;
 /** RebirthRules.RewardedRebirths: the points, Renown and milestones stop here. */
 export const REBIRTH_REWARDED = 10;
@@ -463,7 +471,9 @@ export const REBIRTH_PAYS: readonly string[] = [
   `At ${REBIRTH_SECOND_PET_SLOT_AT} rebirths, a second pet slot on every character.`,
   'Avatars at rebirths 3, 5, 7 and 10: Jarilo, Vesna, Étaín and Morana.',
   'At 10: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
-  `Rebirths ${REBIRTH_REWARDED + 1} to ${REBIRTH_MAX} pay the bloodline ceiling and nothing else - the long road for the bloodline.`,
+  `Rebirths ${REBIRTH_REWARDED + 1} to ${REBIRTH_MAX} raise the bloodline ceiling - the long road for the bloodline.`,
+  'Legacy Shards on every rebirth, by the level the life reached: half its square (a life ended at 90 pays 4,050, at 100 pays 5,000). Spend them on the Ancestral Boons on the Rebirth screen - +25% XP, +25% gold and +10% damage at the most, for good.',
+  'There is no last rebirth. Past twenty they pay shards, and 20, 30 and 50 bring the titles Keeper of the Blood, The Undying and Wheel of Ages.',
   'Your rebirth count is shown as a badge beside your name.',
   `Renown, if the rebirth is taken halfway to level 100 or later - counted for the first ${REBIRTH_REWARDED} rebirths.`,
 ];
@@ -489,7 +499,9 @@ export const REBIRTH_ROADMAP: readonly { rebirth: number; rewards: string }[] = 
   { rebirth: 17, rewards: 'bloodline ceiling 45' },
   { rebirth: 18, rewards: 'bloodline ceiling 47' },
   { rebirth: 19, rewards: 'bloodline ceiling 48' },
-  { rebirth: 20, rewards: 'bloodline ceiling 50 - the highest an aptitude can go' },
+  { rebirth: 20, rewards: 'bloodline ceiling 50 - the highest an aptitude can go; the title Keeper of the Blood' },
+  { rebirth: 30, rewards: 'the title The Undying' },
+  { rebirth: 50, rewards: 'the title Wheel of Ages' },
 ];
 
 /**

@@ -129,6 +129,15 @@ namespace FolkIdle.Server.Models
         public bool IsBreedingActive { get; set; }
         public long BreedingCooldownEndEpoch { get; set; }
 
+        // Modul: CHILDREN GROW UP ON THEIR OWN (2026-11-13). The unix second
+        // a bred child was born; 0 for everyone else (founders, race pairs,
+        // and children born before this column - all treated as long grown).
+        // ChildGrowthSweep promotes a child to adult ChildEndTicks after it,
+        // working or not. Adults still age only on their own work (owner,
+        // 2026-10-21) - that rule is about wearing out, and a newborn had to
+        // take a working slot for an hour before it could ever breed.
+        public long BornAtEpoch { get; set; }
+
         // Relationship to lineage
         public CharacterLineageRegistry? Lineage { get; set; }
     }

@@ -47,6 +47,23 @@ namespace FolkIdle.Server.Engine
             return cVec.RawValue;
         }
 
+        /// <summary>
+        /// Sets the child's race: <paramref name="race"/> as the dominant allele
+        /// (the one everything reads), the other parent's race as the recessive.
+        /// </summary>
+        /// <remarks>
+        /// Modul: since two races may pair (2026-11-13), the spliced race locus
+        /// would take the higher of the two ids - a Bies would win over a Human
+        /// every time. The player picks the race instead, and the engine writes
+        /// it here after the splice.
+        /// </remarks>
+        public static long WithRace(long genome, byte race, byte otherRace)
+        {
+            var vec = new GeneticVector(genome);
+            vec.LocusRace = new Locus { Dominant = race, Recessive = otherRace };
+            return vec.RawValue;
+        }
+
         // Modul 13.4.3: applied by BreedingEngine when the two candidate parents
         // share an ancestor within 2 generations. Degrades only the "quality"
         // loci (Speed/Crit/Yield), never LocusRace - a genetic defect changes

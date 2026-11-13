@@ -129,6 +129,17 @@ namespace FolkIdle.Server.Engine
             int epicChildren = lineages.Count(l => l.IsEpicMutation && (l.ParentPaternalId.HasValue || l.ParentMaternalId.HasValue));
             int bestAptitude = lineages.Count == 0 ? 0 : lineages.Max(l => l.AptitudeVector().Sum());
 
+            // Chapter VI (The Long Blood): the bloodline's own records.
+            int bestSingle = lineages.Count == 0 ? 0 : lineages.Max(l => l.AptitudeVector().Max());
+            int bestLowest = lineages.Count == 0 ? 0 : lineages.Max(l => l.AptitudeVector().Min());
+            int deepest = lineages.Count == 0 ? 0 : lineages.Max(l => l.GenerationIndex);
+            int racesAtThirty = lineages
+                .Where(l => l.AptitudeVector().Min() >= 30)
+                .Select(l => new GeneticVector(l.GeneticVector).LocusRace.Dominant)
+                .Where(RaceUnlockRegistry.IsPlayableRace)
+                .Distinct()
+                .Count();
+
             return new DeedContext(
                 Level: player.CurrentLevel,
                 HasWeaponEquipped: fielded.Any(c => c.EquippedWeaponId is > 0),
@@ -160,7 +171,12 @@ namespace FolkIdle.Server.Engine
                 BestHit: player.BestHit,
                 RenownedRebirths: player.RenownedRebirths,
                 EpicChildrenBred: epicChildren,
-                BestAptitudeTotal: bestAptitude);
+                BestAptitudeTotal: bestAptitude,
+                BestSingleAptitude: bestSingle,
+                BestLowestAptitude: bestLowest,
+                RacesAtThirty: racesAtThirty,
+                DeepestGeneration: deepest,
+                RebirthCount: player.RebirthCount);
         }
 
         private static int LevelOf(System.Collections.Generic.IEnumerable<(int BuildingId, int CurrentLevel)> buildings, int buildingId)

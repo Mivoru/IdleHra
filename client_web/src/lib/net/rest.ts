@@ -68,6 +68,7 @@ export const queryKeys = {
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
   villagerBreedingPreview: (heroId: string, newcomerId: number) =>
     ['meta', 'breeding', 'preview', 'village', heroId, newcomerId] as const,
+  breedingSuggest: (heroId: string) => ['meta', 'breeding', 'suggest', heroId] as const,
   storeCatalog: ['shop', 'catalog'] as const,
   raceMastery: ['meta', 'raceMastery'] as const,
   guilds: ['social', 'guilds'] as const,
@@ -1688,7 +1689,9 @@ export interface AptitudePreview {
   PredictedMax: number;
   /** The band's low end when this aptitude is selected on the Grounds (the better parent is taken outright). */
   SelectedMin: number;
-  /** True when the account's bloodline ceiling, not the parents, set PredictedMax. */
+  /** The selected band's top (BreedingAptitudes.PreviewSelected). Absent on an older server. */
+  SelectedMax?: number;
+  /** True when the better parent already stands at the limit - the child cannot climb here. */
   AtCeiling: boolean;
 }
 
@@ -1713,6 +1716,10 @@ export interface BreedingPreview {
   BloodlineCeiling: number;
   /** What the next rebirth raises it to (equal at the last one). */
   NextBloodlineCeiling: number;
+  /** The races the child can be born as; the first is the default. Absent on an older server. */
+  ChildRaceOptions?: number[];
+  /** How many aptitudes the Grounds lets you select now. */
+  SelectableCount?: number;
 }
 
 export function fetchBreedingPreview(paternalId: string, maternalId: string): Promise<BreedingPreview> {
@@ -1725,6 +1732,29 @@ export function fetchBreedingPreview(paternalId: string, maternalId: string): Pr
  * from the village. A separate endpoint because the partner is a
  * village_newcomers row rather than a character.
  */
+/** One ranked partner for a hero (BreedingMatchmaker on the server, 2026-11-13). */
+export interface BreedingSuggestion {
+  /** The partner picker's key: 'c:<guid>' or 'v:<id>'. */
+  Key: string;
+  Name: string;
+  IsVillager: boolean;
+  IsRelated: boolean;
+  RaceId: number;
+  /** Expected child aptitude total with the suggested selection. */
+  ExpectedTotal: number;
+  /** The lowest total the child can come out with. */
+  ChildFloorTotal: number;
+  /** The aptitudes worth ticking for this pair. */
+  SelectionMask: number;
+  CostGold: number;
+}
+
+/** The five best eligible partners for a hero, best first. */
+export function fetchBreedingSuggestions(heroId: string): Promise<BreedingSuggestion[]> {
+  const query = new URLSearchParams({ heroId });
+  return authedGet<BreedingSuggestion[]>(`/api/v1/breeding/suggest?${query}`);
+}
+
 export function fetchVillagerBreedingPreview(
   heroId: string,
   newcomerId: number,
@@ -2794,9 +2824,10 @@ export interface RebirthPreview {
   DamageBonusPctCap: number;
   ShardsEarned: number;
 
-  // Task 114: what a rebirth pays now, and its ceiling (RebirthRules).
+  // Task 114: what a rebirth pays now (RebirthRules).
+  /** RebirthRules.BloodlineRebirths: the count that maxes the bloodline ceiling. NOT a cap since 2026-11-13. */
   MaxRebirths: number;
-  /** True once the account has taken MaxRebirths - the server refuses more. */
+  /** Always false since 2026-11-13 - rebirth is unlimited. Kept for an older server. */
   Capped: boolean;
   /** The last rebirth that pays more than the bloodline ceiling (10 of 20). */
   RewardedRebirths: number;
@@ -2833,6 +2864,20 @@ export interface RebirthPreview {
   Diamonds: number;
   HallMembersKept: number;
   VillageBuildingLevels: number;
+  /** The Ancestral Boons the shards buy. Absent on an older server. */
+  Boons?: BoonView[];
+}
+
+/** One Ancestral Boon (BoonView / LegacyPerkResolver on the server). */
+export interface BoonView {
+  /** The TargetUnlockId purchaseLegacyUnlock sends. */
+  UnlockId: number;
+  Name: string;
+  Effect: string;
+  Rank: number;
+  MaxRank: number;
+  /** Shards for the next rank, or -1 at the cap. */
+  NextCost: number;
 }
 
 export function fetchRebirthPreview(): Promise<RebirthPreview> {

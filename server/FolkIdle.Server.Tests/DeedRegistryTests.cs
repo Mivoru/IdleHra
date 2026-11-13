@@ -23,7 +23,7 @@ namespace FolkIdle.Server.Tests
         public DeedRegistryTests(ITestOutputHelper output) => _output = output;
 
         [Fact]
-        public void ThereAreFiveChaptersAndNoneIsEmpty()
+        public void ThereAreSixChaptersAndNoneIsEmpty()
         {
             Assert.Equal(DeedRegistry.ChapterCount, DeedRegistry.Chapters.Count);
 
@@ -81,7 +81,9 @@ namespace FolkIdle.Server.Tests
                 ForgeLevel: 99, InnLevel: 99, VillageBuildingLevelTotal: 999, WarehouseLevel: 99,
                 GatheringMasteryTotal: 9999, LowestRegionOneKillCount: 999_999,
                 BestCodexRegionCompletion: 1, BestSeasonRank: 1, ChildrenBred: 99,
-                EpicChildrenBred: 9, BestAptitudeTotal: 200);
+                EpicChildrenBred: 9, BestAptitudeTotal: 200,
+                RenownedRebirths: 99, BestSingleAptitude: 99, BestLowestAptitude: 99,
+                RacesAtThirty: 9, DeepestGeneration: 99, RebirthCount: 99);
 
             foreach (var chapter in DeedRegistry.Chapters)
             {
@@ -152,7 +154,7 @@ namespace FolkIdle.Server.Tests
         /// the checklist rather than of the season.
         /// </summary>
         [Fact]
-        public void FiveSealsAreWorthTenPointsASeason()
+        public void SixSealsAreWorthTwelvePointsASeason()
         {
             int all = 0;
             for (int chapter = 1; chapter <= DeedRegistry.ChapterCount; chapter++)
@@ -163,7 +165,7 @@ namespace FolkIdle.Server.Tests
             }
 
             Assert.Equal(DeedRegistry.ChapterCount, DeedRegistry.SealCount(all));
-            Assert.Equal(10, DeedRegistry.SkillPointsFrom(all));
+            Assert.Equal(12, DeedRegistry.SkillPointsFrom(all));
             Assert.Equal(0, DeedRegistry.SkillPointsFrom(0));
         }
 

@@ -31,7 +31,7 @@
     preview.Aptitudes.map((apt, index) => {
       const selected = (selectionMask & (1 << index)) !== 0;
       const low = selected ? apt.SelectedMin : apt.PredictedMin;
-      const high = apt.PredictedMax;
+      const high = selected ? Math.max(low, apt.SelectedMax ?? apt.PredictedMax) : apt.PredictedMax;
       const hero = apt.ParentHero;
       return {
         ...apt,

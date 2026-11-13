@@ -133,15 +133,13 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"generations from {Start} to {BreedingAptitudes.MaxValue} at Grounds  1: {(BreedingAptitudes.MaxValue - Start) / driftAtOne:0}");
             _output.WriteLine($"generations from {Start} to {BreedingAptitudes.MaxValue} at Grounds 12: {(BreedingAptitudes.MaxValue - Start) / driftAtMax:0}");
 
-            // Both climb. A bloodline that cannot rise at all past the village
-            // is the complaint this work started from.
-            Assert.True(driftAtOne > 0.0, "a bloodline does not climb at all at Grounds 1");
+            // Lineage overhaul 2026-11-13: a SELECTED aptitude far below the
+            // limit gains a sure +2 (SureGrowth) plus the luck roll, so the
+            // climb no longer depends on the Grounds - the Grounds buys the
+            // luck and the number of selections.
+            Assert.InRange(driftAtOne, 2.2, 2.45);
             Assert.True(driftAtMax > driftAtOne, "the Grounds level buys nothing");
-
-            // And the Grounds is worth roughly double, not a rounding error and
-            // not a runaway. PowerCeilingTests' rule: every lever declares what
-            // it is worth.
-            Assert.InRange(driftAtMax / driftAtOne, 1.5, 3.0);
+            Assert.InRange(driftAtMax / driftAtOne, 1.02, 1.2);
         }
 
         private static double MeasureDrift(int groundsLevel, int start, int generations, int seed)
@@ -163,6 +161,66 @@ namespace FolkIdle.Server.Tests
             }
 
             return (double)total / generations;
+        }
+
+        /// <summary>
+        /// THE CEILING IS THE CLOCK (lineage overhaul 2026-11-13). Production:
+        /// both 20-rebirth accounts sat at 21-23 under a ceiling of 50. With
+        /// three selected aptitudes, rotated onto the three lowest, and a fresh
+        /// villager each generation (the hardest partner - a weak one), a line
+        /// at 20 reaches 50/50/50/50 in about 25 generations; the Python model
+        /// in docs/design/LINEAGE_REBIRTH_OVERHAUL.md said 25 (p90 29).
+        /// </summary>
+        [Fact]
+        public void ATwentyRebirthLineFillsItsCeilingInAFewDozenGenerations()
+        {
+            int ceiling = BreedingAptitudes.CeilingFor(20);
+            Assert.Equal(BreedingAptitudes.MaxValue, ceiling);
+
+            var counts = new System.Collections.Generic.List<int>();
+            for (int run = 0; run < 200; run++)
+            {
+                var rng = new Random(1000 + run);
+                int[] line = { 20, 20, 20, 20 };
+                int generations = 0;
+                while (Array.Exists(line, v => v < ceiling) && generations < 500)
+                {
+                    int mask = 0;
+                    var order = new[] { 0, 1, 2, 3 };
+                    Array.Sort(order, (x, y) => line[x].CompareTo(line[y]));
+                    for (int k = 0; k < 3; k++) mask |= 1 << order[k];
+
+                    var villager = BreedingAptitudes.RollVillager(MaxInnLevel, rng);
+                    var child = BreedingAptitudes.Breed(line, villager, false, false, mask, MaxInnLevel, rng, ceiling);
+                    // A player keeps the better of parent and child.
+                    if (System.Linq.Enumerable.Sum(child) >= System.Linq.Enumerable.Sum(line)) line = child;
+                    generations++;
+                }
+                counts.Add(generations);
+            }
+
+            counts.Sort();
+            int median = counts[counts.Count / 2];
+            int p90 = counts[counts.Count * 9 / 10];
+            _output.WriteLine($"20 -> 50/50/50/50 with a fresh villager each generation: median {median}, p90 {p90}");
+            Assert.InRange(median, 15, 40);
+            Assert.True(p90 < 60, $"p90 {p90}");
+        }
+
+        /// <summary>A selected aptitude never falls below the better parent, and stops at the limit.</summary>
+        [Fact]
+        public void ASelectedAptitudeAlwaysGrowsUntilTheLimit()
+        {
+            var rng = new Random(3);
+            for (int i = 0; i < 5_000; i++)
+            {
+                var child = BreedingAptitudes.Breed(new[] { 30, 4, 4, 4 }, new[] { 10, 4, 4, 4 }, false, false, 0b0001, 1, rng, ceiling: 41);
+                Assert.InRange(child[0], 32, 33);
+                var capped = BreedingAptitudes.Breed(new[] { 40, 4, 4, 4 }, new[] { 10, 4, 4, 4 }, false, false, 0b0001, 1, rng, ceiling: 41);
+                Assert.Equal(41, capped[0]);
+            }
+            // A related pair gets no sure growth.
+            Assert.Equal(0, BreedingAptitudes.SureGrowth(30, 41, isRelated: true));
         }
 
         /// <summary>

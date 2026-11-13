@@ -10771,7 +10771,7 @@ namespace FolkIdle.Server.Tests
         // must cost NOTHING - a rollback that spends the gold anyway is the
         // shape of bug this engine's Serializable transaction exists to stop.
         [Fact]
-        public async Task Test_HeroVillager_RefusesWrongRaceSameSexAndAChildHero()
+        public async Task Test_HeroVillager_RefusesSameSexAndAChildHero_AndMarriesAcrossRaces()
         {
             const long testPlayerId = 970004611L;
             Guid maleHumanId = Guid.NewGuid();
@@ -10795,7 +10795,9 @@ namespace FolkIdle.Server.Tests
                     // was a refusal against a column nothing ever wrote - so
                     // the case it covered could not happen and the case it
                     // missed (a child) was the only real one.
-                    new CharacterRecord { Id = youngHumanId, PlayerId = testPlayerId, AgePhase = 0, SlotIndex = 1, IsFemale = false });
+                    // Born now, so ChildGrowth does not promote it (a BornAtEpoch
+                    // of 0 reads as a child from before the column - long grown).
+                    new CharacterRecord { Id = youngHumanId, PlayerId = testPlayerId, AgePhase = 0, SlotIndex = 1, IsFemale = false, BornAtEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds() });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = maleHumanId, GenerationIndex = 0, GeneticVector = humanGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = youngHumanId, GenerationIndex = 0, GeneticVector = humanGenome.RawValue });
@@ -10813,8 +10815,6 @@ namespace FolkIdle.Server.Tests
 
             var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
 
-            // Wrong race - breeding refuses a mixed pair everywhere else too.
-            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, vilaWomanId);
             // Two men is not a pair.
             await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, humanManId);
             // A child cannot marry. Only the hero's own age is checked - the
@@ -10828,6 +10828,21 @@ namespace FolkIdle.Server.Tests
 
                 var gold = await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
                 Assert.Equal(10000L, gold.Quantity);
+            }
+
+            // A Human and a Fairy marry (2026-11-13), and the player picks the
+            // child's race in the selection byte's high nibble.
+            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, vilaWomanId, RaceIds.Vila << 4);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var child = await verify.CharacterRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.Id != maleHumanId && c.Id != youngHumanId);
+                var childLineage = await verify.CharacterLineages.AsNoTracking().SingleAsync(l => l.CharacterId == child.Id);
+                Assert.Equal(RaceIds.Vila, new GeneticVector(childLineage.GeneticVector).LocusRace.Dominant);
+                Assert.Equal(RaceIds.Human, new GeneticVector(childLineage.GeneticVector).LocusRace.Recessive);
+                Assert.True(child.BornAtEpoch > 0);
+                Assert.True((await verify.VillageNewcomers.AsNoTracking().SingleAsync(v => v.Id == vilaWomanId)).IsElder);
             }
         }
 

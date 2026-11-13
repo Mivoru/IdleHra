@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FolkIdle.Server.Engine;
@@ -25,18 +26,28 @@ namespace FolkIdle.Server.Domain.Progression
         {
             var phoenix = PetRegistry.Find(PetRegistry.PhoenixId);
             var title = TitleRegistry.Find(TitleRegistry.RebirthTitleSlug);
-            var steps = new List<RebirthRoadmapStep>(RebirthRules.MaxRebirths);
-            for (int n = 1; n <= RebirthRules.MaxRebirths; n++)
+            // Modul: rebirth is unlimited since 2026-11-13. The road lists every
+            // step that pays something besides shards: 1..BloodlineRebirths, then
+            // each title milestone past it. Shards (ShardsForLevel) are paid by
+            // every rebirth and shown by the preview, not repeated per step.
+            int last = Math.Max(RebirthRules.BloodlineRebirths, RebirthRules.TitleMilestones.Max(m => m.Rebirths));
+            var steps = new List<RebirthRoadmapStep>(last);
+            for (int n = 1; n <= last; n++)
             {
-                // Every rebirth raises the bloodline ceiling - the one reward
-                // that runs all the way to MaxRebirths (owner 2026-10-14).
-                var rewards = new List<RebirthRoadmapReward>
+                var rewards = new List<RebirthRoadmapReward>();
+                // Rebirths 1..20 raise the bloodline ceiling (owner 2026-10-14).
+                if (n <= RebirthRules.BloodlineRebirths)
                 {
-                    new("bloodline", $"Bloodline ceiling {BreedingAptitudes.CeilingFor(n)}",
-                        n == RebirthRules.MaxRebirths
+                    rewards.Add(new("bloodline", $"Bloodline ceiling {BreedingAptitudes.CeilingFor(n)}",
+                        n == RebirthRules.BloodlineRebirths
                             ? "the highest an aptitude can go"
-                            : $"children can be bred up to {BreedingAptitudes.CeilingFor(n)} in an aptitude", null),
-                };
+                            : $"children can be bred up to {BreedingAptitudes.CeilingFor(n)} in an aptitude", null));
+                }
+                foreach (var titleMilestone in RebirthRules.TitleMilestones.Where(m => m.Rebirths == n))
+                {
+                    rewards.Add(new("title", titleMilestone.Name, "title", null));
+                }
+                if (rewards.Count == 0) continue;
                 if (n <= RebirthRules.RewardedRebirths)
                 {
                     rewards.Add(new("skill_points", $"+{RebirthRules.SkillPointsPerRebirth} skill points",

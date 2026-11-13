@@ -71,17 +71,23 @@
 {#if rulesOpen}
   <div class="rules">
   <p class="dim tiny">
-    Each aptitude is <strong>copied whole from one parent</strong>, weighted by
-    how strong each is in it - a 12 against a 4 is 75% the 12 - unless you
-    ticked it on the Grounds, which takes the better parent outright. Then it drifts: <strong>{drift.up}% +1</strong>,
-    <strong>{drift.down}% &minus;1</strong>, {drift.same}% unchanged &mdash;
-    which is the only reason a band reaches one past the better parent.
+    An aptitude you <strong>ticked on the Grounds</strong> takes the better
+    parent's value and <strong>always grows</strong>: +1, or +2 while it is
+    10 or more below your bloodline ceiling, plus a chance of one more. It
+    never falls.
+  </p>
+  <p class="dim tiny">
+    The others are <strong>copied whole from one parent</strong>, weighted by
+    how strong each is in it - a 12 against a 4 is 75% the 12 - then drift:
+    <strong>{drift.up}% +1</strong>, <strong>{drift.down}% &minus;1</strong>,
+    and while far below the ceiling a further even chance of +1.
   </p>
   {#if inbred}
     <p class="warn-line tiny">
-      These two are related, so the drift is <strong>inverted</strong>: it is
-      more likely to lose a point than gain one, and the epic roll falls from
-      5% to {epic}%. Related pairs also risk a flaw - see the traits below.
+      These two are related: <strong>no sure growth</strong>, and the drift is
+      <strong>inverted</strong> - more likely to lose a point than gain one. The
+      epic roll falls from 5% to {epic}%, and related pairs risk a flaw - see
+      the traits below. Marry outside the line: any race will do.
     </p>
   {/if}
   <p class="dim tiny">
@@ -98,7 +104,7 @@
 {/if}
 {#if inbred && !rulesOpen}
   <p class="warn-line tiny">
-    These two are related: the drift is inverted and the epic roll falls to {epic}%.
+    These two are related: no sure growth, the drift is inverted and the epic roll falls to {epic}%.
   </p>
 {/if}
 
@@ -133,9 +139,8 @@
 <p class="dim tiny arrival">
   <strong>A child</strong>, one of the two sexes at random, generation
   {generation === null ? '+1' : generation + 1}, at the end of your roster.
-  It does not grow up on the bench: <strong>field it</strong> in the Hall of
-  Ancestors and give it an hour of work there, offline counts too, to reach Adult, which is all it
-  needs before it can be a parent itself.
+  It <strong>grows up on its own within an hour</strong>, online or away,
+  and can then be a parent itself.
 </p>
 <p class="dim tiny arrival">
   {#if mode === 'village'}

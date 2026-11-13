@@ -355,7 +355,12 @@ namespace FolkIdle.Server.Network
 
         // An equip of a piece kept through a rebirth before this life has
         // reached its region again (EquipmentInstance.VaultLockRegion).
-        VaultLocked = 72
+        VaultLocked = 72,
+        // The Ancestral Boons (LegacyPerkResolver, 2026-11-13): a rank bought,
+        // too few Legacy Shards, the boon already at its cap.
+        BoonPurchased = 73,
+        BoonInsufficientShards = 74,
+        BoonMaxed = 75
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

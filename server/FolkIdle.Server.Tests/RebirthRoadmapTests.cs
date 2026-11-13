@@ -18,12 +18,17 @@ namespace FolkIdle.Server.Tests
         public void EveryRebirthUpToTheCapHasAStep_AndEachPaysItsSkillPoints()
         {
             var steps = RebirthRoadmap.Build();
-            Assert.Equal(Enumerable.Range(1, RebirthRules.MaxRebirths), steps.Select(s => s.Rebirth));
-            // Skill points through the tenth; the bloodline ceiling on every one.
+            // 1..20 (the bloodline ceiling), then each title milestone past it.
+            var expected = Enumerable.Range(1, RebirthRules.BloodlineRebirths)
+                .Concat(RebirthRules.TitleMilestones.Select(m => m.Rebirths).Where(n => n > RebirthRules.BloodlineRebirths));
+            Assert.Equal(expected, steps.Select(s => s.Rebirth));
+            // Skill points through the tenth; the bloodline ceiling on every one up to twenty.
             Assert.All(steps.Where(s => s.Rebirth <= RebirthRules.RewardedRebirths), s => Assert.Contains(s.Rewards, r => r.Kind == "skill_points"));
             Assert.All(steps.Where(s => s.Rebirth > RebirthRules.RewardedRebirths), s => Assert.DoesNotContain(s.Rewards, r => r.Kind == "skill_points"));
-            Assert.All(steps, s => Assert.Contains(s.Rewards, r => r.Kind == "bloodline" && r.Name.EndsWith(" " + BreedingAptitudes.CeilingFor(s.Rebirth))));
-            Assert.Contains(steps[^1].Rewards, r => r.Kind == "bloodline" && r.Name.EndsWith(" " + BreedingAptitudes.MaxValue));
+            var bloodlineSteps = steps.Where(s => s.Rebirth <= RebirthRules.BloodlineRebirths).ToList();
+            Assert.All(bloodlineSteps, s => Assert.Contains(s.Rewards, r => r.Kind == "bloodline" && r.Name.EndsWith(" " + BreedingAptitudes.CeilingFor(s.Rebirth))));
+            Assert.Contains(bloodlineSteps[^1].Rewards, r => r.Kind == "bloodline" && r.Name.EndsWith(" " + BreedingAptitudes.MaxValue));
+            Assert.All(RebirthRules.TitleMilestones, m => Assert.Contains(steps.Single(s => s.Rebirth == m.Rebirths).Rewards, r => r.Kind == "title" && r.Name == m.Name));
         }
 
         [Fact]

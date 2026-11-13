@@ -1885,6 +1885,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Modul: "who should my hero marry?" (2026-11-13) - the best
+            // partners for one hero, ranked by BreedingMatchmaker.
+            if (requestPath == "/api/v1/breeding/suggest" && context.Request.HttpMethod == "GET")
+            {
+                await HandleBreedingSuggest(context);
+                return;
+            }
+
             // Modul: the same question asked of THE standard pair - a
             // hero and somebody from the village. Separate because the
             // partner is a village_newcomers row, not a character.
@@ -6892,6 +6900,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                await Engine.ChildGrowth.TrySettleAsync(db, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 var characters = await db.CharacterRecords
                     .AsNoTracking()
                     .Where(c => c.PlayerId == playerId)
@@ -7016,6 +7025,7 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+                await Engine.ChildGrowth.TrySettleAsync(db, playerId, GameClock.UtcNowOffset.ToUnixTimeSeconds());
                 var characters = await db.CharacterRecords
                     .AsNoTracking()
                     .Where(c => c.PlayerId == playerId)
@@ -7153,6 +7163,8 @@ namespace FolkIdle.Server.Network
             // it. Sent rather than derived so the screen can show what a tick
             // buys without a client copy of the rule.
             public int SelectedMin { get; set; }
+            // The selected band's top (BreedingAptitudes.PreviewSelected).
+            public int SelectedMax { get; set; }
             // True when the bloodline ceiling, not the parents, set PredictedMax.
             public bool AtCeiling { get; set; }
         }
@@ -7180,6 +7192,12 @@ namespace FolkIdle.Server.Network
             // next rebirth would raise it to (equal at the last one).
             public int BloodlineCeiling { get; set; }
             public int NextBloodlineCeiling { get; set; }
+            // The races the child can be born as: the first is the default
+            // (father / hero), the second the other parent's when it differs.
+            // Sent so the picker never offers a race the engine would replace.
+            public System.Collections.Generic.List<int> ChildRaceOptions { get; set; } = new();
+            // How many aptitudes the Grounds lets the player select now.
+            public int SelectableCount { get; set; }
         }
 
         private static async Task AddAptitudePreviewsAsync(
@@ -7191,9 +7209,14 @@ namespace FolkIdle.Server.Network
             response.BloodlineCeiling = ceiling;
             response.NextBloodlineCeiling = Engine.BreedingAptitudes.CeilingFor(rebirths + 1);
 
+            // Modul: relatedness is set on the response before this runs, and
+            // it changes the bands (no sure growth, reversed luck) - so the
+            // preview must be filled after IsInbredRisk, never before.
+            bool related = response.IsInbredRisk;
             for (int i = 0; i < Engine.BreedingAptitudes.Count; i++)
             {
-                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max, ceiling);
+                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max, ceiling, related);
+                Engine.BreedingAptitudes.PreviewSelected(hero[i], partner[i], out int selMin, out int selMax, ceiling, related);
                 int better = Math.Max(hero[i], partner[i]);
                 response.Aptitudes.Add(new AptitudePreviewResponse
                 {
@@ -7202,8 +7225,9 @@ namespace FolkIdle.Server.Network
                     ParentPartner = partner[i],
                     PredictedMin = min,
                     PredictedMax = max,
-                    SelectedMin = Math.Min(Math.Max(0, better - 1), max),
-                    AtCeiling = max < Math.Min(better + 1, Engine.BreedingAptitudes.MaxValue),
+                    SelectedMin = selMin,
+                    SelectedMax = selMax,
+                    AtCeiling = better >= Engine.BreedingAptitudes.ChildLimit(hero[i], partner[i], ceiling),
                 });
             }
         }
@@ -7311,9 +7335,15 @@ namespace FolkIdle.Server.Network
                     .FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
-                AddLocusPreview(response.Loci, "Race", pVec.LocusRace, mVec.LocusRace, maxGen);
+                // Modul: no locus rows (2026-11-13). The Speed/Crit/Yield loci
+                // are read by nothing, and the Race row said what the race
+                // picker now says. Loci stays on the response, empty, so an
+                // older client renders nothing rather than failing.
+                AddChildRaceOptions(response, pVec.LocusRace.Dominant, mVec.LocusRace.Dominant);
                 await AddAptitudePreviewsAsync(db, playerId, response, pLineage.AptitudeVector(), mLineage.AptitudeVector());
-                AddTraitPreviews(response, pLineage.TraitMask, mLineage.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
+                int rosterGrounds = await BreedingGroundsLevelAsync(db, playerId);
+                response.SelectableCount = Engine.BreedingAptitudes.SelectableCount(rosterGrounds);
+                AddTraitPreviews(response, pLineage.TraitMask, mLineage.TraitMask, rosterGrounds);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -7402,9 +7432,11 @@ namespace FolkIdle.Server.Network
                     .FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
-                AddLocusPreview(response.Loci, "Race", heroVec.LocusRace, villagerVec.LocusRace, maxGen);
+                AddChildRaceOptions(response, heroVec.LocusRace.Dominant, (byte)newcomer.RaceId);
                 await AddAptitudePreviewsAsync(db, playerId, response, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
-                AddTraitPreviews(response, heroLineage.TraitMask, newcomer.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
+                int villagerGrounds = await BreedingGroundsLevelAsync(db, playerId);
+                response.SelectableCount = Engine.BreedingAptitudes.SelectableCount(villagerGrounds);
+                AddTraitPreviews(response, heroLineage.TraitMask, newcomer.TraitMask, villagerGrounds);
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -7419,19 +7451,154 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
-        private static void AddLocusPreview(System.Collections.Generic.List<GenePreviewLocusResponse> loci, string name, Locus pLocus, Locus mLocus, int maxGeneration)
+        private sealed class BreedingSuggestionResponse
         {
-            GeneticSplicingEngine.PreviewLocus(pLocus, mLocus, maxGeneration, out byte minDominant, out byte maxDominant, out double mutationChancePct);
+            /// <summary>The partner picker's key: "c:" + character id, or "v:" + newcomer id.</summary>
+            public string Key { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public bool IsVillager { get; set; }
+            public bool IsRelated { get; set; }
+            public int RaceId { get; set; }
+            /// <summary>Expected child aptitude total, one decimal.</summary>
+            public double ExpectedTotal { get; set; }
+            public int ChildFloorTotal { get; set; }
+            public int SelectionMask { get; set; }
+            public long CostGold { get; set; }
+        }
 
-            loci.Add(new GenePreviewLocusResponse
+        /// <summary>
+        /// The five best partners for a hero, eligible ones only: the same gate
+        /// the engine runs, the same relatedness, the same bands
+        /// (BreedingMatchmaker). Read-only.
+        /// </summary>
+        private async Task HandleBreedingSuggest(HttpListenerContext context)
+        {
+            try
             {
-                LocusName = name,
-                ParentPaternalDominant = pLocus.Dominant,
-                ParentMaternalDominant = mLocus.Dominant,
-                PredictedMinDominant = minDominant,
-                PredictedMaxDominant = maxDominant,
-                MutationChancePct = mutationChancePct
-            });
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!Guid.TryParse(query["heroId"], out Guid heroId) || heroId == Guid.Empty)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
+                await Engine.ChildGrowth.TrySettleAsync(db, playerId, nowEpoch);
+
+                var hero = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == heroId);
+                var heroLineage = await db.CharacterLineages.AsNoTracking().FirstOrDefaultAsync(l => l.CharacterId == heroId);
+                if (hero == null || heroLineage == null || hero.PlayerId != playerId)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                int rebirths = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == playerId).Select(p => p.RebirthCount).FirstOrDefaultAsync();
+                int ceiling = Engine.BreedingAptitudes.CeilingFor(rebirths);
+                int grounds = await BreedingGroundsLevelAsync(db, playerId);
+                int selectable = Engine.BreedingAptitudes.SelectableCount(grounds);
+                int discount = Engine.HearthTreeRegistry.ValueAtLevel(Engine.HearthTreeRegistry.Matchmaker, await Engine.HearthTreeRegistry.StoredLevelAsync(db, playerId, Engine.HearthTreeRegistry.Matchmaker));
+                var heroGate = ToGateParent(hero, heroLineage.GeneticVector);
+                int[] heroApt = heroLineage.AptitudeVector();
+
+                var results = new System.Collections.Generic.List<BreedingSuggestionResponse>();
+
+                // The player's own line: the roster gate (ordered by sex) and
+                // the relatedness the engine would find.
+                var others = await db.CharacterRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.Id != heroId && c.IsFemale != hero.IsFemale)
+                    .ToListAsync();
+                var otherIds = others.Select(o => o.Id).ToList();
+                var otherLineages = await db.CharacterLineages.AsNoTracking()
+                    .Where(l => otherIds.Contains(l.CharacterId))
+                    .ToDictionaryAsync(l => l.CharacterId);
+                foreach (var other in others)
+                {
+                    if (!otherLineages.TryGetValue(other.Id, out var lineage)) continue;
+                    var otherGate = ToGateParent(other, lineage.GeneticVector);
+                    var refusal = hero.IsFemale
+                        ? Engine.BreedingGateRules.CheckPair(otherGate, heroGate, nowEpoch)
+                        : Engine.BreedingGateRules.CheckPair(heroGate, otherGate, nowEpoch);
+                    if (refusal != Engine.BreedingRefusal.None) continue;
+
+                    bool related = await Engine.BreedingRelatedness.AreRelatedAsync(db, heroLineage, lineage);
+                    var match = Engine.BreedingMatchmaker.Score(heroApt, lineage.AptitudeVector(), ceiling, related, selectable);
+                    results.Add(new BreedingSuggestionResponse
+                    {
+                        Key = "c:" + other.Id,
+                        Name = other.Name,
+                        IsVillager = false,
+                        IsRelated = related,
+                        RaceId = new GeneticVector(lineage.GeneticVector).LocusRace.Dominant,
+                        ExpectedTotal = match.Score / 10.0,
+                        ChildFloorTotal = match.ChildFloorTotal,
+                        SelectionMask = match.SelectionMask,
+                        CostGold = Engine.BreedingEngine.CostFor(Math.Max(heroLineage.GenerationIndex, lineage.GenerationIndex), discount),
+                    });
+                }
+
+                // The village: never related, marries once.
+                var newcomers = await db.VillageNewcomers.AsNoTracking()
+                    .Where(v => v.PlayerId == playerId && !v.IsElder && v.IsFemale != hero.IsFemale)
+                    .ToListAsync();
+                foreach (var person in newcomers)
+                {
+                    var refusal = Engine.BreedingGateRules.CheckVillagerPair(heroGate, person.IsFemale, (byte)person.RaceId, person.IsElder, nowEpoch);
+                    if (refusal != Engine.BreedingRefusal.None) continue;
+                    var match = Engine.BreedingMatchmaker.Score(heroApt, person.AptitudeVector(), ceiling, false, selectable);
+                    results.Add(new BreedingSuggestionResponse
+                    {
+                        Key = "v:" + person.Id,
+                        Name = Engine.FolkNameRegistry.ForNewcomer(person.Id, person.IsFemale),
+                        IsVillager = true,
+                        IsRelated = false,
+                        RaceId = person.RaceId,
+                        ExpectedTotal = match.Score / 10.0,
+                        ChildFloorTotal = match.ChildFloorTotal,
+                        SelectionMask = match.SelectionMask,
+                        CostGold = Engine.BreedingEngine.CostFor(heroLineage.GenerationIndex, discount),
+                    });
+                }
+
+                // Best expected child first; a relative only ranks where its
+                // numbers put it (no sure growth already lowers them), and a
+                // tie goes to the higher floor - the surer child.
+                var top = results
+                    .OrderByDescending(r => r.ExpectedTotal)
+                    .ThenByDescending(r => r.ChildFloorTotal)
+                    .ThenBy(r => r.IsRelated)
+                    .Take(5)
+                    .ToList();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, top);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Breeding suggest error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private static void AddChildRaceOptions(BreedingPreviewResponse response, byte defaultRace, byte otherRace)
+        {
+            response.ChildRaceOptions.Add(defaultRace);
+            if (otherRace != defaultRace && otherRace != 0) response.ChildRaceOptions.Add(otherRace);
         }
 
         // Modul 13: authorized snapshot of the player's real Race Mastery

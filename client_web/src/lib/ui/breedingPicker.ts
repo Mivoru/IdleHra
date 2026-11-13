@@ -55,7 +55,7 @@ function restingReason(cooldownEndEpoch: number, nowSeconds: number): string | n
 
 /** Why a character cannot be the hero of a pairing, or null. */
 export function heroBlockedReason(candidate: BreedingCandidate, nowSeconds: number): string | null {
-  if (candidate.AgePhase < 1) return 'still a child - field it and give it work to grow up';
+  if (candidate.AgePhase < 1) return 'still a child - grown within an hour of birth';
   return restingReason(candidate.BreedingCooldownEndEpoch, nowSeconds);
 }
 
@@ -69,7 +69,7 @@ export function villagerBlockedReason(
   if (person.IsElder) return 'has already married in';
   if (!hero) return null;
   if (hero.IsFemale === person.IsFemale) return `both ${person.IsFemale ? 'women' : 'men'}`;
-  if (hero.LocusRaceDominant !== person.RaceId) return `not ${raceName(hero.LocusRaceDominant)}`;
+  // Any two races may pair (2026-11-13); the child's race is picked below.
   return null;
 }
 
@@ -85,7 +85,6 @@ export function characterPartnerBlockedReason(
   if (resting) return resting;
   if (!hero) return null;
   if (hero.IsFemale === candidate.IsFemale) return `both ${candidate.IsFemale ? 'women' : 'men'}`;
-  if (hero.LocusRaceDominant !== candidate.LocusRaceDominant) return `not ${raceName(hero.LocusRaceDominant)}`;
   return null;
 }
 

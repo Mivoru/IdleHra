@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The twenty rebirths and what each one pays (owner, 2026-10-11: "a roadmap
+  // The rebirths and what each one pays (owner, 2026-10-11: "a roadmap
   // what a player gets each rebirth, with nice design"). Every step is the
   // SERVER's (RebirthRoadmap.Build, sent on the preview) - the same rules the
   // rebirth grants from - so this draws and decides nothing.
@@ -17,9 +17,15 @@
 
   let { steps, taken }: Props = $props();
 
+  // Modul: the road has gaps past twenty (2026-11-13: steps 1..20, then the
+  // title milestones 30 and 50), so "next" is the first step still ahead, not
+  // taken + 1, and the final step is the last card rather than step N.
+  const nextRebirth = $derived(steps.find((s) => s.Rebirth > taken)?.Rebirth ?? -1);
+  const lastRebirth = $derived(steps.length > 0 ? steps[steps.length - 1].Rebirth : -1);
+
   function stateOf(n: number): 'done' | 'next' | 'ahead' {
     if (n <= taken) return 'done';
-    return n === taken + 1 ? 'next' : 'ahead';
+    return n === nextRebirth ? 'next' : 'ahead';
   }
 
   const ICONS: Record<string, string> = {
@@ -36,9 +42,9 @@
   {#each steps as step (step.Rebirth)}
     {@const state = stateOf(step.Rebirth)}
     {@const big = step.Rewards.some((r) => r.Kind !== 'skill_points' && r.Kind !== 'bloodline')}
-    <div class="step {state}" class:big class:final={step.Rebirth === steps.length} data-testid="rebirth-step-{step.Rebirth}" data-state={state}>
+    <div class="step {state}" class:big class:final={step.Rebirth === lastRebirth} data-testid="rebirth-step-{step.Rebirth}" data-state={state}>
       <div class="head">
-        <span class="shield" class:max={step.Rebirth === steps.length}>{step.Rebirth}</span>
+        <span class="shield" class:max={step.Rebirth === lastRebirth}>{step.Rebirth}</span>
         <span class="tag">{state === 'done' ? 'Taken' : state === 'next' ? 'Next' : 'Ahead'}</span>
       </div>
       <div class="rewards">

@@ -74,7 +74,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // rollbacks and not one command result between them, so every refusal left
   // the button enabled and the screen blank.
   26: 'Build the Breeding Grounds in your village first.',
-  27: 'A parent has to be a grown adult. A child matures after an hour of work in a slot.',
+  27: 'A parent has to be a grown adult. A child grows up within an hour of birth.',
   28: 'That character is still resting after its last child.',
   29: 'That character is locked in a trade.',
   30: 'A pair needs one of each - two men or two women cannot breed.',
@@ -134,6 +134,11 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   70: 'The Cailleach comes down from the mountain. Fight!',
   71: 'A pet you already have found you again - its diamonds are in your mail.',
   72: 'That piece is still in the Vault lock - kill something in its region in this life first.',
+
+  // The Ancestral Boons (2026-11-13): 73 is good news, the other two say why not.
+  73: 'Boon raised - it lasts through every rebirth.',
+  74: 'Not enough Legacy Shards for that boon yet.',
+  75: 'That boon is already complete.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;

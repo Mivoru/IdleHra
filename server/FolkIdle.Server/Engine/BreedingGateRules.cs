@@ -88,7 +88,14 @@ namespace FolkIdle.Server.Engine
             // a pair the player can see is opposite-sex teaches nothing.
             if (paternal.IsFemale) return BreedingRefusal.SexRolesSwapped;
 
-            if (paternal.RaceId != maternal.RaceId) return BreedingRefusal.RaceMismatch;
+            // Modul: NO RACE RULE (2026-11-13). Two races may pair and the
+            // player picks which one the child is born as (ResolveChildRace).
+            // The same-race gate made every race its own breeding program: the
+            // village spreads newcomers evenly over the unlocked races, so a
+            // line had 1-4 partners of its own race (measured, production),
+            // could never carry its numbers into another race, and "keep every
+            // race" meant six inbreeding problems at once. RaceMismatch stays
+            // in the enum so old result codes keep their meaning.
 
             return BreedingRefusal.None;
         }
@@ -114,10 +121,32 @@ namespace FolkIdle.Server.Engine
             if (IsResting(hero, nowEpoch)) return BreedingRefusal.ParentResting;
             if (villagerHasMarried) return BreedingRefusal.PartnerAlreadyMarried;
             if (hero.IsFemale == villagerIsFemale) return BreedingRefusal.SameSex;
-            if (hero.RaceId != villagerRaceId) return BreedingRefusal.RaceMismatch;
+            // No race rule - see CheckPair.
 
             return BreedingRefusal.None;
         }
+
+        /// <summary>
+        /// The race a child is born as. The request names one of the two
+        /// parents' races; anything else (0 from an old client, or a race
+        /// neither parent has) falls back to <paramref name="defaultRace"/>,
+        /// never refuses - a stale picker must not cost the player a breeding.
+        /// </summary>
+        public static byte ResolveChildRace(byte raceA, byte raceB, byte requested, byte defaultRace)
+            => requested != 0 && (requested == raceA || requested == raceB) ? requested : defaultRace;
+
+        /// <summary>
+        /// The child race carried in the high nibble of BreedingSelectionMask
+        /// (bits 4-7; 0 = default). The low nibble is the aptitude selection.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE SPARE NIBBLE, not a new field. ClientCommandPacket is
+        /// demultiplexed by exact byte size, and the selection needs only four
+        /// bits of its byte (ClampSelection already drops the rest). Race ids
+        /// run 1-6, so they fit; a new field would have moved the packet size
+        /// for one number.
+        /// </remarks>
+        public static byte RequestedRaceFromMask(int selectionMask) => (byte)((selectionMask >> 4) & 0xF);
 
         /// <summary>
         /// What the player is told. Every refusal has one, and no two share -

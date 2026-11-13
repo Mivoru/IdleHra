@@ -15,6 +15,7 @@
     fetchTraits,
     fetchAncestorsHall,
     fetchRebirthPreview,
+    fetchBreedingSuggestions,
   } from '../lib/net/rest';
   import {
     executeBreeding,
@@ -34,6 +35,8 @@
   import ChildPreview from '../lib/ui/ChildPreview.svelte';
   import PersonPicker from '../lib/ui/PersonPicker.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
+  import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  import { raceName } from '../lib/ui/races';
   import {
     heroPerson,
     partnerCharacterPerson,
@@ -132,6 +135,24 @@
     },
   ]);
 
+  // Modul: BEST MATCHES (2026-11-13). Choosing a partner meant opening the
+  // preview for each candidate in turn and comparing bands by eye, while
+  // dodging relatives nothing marked. The server ranks the eligible partners
+  // by the child they would make (BreedingMatchmaker, from the same bands the
+  // forecast draws) and says which aptitudes to tick; one tap takes both.
+  const suggestions = createQuery(() => ({
+    queryKey: queryKeys.breedingSuggest(heroId),
+    queryFn: () => fetchBreedingSuggestions(heroId),
+    enabled: heroId !== '' && breedingLevel > 0,
+  }));
+
+  function takeSuggestion(key: string, mask: number) {
+    partnerKey = key;
+    const order: number[] = [];
+    for (let i = 0; i < APTITUDES.length; i++) if ((mask & (1 << i)) !== 0) order.push(i);
+    selectionOrder = order;
+  }
+
   const heroName = $derived(heroGroups[0].people.find((p) => p.key === 'c:' + heroId)?.name ?? 'your hero');
   const partnerName = $derived(
     partnerGroups.flatMap((g) => g.people).find((p) => p.key === partnerKey)?.name ?? 'the partner',
@@ -216,6 +237,21 @@
     partnerKey === '' ? undefined : partnerIsVillager ? villagePreview.data : rosterPreview.data,
   );
 
+  // Modul: THE CHILD'S RACE (2026-11-13). Any two races may pair, and the
+  // child is born as one of the two parents' races. The options are the
+  // preview's (the server's default first), so the picker never offers a race
+  // the engine would replace. 0 = the default; reset with every new partner.
+  let childRace = $state(0);
+  const raceOptions = $derived(preview?.ChildRaceOptions ?? []);
+  const chosenRace = $derived(
+    raceOptions.includes(childRace) ? childRace : (raceOptions[0] ?? 0),
+  );
+  $effect(() => {
+    void partnerKey;
+    void heroId;
+    childRace = 0;
+  });
+
   const generation = $derived(
     !hero
       ? null
@@ -234,7 +270,7 @@
   function refusal(code: string): string {
     switch (code) {
       case 'parent_not_adult':
-        return 'A parent has to be a grown adult. A child matures after an hour of work in a slot.';
+        return 'A parent has to be a grown adult. A child grows up within an hour of birth.';
       case 'parent_locked_in_escrow':
         return 'That character is locked in a trade.';
       case 'parent_on_cooldown':
@@ -275,8 +311,8 @@
   function breed() {
     hallBefore = new Set((hall.data?.Members ?? []).map((m) => m.CharacterId));
     const outcome = partnerIsVillager
-      ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
-      : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
+      ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask, chosenRace)
+      : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask, chosenRace);
 
     if (!outcome.ok) {
       hallBefore = null;
@@ -367,6 +403,37 @@
         />
       </div>
 
+      {#if heroId !== '' && suggestions.data && suggestions.data.length > 0}
+        <div class="matches" data-testid="breeding-matches">
+          <strong class="small">Best matches for {heroName}</strong>
+          <ul>
+            {#each suggestions.data as s (s.Key)}
+              <li>
+                <button
+                  type="button"
+                  class="match"
+                  class:on={partnerKey === s.Key}
+                  data-testid="breeding-match"
+                  onclick={() => takeSuggestion(s.Key, s.SelectionMask)}
+                >
+                  <RaceIcon raceId={s.RaceId} />
+                  <span class="who">
+                    <strong>{s.Name}</strong>
+                    <span class="dim tiny">
+                      {s.IsVillager ? 'newcomer' : 'your line'}{#if s.IsRelated} &middot; <span class="risk">related</span>{/if}
+                    </span>
+                  </span>
+                  <span class="score" title="Expected aptitude total of the child (lowest possible in brackets)">
+                    ~{Math.round(s.ExpectedTotal)} <span class="dim tiny">({s.ChildFloorTotal}+)</span>
+                  </span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+          <p class="dim tiny">Ranked by the child they would make. A tap picks the partner and the aptitudes to breed for.</p>
+        </div>
+      {/if}
+
       <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. The Inn
            figure is bestVillagerAptitudeFor, pinned to the server by
            serverMirrors.test.ts. -->
@@ -390,15 +457,16 @@
         {#if selectableCount === 0}
           <p class="dim tiny">
             Breeding Grounds level {SELECTION_UNLOCK_LEVELS[0]} lets you choose an
-            aptitude that always keeps the better parent's value.
+            aptitude that always grows.
           </p>
         {:else}
           <!-- One choice is a radio choice; toggleSelection already replaces
                the old pick at capacity 1, and a second tap clears it. -->
           <p class="dim tiny">
-            {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it keeps the
-            better parent's value; the rest roll. Every aptitude has a
-            {upMutationPercent(breedingLevel)}% chance of +1.
+            {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it takes the
+            better parent's value and <strong>always grows</strong> (+1, or +2 far below your
+            ceiling) until the ceiling. The rest roll. Every aptitude has a
+            {upMutationPercent(breedingLevel)}% chance of one more.
           </p>
 
           <div class="apt-choices">
@@ -429,6 +497,26 @@
 
       {#if preview}
         {@const p = preview}
+        {#if raceOptions.length > 1}
+          <fieldset class="race-pick" data-testid="child-race-picker">
+            <legend>The child is born</legend>
+            <div class="race-choices">
+              {#each raceOptions as race (race)}
+                <label class="race-choice" class:on={chosenRace === race}>
+                  <input
+                    type="radio"
+                    name="child-race"
+                    checked={chosenRace === race}
+                    onclick={() => (childRace = race)}
+                  />
+                  <RaceIcon raceId={race} />
+                  <span>{raceName(race)}</span>
+                </label>
+              {/each}
+            </div>
+            <p class="dim tiny">Aptitudes and traits carry over whichever race you pick.</p>
+          </fieldset>
+        {/if}
         <ChildForecast preview={p} selectionMask={effectiveMask} {heroName} {partnerName} />
 
         <!-- The price, the cost that matters most, and the button: together
@@ -707,5 +795,78 @@
     .apt-choice {
       transition: none;
     }
+  }
+
+  .race-pick {
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin: 0 0 0.75rem;
+  }
+  .race-pick legend {
+    font-weight: 600;
+    padding: 0 0.25rem;
+  }
+  .race-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .race-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    cursor: pointer;
+  }
+  .race-choice.on {
+    border-color: var(--accent, #d4a64a);
+    background: color-mix(in srgb, var(--accent, #d4a64a) 14%, transparent);
+  }
+  .race-choice input {
+    margin: 0;
+  }
+
+  .matches {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0.25rem 0 0.5rem;
+  }
+  .matches ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .match {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .match.on {
+    border-color: var(--accent, #d4a64a);
+    background: color-mix(in srgb, var(--accent, #d4a64a) 12%, transparent);
+  }
+  .match .who {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+  .match .score {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 </style>

@@ -168,12 +168,21 @@ namespace FolkIdle.Server.Engine
             }
 
             int currentRank = LegacyPerkResolver.GetPerkRank(player.LegacyPerks, bitOffset);
-            int cost = LegacyPerkResolver.CalculatePerkRankCost(currentRank);
+            if (currentRank >= LegacyPerkResolver.MaxRankFor(bitOffset))
+            {
+                await transaction.SafeRollbackAsync();
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.BoonMaxed);
+                return;
+            }
+
+            int cost = LegacyPerkResolver.CalculatePerkRankCost(bitOffset, currentRank);
 
             if (totalBalance < cost)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 25, Value2 = cost, Timestamp = Environment.TickCount64 });
                 await transaction.SafeRollbackAsync();
+                // Modul: say so (2026-11-13) - this refusal used to answer nothing.
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.BoonInsufficientShards);
                 return;
             }
 
@@ -199,6 +208,7 @@ namespace FolkIdle.Server.Engine
                 LegacyPerks = player.LegacyPerks,
                 HasLegacyPerksUpdate = true
             });
+            _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.BoonPurchased);
         }
 
         public static int CalculateCitizenSlotCost(uint requestedSlotIndex)

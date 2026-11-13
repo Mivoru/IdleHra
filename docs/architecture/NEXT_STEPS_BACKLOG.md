@@ -19,6 +19,50 @@ do next.
 
 ---
 
+# 2026-11-13 - Lineage and rebirth overhaul; game review
+
+**Read `docs/design/LINEAGE_REBIRTH_OVERHAUL.md`** (decisions, numbers, what
+existing players get) and **`docs/design/GAME_REVIEW_2026_11_13.md`** (where the
+game loses players; four questions for the owner). Branch
+`claude/lineage-overhaul`, client 1.60.0, one additive migration
+(`characters.BornAtEpoch`).
+
+Measured first, on production: both 20-rebirth accounts sat at aptitude 21-23
+under a ceiling of 50 (the climb past the village was +0.2-0.33 a generation);
+villagers were spread over six races while pairing needed one race; a newborn
+needed a working slot for an hour to grow up; Legacy Shards (40k-55k banked)
+had no client to spend them on; rebirth refused past 20; 11 of 16 accounts
+never left level 1.
+
+Built:
+- **Any two races pair**; the child's race is picked (high nibble of
+  `BreedingSelectionMask`, no packet change; preview `ChildRaceOptions`).
+- **A selected aptitude always grows** (`BreedingAptitudes.SureGrowth`: +1, +2
+  while 10+ below the limit; never falls); unselected ones get a 50% catch-up.
+  20 -> 50/50/50/50 in a median of 24 generations (`BreedingClimbTests`).
+  Selections 1/2/3 at Grounds 1/4/7.
+- **Children grow up on their own** (`ChildGrowth`, settled on read: login,
+  breeding, Hall, roster, suggest). Rows born before the column read as grown.
+  The shutdown age flush is forward-only now (it could demote a promoted child).
+- **Best matches**: `BreedingMatchmaker` + `GET /api/v1/breeding/suggest`.
+- **Rebirth unlimited** (`RebirthRules.BloodlineRebirths` = 20 only for the
+  ceiling); shards = level^2/2; titles at 20/30/50 (at-or-past, idempotent).
+- **Ancestral Boons** = the old legacy perks, retuned (XP/gold +25%, damage
+  +10%, ~74,600 shards to max all) and given a panel on the Rebirth screen;
+  result codes 73-75 replace silent refusals.
+- **Deeds chapter VI, The Long Blood** (a sixth Seal: +2 skill points).
+
+Verified: full server suite (see the PR), client vitest 879+, exercise
+sections breeding/rebirth/ancestors 62/62 and a full run 418/421 before the
+script was updated for the new rules, check:touch clean, check:clipping only
+the pre-existing Combat finding.
+
+Open: the owner's answers to the review's four questions; the session payload
+of a FIELDED child still reads "child" until it works an hour or the player
+logs in again (the row is already adult - display only).
+
+---
+
 # 2026-11-03 - Lockstep bot simulation; two production defects it found
 
 **Read `docs/design/LOCKSTEP_SIM.md` "Read this first".** The playtest bots

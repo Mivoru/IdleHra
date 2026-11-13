@@ -24,18 +24,18 @@ namespace FolkIdle.Server.Tests
         public void TheCeilingRunsFromTheVillageToTheCapOverEveryRebirth()
         {
             Assert.Equal(BreedingAptitudes.VillagerCeiling, BreedingAptitudes.CeilingFor(0));
-            Assert.Equal(BreedingAptitudes.MaxValue, BreedingAptitudes.CeilingFor(RebirthRules.MaxRebirths));
-            Assert.Equal(BreedingAptitudes.MaxValue, BreedingAptitudes.CeilingFor(RebirthRules.MaxRebirths + 5));
+            Assert.Equal(BreedingAptitudes.MaxValue, BreedingAptitudes.CeilingFor(RebirthRules.BloodlineRebirths));
+            Assert.Equal(BreedingAptitudes.MaxValue, BreedingAptitudes.CeilingFor(RebirthRules.BloodlineRebirths + 5));
             Assert.Equal(BreedingAptitudes.VillagerCeiling, BreedingAptitudes.CeilingFor(-1));
 
-            for (int n = 1; n <= RebirthRules.MaxRebirths; n++)
+            for (int n = 1; n <= RebirthRules.BloodlineRebirths; n++)
             {
                 int step = BreedingAptitudes.CeilingFor(n) - BreedingAptitudes.CeilingFor(n - 1);
                 // Every rebirth opens something - a rebirth that raised nothing
                 // would be a step on the roadmap with no reward on it.
                 Assert.InRange(step, 1, 2);
             }
-            _output.WriteLine(string.Join(" ", System.Linq.Enumerable.Range(0, RebirthRules.MaxRebirths + 1)
+            _output.WriteLine(string.Join(" ", System.Linq.Enumerable.Range(0, RebirthRules.BloodlineRebirths + 1)
                 .Select(n => $"{n}:{BreedingAptitudes.CeilingFor(n)}")));
         }
 
@@ -81,9 +81,14 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(ceiling, max);
             Assert.Equal(ceiling - 4, min);
 
-            // Below the ceiling the band is the parents' plus one, as before.
+            // Close below the ceiling the band is the parents' plus one.
+            BreedingAptitudes.PreviewOne(20, 18, out min, out max, ceiling);
+            Assert.Equal(21, max);
+            Assert.Equal(17, min);
+
+            // Far below it (CatchUpGap or more) the catch-up chance can add one more.
             BreedingAptitudes.PreviewOne(10, 8, out min, out max, ceiling);
-            Assert.Equal(11, max);
+            Assert.Equal(12, max);
             Assert.Equal(7, min);
         }
     }

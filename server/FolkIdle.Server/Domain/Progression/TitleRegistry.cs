@@ -65,6 +65,10 @@ namespace FolkIdle.Server.Domain.Progression
 
                 // Task 114: the tenth and last rebirth (RebirthEngine grants it).
                 new TitleDefinition(RebirthTitleSlug, "The Ever-Returning", 0, "#ffd700"),
+                // 2026-11-13: the milestones past ten (RebirthRules.TitleMilestones).
+                new TitleDefinition("rebirth_bloodline", "Keeper of the Blood", 0, "#e05a7a"),
+                new TitleDefinition("rebirth_undying", "The Undying", 0, "#b48cff"),
+                new TitleDefinition("rebirth_wheel", "Wheel of Ages", 0, "#7fe0ff"),
 
                 // Chernobog (owner, 2026-10-13): two milestone titles, kept for
                 // good, and last week's top three, which move every Sunday.

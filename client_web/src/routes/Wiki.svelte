@@ -1146,8 +1146,8 @@
           <h3 id="requirements">What you need</h3>
           <ul class="styled-list">
             <li>A <strong>Breeding Grounds</strong> at level 1 or better. That is the unlock.</li>
-            <li>A hero who is an <strong>Adult</strong> — a child matures after an hour of work in a slot, online or offline.</li>
-            <li>One of each sex, and both of the <strong>same race</strong>.</li>
+            <li>A hero who is an <strong>Adult</strong> — a child grows up on its own within an hour of birth, online or offline.</li>
+            <li>One of each sex. <strong>Any two races</strong> may pair: you pick which of the two races the child is born as, and its aptitudes and traits carry over either way.</li>
             <li><strong>500 gold × (highest parent generation + 1)</strong>. A founder costs 500; a generation-3 parent costs 2,000.</li>
             <li>No breeding cooldown, and not locked in a market trade.</li>
           </ul>
@@ -1168,7 +1168,7 @@
               <strong>Hero × newcomer — the standard pair</strong>
               <p class="dim small">
                 Only the hero needs to be an adult. The newcomer only has to be of
-                the opposite sex and the same race. This pairing is
+                the opposite sex, of any race you have unlocked. This pairing is
                 <strong>never inbred</strong> — a newcomer has no parents in this
                 world. They marry exactly once and are spent for ever afterwards.
                 <strong>This is the pairing that raises a bloodline.</strong>
@@ -1179,10 +1179,11 @@
               <p class="dim small">
                 Both parents must be adults. It <em>can</em> be inbred: sharing a
                 parent, or one being the other's parent. That is allowed but
-                degraded — the drift inverts so the down-chance becomes the
-                up-chance, epic mutation falls from 5% to 1%, and the Speed, Crit
-                and Yield genes each lose a quarter of both copies. Crossing your
-                own <strong>refines</strong> a line; it does not raise it.
+                degraded — a ticked aptitude gets no sure growth, the drift
+                inverts so the down-chance becomes the up-chance, epic mutation
+                falls from 5% to 1%, and a flaw becomes likely. Related means
+                anyone within two generations: parents, grandparents, siblings,
+                cousins, an aunt or uncle.
               </p>
             </div>
           </div>
@@ -1191,13 +1192,19 @@
           <p class="dim small">For each aptitude, independently:</p>
           <ol class="steps">
             <li>
-              <strong>One parent's exact value is copied.</strong> If you
-              <em>selected</em> that aptitude, the better parent's value is taken
-              outright. Otherwise it is weighted by who is stronger — a parent at 12
-              against a parent at 4 gives a 75% chance of the 12, which also means a
-              <strong>25% chance of the 4</strong>.
+              <strong>A ticked aptitude always grows.</strong> If you
+              <em>selected</em> it on the Grounds, the child takes the better
+              parent's value and gains <strong>+1, or +2 while it is 10 or more
+              below your ceiling</strong>, plus the luck roll below. It never falls.
             </li>
-            <li><strong>A drift roll</strong>: {upMutationPercent(0)}% +1 and 10% −1 with no Breeding Grounds bonus, rising to {upMutationPercent(12)}% +1 at a maxed Grounds.</li>
+            <li>
+              <strong>Any other aptitude copies one parent's exact value</strong>,
+              weighted by who is stronger — a parent at 12 against a parent at 4
+              gives a 75% chance of the 12, which also means a
+              <strong>25% chance of the 4</strong>. While it is 10 or more below
+              your ceiling it has a further 50% chance of +1.
+            </li>
+            <li><strong>A luck roll</strong>: {upMutationPercent(0)}% +1 (and, for an aptitude you did not tick, 10% −1) with no Breeding Grounds bonus, rising to {upMutationPercent(12)}% +1 at a maxed Grounds.</li>
             <li><strong>An epic mutation</strong>, 5% of the time, adds +1 to all four and marks the child.</li>
             <li>
               Capped at your <strong>bloodline ceiling</strong>: {bloodlineCeilingFor(0)} before your first
@@ -1210,10 +1217,10 @@
           <p class="dim small">
             The Breeding Grounds level decides how many aptitudes you may
             <strong>choose</strong> before a pairing. A chosen aptitude skips the
-            weighted coin entirely and keeps the better parent's value, so a line
-            stops losing ground on the exact number you were trying to raise. You
-            can never select all four — that would delete inheritance and make the
-            choice of partner meaningless.
+            weighted coin, keeps the better parent's value and always grows, so the
+            only limit on a line is your <strong>bloodline ceiling</strong> — which
+            every rebirth raises. You can never select all four, so the partner's
+            numbers still matter.
           </p>
           <div class="scroll">
             <table>
@@ -1371,14 +1378,14 @@
           </div>
           <h3 id="rebirth-pays">What a rebirth pays</h3>
           <p>
-            A rebirth is open from the <strong>Rebirth</strong> screen in the Hero menu, at any level. You can be
-            reborn up to {REBIRTH_MAX} times, and every one pays something that lasts:
+            A rebirth is open from the <strong>Rebirth</strong> screen in the Hero menu once your level reaches the Renown level. There is
+            no limit on how many times you can be reborn, and every one pays something that lasts:
           </p>
           <ul class="styled-list">
             {#each REBIRTH_PAYS as line (line)}<li>{line}</li>{/each}
           </ul>
 
-          <h3 id="rebirth-roadmap">The road to twenty</h3>
+          <h3 id="rebirth-roadmap">The road</h3>
           <div class="scroll">
             <table>
               <thead><tr><th>Rebirth</th><th>What it brings</th></tr></thead>
@@ -1425,11 +1432,11 @@
 
           <h3 id="deeds">The Book of Deeds, and Seals</h3>
           <p class="dim small">
-            Five chapters of six deeds. Finishing a chapter awards a
+            Six chapters of six deeds. Finishing a chapter awards a
             <strong>Seal</strong>, and a Seal is worth
             <strong>+{SKILL_POINTS_PER_SEAL} skill points, given back after every rebirth</strong>
             — a second source of points, earned by exploring the game rather than by
-            levelling. Five Seals is +{SKILL_POINTS_PER_SEAL * 5} against a base of
+            levelling. Six Seals is +{SKILL_POINTS_PER_SEAL * 6} against a base of
             about a hundred. There is no claim button: a Seal is awarded the moment
             the server sees the chapter complete.
           </p>
@@ -1446,7 +1453,8 @@
             The live counters are on the <a href="#/progression">Progression screen</a>.
             The Village Road comes first. Once it is finished, Smiths, Hunters and
             Stewards are open together, and the Ledger of Legends opens when two of
-            those three are done - so no loop you dislike blocks the others.
+            those three are done - so no loop you dislike blocks the others. The Long
+            Blood, the bloodline's endgame, follows the Ledger.
           </p>
 
           <h3 id="hall">The Hall of Ancestors, and the cull</h3>

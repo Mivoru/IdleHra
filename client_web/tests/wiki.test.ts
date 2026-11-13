@@ -336,8 +336,8 @@ describe('the tables the wiki restates still match the server', () => {
       .matchAll(/groundsLevel >= (\d+)\) return (\d+)/g)]
       .map((m) => [Number(m[1]), Number(m[2])])
       .sort((a, b) => a[0] - b[0]);
-    expect(thresholds).toEqual([[4, 1], [7, 2], [10, 3]]);
-    expect(text).toContain('levels 4, 7 and 10');
+    expect(thresholds).toEqual([[1, 1], [4, 2], [7, 3]]);
+    expect(text).toContain('levels 1, 4 and 7');
     expect(text).not.toMatch(/nothing above level 1/i);
   });
   it('events: the world boss and the day-7 diamond bonus', () => {
