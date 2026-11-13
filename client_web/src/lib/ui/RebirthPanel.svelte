@@ -83,9 +83,9 @@
       ...m,
       total: m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune,
     }));
-    // Compared with the weakest MARKED member on the bench: whoever plays in a
-    // slot carries regardless, and cannot be unmarked to make room.
-    const carried = members.filter((m) => m.WouldCarry && m.IsKept && m.PlayableSlot < 0);
+    // Compared with the weakest MARKED member: the founder carries
+    // regardless and cannot be unmarked to make room.
+    const carried = members.filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter);
     const left = members.filter((m) => !m.WouldCarry);
     if (carried.length === 0 || left.length === 0) return null;
     const weakestCarried = carried.reduce((a, b) => (b.total < a.total ? b : a));

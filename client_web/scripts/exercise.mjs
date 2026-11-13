@@ -6539,7 +6539,7 @@ await go('Ancestors');
   // WouldCarry, so the screen and the Hall cannot disagree.
   const hallNow = await apiGet('/api/v1/ancestors/hall').catch(() => null);
   const totalOf = (m) => m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
-  const carriedNow = (hallNow?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && m.PlayableSlot < 0).map(totalOf);
+  const carriedNow = (hallNow?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter).map(totalOf);
   const leftNow = (hallNow?.Members ?? []).filter((m) => !m.WouldCarry).map(totalOf);
   const shouldWarn = carriedNow.length > 0 && leftNow.length > 0 && Math.max(...leftNow) > Math.min(...carriedNow);
   const warned = (await page.getByTestId('rebirth-lost-best').count()) > 0;
