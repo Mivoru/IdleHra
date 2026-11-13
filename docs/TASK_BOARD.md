@@ -252,6 +252,16 @@ per region behind, no heal. Unpaid = hungry, kills pay half XP and gold.
 
 ### 112. Re-measure Malakor's Ascension after power changes (after phase 3, roadmap 3.5)
 
+**Re-measured 2026-11-13** (prod dump 17:52Z restored locally, harness on
+player 8, level 109, 4 rebirths; after the aptitude milestones, Boons and the
+per-slot bloodline fix): headroom r5 = x38 real, x112 maxed. Malakor: the
+owner clears **A0-A4** (A4 in 33 s) and dies at A5; the maxed profile clears
+**A0-A6 and A8** (A7 timed out - noise at the edge). Target is owner ~A2-A3,
+maxed ~A5-A7: the owner sits one step high, the maxed profile in band.
+**No change** - one step is inside the harness's own noise; re-run after the
+next power change. (Same run, dungeon stages: real 8/9/8, maxed 9/10/9 for
+XP/Gold/Equipment.)
+
 **Re-measured 2026-11-02** (roadmap 6.2a item 4): the ladder had drifted
 (owner x47.6, maxed x68-77) and is re-solved to A3 = x40, x1.21 a step. Run
 it again after the next power change.
