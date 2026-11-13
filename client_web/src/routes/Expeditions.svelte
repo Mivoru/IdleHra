@@ -128,6 +128,24 @@
     }
   }
 
+  // The whole endgame check-in in one tap (2026-11-13): bring everyone back,
+  // then send the strongest free ancestors out again for the chosen length
+  // (and provisions, if the toggle is on). The same two calls in a row;
+  // sendAll reads the board that claimAll's refetch just brought.
+  async function claimAndResend() {
+    await claimAll();
+    await sendAll();
+  }
+
+  // The wall-clock time of a return, in the player's own locale - "back in
+  // 7 h 12 min" answers "how long", this answers "will it be back before I go
+  // to bed". A day name is added when the return is not today.
+  function returnClock(epoch: number): string {
+    const at = new Date(epoch * 1000);
+    const time = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return at.toDateString() === new Date().toDateString() ? time : `${at.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+  }
+
   const returnedCount = $derived(data ? data.Active.filter((e) => e.ReturnsAtEpoch <= nowSeconds).length : 0);
 
   async function buySlot() {
@@ -186,6 +204,11 @@
     {#if returnedCount > 1}
       <button type="button" class="claim" data-testid="expedition-claim-all" disabled={busy} onclick={claimAll}>Claim all {returnedCount} chests</button>
     {/if}
+    {#if returnedCount > 0 && data.Candidates.length > 0}
+      <button type="button" class="claim primary" data-testid="expedition-claim-resend" disabled={busy} onclick={claimAndResend}>
+        Claim {returnedCount === 1 ? 'the chest' : `all ${returnedCount}`} and send the strongest again ({pickedHours} h{provision && provisionCost > 0 ? ', provisioned' : ''})
+      </button>
+    {/if}
     {#if data.Active.length === 0}
       <p class="dim">Nobody is away.</p>
     {:else}
@@ -200,7 +223,7 @@
             {#if left === 0}
               <button type="button" class="claim primary" data-testid="expedition-claim" disabled={busy} onclick={() => claim(e.Id)}>Claim the chest</button>
             {:else}
-              <span class="tiny">back in {formatDuration(left)}</span>
+              <span class="tiny">back in {formatDuration(left)} <span class="dim">&middot; at {returnClock(e.ReturnsAtEpoch)}</span></span>
             {/if}
           </li>
         {/each}

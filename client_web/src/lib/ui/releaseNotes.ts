@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.82.0',
+    date: '2026-11-14',
+    headline: 'One tap to claim and send your expeditions again.',
+    sections: [
+      {
+        title: 'Expeditions',
+        items: [
+          'When a party is back, one button claims every chest and sends your strongest free ancestors out again for the length you picked - provisioned too, if you turned provisions on.',
+          'A party away now shows the time it comes back, not only how long is left.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.81.0',
     date: '2026-11-13',
     headline: 'Sparks over the battlefield and the forge.',
