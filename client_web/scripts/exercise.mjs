@@ -6250,6 +6250,18 @@ await go('Ancestors');
       shown === expected && opened,
       `expected ${expected}, shown ${shown}, sheet ${opened}${best ? `, best ${best.Name} ${total(best)} vs slot 1 ${slotOne ? total(slotOne) : '-'}` : ''}`,
     );
+
+  // The lost-blood nudge (2026-11-13): shown exactly when the strongest
+  // member who does not carry beats the weakest marked one (server WouldCarry).
+  {
+    const hallLost = await apiGet('/api/v1/ancestors/hall').catch(() => null);
+    const tot = (m) => m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune;
+    const marked = (hallLost?.Members ?? []).filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter).map(tot);
+    const left = (hallLost?.Members ?? []).filter((m) => !m.WouldCarry).map(tot);
+    const should = marked.length > 0 && left.length > 0 && Math.max(...left) > Math.min(...marked);
+    const shown = (await page.getByTestId('hall-lost-nudge').count()) > 0;
+    record('the Hall warns when better blood than the marked would be lost', hallLost !== null && shown === should, `should ${should}, shown ${shown}`);
+  }
   }
 
   // Modul: THE BRED CHILD'S OWN TRAITS, not just the preview that promised it.

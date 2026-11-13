@@ -43,7 +43,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         items: [
           'The breeding lab opens with your strongest free adult already chosen as the hero, so Best matches is there straight away.',
           'The road on the Rebirth screen shows your next four steps and the last one instead of every card. A button opens the whole road.',
-          'The Rebirth screen now warns you when your strongest ancestor would be lost because weaker ones are marked to keep, and says so again before you confirm.',
+          'The Rebirth screen now warns you when your strongest ancestor would be lost because weaker ones are marked to keep, and says so again before you confirm. The Hall of Ancestors names who to unmark and who to mark.',
         ],
       },
     ],

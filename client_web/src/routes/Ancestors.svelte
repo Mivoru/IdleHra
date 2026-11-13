@@ -70,6 +70,20 @@
       : null,
   );
 
+  // Modul: BETTER BLOOD THAN WHAT IS MARKED (2026-11-13). Marked members carry
+  // first, so a better child bred after the marks were set is cut at the
+  // rebirth. On production the owner's account had a 75 outside a marked ten
+  // whose weakest was 46. Named here, where the marks are set (the Rebirth
+  // screen repeats it); WouldCarry is the server's answer.
+  const lostNudge = $derived.by(() => {
+    const marked = members.filter((m) => m.WouldCarry && m.IsKept && !m.IsMainCharacter);
+    const left = members.filter((m) => !m.WouldCarry);
+    if (marked.length === 0 || left.length === 0) return null;
+    const weakest = marked.reduce((a, b) => (aptitudeTotal(b) < aptitudeTotal(a) ? b : a));
+    const best = left.reduce((a, b) => (aptitudeTotal(b) > aptitudeTotal(a) ? b : a));
+    return aptitudeTotal(best) > aptitudeTotal(weakest) ? { best, weakest } : null;
+  });
+
   // The lost list is collapsed and paged: it grows with every breeding, and it
   // is the part of the page a player reads least.
   const LOST_PAGE = 20;
@@ -271,6 +285,17 @@
         count on the character who plays - tap
         <button type="button" class="inline-link" onclick={() => (sheetId = benchNudge.best.CharacterId)}>{nameOf(benchNudge.best)}</button>
         to field them.
+      </p>
+    {/if}
+
+    {#if lostNudge}
+      <p class="bench-nudge lost" data-testid="hall-lost-nudge">
+        <strong>Better blood than what you marked would be lost.</strong>
+        {nameOf(lostNudge.best)} ({aptitudeTotal(lostNudge.best)}) does not carry through a rebirth, while
+        {nameOf(lostNudge.weakest)} ({aptitudeTotal(lostNudge.weakest)}) is marked to keep. Unmark
+        <button type="button" class="inline-link" onclick={() => (sheetId = lostNudge.weakest.CharacterId)}>{nameOf(lostNudge.weakest)}</button>
+        and mark
+        <button type="button" class="inline-link" onclick={() => (sheetId = lostNudge.best.CharacterId)}>{nameOf(lostNudge.best)}</button>.
       </p>
     {/if}
 
