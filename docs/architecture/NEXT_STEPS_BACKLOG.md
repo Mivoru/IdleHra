@@ -133,6 +133,16 @@ off), Leaderboards' Deepest tab label, Forge/Codex copy. check:touch,
 check:overlap, check:safearea 0; check:perf within budget. Tomda started
 his first three expeditions (12 h, region 5) at 09:39 UTC.
 
+Last of the day: #374 **a username is never an email** - the register
+box was `autocomplete="username"`, so a password manager filled the login
+email and maxlength cut it to 20; production account 111 has shown a
+truncated email on every public board since. Now `nickname`, a warning,
+and the server refuses `@`. **Owner: rename account 111** (left as is).
+#375 chest reveal heading; #376 a returned expedition stands out; #377 the
+rebirth let-go list is a count and twelve names (was ~290), and the 44px
+inline links lost the global button rim that drew a line through the text
+above them.
+
 Open: the owner's answers to the review's questions (now five - gold
 inflation added).
 
