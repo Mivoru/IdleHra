@@ -54,6 +54,23 @@ namespace FolkIdle.Server.Engine
         public static long NextSlotPrice(int bought, double goldPerMinute)
             => bought >= MaxBoughtSlots ? 0L : (long)Math.Ceiling(goldPerMinute * 60.0 * BoughtSlotPriceHours[Math.Max(0, bought)] / 1000.0) * 1000L;
 
+        // Modul: PROVISIONS, A GOLD SINK THAT BUYS A BETTER HAUL (owner,
+        // 2026-11-13: "upgraded expeditions for gold, priced by what the player
+        // earns"). Provisioning a party costs half the trip's length in hours of
+        // the player's own income (2 / 4 / 6 h for 4 / 8 / 12 h trips) and adds
+        // ProvisionUpgradePct to the chance of the better chest - on a 4 h trip,
+        // which otherwise always pays Bronze, it opens a Silver at that chance.
+        // It never pays a tier the trip could not reach, so the chest faucet's
+        // ceiling (ChestFor) is unchanged; only its mix moves.
+        public const int ProvisionUpgradePct = 25;
+
+        /// <summary>Hours of the player's own income that provisioning a trip of this length costs.</summary>
+        public static int ProvisionPriceHours(int tripHours) => Math.Max(1, tripHours / 2);
+
+        /// <summary>The provisions price for a trip of this length at this income, rounded up to 1,000.</summary>
+        public static long ProvisionPrice(int tripHours, double goldPerMinute)
+            => (long)Math.Ceiling(goldPerMinute * 60.0 * ProvisionPriceHours(tripHours) / 1000.0) * 1000L;
+
         /// <summary>Titles for expeditions claimed (a long-term goal for the bench), at-or-past and idempotent.</summary>
         public static readonly (int Count, string Slug, string Name)[] TitleMilestones =
         {
@@ -71,16 +88,17 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>
         /// The chest a return pays: 4 h Bronze; 8 h Bronze, Silver at 25% +
-        /// aptitude; 12 h Silver, Gold at 15% + aptitude.
+        /// aptitude; 12 h Silver, Gold at 15% + aptitude. Provisions add
+        /// ProvisionUpgradePct, and give a 4 h trip a Silver at that chance.
         /// </summary>
-        public static LootChestTier ChestFor(int hours, int aptitudeTotal, int roll0To99)
+        public static LootChestTier ChestFor(int hours, int aptitudeTotal, int roll0To99, bool provisioned = false)
         {
-            int bonus = AptitudeUpgradePct(aptitudeTotal);
+            int bonus = AptitudeUpgradePct(aptitudeTotal) + (provisioned ? ProvisionUpgradePct : 0);
             return hours switch
             {
                 >= 12 => roll0To99 < 15 + bonus ? LootChestTier.Gold : LootChestTier.Silver,
                 >= 8 => roll0To99 < 25 + bonus ? LootChestTier.Silver : LootChestTier.Bronze,
-                _ => LootChestTier.Bronze,
+                _ => provisioned && roll0To99 < ProvisionUpgradePct ? LootChestTier.Silver : LootChestTier.Bronze,
             };
         }
     }

@@ -749,6 +749,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("PlayerId")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("Provisioned")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Region")
                         .HasColumnType("integer");
 

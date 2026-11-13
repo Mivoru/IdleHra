@@ -62,3 +62,14 @@ Correction from the owner: Tomda and (pro)boss do not spend on the Vault's
 equipment transfer after a rebirth either, so option 2's Vault line would
 not reach them. A gold-priced upgrade to an expedition (better chest odds),
 priced by income the same way, is the next candidate if gold still piles up.
+
+Built the same evening (client 1.79.0, additive migration
+`Expeditions.Provisioned`): **Provisions** - half the trip in hours of the
+player's own income (2 / 4 / 6 h for 4 / 8 / 12 h trips,
+`ExpeditionRules.ProvisionPrice`), +25 points on the better chest and a 25%
+Silver on 4 h trips; never a tier above what the trip can reach. It is a
+repeating sink, unlike the two one-off slots: provisioning every 12 h trip on
+three slots (six trips a day) costs 36 h of income a day - more than the
+account earns - so it is a choice of which trips to feed, not an automatic
+tick. Tomda and boss bank over three quarters of their income, so they can
+afford most of it. Watch the ledger's Expedition category after a week.

@@ -6255,10 +6255,20 @@ if (want('ancestors')) {
 
   if (before && before.Candidates.length > 0 && before.Active.length < before.Slots) {
     const target = before.Candidates[0];
+    // Provisions (2026-11-13): this trip goes provisioned, so the gold leaves
+    // and the row is marked. The toggle is component state; the reload below
+    // resets it, so the bulk trip after goes unprovisioned.
+    const goldBefore = (await apiGet('/api/v1/player/statistics').catch(() => null))?.Gold ?? 0;
+    const provisionCost = before.ProvisionCosts?.[before.Durations.indexOf(12)] ?? 0;
+    await page.getByTestId('expedition-provision').click().catch(() => {});
     await page.getByTestId('expedition-send').click().catch(() => {});
     await page.waitForTimeout(2000);
     const after = await apiGet('/api/v1/expeditions').catch(() => null);
     const away = (after?.Active ?? []).find((e) => e.CharacterId === target.CharacterId) ?? null;
+    const goldAfter = (await apiGet('/api/v1/player/statistics').catch(() => null))?.Gold ?? 0;
+    record('a provisioned expedition takes its gold and is marked provisioned',
+      provisionCost > 0 && away?.Provisioned === true && goldAfter <= goldBefore - provisionCost,
+      `cost ${provisionCost}, provisioned ${away?.Provisioned}, gold ${goldBefore} -> ${goldAfter}`);
     const hall = await apiGet('/api/v1/ancestors/hall').catch(() => null);
     const inHall = (hall?.Members ?? []).find((m) => m.CharacterId === target.CharacterId);
     record('sending an ancestor puts them away and the Hall says so', away !== null && inHall?.IsAway === true,

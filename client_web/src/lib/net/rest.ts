@@ -3187,6 +3187,8 @@ export interface ExpeditionView {
   StartedAtEpoch: number;
   ReturnsAtEpoch: number;
   Returned: boolean;
+  /** Gold-bought provisions: a better chance of the better chest. */
+  Provisioned?: boolean;
 }
 
 export interface ExpeditionCandidate {
@@ -3212,6 +3214,9 @@ export interface ExpeditionBoard {
   SlotsBought?: number;
   NextSlotCost?: number;
   NextSlotHours?: number;
+  /** Provisions price per entry of Durations (half the trip in hours of own income), and what they add. */
+  ProvisionCosts?: number[];
+  ProvisionUpgradePct?: number;
 }
 
 export function buyExpeditionSlot(): Promise<{ Result: string; Price: number } | null> {
@@ -3222,8 +3227,8 @@ export function fetchExpeditions(): Promise<ExpeditionBoard | null> {
   return authedGet<ExpeditionBoard>('/api/v1/expeditions');
 }
 
-export function startExpedition(characterId: string, hours: number): Promise<{ Result: string } | null> {
-  return authedPost<{ Result: string }>('/api/v1/expeditions/start', { CharacterId: characterId, Hours: hours });
+export function startExpedition(characterId: string, hours: number, provision = false): Promise<{ Result: string } | null> {
+  return authedPost<{ Result: string }>('/api/v1/expeditions/start', { CharacterId: characterId, Hours: hours, Provision: provision });
 }
 
 export function claimExpedition(id: number): Promise<{ Ok: boolean; Tier: string; Region: number; Reason: string; Claimed?: number; Title?: string } | null> {

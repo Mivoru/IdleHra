@@ -26,5 +26,7 @@ namespace FolkIdle.Server.Models
         public int AptitudeTotal { get; set; }
         public long StartedAtEpoch { get; set; }
         public long ReturnsAtEpoch { get; set; }
+        /// <summary>Gold-bought provisions: a better chance of the better chest (ExpeditionRules.ProvisionUpgradePct).</summary>
+        public bool Provisioned { get; set; }
     }
 }

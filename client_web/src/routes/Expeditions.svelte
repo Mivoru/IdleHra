@@ -29,10 +29,15 @@
   let pickedId = $state('');
   let pickedHours = $state(12);
   let busy = $state(false);
+  // Provisions (2026-11-13): gold for a better haul, priced by the server in
+  // hours of this player's own income; the toggle stays as set between sends.
+  let provision = $state(false);
 
   const data = $derived(board.data ?? null);
   const freeSlots = $derived(data ? data.Slots - data.Active.length : 0);
   const picked = $derived<ExpeditionCandidate | undefined>(data?.Candidates.find((c) => c.CharacterId === pickedId));
+  const provisionCost = $derived(data?.ProvisionCosts?.[data.Durations.indexOf(pickedHours)] ?? 0);
+  const provisionPct = $derived(data?.ProvisionUpgradePct ?? 0);
 
   // The strongest free ancestor is chosen once the list arrives, like the
   // breeding lab's hero - the screen opens on an answer, not an empty picker.
@@ -44,27 +49,31 @@
     return c.Name || (c.RaceId !== undefined ? raceName(c.RaceId) : 'An ancestor');
   }
 
-  function chestLine(hours: number, upgradePct: number): string {
-    if (hours >= 12) return `a Silver chest, Gold at ${15 + upgradePct}%`;
-    if (hours >= 8) return `a Bronze chest, Silver at ${25 + upgradePct}%`;
-    return 'a Bronze chest';
+  // Mirrors ExpeditionRules.ChestFor for the sentence only; the roll is the server's.
+  function chestLine(hours: number, upgradePct: number, provisioned: boolean): string {
+    const extra = provisioned ? provisionPct : 0;
+    if (hours >= 12) return `a Silver chest, Gold at ${15 + upgradePct + extra}%`;
+    if (hours >= 8) return `a Bronze chest, Silver at ${25 + upgradePct + extra}%`;
+    return provisioned ? `a Bronze chest, Silver at ${provisionPct}%` : 'a Bronze chest';
+  }
+
+  function refusal(result: string | undefined): string {
+    return result === 'NoSlot' ? 'Every expedition slot is in use.'
+      : result === 'NoGrounds' ? 'Expeditions need the Breeding Grounds.'
+      : result === 'NotEnoughGold' ? 'Not enough gold for the provisions.'
+      : 'That ancestor cannot set out now.';
   }
 
   async function send() {
     if (!picked || busy) return;
     busy = true;
     try {
-      const r = await startExpedition(picked.CharacterId, pickedHours);
+      const r = await startExpedition(picked.CharacterId, pickedHours, provision);
       if (r?.Result === 'Started') {
-        pushLocalNotice(`${nameOf(picked)} sets out for ${pickedHours} hours.`, 'info');
+        pushLocalNotice(`${nameOf(picked)} sets out for ${pickedHours} hours${provision ? ', well provisioned' : ''}.`, 'info');
         pickedId = '';
       } else {
-        pushLocalNotice(
-          r?.Result === 'NoSlot' ? 'Every expedition slot is in use.'
-            : r?.Result === 'NoGrounds' ? 'Expeditions need the Breeding Grounds.'
-            : 'That ancestor cannot set out now.',
-          'error',
-        );
+        pushLocalNotice(refusal(r?.Result), 'error');
       }
     } finally {
       busy = false;
@@ -103,8 +112,12 @@
     try {
       const free = data.Slots - data.Active.length;
       for (const c of data.Candidates.slice(0, Math.max(0, free))) {
-        const r = await startExpedition(c.CharacterId, pickedHours);
+        const r = await startExpedition(c.CharacterId, pickedHours, provision);
         if (r?.Result === 'Started') sent += 1;
+        else if (r?.Result === 'NotEnoughGold') {
+          pushLocalNotice(refusal(r.Result), 'error');
+          break;
+        }
       }
       if (sent > 0) pushLocalNotice(`${sent} ${sent === 1 ? 'ancestor sets' : 'ancestors set'} out for ${pickedHours} hours.`, 'info');
       pickedId = '';
@@ -182,7 +195,7 @@
           <li data-testid="expedition-row" data-character-id={e.CharacterId} data-returned={left === 0} class:returned={left === 0}>
             <div class="who">
               <strong>{e.Name || 'An ancestor'}</strong>
-              <span class="dim tiny">{e.Hours} h to region {e.Region} &middot; aptitudes {e.AptitudeTotal}</span>
+              <span class="dim tiny">{e.Hours} h to region {e.Region} &middot; aptitudes {e.AptitudeTotal}{e.Provisioned ? ' · provisioned' : ''}</span>
             </div>
             {#if left === 0}
               <button type="button" class="claim primary" data-testid="expedition-claim" disabled={busy} onclick={() => claim(e.Id)}>Claim the chest</button>
@@ -215,8 +228,14 @@
             <button type="button" class:on={pickedHours === h} aria-pressed={pickedHours === h} onclick={() => (pickedHours = h)}>{h} h</button>
           {/each}
         </div>
+        {#if provisionCost > 0}
+          <button type="button" class="provision" class:on={provision} aria-pressed={provision} data-testid="expedition-provision" onclick={() => (provision = !provision)}>
+            {provision ? 'Provisioned' : 'Provision the party'} - {formatNumber(provisionCost)} gold each
+            <span class="dim tiny">+{provisionPct}% toward the better chest, about {Math.max(1, Math.floor(pickedHours / 2))} h of your income</span>
+          </button>
+        {/if}
         {#if picked}
-          <p class="tiny">{nameOf(picked)} brings back {chestLine(pickedHours, picked.UpgradePct)}.</p>
+          <p class="tiny">{nameOf(picked)} brings back {chestLine(pickedHours, picked.UpgradePct, provision && provisionCost > 0)}.</p>
         {/if}
         <button type="button" class="go" data-testid="expedition-send" disabled={!picked || busy} onclick={send}>Send on expedition</button>
         {#if freeSlots > 1 && data.Candidates.length > 1}
@@ -302,6 +321,20 @@
   .go,
   .claim {
     min-height: 44px;
+  }
+
+  .provision {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-height: 44px;
+    text-align: left;
+  }
+
+  .provision.on {
+    border-color: var(--section);
+    box-shadow: inset 0 0 0 1px var(--section);
   }
 
   .hours button.on {

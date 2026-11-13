@@ -36,6 +36,15 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(LootChestTier.Silver, ExpeditionRules.ChestFor(8, 200, 54));
             Assert.Equal(LootChestTier.Gold, ExpeditionRules.ChestFor(12, 200, 44));
             Assert.Equal(LootChestTier.Silver, ExpeditionRules.ChestFor(12, 200, 45));
+            // Provisions: +25 on the better chest, and a Silver chance on 4 h.
+            Assert.Equal(LootChestTier.Silver, ExpeditionRules.ChestFor(4, 16, 24, provisioned: true));
+            Assert.Equal(LootChestTier.Bronze, ExpeditionRules.ChestFor(4, 16, 25, provisioned: true));
+            Assert.Equal(LootChestTier.Silver, ExpeditionRules.ChestFor(8, 16, 49, provisioned: true));
+            Assert.Equal(LootChestTier.Gold, ExpeditionRules.ChestFor(12, 200, 69, provisioned: true));
+            Assert.Equal(LootChestTier.Silver, ExpeditionRules.ChestFor(12, 200, 70, provisioned: true));
+            // 10,000 gold a minute: half the trip in hours of income.
+            Assert.Equal(1_200_000L, ExpeditionRules.ProvisionPrice(4, 10_000));
+            Assert.Equal(3_600_000L, ExpeditionRules.ProvisionPrice(12, 10_000));
         }
 
         [Fact]
@@ -133,6 +142,45 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(14_400_000L, ExpeditionRules.NextSlotPrice(0, 10_000));
             Assert.Equal(43_200_000L, ExpeditionRules.NextSlotPrice(1, 10_000));
             Assert.Equal(0L, ExpeditionRules.NextSlotPrice(2, 10_000));
+        }
+
+        [Fact]
+        public async Task ProvisionsTakeTheQuotedGold_AndMarkTheTrip()
+        {
+            const long playerId = 960_117_004L;
+            var rich = Guid.NewGuid();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = playerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 2 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 1_000_000_000L });
+                db.CharacterRecords.Add(new CharacterRecord { Id = rich, PlayerId = playerId, Name = "Fed", SlotIndex = 4, AgePhase = AgePhaseCurve.Adult, AgeTicks = AgePhaseCurve.ChildEndTicks });
+                db.CharacterLineages.Add(new CharacterLineageRegistry { CharacterId = rich });
+                await db.SaveChangesAsync();
+            }
+            long now = 1_900_300_000L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var board = await ExpeditionEngine.BoardAsync(db, playerId, now);
+                long quoted = board.ProvisionCosts![Array.IndexOf(ExpeditionRules.Durations, 12)];
+                Assert.True(quoted > 0);
+                Assert.Equal(ExpeditionStartResult.Started, await ExpeditionEngine.StartAsync(db, playerId, rich, 12, now, provision: true));
+
+                long gold = await db.CommodityRecords.AsNoTracking().Where(c => c.PlayerId == playerId && c.ItemId == "gold").Select(c => c.Quantity).SingleAsync();
+                Assert.Equal(1_000_000_000L - quoted, gold);
+                Assert.True((await db.Expeditions.AsNoTracking().SingleAsync(e => e.CharacterId == rich)).Provisioned);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var gold = await db.CommodityRecords.SingleAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
+                gold.Quantity = 0;
+                var poor = Guid.NewGuid();
+                db.CharacterRecords.Add(new CharacterRecord { Id = poor, PlayerId = playerId, Name = "Hungry", SlotIndex = 5, AgePhase = AgePhaseCurve.Adult, AgeTicks = AgePhaseCurve.ChildEndTicks });
+                db.CharacterLineages.Add(new CharacterLineageRegistry { CharacterId = poor });
+                await db.SaveChangesAsync();
+                Assert.Equal(ExpeditionStartResult.NotEnoughGold, await ExpeditionEngine.StartAsync(db, playerId, poor, 4, now, provision: true));
+                Assert.False(await ExpeditionEngine.IsAwayAsync(db, poor));
+            }
         }
 
         [Fact]
