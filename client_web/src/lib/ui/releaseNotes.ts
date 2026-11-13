@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.76.0',
+    date: '2026-11-13',
+    headline: 'Buy more expedition slots with gold.',
+    sections: [
+      {
+        title: 'Expeditions',
+        items: [
+          'Two more expedition slots can be bought with gold on the Expeditions tab. The price follows what you earn: the first costs about a day of your own income, the second about three days.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.75.0',
     date: '2026-11-13',
     headline: 'New painted banners for Bloodline, Rebirth and the Village.',
