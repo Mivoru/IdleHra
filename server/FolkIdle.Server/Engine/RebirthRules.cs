@@ -162,6 +162,26 @@ namespace FolkIdle.Server.Engine
             return (int)Math.Min(int.MaxValue, l * l / 2);
         }
 
+        // ------------------------------------------------------------------
+        // Modul: LIFE RECORDS (2026-11-13). A rebirth is a reset players repeat,
+        // and a repeat is only interesting if it can be done better. The
+        // record is "the fastest life that ended in a rebirth at level 50 (and
+        // at 100)": decided at the rebirth, in RebirthEngine, the one place a
+        // life ends - so there is no second path through the live tick and the
+        // offline window to drift. A life that began before this existed has
+        // no start time and sets no record; the clock starts at the next rebirth.
+        // ------------------------------------------------------------------
+
+        public const int RecordLevelLow = 50;
+        public const int RecordLevelHigh = 100;
+
+        /// <summary>The record after a life of this length ending at this level: the better of the old one and this.</summary>
+        public static long LifeRecord(long currentBest, long lifeSeconds, int level, int recordLevel)
+        {
+            if (lifeSeconds <= 0 || level < recordLevel) return currentBest;
+            return currentBest <= 0 ? lifeSeconds : Math.Min(currentBest, lifeSeconds);
+        }
+
         public sealed record TitleMilestone(int Rebirths, string TitleSlug, string Name);
 
         /// <summary>

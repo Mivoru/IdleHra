@@ -69,6 +69,11 @@ namespace FolkIdle.Server.Domain.Progression
                 new TitleDefinition("rebirth_bloodline", "Keeper of the Blood", 0, "#e05a7a"),
                 new TitleDefinition("rebirth_undying", "The Undying", 0, "#b48cff"),
                 new TitleDefinition("rebirth_wheel", "Wheel of Ages", 0, "#7fe0ff"),
+                // Rebirth Trials (RebirthTrials.All, 2026-11-13).
+                new TitleDefinition("trial_want", "The Frugal", 0, "#c9a227"),
+                new TitleDefinition("trial_slow_hand", "The Patient", 0, "#6fb3a8"),
+                new TitleDefinition("trial_frailty", "The Unbroken", 0, "#d26464"),
+                new TitleDefinition("trial_iron", "Ironborn", 0, "#9aa4b1"),
 
                 // Chernobog (owner, 2026-10-13): two milestone titles, kept for
                 // good, and last week's top three, which move every Sunday.

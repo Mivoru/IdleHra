@@ -4165,6 +4165,9 @@ namespace FolkIdle.Server.Domain.Combat
             effectiveMilliHp += effectiveMilliHp * payload.CachedAffixTotals.HpTenthsPct / 1000L;
             // The War half's Vitality, in the same additive-percent layer.
             effectiveMilliHp += effectiveMilliHp * (long)WarTreeRegistry.Resolve(in payload).MaxHpTenthsPct / 1000L;
+            // Rebirth Trials: Frailty's cut while active, a finished trial's
+            // reward after - one percent, on the whole pool.
+            effectiveMilliHp += effectiveMilliHp * RebirthTrials.MaxHpPct(payload.ActiveRebirthTrial, payload.CompletedRebirthTrials) / 100L;
 
             // Modul: the bloodline's health - Endurance, then health traits -
             // layered the same additive-percent way as inheritance and the tree
@@ -4453,6 +4456,13 @@ namespace FolkIdle.Server.Domain.Combat
             // Elixir of the Hunt (PotionRegistry), the rewards slot - here for the
             // same reason as the line above: one place every path asks.
             finalXpMultiplier += PotionRegistry.MagnitudeOf(payload.ActiveOffensivePotionId, PotionKind.Hunt);
+            // Rebirth Trials: a finished trial's reward in the additive layer,
+            // and the Slow Hand's cut on the WHOLE multiplier - a cut in the
+            // additive layer would shrink to nothing against a stack of
+            // bonuses, and the rule says "40% less".
+            finalXpMultiplier += RebirthTrials.XpPctReward(payload.CompletedRebirthTrials);
+            int trialXpCut = RebirthTrials.XpPctDuring(payload.ActiveRebirthTrial);
+            if (trialXpCut < 0) finalXpMultiplier = finalXpMultiplier * (100 + trialXpCut) / 100;
             return finalXpMultiplier;
         }
 
@@ -4466,7 +4476,9 @@ namespace FolkIdle.Server.Domain.Combat
                     + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2)
                     // Task 88: Renown, the permanent rebirth bonus - a curve
                     // under a ceiling (RebirthRules), in PowerCeilingTests.
-                    + RebirthRules.DamageBonusPct(payload.RenownedRebirths));
+                    + RebirthRules.DamageBonusPct(payload.RenownedRebirths)
+                    // Rebirth Trials: the Trial of Iron's reward.
+                    + RebirthTrials.DamagePctReward(payload.CompletedRebirthTrials));
 
             // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
             // applied as a flat percent boost to effective damage output per

@@ -35,6 +35,27 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.61.0',
+    date: '2026-11-13',
+    headline: 'Rebirth Trials: take on a harder life for a reward that lasts.',
+    sections: [
+      {
+        title: 'Rebirth Trials',
+        items: [
+          'When you are reborn you can take a trial for the next life: Want (kills pay half the gold), the Slow Hand (40% less combat XP), Frailty (25% less health) or Iron (no gear kept in the Vault).',
+          'Reach the rebirth level under the trial and be reborn to finish it. Each pays once, for good: +5% gold, +5% XP, +5% health or +2% damage, and its own title.',
+          'The Rebirth screen shows every trial, the one your life is under, and the ones you have finished.',
+        ],
+      },
+      {
+        title: 'Life records',
+        items: [
+          'The Rebirth screen now times each life and keeps your fastest life to a rebirth at level 50 and at level 100. The clock starts at your next rebirth.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.60.0',
     date: '2026-11-13',
     headline: 'Breeding and rebirth, rebuilt: any two races can marry, a chosen aptitude always grows, and rebirth never ends.',

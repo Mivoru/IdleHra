@@ -12,15 +12,17 @@ Production, 2026-11-13 (16 accounts):
 | Group | Accounts | Notes |
 |---|---|---|
 | Endgame (level 89-106) | 3 | Tomda (20 rebirths) last logged in 7 days ago; (pro)boss (20 rebirths) on a 6-day streak; the owner |
-| Reached level 4 | 1 | |
-| Never left level 1 | 11 | 8 of them guests with no name; most logged in once |
+| Named accounts that stopped at level 1-4 | 4 | Tob1k and tobiaschodera (likely one person), rajus, an unnamed-looking one |
+| Nameless level-1 accounts | 8 | mostly throwaway guests: `smoke:screens` signs in as a guest on production after every deploy (account 229 logged in during the 2026-11-13 deploy) |
 
 Two findings matter more than anything else in this review:
 
-1. **The first session loses almost everyone.** 11 of 16 accounts never
-   reached level 2. An idle game normally loses players over days; this one
-   loses them in minutes. Whatever the first screen asks, most people do not
-   do it.
+1. **The first session loses real people too.** Correction made the same
+   night: most nameless level-1 accounts are smoke-test guests, so "11 of 16"
+   overstated it. Of the 7 named accounts, 3 people stopped at level 1-4 and
+   never came back. A small sample, but the shape is the same: the loss is in
+   the first minutes, not over days. Funnel telemetry (question 4) would
+   settle it - and smoke guests should be excluded from it.
 2. **The endgame ran dry.** Both 20-rebirth players had hit every cap the game
    had: rebirth (20), the bloodline (stuck at ~21 under a ceiling of 50), the
    reward road (10). One stopped logging in. The lineage overhaul
@@ -36,15 +38,18 @@ the cull) and an onboarding coach. Comparable idle games (Melvor Idle, Idle
 Slayer, Legends of Idleon, NGU Idle) open with **one button that visibly does
 something**, and unlock every other screen only when it becomes useful.
 
+Already in place (checked after the first draft of this review): screens
+lock until their requirement (`client_web/src/lib/ui/unlocks.ts`, bound in
+`stores/tutorial.ts`), the home screen shows the nearest unlock and a
+"Closest goal" card (`DeedCloseness`), and onboarding has a quest line. So the
+loss is not explained by a missing feature from the usual list.
+
 Recommendations:
-- **Progressive disclosure**: hide screens until their unlock (village at
-  first boss, breeding at Breeding Grounds, rebirth at level 40, guild at 10,
-  market at 15...). The menu grows as the player does - a reward in itself.
-- **A first-minute script**: the account lands in Combat with the first
-  monster already being fought, a level-up within 30 seconds, a loot drop
-  within a minute, and the first "go equip it" prompt.
-- **Measure it**: a funnel event at each of the first ten steps (exists in
-  part as telemetry), then fix the step where people stop.
+- **Measure before redesigning**: funnel telemetry for the first ten steps
+  (signed in, first kill, first level, first equip, first boss...), with the
+  smoke-test guests excluded, then fix the step where people stop.
+- **Watch one new player play**, or register a fresh account and screen-record
+  the first ten minutes - the fixture cannot show this (CLAUDE.md).
 
 ### B. Too many parallel systems, too little "what next"
 
@@ -55,9 +60,8 @@ own screen and vocabulary. Players of comparable games praise a single "next
 goal" line more than any one system.
 
 Recommendations:
-- **One "Next step" card** on the home screen, chosen by the server from the
-  deeds, the quest line and the unlocks (the data exists: `DeedCloseness`
-  already ranks the nearest deeds).
+- The "Closest goal" card already exists; check that it points at the
+  breeding and rebirth goals for endgame accounts now that chapter VI exists.
 - **Merge screens where the decision is one decision**: Hall + Breeding +
   Rebirth are one loop ("my bloodline") and could be one screen with tabs.
 
@@ -68,12 +72,7 @@ Boons, the chapter "The Long Blood", titles at 20/30/50, a bloodline climb that
 actually reaches 50.
 
 Further ideas, in order of value per effort:
-- **Rebirth Trials** (Antimatter Dimensions / NGU style "challenges"): an
-  optional modifier for one life - no Vault, half gold, monsters +50% HP, one
-  character only - that pays a permanent, bounded reward and a title when the
-  life reaches level 50. Re-uses rebirth; needs one multiplier hook per
-  modifier in the shared kill/stat helpers (live and offline already share
-  them).
+- **Rebirth Trials** - built the same night (see the overhaul doc, section 7).
 - **Personal records**: fastest life to level 50 and to 100, shown on the
   Rebirth screen and as a leaderboard. Costs one timestamp column; makes every
   rebirth a race against yourself.
@@ -100,12 +99,11 @@ bonus with its source.
 
 ## 3. Questions for the owner
 
-1. **Progressive disclosure** (A): may screens be hidden until unlocked? It
-   changes the navigation every existing player knows. My recommendation:
-   yes, for new accounts only (accounts past level 20 keep everything).
-2. **Rebirth Trials** (C): build them next? Which modifiers do you like?
-   My pick for a first set: Iron Life (no Vault, no kept gear), Lean Life
-   (gold income halved), Lone Life (one working slot).
+1. **New players** (A): screens already unlock progressively. Do you know
+   anyone who quit early and would say why? A ten-minute screen recording of a
+   new player would tell us more than any guess here.
+2. **Rebirth Trials** (C): built the same night (client 1.61.0) with four
+   trials - Want, the Slow Hand, Frailty, Iron. Which others would you like?
 3. **Merge Hall + Breeding + Rebirth into one "Bloodline" screen** (B)?
 4. **The new-player funnel** (A): may I add funnel telemetry for the first ten
    steps and send you a weekly summary?
@@ -113,5 +111,6 @@ bonus with its source.
 ## 4. What I am doing without waiting
 
 - The lineage overhaul (built, tested, see its design doc).
-- Personal life records and the "Next step" card are small and safe; they are
-  next on my list if time remains.
+- Rebirth Trials (built, 1.61.0).
+- Personal life records (fastest life to level 50/100) are next if time
+  remains.

@@ -2075,6 +2075,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("ActiveOffensivePotionId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("ActiveRebirthTrial")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ActiveTitleSlug")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
@@ -2125,6 +2128,12 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("BestHit")
                         .HasColumnType("integer");
 
+                    b.Property<long>("BestLifeSecondsTo100")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("BestLifeSecondsTo50")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("BestSeasonRank")
                         .HasColumnType("integer");
 
@@ -2141,6 +2150,9 @@ namespace FolkIdle.Server.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("BossBestKillTenthsR5")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CompletedRebirthTrials")
                         .HasColumnType("integer");
 
                     b.Property<int>("CurrentLevel")
@@ -2285,6 +2297,9 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<int>("LifeHighestRegion")
                         .HasColumnType("integer");
+
+                    b.Property<long>("LifeStartedAtEpoch")
+                        .HasColumnType("bigint");
 
                     b.Property<long>("LifetimeGoldSpent")
                         .HasColumnType("bigint");

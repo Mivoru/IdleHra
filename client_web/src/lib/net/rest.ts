@@ -2866,6 +2866,25 @@ export interface RebirthPreview {
   VillageBuildingLevels: number;
   /** The Ancestral Boons the shards buy. Absent on an older server. */
   Boons?: BoonView[];
+  /** The Rebirth Trials, and the one this life is under (0 = none). Absent on an older server. */
+  Trials?: TrialView[];
+  ActiveTrial?: number;
+  /** Life records (RebirthRules.LifeRecord), in seconds; 0 = none / untimed. */
+  LifeSeconds?: number;
+  BestLifeSecondsTo50?: number;
+  BestLifeSecondsTo100?: number;
+}
+
+/** One Rebirth Trial (TrialView / RebirthTrials on the server). */
+export interface TrialView {
+  Id: number;
+  Name: string;
+  Rule: string;
+  Reward: string;
+  TitleName: string;
+  ForbidsVault: boolean;
+  Completed: boolean;
+  Active: boolean;
 }
 
 /** One Ancestral Boon (BoonView / LegacyPerkResolver on the server). */
@@ -2894,7 +2913,9 @@ export type RebirthResultName =
   | 'Capped'
   | 'NotEnoughGold'
   | 'KeepNotOwned'
-  | 'LevelTooLow';
+  | 'LevelTooLow'
+  | 'TrialUnavailable'
+  | 'TrialForbidsVault';
 
 export interface RebirthOutcome {
   Result: RebirthResultName;
@@ -2920,6 +2941,7 @@ export async function requestRebirth(
   expectedRebirthCount: number,
   confirm: string,
   keepEquipmentIds: number[] = [],
+  trialId = 0,
 ): Promise<RebirthOutcome> {
   const token = storedToken();
   if (!token) throw new AuthError('not signed in', 401);
@@ -2927,7 +2949,7 @@ export async function requestRebirth(
   const response = await fetch(api('/api/v1/rebirth'), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount, Confirm: confirm, KeepEquipmentIds: keepEquipmentIds }),
+    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount, Confirm: confirm, KeepEquipmentIds: keepEquipmentIds, TrialId: trialId }),
   });
   const text = await response.text();
   if (text) {

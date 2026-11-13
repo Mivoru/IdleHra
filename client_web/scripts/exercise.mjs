@@ -6439,6 +6439,14 @@ await go('Ancestors');
     `${boonRows} boons, shards ${boonShards} (server ${before?.ShardBalance})`,
   );
 
+  // Life records (2026-11-13): three numbers, each a time or a dash.
+  const records = (await panel.locator('[data-testid="rebirth-records"]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  record(
+    'the Rebirth screen shows this life and the two life records',
+    /this life/.test(records) && /fastest life to a level-50 rebirth/.test(records) && /fastest life to a level-100 rebirth/.test(records),
+    records.slice(0, 120),
+  );
+
   const renown = await panel.locator('[data-testid="rebirth-renown"]').innerText().catch(() => '');
   record('the Rebirth panel shows Renown', /Renown \d+/.test(renown), renown.replace(/\s+/g, ' ').slice(0, 90));
 
@@ -6450,6 +6458,17 @@ await go('Ancestors');
       'step one opens the terms: what you lose, what you keep',
       /You lose/.test(terms) && /You keep/.test(terms) && before !== null && terms.includes(`level ${before.Level}`),
       terms.replace(/\s+/g, ' ').slice(0, 120),
+    );
+    // Rebirth Trials (2026-11-13): the terms offer every unfinished trial plus
+    // "No trial"; the list above names all four. Read-only - Cancel follows.
+    const trialOptions = await panel.locator('[data-testid="rebirth-trial-pick"] input[type="radio"]').count();
+    const openTrials = (before?.Trials ?? []).filter((t) => !t.Completed).length;
+    const trialRows = await panel.locator('[data-testid="rebirth-trials"] li').count();
+    record(
+      'the terms offer each unfinished Rebirth Trial, and the list names them all',
+      before !== null && trialRows === (before.Trials?.length ?? -1) && trialRows === 4
+        && (openTrials === 0 ? trialOptions === 0 : trialOptions === openTrials + 1),
+      `${trialRows} trials listed, ${trialOptions} choices for ${openTrials} unfinished`,
     );
     record(
       'step one does not rebirth - step two is its own button',

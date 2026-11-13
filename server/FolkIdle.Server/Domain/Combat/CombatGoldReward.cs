@@ -1,3 +1,4 @@
+using System;
 using FolkIdle.Server.Engine;
 
 namespace FolkIdle.Server.Domain.Combat
@@ -34,6 +35,7 @@ namespace FolkIdle.Server.Domain.Combat
             gold = (long)(gold * f.Pet);
 
             gold = (long)(gold * f.Tree);
+            gold = (long)(gold * f.Trial);
 
             // Trophy Hunter: region bosses only.
             if (RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
@@ -50,10 +52,10 @@ namespace FolkIdle.Server.Domain.Combat
         }
 
         /// <summary>The per-player multipliers a kill's gold passes through, in PerKill's order.</summary>
-        public readonly record struct GoldFactors(float Acquisition, float Legacy, float Guild, float Inheritance, float Pet, float Tree = 1f)
+        public readonly record struct GoldFactors(float Acquisition, float Legacy, float Guild, float Inheritance, float Pet, float Tree = 1f, float Trial = 1f)
         {
             /// <summary>All of them as one percentage bonus, untruncated - what the stat sheet prints.</summary>
-            public double TotalBonusPct => ((double)Acquisition * Legacy * Guild * Inheritance * Pet * Tree - 1.0) * 100.0;
+            public double TotalBonusPct => ((double)Acquisition * Legacy * Guild * Inheritance * Pet * Tree * Trial - 1.0) * 100.0;
         }
 
         /// <summary>
@@ -73,6 +75,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // The character's pet (PetRegistry), on the active slot's totals.
                 1.0f + AffixFamilies.Totals(in payload).GoldTenthsPct / 1000f,
                 // The War half's Golden Touch.
-                1.0f + WarTreeRegistry.Resolve(in payload).GoldTenthsPct / 1000f);
+                1.0f + WarTreeRegistry.Resolve(in payload).GoldTenthsPct / 1000f,
+                // Rebirth Trials: Want's halving while active, a finished
+                // trial's reward after (RebirthTrials.GoldPct).
+                Math.Max(0f, 1.0f + RebirthTrials.GoldPct(payload.ActiveRebirthTrial, payload.CompletedRebirthTrials) / 100f));
     }
 }

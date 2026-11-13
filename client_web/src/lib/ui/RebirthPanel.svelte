@@ -51,6 +51,7 @@
   import { contentRegistry } from '../net/registry.svelte';
   import RebirthRoadmap from './RebirthRoadmap.svelte';
   import AncestralBoons from './AncestralBoons.svelte';
+  import { formatDuration } from '../net/commands';
 
   const client = useQueryClient();
   const preview = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
@@ -155,6 +156,18 @@
   // shut - and the server refuses it anyway (LevelTooLow).
   const levelEnough = $derived(!p || p.Level >= (p.MinimumLevel ?? 0));
   let typed = $state('');
+
+  // Modul: REBIRTH TRIALS (2026-11-13). An optional rule for the next life,
+  // picked in the terms step; finished by the rebirth that ends that life.
+  // Names, rules, rewards and which are done come from the preview.
+  let trialId = $state(0);
+  const trials = $derived(p?.Trials ?? []);
+  const activeTrial = $derived(trials.find((t) => t.Active));
+  const chosenTrial = $derived(trials.find((t) => t.Id === trialId));
+  // Iron forbids the Vault: choosing it empties the keep list.
+  $effect(() => {
+    if (chosenTrial?.ForbidsVault && keep.length > 0) keep = [];
+  });
   const wordTyped = $derived(typed.trim().toUpperCase() === REBIRTH_CONFIRMATION_WORD);
   let working = $state(false);
   let last = $state<RebirthOutcome | null>(null);
@@ -173,7 +186,7 @@
     if (!p || working || !wordTyped || !levelEnough) return;
     working = true;
     try {
-      const outcome = await requestRebirth(p.RebirthCount, typed, keep);
+      const outcome = await requestRebirth(p.RebirthCount, typed, keep, trialId);
       last = outcome;
       if (outcome.Result === 'Ok') {
         pushLocalNotice(
@@ -190,6 +203,10 @@
         pushLocalNotice('Your gold does not cover the gear you chose to keep. Nothing was reset.', 'error');
       } else if (outcome.Result === 'LevelTooLow') {
         pushLocalNotice(`A rebirth opens at level ${p.MinimumLevel}. Nothing was reset.`, 'error');
+      } else if (outcome.Result === 'TrialUnavailable') {
+        pushLocalNotice('That trial is already finished or does not exist. Nothing was reset.', 'error');
+      } else if (outcome.Result === 'TrialForbidsVault') {
+        pushLocalNotice('The Trial of Iron starts a life with no kept gear - empty the Vault first. Nothing was reset.', 'error');
       } else if (outcome.Result === 'KeepNotOwned') {
         pushLocalNotice('A piece you chose to keep is no longer yours. Nothing was reset.', 'error');
       } else if (outcome.Result === 'AlreadyReborn' || outcome.Result === 'InFlight') {
@@ -204,6 +221,7 @@
       confirming = false;
       typed = '';
       keep = [];
+      trialId = 0;
       refreshAll();
     }
   }
@@ -226,6 +244,14 @@
         <span class="stat"><strong>{p.SkillPointsFromRebirthsNow}</strong> skill points from rebirths</span>
         <span class="stat"><strong>+{p.DamageBonusPctNow}%</strong> damage (Renown {p.RenownedRebirths})</span>
         <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below the level your last life reached ({p.PeakLevelAfter} after the next rebirth)</span>
+      </div>
+      <!-- Life records (2026-11-13): the fastest life that ended in a rebirth at
+           level 50 and at 100. A life begun before the clock existed is untimed;
+           the clock starts at the next rebirth. -->
+      <div class="stats records" data-testid="rebirth-records">
+        <span class="stat"><strong>{p.LifeSeconds ? formatDuration(p.LifeSeconds) : '—'}</strong> this life{#if !p.LifeSeconds}{' '}(timed from your next rebirth){/if}</span>
+        <span class="stat"><strong>{p.BestLifeSecondsTo50 ? formatDuration(p.BestLifeSecondsTo50) : '—'}</strong> fastest life to a level-{50} rebirth</span>
+        <span class="stat"><strong>{p.BestLifeSecondsTo100 ? formatDuration(p.BestLifeSecondsTo100) : '—'}</strong> fastest life to a level-100 rebirth</span>
       </div>
     </div>
 
@@ -253,8 +279,32 @@
       There is no last rebirth.
     </p>
 
+    {#if activeTrial}
+      <p class="trial-active" data-testid="trial-active">
+        <strong>This life is under the {activeTrial.Name}:</strong> {activeTrial.Rule}
+        Reach the rebirth level and be reborn to finish it - {activeTrial.Reward}, and the title {activeTrial.TitleName}.
+      </p>
+    {/if}
+
     {#if p.Boons && p.Boons.length > 0}
       <AncestralBoons boons={p.Boons} shards={p.ShardBalance} />
+    {/if}
+
+    {#if trials.length > 0}
+      <h3>Rebirth Trials</h3>
+      <ul class="trials" data-testid="rebirth-trials">
+        {#each trials as t (t.Id)}
+          <li class:done={t.Completed} class:active={t.Active}>
+            <strong>{t.Name}</strong>
+            <span class="dim small">{t.Rule}</span>
+            <span class="small">{t.Completed ? 'Finished' : t.Active ? 'This life' : 'Reward:'} {#if !t.Completed && !t.Active}{t.Reward} and the title {t.TitleName}{/if}</span>
+          </li>
+        {/each}
+      </ul>
+      <p class="dim tiny">
+        Choose a trial when you are reborn. It holds for that whole life, and the rebirth that ends the life
+        finishes it. Each pays once.
+      </p>
     {/if}
 
     {#if carriers.length > 0}
@@ -421,6 +471,24 @@
             </p>
           </div>
         </div>
+        {#if trials.some((t) => !t.Completed)}
+          <fieldset class="trial-pick" data-testid="rebirth-trial-pick">
+            <legend>Take a trial for the next life? (optional)</legend>
+            <label class="trial-option">
+              <input type="radio" name="rebirth-trial" checked={trialId === 0} onclick={() => (trialId = 0)} />
+              <span>No trial</span>
+            </label>
+            {#each trials.filter((t) => !t.Completed) as t (t.Id)}
+              <label class="trial-option">
+                <input type="radio" name="rebirth-trial" checked={trialId === t.Id} onclick={() => (trialId = t.Id)} />
+                <span><strong>{t.Name}</strong> <span class="dim small">{t.Rule} {t.Reward}.</span></span>
+              </label>
+            {/each}
+            {#if chosenTrial}
+              <p class="dim tiny">There is no way out of a trial but through it: the life lasts until it reaches the rebirth level.</p>
+            {/if}
+          </fieldset>
+        {/if}
         {#if p.HallLetGo.length > 0}
           <p class="warn">
             <strong>The Hall lets go, permanently:</strong> {p.HallLetGo.join(', ')}.
@@ -749,5 +817,45 @@
     gap: 0.25rem 0.6rem;
     font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
+  }
+
+  .trial-active {
+    border-left: 3px solid var(--accent, #d4a64a);
+    padding: 0.4rem 0.6rem;
+    margin: 0;
+  }
+  .trials {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .trials li {
+    display: grid;
+    gap: 0.15rem;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 0.45rem 0.7rem;
+  }
+  .trials li.done {
+    opacity: 0.65;
+  }
+  .trials li.active {
+    border-color: var(--accent, #d4a64a);
+  }
+  .trial-pick {
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    display: grid;
+    gap: 0.3rem;
+  }
+  .trial-option {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    min-height: 44px;
+    padding: 0.2rem 0;
   }
 </style>
