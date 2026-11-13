@@ -2272,6 +2272,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("EventCurrencyEventId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("ExpeditionSlotsBought")
+                        .HasColumnType("integer");
+
                     b.Property<int>("ExpeditionsClaimed")
                         .HasColumnType("integer");
 

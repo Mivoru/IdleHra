@@ -3208,6 +3208,14 @@ export interface ExpeditionBoard {
   Claimed?: number;
   NextTitle?: string;
   NextTitleAt?: number;
+  /** Gold-bought slots, and the next one's price (hours of own income); 0 when maxed. */
+  SlotsBought?: number;
+  NextSlotCost?: number;
+  NextSlotHours?: number;
+}
+
+export function buyExpeditionSlot(): Promise<{ Result: string; Price: number } | null> {
+  return authedPost('/api/v1/expeditions/buy-slot', {});
 }
 
 export function fetchExpeditions(): Promise<ExpeditionBoard | null> {

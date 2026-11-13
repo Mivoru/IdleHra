@@ -555,6 +555,9 @@ namespace FolkIdle.Server.Models
         /// <summary>Expeditions claimed, ever (ExpeditionEngine.ClaimAsync) - for the expedition titles.</summary>
         public int ExpeditionsClaimed { get; set; }
 
+        /// <summary>Expedition slots bought with gold, on top of the Breeding Grounds' (ExpeditionRules.MaxBoughtSlots).</summary>
+        public int ExpeditionSlotsBought { get; set; }
+
         // The highest region THIS LIFE has killed a monster in. Raised by
         // CodexEngine after its batch commits (GREATEST, so out-of-order
         // batches cannot lower it), reset to 0 by the rebirth. Read only by the

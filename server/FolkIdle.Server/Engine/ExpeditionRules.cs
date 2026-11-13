@@ -35,6 +35,25 @@ namespace FolkIdle.Server.Engine
 
         public static bool IsDuration(int hours) => Array.IndexOf(Durations, hours) >= 0;
 
+        // Modul: SLOTS FOR GOLD, PRICED IN HOURS OF THE PLAYER'S OWN INCOME
+        // (owner, 2026-11-13: "something worth spending gold on, the price
+        // following what the player earns"). Two of the three endgame accounts
+        // spent under a quarter of what they earned
+        // (docs/design/GOLD_ECONOMY_2026_11_13.md). A flat price is a fortune at
+        // one income and pocket change at another; hours of the player's own
+        // seven-day income (LootChestEngine.GoldPerMinuteAsync, the chest's
+        // measure) cost everyone the same effort.
+        public const int MaxBoughtSlots = 2;
+        public static readonly int[] BoughtSlotPriceHours = { 24, 72 };
+
+        /// <summary>Slots with gold-bought ones added; still none without the Grounds.</summary>
+        public static int SlotsFor(int groundsLevel, int bought)
+            => SlotsFor(groundsLevel) == 0 ? 0 : SlotsFor(groundsLevel) + Math.Clamp(bought, 0, MaxBoughtSlots);
+
+        /// <summary>The next bought slot's price, or 0 when both are bought.</summary>
+        public static long NextSlotPrice(int bought, double goldPerMinute)
+            => bought >= MaxBoughtSlots ? 0L : (long)Math.Ceiling(goldPerMinute * 60.0 * BoughtSlotPriceHours[Math.Max(0, bought)] / 1000.0) * 1000L;
+
         /// <summary>Titles for expeditions claimed (a long-term goal for the bench), at-or-past and idempotent.</summary>
         public static readonly (int Count, string Slug, string Name)[] TitleMilestones =
         {

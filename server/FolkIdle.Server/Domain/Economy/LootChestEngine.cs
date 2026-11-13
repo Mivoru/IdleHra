@@ -289,7 +289,7 @@ namespace FolkIdle.Server.Domain.Economy
         /// The player's own gold per minute over the last seven days of the
         /// income ledger, never below the region's floor.
         /// </summary>
-        private static async Task<double> GoldPerMinuteAsync(FolkIdleDbContext db, long playerId, int highestRegion, DateTime utcNow)
+        internal static async Task<double> GoldPerMinuteAsync(FolkIdleDbContext db, long playerId, int highestRegion, DateTime utcNow)
         {
             var since = DateOnly.FromDateTime(utcNow.AddDays(-7));
             short chestSource = (short)GoldIncomeSource.LootChest;

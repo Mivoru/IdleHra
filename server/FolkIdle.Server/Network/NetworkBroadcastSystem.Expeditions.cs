@@ -69,6 +69,18 @@ namespace FolkIdle.Server.Network
                     return true;
                 }
 
+                if (requestPath == "/api/v1/expeditions/buy-slot" && method == "POST")
+                {
+                    var (result, price) = await ExpeditionEngine.BuySlotAsync(db, playerId);
+                    if (result == ExpeditionSlotPurchase.Bought)
+                    {
+                        // The gold left the database; the live wallet follows on reload.
+                        CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                    }
+                    await WriteJsonAsync(context, new { Result = result.ToString(), Price = price });
+                    return true;
+                }
+
                 if (requestPath == "/api/v1/expeditions/dev/return" && method == "POST")
                 {
                     if (!DevToolsEnabled()) { context.Response.StatusCode = 404; return true; }

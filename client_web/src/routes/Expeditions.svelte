@@ -7,7 +7,9 @@
   // screen draws and sends, nothing else.
   import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { queryKeys, fetchExpeditions, startExpedition, claimExpedition, type ExpeditionCandidate } from '../lib/net/rest';
+  import { queryKeys, fetchExpeditions, startExpedition, claimExpedition, buyExpeditionSlot, type ExpeditionCandidate } from '../lib/net/rest';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import { formatNumber } from '../lib/ui/format';
   import { formatDuration } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import { pushLocalNotice } from '../lib/stores/game';
@@ -115,6 +117,13 @@
 
   const returnedCount = $derived(data ? data.Active.filter((e) => e.ReturnsAtEpoch <= nowSeconds).length : 0);
 
+  async function buySlot() {
+    const r = await buyExpeditionSlot();
+    if (r?.Result === 'Bought') pushLocalNotice('A new expedition slot is yours.', 'info');
+    else pushLocalNotice(r?.Result === 'NotEnoughGold' ? 'Not enough gold for that slot.' : 'No slot to buy.', 'error');
+    await client.invalidateQueries({ queryKey: queryKeys.expeditions });
+  }
+
   async function claim(id: number) {
     if (busy) return;
     busy = true;
@@ -155,6 +164,12 @@
       {data.Claimed ?? 0} expeditions done{#if data.NextTitle}&nbsp;&middot; the title <strong>{data.NextTitle}</strong> at {data.NextTitleAt}{:else}&nbsp;&middot; every expedition title earned{/if}
     </p>
     <h3>Away <span class="dim tiny">{data.Active.length} of {data.Slots} slots</span></h3>
+    {#if (data.NextSlotCost ?? 0) > 0}
+      <div data-testid="expedition-buy-slot">
+        <ConfirmButton danger={false} label={`Add a slot - ${formatNumber(data.NextSlotCost ?? 0)} gold`} onConfirm={buySlot} />
+        <span class="dim tiny">About {data.NextSlotHours} hours of your income.</span>
+      </div>
+    {/if}
     {#if returnedCount > 1}
       <button type="button" class="claim" data-testid="expedition-claim-all" disabled={busy} onclick={claimAll}>Claim all {returnedCount} chests</button>
     {/if}
