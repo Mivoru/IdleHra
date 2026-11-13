@@ -1276,6 +1276,11 @@
     margin: 0;
     padding: 0;
     display: grid;
+    /* minmax(0, 1fr), not the implicit auto column: an auto column grows to
+       its widest row's min-content, and a nowrap affix line made the Worn
+       list 520px in a 382px pane with the ellipsis never reached
+       (check:clipping, Chest @ 1500px, 2026-11-13). */
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
 
