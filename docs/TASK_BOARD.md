@@ -155,6 +155,17 @@ Still to do: compare with the harness's predicted best builds.
 **First read 2026-10-30:** gathered per day 2.0-2.7M before #211, 2.69M on
 10-29 (one day after). Too early; re-run in a week with 111.
 
+**Second read 2026-11-13** (`material_flow_daily`, Gathered, per player per
+day): Mivoru 0.40M (10-20..28) -> 0.85M (10-29..11-04) -> 0.88M (11-05..12);
+Tomda 1.14M -> 1.32M -> 2.18M; (pro)boss 0.85M -> 0.63M -> 0.88M. Server
+total 2.4M -> 2.8M -> 3.9M a day. #211 roughly doubled Mivoru at once; Tomda's
+later jump lines up with the Hearth half (phase 4, his tree is Hearth-heavy -
+see 130). Warehouse-cap losses fell from ~180k to ~80k a day after 11-08.
+Spending is spiky (3.9M and 6.5M on 11-03/04 - the Forge and Hearth week)
+but stays under what is gathered. No sign of runaway: the extras multiply,
+the floors hold. Re-read once the Skill aptitude milestones (gather yield
++5/10/15%, live 2026-11-13) have a week.
+
 Material flow per active player before and after #211 (the extras now
 multiply). Run it with 111's queries. It feeds Hearth's D2.
 
