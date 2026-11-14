@@ -165,6 +165,39 @@ namespace FolkIdle.Server.Engine
             return refund;
         }
 
+        /// <summary>
+        /// Refunds every keystone of a player who holds more than one, and
+        /// gives back the free respec. Returns the points handed back.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE ONE-KEYSTONE SWITCH (skill tree v3 step A, 2026-11-14),
+        /// ON THE LOAD PATH like ReconcileWarSwitchAsync and for the same
+        /// reason: it must run before hydration reads AvailableSkillPoints, on
+        /// the same context. ALL of them go, not all but one: which one a
+        /// player wants is theirs to choose, and the refund buys it back at
+        /// once. NATURALLY IDEMPOTENT: after it runs a player holds at most
+        /// one keystone, so the second run finds nothing to do.
+        /// </remarks>
+        public static async Task<int> ReconcileSingleKeystoneAsync(FolkIdleDbContext db, long playerId)
+        {
+            var keystoneIds = WarTreeRegistry.All().Where(n => n.Kind == "Keystone").Select(n => n.Id).ToArray();
+            var held = await db.PlayerSkillTreeNodes
+                .Where(r => r.PlayerId == playerId && keystoneIds.Contains(r.BranchId) && r.Level > 0)
+                .ToListAsync();
+            if (held.Count <= 1) return 0;
+
+            int refund = held.Sum(r => Math.Min(r.Level, WarTreeRegistry.Get(r.BranchId)!.MaxLevel) * WarTreeRegistry.Get(r.BranchId)!.CostPerRank);
+            db.PlayerSkillTreeNodes.RemoveRange(held);
+            var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player != null)
+            {
+                player.AvailableSkillPoints += refund;
+                player.FreeRespecUsed = false;
+            }
+            await db.SaveChangesAsync();
+            return refund;
+        }
+
         /// <summary>What rows of today's tree cost: the curve per level, plus the old root levels above the cap of 10.</summary>
         internal static int LegacyRefundOf(System.Collections.Generic.IEnumerable<(int BranchId, int Level)> rows)
         {
