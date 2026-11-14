@@ -36,6 +36,7 @@
   let { challenge, bossArt, serpentArt, bossName, heroArt, onclose, onagain, onleave }: Props = $props();
 
   type Phase = 'intro' | 'fight' | 'call' | 'answered' | 'sending' | 'result';
+  const SERPENT_MOVES = new Set(['VenomSpit', 'TailSweep', 'DeathCoil']);
   let phase = $state<Phase>('intro');
   let calls = $state<DuelCall[]>(challenge.Calls.map((c) => ({ ...c })));
   let round = $state(0);
@@ -111,7 +112,7 @@
     await wait(120);
     pulse((v) => (bossHit = v), 200);
     if (heavy && !prefersReducedMotion.current) pulse((v) => (shake = v), 260);
-    play(heavy ? 'hitCrit' : 'hitMelee');
+    play(heavy ? 'duelHeavy' : 'duelHit');
     total += amount;
     float(formatNumber(amount), heavy ? 'call' : 'hit', heavy);
   }
@@ -149,7 +150,7 @@
   function openCall(): Promise<void> {
     return new Promise((resolve) => {
       phase = 'call';
-      play('dungeonTelegraph');
+      play(challenge.Enraged || SERPENT_MOVES.has(calls[round - 1]?.Move ?? '') ? 'worldBossHiss' : 'worldBossRoar');
       pulse((v) => (windup = v), 1400);
       callLeftMs = challenge.CallWindowMs;
       const started = Date.now();
@@ -203,7 +204,7 @@
         await wait(300);
         float("Svarog's Hammer!", 'finisher', true);
         await blow(challenge.FinisherHit, true);
-        play('dungeonVictory');
+        play('worldBossHammer');
         await wait(700);
       }
       strike = response.Strike;

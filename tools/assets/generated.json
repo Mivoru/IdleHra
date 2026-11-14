@@ -4130,6 +4130,42 @@
       "credits": 0,
       "seconds": 3,
       "at": "2026-11-01T10:37:10.475Z"
+    },
+    {
+      "id": "sfx_boss_roar",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A deep monstrous god roaring as he raises a huge iron mace, guttural growl with a rising metallic scrape, dark Slavic fantasy boss winding up an attack, short, no long reverb tail",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_boss_roar.mp3",
+      "bytes": 26792,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-14T23:20:25.199Z"
+    },
+    {
+      "id": "sfx_boss_hammer",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A mighty divine forge hammer slamming down: a huge ringing anvil strike with a thunderclap and sparks, triumphant finishing blow, Slavic fantasy game, short tail",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_boss_hammer.mp3",
+      "bytes": 29300,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-14T23:20:30.230Z"
+    },
+    {
+      "id": "sfx_serpent_hiss",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A giant black serpent hissing and rearing up, wet venomous hiss with scales rustling, menacing boss winding up, short, no reverb tail",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_serpent_hiss.mp3",
+      "bytes": 23030,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-14T23:20:34.283Z"
     }
   ]
 }
