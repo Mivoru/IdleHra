@@ -206,3 +206,25 @@ not by hand.
   (Living Fortress caps crit, so the lift is below 1). The boss's health is
   set from Monday/Tuesday strikes, so it follows on its own; the date gate
   keeps the current week's boss from going soft.
+- **Step D - the outer ring, 2026-11-14.** Rows 5-7 per column (gates 34 /
+  44 / 56), each column's lane: Fortune = Hunter (Momentum, Bounty, Treasure
+  Sense, Lore of the Hunt; keystones Midas, Sage), Might = Bossbreaker
+  (Sunder, Titan's Grip, Overpower, Giant's Bane; Juggernaut, Colossus),
+  Precision = Titan-slayer (Lacerate, Killer Instinct, Serrated, Quickening;
+  Haemorrhage, Flurry), Guard = Warden (Stoneskin, Deflect, Vitae, Parry;
+  Bastion, Vampire). Deviation from the plan: the lanes sit INSIDE their
+  column, not between two, so the screen needed no new layout. Keystones are
+  trades through the existing effect fields (WarEffects.ApplyKeystoneTrades),
+  so every simulator prices them unchanged; the damage and interval reads
+  accept negative sums. Giant's Bane (region bosses only) replaced the
+  planned Executioner's Edge: without it the Titan-slayer tied the
+  Bossbreaker on region bosses. Edge 0.4 to 0.8 and Heavy Hand 0.2 to 0.6%
+  a rank; Sunder 2 to 5% a stack per rank. Everyone got a free respec
+  (migration SkillTreeOuterRingFreeRespec). The matrix at 115 points (today's
+  players) now pins the design: grind gold Hunter+Midas +45% over the
+  generalist, grind XP Hunter+Sage +41%, region bosses Bossbreaker+Juggernaut
+  +43%, world boss Titan-slayer+Haemorrhage +38%, dungeon Warden+Living
+  Fortress +21% - and `BuildSituationMatrixTests` fails if a retune hands a
+  situation to another lane. Not done: art for the new nodes (the rune glyph
+  stands in), the Delve in the matrix, a bleed line on the combat feed, the
+  bleed's cost measured on the Ampere box.

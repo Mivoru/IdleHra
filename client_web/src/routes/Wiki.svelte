@@ -678,12 +678,17 @@
 
           <h3 id="rings">Columns, rows and bridges</h3>
           <p class="dim small">
-            The tree has four columns - Fortune, Might, Precision and Guard - of five rows each. A
+            The tree has four columns - Fortune, Might, Precision and Guard - of eight rows each. A
             row opens once its column holds enough points. Some rows are a <strong>fork</strong>:
             taking one side closes the other until you respec or rebirth. A <strong>bridge</strong>
             joins two neighbouring columns; it needs points in both, and its own points count for
-            both. Each column ends in a <strong>keystone</strong>, and you can hold only one keystone
-            at a time: it is what your build is built around, and a respec changes it.
+            both. Rows six to eight are each column's <strong>lane</strong>: Fortune farms (gold,
+            experience, Momentum - faster with every kill in a row), Might breaks bosses (Sunder strips
+            armour hit by hit, Giant's Bane hits region bosses harder), Precision wins long fights and the
+            world boss (Lacerate bleeds on a crit), and Guard holds the dungeon and the Delve. Every
+            column has three <strong>keystones</strong> - one at row five, two at the top - and most
+            carry a price as well as a gain. You can hold only one keystone at a time: it is what your
+            build is built around, and a respec changes it.
           </p>
           <p class="dim small">
             <strong>Builds.</strong> The Character screen keeps three saved builds - attributes and skill tree. Switching

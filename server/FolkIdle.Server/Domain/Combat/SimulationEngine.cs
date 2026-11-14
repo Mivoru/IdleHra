@@ -4186,7 +4186,8 @@ namespace FolkIdle.Server.Domain.Combat
         {
             int playerAttackSpeedMs = CombatDamageModel.AttackIntervalMs(in combatStats);
             var warSpeed = WarTreeRegistry.Resolve(in payload);
-            if (warSpeed.AttackIntervalTenthsPct > 0)
+            // A negative sum is a keystone's price (Juggernaut): a slower swing.
+            if (warSpeed.AttackIntervalTenthsPct != 0)
             {
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - warSpeed.AttackIntervalTenthsPct / 1000f)));
             }
@@ -4547,7 +4548,8 @@ namespace FolkIdle.Server.Domain.Combat
             // The War half's Edge and Heavy Hand: their own multiplier, so they
             // do not dilute into the inheritance/guild/Renown group above.
             int warDamage = WarTreeRegistry.Resolve(in payload).DamageTenthsPct;
-            if (warDamage > 0) effective += effective * warDamage / 1000L;
+            // A negative sum is a keystone's price (Midas, Sage, Bastion), floored at a tenth.
+            if (warDamage != 0) effective = Math.Max(effective / 10, effective + effective * warDamage / 1000L);
 
             return effective;
         }
@@ -6110,6 +6112,9 @@ namespace FolkIdle.Server.Domain.Combat
                     if (ruined) netDamage = (int)(netDamage * WarEffects.RuinMultiplier);
                 }
                 if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
+                // Juggernaut: the stacks this monster carries add damage too.
+                if (warHit.SunderDamageTenthsPerStack > 0 && payload.SunderStacks > 0)
+                    netDamage += (int)((long)netDamage * Math.Min((int)payload.SunderStacks, WarEffects.SunderMaxStacks) * warHit.SunderDamageTenthsPerStack / 1000L);
                 // Executioner below 35% of the bar, judged on the health
                 // before this hit lands.
                 int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
@@ -6120,6 +6125,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // Boss-bane Philtre: against a region's boss only.
                 int bossbane = BossbaneTenthsPctFor(in payload, in activeMonster);
                 if (bossbane > 0) netDamage += (int)((long)netDamage * bossbane / 1000L);
+                // Giant's Bane (skill tree v3 step D): a region's boss only.
+                if (warHit.RegionBossDamageTenthsPct > 0 && IsRegionBossId(activeMonster.Id))
+                    netDamage += (int)((long)netDamage * warHit.RegionBossDamageTenthsPct / 1000L);
                 if (warHit.ExecuteTenthsPct > 0
                     && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
                     netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);

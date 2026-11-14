@@ -735,18 +735,21 @@ namespace FolkIdle.Server.Domain.Combat
                 // hits it takes to kill. A long fight sits near the cap, a monster
                 // that dies in two hits barely below its own armour.
                 MonsterDefinition monster = target;
-                if (fightWar.SunderTenthsPerStack > 0 && monster.Armor > 0)
+                double sunderDamage = 1.0;
+                if (fightWar.SunderTenthsPerStack > 0)
                 {
                     double plain = Landed(in payload, in stats, in target, rawMilliAttack, 1.0f);
                     double hits = plain > 0 ? Math.Max(1.0, fightHp / plain) : 1.0;
                     double avgStacks = AverageSunderStacks(hits);
                     double cut = Math.Min(1.0, avgStacks * fightWar.SunderTenthsPerStack / 1000.0);
-                    monster.Armor = (int)Math.Round(target.Armor * (1.0 - cut));
+                    if (monster.Armor > 0) monster.Armor = (int)Math.Round(target.Armor * (1.0 - cut));
+                    // Juggernaut: the average stack's damage, on every outcome.
+                    sunderDamage = 1.0 + avgStacks * fightWar.SunderDamageTenthsPerStack / 1000.0;
                 }
 
-                double normal = Landed(in payload, in stats, in monster, rawMilliAttack, 1.0f);
-                double crit = Landed(in payload, in stats, in monster, rawMilliAttack, critMult);
-                double dbl = Landed(in payload, in stats, in monster, rawMilliAttack, critMult * 2f);
+                double normal = Landed(in payload, in stats, in monster, rawMilliAttack, 1.0f) * sunderDamage;
+                double crit = Landed(in payload, in stats, in monster, rawMilliAttack, critMult) * sunderDamage;
+                double dbl = Landed(in payload, in stats, in monster, rawMilliAttack, critMult * 2f) * sunderDamage;
 
                 // Perfect Sequence: one swing in six crits if it lands, at +50%
                 // crit damage. The crit outcome becomes the weighted mix of an
@@ -869,6 +872,8 @@ namespace FolkIdle.Server.Domain.Combat
                 if (mastery > 0) net += (int)((long)net * mastery / 1000L);
                 int bossbane = SimulationEngine.BossbaneTenthsPctFor(in payload, in monster);
                 if (bossbane > 0) net += (int)((long)net * bossbane / 1000L);
+                if (war.RegionBossDamageTenthsPct > 0 && SimulationEngine.IsRegionBossId(monster.Id))
+                    net += (int)((long)net * war.RegionBossDamageTenthsPct / 1000L);
                 net = (int)(net * SimulationEngine.LiveCodexDamageMultiplier(in payload));
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {

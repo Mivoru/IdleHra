@@ -169,7 +169,7 @@
     return 'locked';
   }
 
-  /** One card per column, its five rows in order; bridges are drawn apart. */
+  /** One card per column, its rows in order (eight since skill tree v3); bridges are drawn apart. */
   const columns = $derived.by(() => {
     if (!def) return [];
     return def.Columns.map((col) => {
@@ -442,9 +442,11 @@
       </div>
       {#if half === 'war'}
         <p class="dim small">
-          Tap a rune to see what it does, hold it for a quick look. Four columns of five rows: a row
+          Tap a rune to see what it does, hold it for a quick look. Four columns of eight rows: a row
           opens once its column holds enough points, a <strong>fork</strong> lets you take only one
-          side, and a <strong>bridge</strong> joins two columns. An <strong>affinity</strong> (the glowing
+          side, and a <strong>bridge</strong> joins two columns. Rows six to eight are each column's
+          lane - farming, bosses, the world boss, the dungeon - and every column has three
+          <strong>keystones</strong>: you hold only one at a time. An <strong>affinity</strong> (the glowing
           cut-corner rune) makes that column's affixes on your gear stronger - each affix shows its family.
           Nothing is spent until you confirm.
         </p>
@@ -515,8 +517,8 @@
                 {/if}
                 <div class="tier-nodes">
                   {#each tier.nodes as node, k (node.Id)}
-                    {#if k > 0 && node.Kind === 'Fork'}<span class="or tiny" aria-hidden="true">or</span>{/if}
-                    {@render rune(node, node.Lane < 0 ? 'big' : 'small', ci)}
+                    {#if k > 0 && (node.Kind === 'Fork' || node.Kind === 'Keystone')}<span class="or tiny" aria-hidden="true">or</span>{/if}
+                    {@render rune(node, node.Lane < 0 || node.Kind === 'Keystone' ? 'big' : 'small', ci)}
                   {/each}
                 </div>
               </div>

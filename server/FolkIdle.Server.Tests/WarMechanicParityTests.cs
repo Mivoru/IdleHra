@@ -85,6 +85,11 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "lacerate r3", 3, r3, new[] { WarTreeRegistry.Lacerate }, new byte[] { 3 } };
             yield return new object[] { "momentum r3", 3, r3, new[] { WarTreeRegistry.Momentum }, new byte[] { 3 } };
             yield return new object[] { "lacerate r5", 5, r5, new[] { WarTreeRegistry.Lacerate }, new byte[] { 3 } };
+            // Step D: Juggernaut's damage per Sunder stack, on the swing and in the projection.
+            yield return new object[] { "juggernaut r3", 3, r3, new[] { WarTreeRegistry.Sunder, WarTreeRegistry.Juggernaut }, new byte[] { 3, 1 } };
+            yield return new object[] { "haemorrhage r3", 3, r3, new[] { WarTreeRegistry.Lacerate, WarTreeRegistry.Haemorrhage }, new byte[] { 3, 1 } };
+            // Giant's Bane on a region boss the character beats (region 4 gear on region 2's boss).
+            yield return new object[] { "giant's bane boss r2", 4, RaceUnlockRegistry.GetRegionBossMonsterId(2), new[] { WarTreeRegistry.GiantsBane }, new byte[] { 5 } };
         }
 
         /// <summary>

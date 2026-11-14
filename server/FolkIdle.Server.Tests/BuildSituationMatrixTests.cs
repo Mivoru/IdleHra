@@ -45,7 +45,7 @@ namespace FolkIdle.Server.Tests
         /// <summary>Every node of a column up to a row at its limit; forks take the preferred side, else the first.</summary>
         private static void FillColumn(Dictionary<int, byte> ranks, int column, int maxRow, params int[] preferred)
         {
-            foreach (var n in WarTreeRegistry.All().Where(n => n.Column == column && n.Kind != "Bridge" && !n.Hidden && n.Row <= maxRow).OrderBy(n => n.Id))
+            foreach (var n in WarTreeRegistry.All().Where(n => n.Column == column && n.Kind != "Bridge" && n.Kind != "Keystone" && !n.Hidden && n.Row <= maxRow).OrderBy(n => n.Id))
             {
                 if (n.Fork >= 0)
                 {
@@ -63,49 +63,46 @@ namespace FolkIdle.Server.Tests
 
         internal static IReadOnlyList<(string Name, Dictionary<int, byte> Ranks)> Archetypes()
         {
+            // Step D: the budget of today's players (113-116 points), the outer
+            // ring, and ONE keystone each. Each lane build is listed with each of
+            // its column's three keystones, so the table also says which one wins.
+            var list = new List<(string, Dictionary<int, byte>)>();
+
             var generalist = new Dictionary<int, byte>();
             for (int c = 0; c < 4; c++) FillColumn(generalist, c, 1);
+            list.Add(("Generalist", generalist));
 
-            var grind = new Dictionary<int, byte>();
-            FillColumn(grind, WarTreeRegistry.ColumnFortune, 4);
-            FillColumn(grind, WarTreeRegistry.ColumnMight, 2, WarTreeRegistry.Executioner);
-            Max(grind, WarTreeRegistry.Momentum, WarTreeRegistry.KnowYourPrey);
-
-            var boss = new Dictionary<int, byte>();
-            FillColumn(boss, WarTreeRegistry.ColumnMight, 4, WarTreeRegistry.Bossbreaker);
-            FillColumn(boss, WarTreeRegistry.ColumnGuard, 1);
-            Max(boss, WarTreeRegistry.Sunder, WarTreeRegistry.PiercingCrit);
-
-            var titan = new Dictionary<int, byte>();
-            FillColumn(titan, WarTreeRegistry.ColumnPrecision, 4);
-            FillColumn(titan, WarTreeRegistry.ColumnMight, 1);
-            Max(titan, WarTreeRegistry.Lacerate, WarTreeRegistry.PiercingCrit);
-
-            var warden = new Dictionary<int, byte>();
-            FillColumn(warden, WarTreeRegistry.ColumnGuard, 4);
-            FillColumn(warden, WarTreeRegistry.ColumnPrecision, 1);
-            FillColumn(warden, WarTreeRegistry.ColumnMight, 0);
-            Max(warden, WarTreeRegistry.Counterstroke);
-
-            // Every build spends the same: topped up one rank at a time from the
-            // cheap first rows of the other columns, never past Budget.
-            foreach (var b in new[] { generalist, grind, boss, titan, warden }) TopUp(b);
-
-            return new[]
+            Dictionary<int, byte> Lane(int column, int[] ring, params int[] preferred)
             {
-                ("Generalist", generalist),
-                ("Grind (Fortune+Momentum)", grind),
-                ("Bossbreaker (Might+Sunder)", boss),
-                ("Titan-slayer (Precision+Bleed)", titan),
-                ("Warden (Guard)", warden),
-                // Controls: the same three builds without their step-B mechanic.
-                ("  control: Grind without Momentum", Without(grind, WarTreeRegistry.Momentum)),
-                ("  control: Bossbreaker without Sunder", Without(boss, WarTreeRegistry.Sunder)),
-                ("  control: Titan-slayer without Bleed", Without(titan, WarTreeRegistry.Lacerate)),
-            };
+                var r = new Dictionary<int, byte>();
+                FillColumn(r, column, 3, preferred);
+                Max(r, ring);
+                return r;
+            }
+            void WithKeys(string name, Dictionary<int, byte> lane, params int[] keystones)
+            {
+                foreach (int k in keystones)
+                {
+                    var r = new Dictionary<int, byte>(lane);
+                    Max(r, k);
+                    list.Add(($"{name} + {WarTreeRegistry.Get(k)!.Name}", r));
+                }
+            }
+
+            WithKeys("Hunter", Lane(WarTreeRegistry.ColumnFortune, new[] { WarTreeRegistry.Momentum, WarTreeRegistry.Bounty, WarTreeRegistry.LoreOfTheHunt }),
+                WarTreeRegistry.Midas, WarTreeRegistry.Sage, WarTreeRegistry.GoldenFleece);
+            WithKeys("Bossbreaker", Lane(WarTreeRegistry.ColumnMight, new[] { WarTreeRegistry.Sunder, WarTreeRegistry.TitansGrip, WarTreeRegistry.GiantsBane }, WarTreeRegistry.Bossbreaker),
+                WarTreeRegistry.Juggernaut, WarTreeRegistry.Colossus, WarTreeRegistry.Ruin);
+            WithKeys("Titan-slayer", Lane(WarTreeRegistry.ColumnPrecision, new[] { WarTreeRegistry.Lacerate, WarTreeRegistry.KillerInstinct, WarTreeRegistry.Serrated }),
+                WarTreeRegistry.Haemorrhage, WarTreeRegistry.Flurry, WarTreeRegistry.PerfectSequence);
+            WithKeys("Warden", Lane(WarTreeRegistry.ColumnGuard, new[] { WarTreeRegistry.Stoneskin, WarTreeRegistry.Deflect, WarTreeRegistry.Vitae, WarTreeRegistry.Parry }),
+                WarTreeRegistry.Bastion, WarTreeRegistry.Vampire, WarTreeRegistry.LivingFortress);
+
+            foreach (var (_, r) in list) TopUp(r);
+            return list;
         }
 
-        internal const int Budget = 88;
+        internal const int Budget = 115;
 
         private static Dictionary<int, byte> Without(Dictionary<int, byte> ranks, int id)
         {
@@ -117,7 +114,7 @@ namespace FolkIdle.Server.Tests
         private static void TopUp(Dictionary<int, byte> ranks)
         {
             var filler = WarTreeRegistry.All()
-                .Where(n => !n.Hidden && n.Kind != "Keystone" && n.Kind != "Bridge" && n.Row <= 1 && n.Fork < 0)
+                .Where(n => !n.Hidden && n.Kind != "Keystone" && n.Kind != "Bridge" && n.Row <= 3 && n.Fork < 0)
                 .OrderBy(n => n.Row).ThenBy(n => n.Id).ToList();
             bool added = true;
             while (added && Points(ranks) < Budget)
@@ -144,7 +141,7 @@ namespace FolkIdle.Server.Tests
             return TestTree.With(p, ranks.Select(kv => (kv.Key, kv.Value)).ToArray());
         }
 
-        private sealed record Scores(int Points, double GrindKills, double GrindGold, double BossKills, double DungeonStage, long StrikeToday, long StrikeTree, double SustainedBossDps);
+        private sealed record Scores(int Points, double GrindKills, double GrindGold, double GrindXp, double BossKills, double DungeonStage, long StrikeToday, long StrikeTree, double SustainedBossDps);
 
         private static Scores Score(Dictionary<int, byte> ranks)
         {
@@ -152,14 +149,16 @@ namespace FolkIdle.Server.Tests
             int bossId = RaceUnlockRegistry.GetRegionBossMonsterId(Region);
 
             // Grind: an hour on the region's regular, three seeds.
-            double kills = 0, gold = 0;
+            double kills = 0, gold = 0, xp = 0;
             for (int seed = 1; seed <= 3; seed++)
             {
                 var p = Dressed(regular, ranks);
                 long before = p.CurrentGold;
+                var start = p;
                 var o = CombatSimulator.Run(ref p, Hour, new Random(seed));
                 kills += o.Tally.Kills;
                 gold += p.CurrentGold - before;
+                xp += OfflineCombatParityTests.XpBetween(start.CurrentLevel, start.CurrentXp, p.CurrentLevel, p.CurrentXp);
             }
 
             // The region boss: an hour of it, three seeds.
@@ -167,7 +166,8 @@ namespace FolkIdle.Server.Tests
             for (int seed = 1; seed <= 3; seed++)
             {
                 var p = Dressed(bossId, ranks);
-                bossKills += CombatSimulator.Run(ref p, Hour, new Random(seed)).Tally.Kills;
+                // Three hours a seed: a boss falls about 15-20 times an hour, too few to tell builds apart in one.
+                bossKills += CombatSimulator.Run(ref p, 3 * Hour, new Random(seed)).Tally.Kills / 3.0;
             }
 
             // The dungeon: the highest stage won, plus the share of the next boss taken off.
@@ -198,7 +198,7 @@ namespace FolkIdle.Server.Tests
                 sustained = swing.Mean / 1000.0 * 1000.0 / Math.Max(1, SimulationEngine.LiveAttackIntervalMs(in p, in stats));
             }
 
-            return new Scores(Points(ranks), kills / 3, gold / 3, bossKills / 3, stage, strike, strikeTree, sustained);
+            return new Scores(Points(ranks), kills / 3, gold / 3, xp / 3, bossKills / 3, stage, strike, strikeTree, sustained);
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace FolkIdle.Server.Tests
             long attack = SimulationEngine.EffectiveMilliAttackFor(ref bare, in stats, SimulationEngine.LineageOf(in bare).DamageScalePerLevelPct) / 1000L;
             Assert.InRange(WorldBossTickCoordinator.TreeStrike(ref bare), attack - 1, attack + 1);
 
-            var titan = Dressed(bossId, Archetypes().Single(a => a.Name.StartsWith("Titan")).Ranks);
+            var titan = Dressed(bossId, Archetypes().First(a => a.Name.StartsWith("Titan")).Ranks);
             Assert.True(WorldBossTickCoordinator.TreeStrike(ref titan) > attack * 1.15,
                 $"a crit-and-bleed build should strike well above the bare attack {attack}");
         }
@@ -227,16 +227,17 @@ namespace FolkIdle.Server.Tests
 
             var sb = new StringBuilder();
             sb.AppendLine($"Region {Region}, geared reference character, real values (scale 1). Grind/boss: per hour, mean of 3 seeds.");
-            sb.AppendLine("| build | points | grind kills | grind gold | boss kills | dungeon stage | WB strike (attack only) | WB strike (tree, from 2026-11-16) | sustained boss dps |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| build | points | grind kills | grind gold | grind xp | boss kills | dungeon stage | WB strike (attack only) | WB strike (tree, from 2026-11-16) | sustained boss dps |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|");
             foreach (var (name, s) in rows)
-                sb.AppendLine($"| {name} | {s.Points} | {s.GrindKills:F0} | {s.GrindGold:F0} | {s.BossKills:F1} | {s.DungeonStage:F2} | {s.StrikeToday} | {s.StrikeTree} | {s.SustainedBossDps:F0} |");
+                sb.AppendLine($"| {name} | {s.Points} | {s.GrindKills:F0} | {s.GrindGold:F0} | {s.GrindXp:F0} | {s.BossKills:F1} | {s.DungeonStage:F2} | {s.StrikeToday} | {s.StrikeTree} | {s.SustainedBossDps:F0} |");
 
             // Who is best where.
             string Best(Func<Scores, double> f) => rows.OrderByDescending(r => f(r.S)).First().Name;
             sb.AppendLine();
             sb.AppendLine($"best grind kills: {Best(s => s.GrindKills)}");
             sb.AppendLine($"best grind gold: {Best(s => s.GrindGold)}");
+            sb.AppendLine($"best grind xp: {Best(s => s.GrindXp)}");
             sb.AppendLine($"best boss kills: {Best(s => s.BossKills)}");
             sb.AppendLine($"best dungeon: {Best(s => s.DungeonStage)}");
             sb.AppendLine($"best world boss strike (attack only): {Best(s => s.StrikeToday)}");
@@ -244,6 +245,16 @@ namespace FolkIdle.Server.Tests
             sb.AppendLine($"best sustained boss dps: {Best(s => s.SustainedBossDps)}");
             _output.WriteLine(sb.ToString());
             Console.WriteLine(sb.ToString());
+
+            // Modul: THE DESIGN, PINNED (skill tree v3, owner 2026-11-14): every
+            // situation is won by the lane built for it, never by the generalist.
+            // A retune that hands a situation to another lane fails here - read
+            // the table above before changing a number.
+            Assert.StartsWith("Hunter", Best(s => s.GrindGold));
+            Assert.StartsWith("Hunter", Best(s => s.GrindXp));
+            Assert.StartsWith("Bossbreaker", Best(s => s.BossKills));
+            Assert.StartsWith("Titan-slayer", Best(s => s.StrikeTree));
+            Assert.StartsWith("Warden", Best(s => s.DungeonStage));
 
             // A measurement, not a balance verdict: every build must at least fight.
             foreach (var (name, s) in rows)

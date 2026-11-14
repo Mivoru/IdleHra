@@ -149,13 +149,21 @@ namespace FolkIdle.Server.Domain.Combat
 
         /// <summary>
         /// The world boss as a fight target: the last region's boss, with a pool
-        /// that never empties and no swing of its own (so Riposte answers nothing).
+        /// that never empties, no swing of its own (so Riposte answers nothing)
+        /// and no armour.
         /// </summary>
         private static MonsterDefinition WorldBossTarget()
         {
             var boss = ContentRegistry.Monsters[RaceUnlockRegistry.GetRegionBossMonsterId(RaceUnlockRegistry.LastRegion) - 1];
             boss.MaxHp = int.MaxValue;
             boss.AttackIntervalMs = int.MaxValue / 2;
+            // A god cannot be sundered: armour plays no part, so the world boss
+            // is the long fight of crit, bleed and speed (Titan-slayer), while
+            // Sunder answers the region bosses' armour (Bossbreaker).
+            boss.Armor = 0;
+            // Not a region's boss either: Giant's Bane and the Boss-bane Philtre's
+            // region-boss read stay out (the Philtre is applied to the strike itself).
+            boss.Id = 0;
             return boss;
         }
 
