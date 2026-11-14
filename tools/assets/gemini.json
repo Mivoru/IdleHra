@@ -1044,6 +1044,246 @@
       ],
       "prompt": "Full-screen background for a game menu: atmospheric, dark and moody, low contrast and calm in the middle where interface panels will sit, the interest along the edges, soft vignette. A deep cavern beneath a Slavic land: ancient tree roots breaking through the rock ceiling, a carved stone stairway descending into darkness, glowing pale-gold crystals and old torches in iron brackets, faint runes on the walls, dripping water, umber and dim gold palette. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
       "note": "2026-11-13: generated 1376x768, saved whole at q60 - the Delve's underground mood background (app.css [data-mood='underground'], --scene-underground from sections.ts)."
+    },
+    {
+      "id": "war_sunder",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/sunder.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a heavy war axe biting into a cracked iron shield, splinters of metal flying."
+    },
+    {
+      "id": "war_momentum",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/momentum.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a spinning blade trailing three golden motion arcs, like a wind-charm."
+    },
+    {
+      "id": "war_lacerate",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/lacerate.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a curved dagger with three drops of crimson blood falling from its edge."
+    },
+    {
+      "id": "war_bounty",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/bounty.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a leather purse bursting with gold coins, a wolf tooth tied to its string."
+    },
+    {
+      "id": "war_treasure_sense",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/treasure_sense.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a glowing amber eye amulet above a small heap of gems."
+    },
+    {
+      "id": "war_lore_of_the_hunt",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/lore_of_the_hunt.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: an old bound book with antlers carved on its cover and a feather bookmark."
+    },
+    {
+      "id": "war_midas",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/midas.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a golden hand with gold dripping from the fingertips onto coins."
+    },
+    {
+      "id": "war_sage",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/sage.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a wise owl perched on a stack of scrolls, a faint glowing rune above it."
+    },
+    {
+      "id": "war_titans_grip",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/titans_grip.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a huge armoured gauntlet clenched around a warhammer haft."
+    },
+    {
+      "id": "war_overpower",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/overpower.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a massive stone maul crushing a boulder into pieces."
+    },
+    {
+      "id": "war_giants_bane",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/giants_bane.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a spear driven through a giant horned skull."
+    },
+    {
+      "id": "war_juggernaut",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/juggernaut.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a battering ram head of black iron shaped like a bull, dents and sparks."
+    },
+    {
+      "id": "war_colossus",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/colossus.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a towering stone warrior statue fist, cracks of red light inside."
+    },
+    {
+      "id": "war_killer_instinct",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/killer_instinct.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a predator eye with a slit pupil reflected in a sword blade."
+    },
+    {
+      "id": "war_serrated",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/serrated.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a jagged saw-toothed sword blade, glinting edges."
+    },
+    {
+      "id": "war_quickening",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/quickening.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a pair of feathered boots with blue wind swirling around them."
+    },
+    {
+      "id": "war_haemorrhage",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/haemorrhage.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a blood-red crescent moon with dark red streams pouring from it."
+    },
+    {
+      "id": "war_flurry",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/flurry.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: three thin silver blades in a fan, each leaving a pale blue streak."
+    },
+    {
+      "id": "war_stoneskin",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/stoneskin.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a forearm covered in grey stone plates like armour."
+    },
+    {
+      "id": "war_deflect",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/deflect.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a round wooden shield with an iron boss turning aside an arrow."
+    },
+    {
+      "id": "war_vitae",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/vitae.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a glass vial of glowing red heart-blood with a living green sprig."
+    },
+    {
+      "id": "war_parry",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/parry.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: two crossed swords meeting with a bright spark at the point of contact."
+    },
+    {
+      "id": "war_bastion",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/bastion.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: a fortress tower with a great shield set into its wall, banners."
+    },
+    {
+      "id": "war_vampire",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/SkillIcons/ruin.webp"
+      ],
+      "aspect": "1:1",
+      "out": "client/Assets/Images/SpritesWeb/SkillIcons/vampire.webp",
+      "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: pale fangs above a goblet of dark red wine, a bat silhouette."
     }
   ]
 }
