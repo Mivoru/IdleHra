@@ -1,7 +1,6 @@
 # Skill tree v3: builds that are good at something
 
-Status: **proposal, 2026-11-14.** Owner direction, not yet approved in detail.
-Nothing here is built.
+Status: **approved 2026-11-14** (see Owner decisions at the end). Build order A-D.
 
 ## The problem, measured
 
@@ -136,8 +135,10 @@ Each changes how a fight goes and carries a downside:
 Each step is its own PR and deploy. Numbers in D are set from C's matrix,
 not by hand.
 
-## Open questions for the owner
+## Owner decisions (2026-11-14)
 
-1. The lanes and keystone list above - change or add any?
-2. Aptitude scaling (breeding decides the build): yes or no?
-3. Loadouts bound to activities automatically, or switched by hand only?
+1. Lanes (Hunter, Bossbreaker, Titan-slayer, Warden) and the twelve keystones
+   with downsides: **approved, start with step A.**
+2. Aptitude scaling (breeding decides the build): **yes.**
+3. Loadouts **bound to activities automatically** (world boss, dungeon,
+   grind), still switchable by hand outside a fight.
