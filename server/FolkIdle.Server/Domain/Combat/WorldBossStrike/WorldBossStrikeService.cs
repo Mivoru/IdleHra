@@ -238,6 +238,10 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
 
         private bool PracticeOpen => _settings.Mode != BossMinigameMode.Off;
         private bool WheelOpen => _settings.Mode == BossMinigameMode.Wheel && _board != null;
+        // Modul: auto-strike survives the wheel (2026-11-14): in duel mode it is
+        // the duel's floor, struck with no plate (the plates went with the wheel).
+        private bool AutoOpen => _settings.Mode is BossMinigameMode.Wheel or BossMinigameMode.Duel && _board != null;
+        private bool DuelMode => _settings.Mode == BossMinigameMode.Duel;
 
         // --- expiry -----------------------------------------------------------
 
@@ -580,12 +584,14 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         {
             long now = _nowMs();
             Sweep(now);
-            if (!WheelOpen) return new StrikeResponse { Result = WorldBossStrikeResult.Disabled };
+            bool auto = string.Equals(request.Mode, "Auto", StringComparison.OrdinalIgnoreCase);
+            if (!(auto ? AutoOpen : WheelOpen)) return new StrikeResponse { Result = WorldBossStrikeResult.Disabled };
 
             WorldBossStrikeOrder order;
-            if (string.Equals(request.Mode, "Auto", StringComparison.OrdinalIgnoreCase))
+            if (auto)
             {
-                if (request.Plate is not int plate || plate < 0 || plate >= WorldBossStrikeRules.PlateCount) return null;
+                int plate = request.Plate ?? -1;
+                if (!DuelMode && (plate < 0 || plate >= WorldBossStrikeRules.PlateCount)) return null;
 
                 var open = _registry.Get(playerId, practice: false);
                 if (open != null && open.ExpiresAtMs > now) return new StrikeResponse { Result = WorldBossStrikeResult.ChallengeOutstanding };
@@ -598,7 +604,8 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 order = new WorldBossStrikeOrder
                 {
                     PlayerId = playerId,
-                    Landings = new[] { new SpearLanding(0, plate, SpearClass.Plate, false) },
+                    // In duel mode no landing at all: M = Floor, no plate, no weak-plate 3x.
+                    Landings = DuelMode ? Array.Empty<SpearLanding>() : new[] { new SpearLanding(0, plate, SpearClass.Plate, false) },
                     WeakPlate = null,
                     Multiplier = WorldBossStrikeRules.Floor,
                     LandedAs = WorldBossStrikeResult.Landed,

@@ -110,6 +110,16 @@ export const CLIPS = {
   dungeonPerk: 'dungeon_perk.wav',
   dungeonVictory: 'dungeon_victory.wav',
   dungeonDefeat: 'dungeon_defeat.wav',
+
+  // Modul: THE WORLD BOSS DUEL (2026-11-14). Its blows reuse the combat hit
+  // files under their own names ON PURPOSE: hitMelee and hitCrit are in
+  // COMBAT_CLIPS, which are silent off the Combat screen, and the duel plays
+  // on the World Boss screen - the first build's blows made no sound at all.
+  duelHit: 'combat_hit_melee.wav',
+  duelHeavy: 'combat_hit_crit.wav',
+  worldBossRoar: 'worldboss_roar.wav',
+  worldBossHammer: 'worldboss_hammer.wav',
+  worldBossHiss: 'worldboss_serpent_hiss.wav',
 } as const;
 
 export type ClipName = keyof typeof CLIPS;

@@ -746,7 +746,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Store', label: 'Store', status: 'no-page-needed', note: 'Empty for now (owner, 2026-09-28): it says so. Diamonds themselves are on the Economy page.' },
   { screen: 'Dungeon', label: 'Dungeon', status: 'no-page-needed', note: 'The lobby prints every rule from the server - each stage, its reward, and the abilities of Baba Yaga with their numbers at that stage - so a wiki page would be a copy that goes stale.' },
   { screen: 'Delve', label: 'The Delve', status: 'documented', tab: 'economy', note: 'The gold sink: the fee per region, the floor ladder, what Fortune buys and the weekly diamond ceiling.' },
-  { screen: 'WorldBoss', label: 'World boss', status: 'documented', tab: 'events', note: 'The shared encounter, the shield wheel, one strike a day and the weekly payout by damage.' },
+  { screen: 'WorldBoss', label: 'World boss', status: 'documented', tab: 'events', note: 'The shared encounter, the duel, one strike a day and the weekly payout by damage.' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -849,7 +849,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'delve', title: 'The Delve', keywords: 'gold sink minigame doors floors lantern charges bank push diamonds ceiling fortune embers' },
   { tab: 'economy', anchor: 'deep', title: 'The Deep', keywords: 'deep delve below floor eight stake toll lantern refill titles lamplighter deepest board weekly record' },
 
-  { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'chernobog svarog black serpent registration reveal milestone avatar title pet kill reward sandbag shield wheel spear seam parry auto-strike damage board' },
+  { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'chernobog svarog black serpent registration reveal milestone avatar title pet kill reward sandbag duel omen guard strike evade stance quick strike damage board' },
   { tab: 'events', anchor: 'seasonal', title: 'Seasonal events', keywords: 'samhain halloween pumpkins event currency shop avatar festival' },
   { tab: 'events', anchor: 'cailleach', title: 'The seasonal boss', keywords: 'cailleach samhain boss tiers winter first clear diamonds mini vampire' },
   { tab: 'events', anchor: 'pets', title: 'Pets', keywords: 'pet witch ghostie pixie skeleton dog black cat wolf pup mini vampire bonus slot rare drop monster kill hugin nisse cait cu sidhe ignis kikimora backahast llamhigyn ogham dagda cauldron duplicate diamonds' },

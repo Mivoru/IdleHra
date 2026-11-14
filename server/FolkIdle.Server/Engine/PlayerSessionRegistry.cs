@@ -515,6 +515,11 @@ namespace FolkIdle.Server.Engine
         /// the payload (task 36, spec 5.7). Drained with a budget.
         /// </summary>
         public ConcurrentQueue<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeOrder> WorldBossStrikeQueue { get; } = new();
+        /// <summary>
+        /// Duel quotes from REST: the tick answers each with the striker's
+        /// base hit and stance from the payload (BossDuelService).
+        /// </summary>
+        public ConcurrentQueue<FolkIdle.Server.Domain.Combat.WorldBossStrike.DuelQuoteRequest> WorldBossQuoteQueue { get; } = new();
         public ConcurrentQueue<MasteryUpdateNotification> MasteryUpdateQueue { get; } = new();
         public ConcurrentQueue<long> LoginQueue { get; } = new();
         public ConcurrentQueue<GuildUpdateNotification> GuildUpdateQueue { get; } = new();

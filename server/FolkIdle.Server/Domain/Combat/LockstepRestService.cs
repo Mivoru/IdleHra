@@ -21,7 +21,7 @@ namespace FolkIdle.Server.Domain.Combat
     internal static class LockstepRestService
     {
         internal static bool HasWaitingCallers(PlayerSessionRegistry registry)
-            => !registry.PayloadSnapshotQueue.IsEmpty || !registry.WorldBossStrikeQueue.IsEmpty || !registry.RebirthRequestQueue.IsEmpty;
+            => !registry.PayloadSnapshotQueue.IsEmpty || !registry.WorldBossStrikeQueue.IsEmpty || !registry.WorldBossQuoteQueue.IsEmpty || !registry.RebirthRequestQueue.IsEmpty;
 
         internal static void Serve(
             PlayerSessionRegistry registry,
@@ -34,6 +34,7 @@ namespace FolkIdle.Server.Domain.Combat
             try
             {
                 if (worldBossEngine != null) WorldBossTickCoordinator.DrainStrikeOrders(registry, activePlayers, worldBossEngine);
+                WorldBossTickCoordinator.DrainDuelQuotes(registry, activePlayers);
                 PayloadSnapshotTickCoordinator.Drain(registry, activePlayers);
                 // A rebirth is taken by the tick (suspend + flush); the writer's
                 // continuation answers the caller, so the REST call completes

@@ -35,6 +35,27 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.90.0',
+    date: '2026-11-15',
+    headline: 'Chernobog, face to face: the world boss duel.',
+    sections: [
+      {
+        title: 'World boss',
+        items: [
+          'The shield wheel is gone. Your strike is now a duel: your character fights Chernobog, and three times he winds up a named move - you call Guard, Strike or Evade. Three right calls land Svarog\'s Hammer, up to 2x.',
+          'Your build changes the right answers (Might, Precision or Guard), and an omen of the day changes one more. The result card says which answer was right.',
+          'Below a quarter of his health the Black Serpent brings moves of its own. Quick strike and free practice stay.',
+        ],
+      },
+      {
+        title: 'Gathering',
+        items: [
+          'Beating a region\'s boss now opens the next region\'s gathering too - no more fighting there on the wrong food first.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.89.0',
     date: '2026-11-14',
     headline: 'Rare pets.',

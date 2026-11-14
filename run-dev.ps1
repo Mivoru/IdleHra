@@ -30,10 +30,13 @@ $env:FOLKIDLE_DEV_TOOLS = '1'
 # The Deep (task 37) ships OFF in production; the dev box runs it on so the
 # Delve screen and exercise.mjs can reach it.
 $env:FOLKIDLE_DELVE_DEEP = 'on'
+# The world boss duel (2026-11-14, it replaced the shield wheel) ships behind a
+# flag in production; the dev box runs it in full (practice, real strikes,
+# auto-strike) so exercise.mjs can prove the calls reach damage. Was:
 # The shield wheel (task 36) ships behind a flag in production; the dev box runs
 # the full wheel (practice, real strikes, auto-strike) so exercise.mjs can prove
 # skill reaches damage.
-$env:FOLKIDLE_BOSS_MINIGAME = 'wheel'
+$env:FOLKIDLE_BOSS_MINIGAME = 'duel'
 
 Write-Host 'Starting the game server on :8080...' -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(
@@ -43,7 +46,7 @@ Start-Process powershell -ArgumentList @(
   "`$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'; " +
   "`$env:FOLKIDLE_DEV_TOOLS='1'; " +
   "`$env:FOLKIDLE_DELVE_DEEP='on'; " +
-  "`$env:FOLKIDLE_BOSS_MINIGAME='wheel'; " +
+  "`$env:FOLKIDLE_BOSS_MINIGAME='duel'; " +
   "dotnet run --project FolkIdle.Server/FolkIdle.Server.csproj"
 )
 

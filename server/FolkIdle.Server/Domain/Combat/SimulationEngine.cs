@@ -1153,6 +1153,7 @@ namespace FolkIdle.Server.Domain.Combat
                 WorldBossTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 WorldBossTickCoordinator.DrainStrikeOrders(_playerRegistry, _activePlayers, _worldBossEngine);
+                WorldBossTickCoordinator.DrainDuelQuotes(_playerRegistry, _activePlayers);
 
                 RaceProgressionTickCoordinator.DrainMasteryUpdates(_playerRegistry, _activePlayers);
 

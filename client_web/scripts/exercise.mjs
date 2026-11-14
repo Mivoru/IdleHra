@@ -2857,6 +2857,8 @@ await go('Wiki');
 // the round trip leaves the fixture as the calendar would.
 
 }
+// Set by the world-boss block: the shield wheel's own blocks below stand down under the duel.
+let duelMode = false;
 if (want('world-boss')) {
 await go('World Boss');
 {
@@ -2873,6 +2875,92 @@ await go('World Boss');
 
   const text = await page.evaluate(() => document.body.innerText);
   record('world boss state is shown', /Active|Dormant|Concluded/.test(text));
+
+  // Modul: THE DUEL (2026-11-14) replaced the shield wheel under
+  // FOLKIDLE_BOSS_MINIGAME=duel. No plates: the strike is a duel with three
+  // calls, and the checks are the same kind - practice touches nothing, a
+  // real duel spends the strike and its damage lands on the board exactly.
+  await page.waitForSelector('[data-testid="duel-strike"], [data-testid="wheel-strike"], button.attack', { timeout: 8000 }).catch(() => {});
+  duelMode = (await page.locator('[data-testid="duel-strike"]').count()) > 0;
+  if (duelMode) {
+    const playDuel = async (buttonSelector) => {
+      await page.locator(buttonSelector).first().click();
+      const opened = await page.waitForSelector('[data-testid="duel-intro"]', { timeout: 10000 }).then(() => true).catch(() => false);
+      if (!opened) return null;
+      await page.locator('[data-testid="duel-speed"]').click();
+      await page.locator('[data-testid="duel-begin"]').click();
+      const verdicts = [];
+      const answers = ['Guard', 'Strike', 'Evade'];
+      for (let i = 0; i < 3; i++) {
+        const asked = await page.waitForSelector('[data-testid="duel-call"] button.option:not([disabled])', { timeout: 30000 }).then(() => true).catch(() => false);
+        if (!asked) break;
+        await page.locator(`[data-testid="duel-option-${answers[i]}"]`).click();
+        const verdict = await page
+          .waitForSelector('[data-testid="duel-verdict"]', { timeout: 10000 })
+          .then((el) => el.getAttribute('data-verdict'))
+          .catch(() => null);
+        verdicts.push(verdict);
+      }
+      await page.waitForSelector('[data-testid="duel-result"]', { timeout: 40000 }).catch(() => {});
+      const card = page.locator('[data-testid="duel-result"]');
+      const damage = Number((await card.getAttribute('data-damage').catch(() => null)) ?? -1);
+      const text = await card.innerText().catch(() => '');
+      await page.locator('[data-testid="duel-close"]').click().catch(() => {});
+      return { damage, verdicts, text };
+    };
+    const pipsNow = () => page.evaluate(() => Number(document.querySelector('[data-testid="strike-chip"]')?.getAttribute('data-spent') ?? 0));
+    const myDamage = async () => Number((await apiGet('/api/v1/worldboss/board'))?.Me?.Damage ?? 0);
+
+    record('the screen shows the omen of the day', (await page.locator('[data-testid="boss-omen"]').count()) > 0);
+
+    const pipsBefore = await pipsNow();
+    const damageBefore = await myDamage();
+    const practice = await playDuel('[data-testid="duel-practice"]');
+    record(
+      'a practice duel plays three calls, each judged',
+      practice !== null && practice.verdicts.length === 3 && practice.verdicts.every((v) => /Right|Fair|Wrong/.test(v ?? '')),
+      practice ? practice.verdicts.join(', ') : 'the duel did not open',
+    );
+    record(
+      'practice deals nothing and spends nothing',
+      practice !== null && practice.damage === 0 && /no damage dealt/i.test(practice.text) && (await pipsNow()) === pipsBefore && (await myDamage()) === damageBefore,
+      practice ? `card ${practice.damage}, pips ${pipsBefore} -> ${await pipsNow()}` : '',
+    );
+
+    if (active) {
+      const real = await playDuel('[data-testid="duel-strike"]');
+      await page
+        .waitForFunction((n) => Number(document.querySelector('[data-testid="strike-chip"]')?.getAttribute('data-spent') ?? 0) > n, pipsBefore, { timeout: 10000 })
+        .catch(() => {});
+      const damageAfter = await myDamage();
+      record('a real duel lands damage on the result card', real !== null && real.damage > 0, real ? `${real.damage} (${real.verdicts.join(', ')})` : 'the duel did not open');
+      record('the duel spends the strike', (await pipsNow()) > pipsBefore, `${pipsBefore} -> ${await pipsNow()}`);
+      record(
+        "the card's damage is exactly what the board gained",
+        real !== null && damageAfter - damageBefore === real.damage,
+        `${damageBefore} -> ${damageAfter}, card ${real?.damage}`,
+      );
+      const row = await apiGet('/api/v1/dev/worldboss/attempt');
+      record(
+        'the duel is recorded on the server',
+        row !== null && row.AttemptCount >= 1 && row.TotalInflictedDamage > 0,
+        row === null ? 'no answer' : `attempts ${row.AttemptCount}, damage ${row.TotalInflictedDamage}`,
+      );
+      const grey = await page.locator('[data-testid="duel-strike"]').isDisabled();
+      const reason = await page.locator('.strike-reason').innerText().catch(() => '');
+      record("a second duel the same day is greyed with today's reason", grey && /today's strike/i.test(reason), `grey ${grey}: "${reason.trim()}"`);
+      const boardNow = await apiGet('/api/v1/worldboss/board');
+      record('the duel registers the fixture for the week', boardNow?.Me?.Registered === true && row?.IsRegistered === true, `board ${boardNow?.Me?.Registered}, row ${row?.IsRegistered}`);
+      const revealStatus = await apiPostStatus('/api/v1/dev/worldboss/reveal', {});
+      const revealed = await apiGet('/api/v1/worldboss/board');
+      record(
+        'the reveal sizes the health from the duel',
+        revealStatus === 200 && revealed?.Phase === 'Revealed' && revealed.BossMaxHp > 0 &&
+          revealed.BossCurrentHp === revealed.BossMaxHp - Number(row?.TotalInflictedDamage ?? 0),
+        `status ${revealStatus}, hp ${revealed?.BossCurrentHp}/${revealed?.BossMaxHp}, dealt ${row?.TotalInflictedDamage}`,
+      );
+    }
+  } else {
 
   const plates = page.locator('.armour-plate');
   const plateCount = await plates.count();
@@ -3037,6 +3125,8 @@ await go('World Boss');
     }
   }
 
+  } // the wheel and plate checks, when the duel is off
+
   // A closed window must say WHY the button is grey, next to the button. The
   // owner saw a grey Strike on a dormant day with the reason far above it,
   // and read it as broken.
@@ -3196,7 +3286,7 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
   };
 }
 
-{
+if (!duelMode) {
   await go('World Boss');
   const practiceButton = page.getByRole('button', { name: /Practice the shield wheel/i }).first();
   const offered = (await practiceButton.count()) > 0;
@@ -3319,7 +3409,7 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
 // M 1.00 and aimed M 2.00 both dealt 3,000). What is invariant is the wiring:
 // both runs hit with the same base (damage / played), and the aimed run's
 // damage is at least that base times its higher M.
-{
+if (!duelMode) {
   await go('World Boss');
   const wheelOffered = (await page.locator('[data-testid="wheel-strike"]').count()) > 0;
   if (!wheelOffered) {

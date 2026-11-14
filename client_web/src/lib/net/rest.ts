@@ -2493,9 +2493,92 @@ export function fetchBossBoard(): Promise<WorldBossBoardView | null> {
 export function strikeBoss(
   body:
     | { Mode: 'Wheel'; ChallengeId: string; Taps: { Seq: number; TapMs: number }[]; Parries: ParryEntryDto[]; Counters: CounterEntryDto[] }
-    | { Mode: 'Auto'; Plate: number },
+    | { Mode: 'Auto'; Plate?: number },
 ): Promise<StrikeResponse | null> {
   return authedPost<StrikeResponse>('/api/v1/worldboss/strike', body);
+}
+
+// --- the duel (2026-11-14) -------------------------------------------------
+// Modul: hand-mirrored REST DTOs of BossDuelService.cs, like the wheel's above.
+// The client animates what the server dealt and never computes a number: the
+// blows, the hit each call lands and the strike's damage all arrive here.
+
+export type DuelOption = 'None' | 'Guard' | 'Strike' | 'Evade';
+export type DuelVerdict = 'Wrong' | 'Fair' | 'Right';
+export type DuelStance = 'Balanced' | 'Might' | 'Precision' | 'Guard';
+export type DuelMove =
+  | 'CrushingBlow'
+  | 'BlackFlame'
+  | 'SerpentCoil'
+  | 'CurseOfNight'
+  | 'SummonShade'
+  | 'VenomSpit'
+  | 'TailSweep'
+  | 'DeathCoil';
+
+export interface DuelOmen {
+  Name: string;
+  Text: string;
+  Move: DuelMove;
+}
+
+export interface DuelCall {
+  Index: number;
+  Move: DuelMove;
+  Name: string;
+  Tell: string;
+  Answer: DuelOption | null;
+  Verdict: DuelVerdict | null;
+  Hit: number | null;
+  Explain: string | null;
+}
+
+export interface DuelChallenge {
+  ChallengeId: string;
+  Practice: boolean;
+  Enraged: boolean;
+  Stance: DuelStance;
+  Omen: DuelOmen;
+  BaseHit: number;
+  Rounds: number[][];
+  Calls: DuelCall[];
+  FinisherHit: number;
+  CallWindowMs: number;
+}
+
+export interface DuelStrike {
+  Result: WorldBossStrikeResult;
+  Damage: number;
+  Multiplier: number;
+  RightCalls: number;
+  NoDamageDealt: boolean;
+}
+
+export interface DuelState {
+  Result: WorldBossStrikeResult;
+  Mode: string;
+  Omen: DuelOmen;
+  Challenge: DuelChallenge | null;
+  Resolved: DuelStrike | null;
+}
+
+export interface DuelCallResponse {
+  Result: WorldBossStrikeResult;
+  Call: DuelCall | null;
+  Strike: DuelStrike | null;
+}
+
+export function fetchDuel(): Promise<DuelState | null> {
+  return authedGet<DuelState>('/api/v1/worldboss/duel');
+}
+
+/** Opens today's duel (spends the strike when its last call lands) or a free practice one. */
+export function issueDuel(practice: boolean): Promise<DuelState | null> {
+  return authedPost<DuelState>('/api/v1/worldboss/duel', { Practice: practice });
+}
+
+export function answerDuelCall(challengeId: string, index: number, option: DuelOption): Promise<DuelCallResponse | null> {
+  return authedPost<DuelCallResponse>('/api/v1/worldboss/duel/call', { ChallengeId: challengeId, Index: index, Option: option });
 }
 
 // ---------------------------------------------------------------------------
