@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.85.0',
+    date: '2026-11-14',
+    headline: 'One keystone at a time - pick what your build is about.',
+    sections: [
+      {
+        title: 'Skill tree',
+        items: [
+          'You can now hold only one keystone at a time. It is the heart of your build: Ruin, Perfect Sequence, Golden Fleece or Living Fortress. A respec changes it.',
+          'If you held more than one, all of them have been refunded, and your free respec is back - choose the one you want.',
+          'This is the first step of a bigger skill tree, with builds made for farming, bosses, the world boss and dungeons.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.84.0',
     date: '2026-11-14',
     sections: [

@@ -72,6 +72,67 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Several_keystones_are_all_refunded_once_on_load_and_one_is_left_alone()
+        {
+            long many = await CreatePlayerAsync(points: 2, level: 90, freeRespecUsed: true);
+            long one = await CreatePlayerAsync(points: 2, level: 90, freeRespecUsed: true);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                foreach (int id in new[] { WarTreeRegistry.Ruin, WarTreeRegistry.PerfectSequence, WarTreeRegistry.GoldenFleece })
+                    db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = many, BranchId = id, Level = 1 });
+                db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = many, BranchId = WarTreeRegistry.Edge, Level = 5 });
+                db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = one, BranchId = WarTreeRegistry.Ruin, Level = 1 });
+                await db.SaveChangesAsync();
+            }
+            int keystoneCost = WarTreeRegistry.Get(WarTreeRegistry.Ruin)!.CostPerRank;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(3 * keystoneCost, await SkillTreeEngine.ReconcileSingleKeystoneAsync(db, many));
+                Assert.Equal(0, await SkillTreeEngine.ReconcileSingleKeystoneAsync(db, one));
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                Assert.Equal(0, await SkillTreeEngine.ReconcileSingleKeystoneAsync(db, many));
+
+            await using var check = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var p = await check.PlayerRecords.SingleAsync(x => x.Id == many);
+            Assert.Equal(2 + 3 * keystoneCost, p.AvailableSkillPoints);
+            Assert.False(p.FreeRespecUsed);
+            var left = await check.PlayerSkillTreeNodes.Where(n => n.PlayerId == many).Select(n => n.BranchId).ToListAsync();
+            Assert.Equal(new[] { WarTreeRegistry.Edge }, left);
+            var untouched = await check.PlayerRecords.SingleAsync(x => x.Id == one);
+            Assert.Equal(2, untouched.AvailableSkillPoints);
+            Assert.True(untouched.FreeRespecUsed);
+            Assert.True(await check.PlayerSkillTreeNodes.AnyAsync(n => n.PlayerId == one && n.BranchId == WarTreeRegistry.Ruin));
+        }
+
+        [Fact]
+        public void A_second_keystone_is_blocked_and_a_plan_cannot_buy_two()
+        {
+            var levels = new byte[WarTreeRegistry.Slots];
+            levels[WarTreeRegistry.Ruin] = 1;
+            string? reason = WarTreeRegistry.BlockedReason(WarTreeRegistry.PerfectSequence, levels, 500);
+            Assert.NotNull(reason);
+            Assert.Contains("Ruin", reason);
+            Assert.Contains("Only one keystone", reason);
+
+            // A plan that fills two columns to their keystones stops at the second.
+            var current = new byte[WarTreeRegistry.Slots];
+            var target = new byte[WarTreeRegistry.Slots];
+            foreach (var n in WarTreeRegistry.All())
+                if (!WarTreeRegistry.IsPending(n.Id) && n.Fork < n.Id && (n.Column == WarTreeRegistry.ColumnMight || n.Column == WarTreeRegistry.ColumnPrecision) && n.Kind != "Bridge")
+                    target[n.Id] = (byte)n.MaxLevel;
+            string? plan = WarTreeRegistry.PlanReason(current, target, 500, out _);
+            Assert.NotNull(plan);
+            Assert.Contains("Only one keystone", plan);
+
+            // One keystone alone is still fine.
+            foreach (var n in WarTreeRegistry.All())
+                if (n.Column == WarTreeRegistry.ColumnPrecision) target[n.Id] = 0;
+            Assert.Null(WarTreeRegistry.PlanReason(current, target, 500, out _));
+        }
+
+        [Fact]
         public async Task A_root_bought_past_the_old_cap_is_refunded_at_the_curve_it_was_bought_at()
         {
             // Levels 10-13 of a root under the old cap of 20 cost 3, 3, 3, 3.

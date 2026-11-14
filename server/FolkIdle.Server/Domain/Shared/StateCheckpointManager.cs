@@ -831,6 +831,8 @@ namespace FolkIdle.Server.Domain.Shared
             // SkillTreeEngine.ReconcileWarSwitchAsync for why the order matters.
             int skillTreeRefund = await SkillTreeEngine.ReconcileWarSwitchAsync(dbContext, playerId);
             if (skillTreeRefund > 0) Console.WriteLine($"Skill tree switch: player {playerId} refunded {skillTreeRefund} points from today's tree.");
+            int keystoneRefund = await SkillTreeEngine.ReconcileSingleKeystoneAsync(dbContext, playerId);
+            if (keystoneRefund > 0) Console.WriteLine($"One-keystone switch: player {playerId} refunded {keystoneRefund} points of keystones.");
 
             var player = await dbContext.PlayerRecords.FindAsync(playerId);
 

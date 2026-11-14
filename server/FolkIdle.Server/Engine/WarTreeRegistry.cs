@@ -329,6 +329,9 @@ namespace FolkIdle.Server.Engine
             if (levels.Length < SkillRankBuffer.Length) return "Skill tree not loaded.";
             if (IsPending(id)) return "Not in the game yet - coming soon.";
             if (levels[id] >= n.MaxLevel) return "Already at its limit.";
+            // Before the gates: "you already hold one" is the answer that matters.
+            if (n.Kind == "Keystone" && HeldKeystone(levels, except: id) is { } held)
+                return $"{held.Name} is your keystone. Only one keystone at a time - a respec changes it.";
 
             if (n.Kind == "Bridge")
             {
@@ -345,7 +348,22 @@ namespace FolkIdle.Server.Engine
 
             if (n.Fork >= 0 && levels[n.Fork] > 0) return $"{Nodes[n.Fork]!.Name} was taken instead. One branch per fork.";
 
+
             if (availablePoints < n.CostPerRank) return $"Costs {n.CostPerRank} points; you have {availablePoints}.";
+            return null;
+        }
+
+        // Modul: ONE KEYSTONE AT A TIME (skill tree v3 step A, owner
+        // 2026-11-14). Every keystone used to stack - Tomda held all four for
+        // 20 points - so whatever path a player took the tree ended in the
+        // same place. A keystone is now the build's identity: one at a time,
+        // changed by a respec. Players who held several are refunded on load
+        // (SkillTreeEngine.ReconcileSingleKeystoneAsync).
+        /// <summary>The keystone held in these levels other than <paramref name="except"/>, or null.</summary>
+        public static WarNodeDef? HeldKeystone(ReadOnlySpan<byte> levels, int except = -1)
+        {
+            foreach (var n in All())
+                if (n.Kind == "Keystone" && n.Id != except && n.Id < levels.Length && levels[n.Id] > 0) return n;
             return null;
         }
 

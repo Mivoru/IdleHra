@@ -682,7 +682,8 @@
             row opens once its column holds enough points. Some rows are a <strong>fork</strong>:
             taking one side closes the other until you respec or rebirth. A <strong>bridge</strong>
             joins two neighbouring columns; it needs points in both, and its own points count for
-            both.
+            both. Each column ends in a <strong>keystone</strong>, and you can hold only one keystone
+            at a time: it is what your build is built around, and a respec changes it.
           </p>
           {#if treeDef}
             <div class="scroll">
