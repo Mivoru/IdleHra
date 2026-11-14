@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.87.0',
+    date: '2026-11-14',
+    sections: [
+      {
+        title: 'World boss',
+        items: [
+          'From the encounter that starts on Monday 16 November, your skill tree counts against the world boss: a strike is your attack times what your tree adds to your damage against a boss - crit, attack speed and your keystone included. Until now every build struck almost the same.',
+          'The boss\'s health is still set by Monday and Tuesday\'s strikes, so he stays sized to the people fighting him.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.86.0',
     date: '2026-11-14',
     headline: 'A build for every fight.',

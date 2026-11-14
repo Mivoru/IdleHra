@@ -197,3 +197,12 @@ not by hand.
   4. The dungeon rewards survival (Warden best at 4.44) - already situational;
      its stage resolution is coarse, read the boss share.
   5. Delve is not in the matrix yet.
+- **World boss strike prices the tree (owner, 2026-11-14), from the
+  encounter of 2026-11-16.** `WorldBossTickCoordinator.TreeStrike`: the attack
+  without the tree times the tree's lift on the sustained swing
+  (`PlayerSwing` against the last region's boss with an endless pool). A
+  treeless character strikes exactly as before. Matrix: Generalist 2,787 to
+  3,106, Grind 2,966, Bossbreaker 3,057, Titan-slayer 4,147, Warden 2,351
+  (Living Fortress caps crit, so the lift is below 1). The boss's health is
+  set from Monday/Tuesday strikes, so it follows on its own; the date gate
+  keeps the current week's boss from going soft.
