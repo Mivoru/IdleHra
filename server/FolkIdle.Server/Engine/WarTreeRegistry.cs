@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -62,6 +63,17 @@ namespace FolkIdle.Server.Engine
         MomentumPct,
         /// <summary>Bleed: a crit also bleeds this share of its damage (tenths of a percent) over WarEffects.BleedSeconds; bleeds add up.</summary>
         BleedPct,
+        /// <summary>Damage against a region's boss (never the world boss), in tenths of a percent.</summary>
+        RegionBossDamagePct,
+        /// <summary>Skill tree v3 step D: the outer ring's keystones, each a trade (WarEffects.ApplyKeystoneTrades).</summary>
+        Midas,
+        Sage,
+        Juggernaut,
+        Colossus,
+        Haemorrhage,
+        Flurry,
+        Bastion,
+        Vampire,
         /// <summary>Phase 5.1: the column's affix family is this share stronger, in tenths of a percent. Read by AffixFamilies, not Resolve.</summary>
         FamilyPowerPct,
         FamilyPrecisionPct,
@@ -103,7 +115,9 @@ namespace FolkIdle.Server.Engine
         public const int ColumnCount = 4;
 
         /// <summary>Points a column must hold before each row opens.</summary>
-        public static readonly int[] RowGates = { 0, 4, 10, 16, 26 };
+        // Rows 5-7 are the outer ring (skill tree v3 step D): the top keystones
+        // need a column deep enough that a build has chosen what it is.
+        public static readonly int[] RowGates = { 0, 4, 10, 16, 26, 34, 44, 56 };
 
         /// <summary>A bridge needs this many points in BOTH columns it joins.</summary>
         public const int BridgeGate = 10;
@@ -123,6 +137,13 @@ namespace FolkIdle.Server.Engine
         // Skill tree v3 step B (2026-11-14): the fight-shaped mechanics, HIDDEN
         // until the outer ring (step D) gives them a place on the screen.
         public const int Sunder = 93, Momentum = 94, Lacerate = 95;
+        // Skill tree v3 step D (2026-11-14): the outer ring, rows 5-7 of each
+        // column - that column's situation lane - and two more keystones per
+        // column at the top.
+        public const int Bounty = 96, TreasureSense = 97, LoreOfTheHunt = 98, Midas = 99, Sage = 100;
+        public const int TitansGrip = 101, Overpower = 102, GiantsBane = 103, Juggernaut = 104, Colossus = 105;
+        public const int KillerInstinct = 106, Serrated = 107, Quickening = 108, Haemorrhage = 109, Flurry = 110;
+        public const int Stoneskin = 111, Deflect = 112, Vitae = 113, Parry = 114, Bastion = 115, Vampire = 116;
 
         /// <summary>The table, indexed by rank-buffer slot; null where no War node sits.</summary>
         public static readonly WarNodeDef?[] Nodes = Build();
@@ -179,7 +200,7 @@ namespace FolkIdle.Server.Engine
             Add(FortuneAffinity, "Fortune's Favour", "col_fortune", ColumnFortune, 1, 0, "Affinity", 3, 2, WarEffect.FamilyFortunePct, 0, "Your Fortune affixes (loot luck, gold find) are {0}% stronger", ranks: new[] { 30, 60, 100 });
 
             // ---- Might: hits hard, breaks armour, kills bosses ----------------
-            Add(Edge, "Edge", "edge", ColumnMight, 0, 0, "Minor", 5, 1, WarEffect.DamagePct, 4, "+{0}% damage");
+            Add(Edge, "Edge", "edge", ColumnMight, 0, 0, "Minor", 5, 1, WarEffect.DamagePct, 8, "+{0}% damage");
             // Modul: NOT ARMOUR (owner, 2026-10-29). Breach cut monster armour and
             // Crushing Blow ignored it, and measured, armour lets 94-99% of a
             // Rare-geared hit through (penetration affixes cancel it), so both
@@ -197,7 +218,7 @@ namespace FolkIdle.Server.Engine
             // today's 32%: the walls stay exactly as calibrated, and the fork
             // is "farm faster" (Executioner) against "break walls sooner".
             Add(Bossbreaker, "Bossbreaker", "bossbreaker", ColumnMight, 2, 1, "Fork", 5, 1, WarEffect.FirstClearReliefPct, 64, "-{0}% of a first-clear boss's extra health", fork: Executioner);
-            Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 2, "+{0}% damage");
+            Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 6, "+{0}% damage");
             Add(Thunderer, "Thunderer", "thunderer", ColumnMight, 3, 1, "Notable", 3, 2, WarEffect.ThundererPct, 0, "Opens a boss fight with a blow at {0}% weapon damage", ranks: new[] { 1500, 3000, 5000 });
             Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Ruin, 1, "Every 8th hit lands for x1.7; attack speed counts 85%");
             Add(PowerAffinity, "Tempered Steel", "col_might", ColumnMight, 1, 0, "Affinity", 3, 2, WarEffect.FamilyPowerPct, 0, "Your Power affixes (damage, armour pen, crushing blow, boss damage) are {0}% stronger", ranks: new[] { 30, 60, 100 });
@@ -256,9 +277,50 @@ namespace FolkIdle.Server.Engine
             // that dies in two swings; Momentum grows with a streak of kills and
             // does nothing against a boss. HIDDEN: wired, tested and priced, but
             // not drawn or sold until the outer ring places them (step D).
-            Add(Sunder, "Sunder", "sunder", ColumnMight, 3, -1, "Notable", 3, 2, WarEffect.SunderPct, 20, "Each hit strips {0}% of the monster's armour, up to 10 times", hidden: true);
-            Add(Momentum, "Momentum", "momentum", ColumnFortune, 3, -1, "Notable", 3, 2, WarEffect.MomentumPct, 5, "Each kill in a row makes you swing {0}% faster, up to 15 kills; not against bosses", hidden: true);
-            Add(Lacerate, "Lacerate", "lacerate", ColumnPrecision, 3, -1, "Notable", 3, 2, WarEffect.BleedPct, 100, "A crit also bleeds for {0}% of its damage over 3 seconds", hidden: true);
+            // Step D placed them in the outer ring, row 5 of their column; Sunder
+            // measured too weak in step C (+8% on the boss) and is 2.5x.
+            Add(Sunder, "Sunder", "sunder", ColumnMight, 5, 0, "Notable", 3, 2, WarEffect.SunderPct, 50, "Each hit strips {0}% of the monster's armour, up to 10 times");
+            Add(Momentum, "Momentum", "momentum", ColumnFortune, 5, 0, "Notable", 3, 2, WarEffect.MomentumPct, 5, "Each kill in a row makes you swing {0}% faster, up to 15 kills; not against bosses");
+            Add(Lacerate, "Lacerate", "lacerate", ColumnPrecision, 5, 0, "Notable", 3, 2, WarEffect.BleedPct, 100, "A crit also bleeds for {0}% of its damage over 3 seconds");
+
+            // Modul: THE OUTER RING (skill tree v3 step D, owner 2026-11-14).
+            // Each column's rows 5-7 are its situation lane - Fortune the
+            // Hunter (farming), Might the Bossbreaker (bosses), Precision the
+            // Titan-slayer (long fights, the world boss), Guard the Warden
+            // (the dungeon, the Delve). Ten-rank nodes give less each rank
+            // (Falling), so spare points always buy something while opening a
+            // new direction is worth more. The two keystones at the top are
+            // TRADES (WarEffects.ApplyKeystoneTrades) and, like every keystone,
+            // only one may be held at a time.
+            int[] Falling(int total) => Enumerable.Range(1, 10).Select(r => (int)Math.Round(total * (r * 21 - r * r) / 110.0)).ToArray();
+
+            Add(Bounty, "Bounty", "bounty", ColumnFortune, 5, 1, "Notable", 10, 2, WarEffect.GoldPct, 0, "+{0}% gold from kills", ranks: Falling(300));
+            Add(TreasureSense, "Treasure Sense", "treasure_sense", ColumnFortune, 6, 0, "Notable", 10, 2, WarEffect.LootLuckPct, 0, "+{0}% loot luck", ranks: Falling(250));
+            Add(LoreOfTheHunt, "Lore of the Hunt", "lore_of_the_hunt", ColumnFortune, 6, 1, "Notable", 10, 2, WarEffect.XpPct, 0, "+{0}% experience", ranks: Falling(200));
+            Add(Midas, "Midas", "midas", ColumnFortune, 7, 0, "Keystone", 1, 5, WarEffect.Midas, 1, "+20% gold from kills; -10% damage");
+            Add(Sage, "Sage", "sage", ColumnFortune, 7, 1, "Keystone", 1, 5, WarEffect.Sage, 1, "+20% experience; -10% damage");
+
+            Add(TitansGrip, "Titan's Grip", "titans_grip", ColumnMight, 5, 1, "Notable", 10, 2, WarEffect.DamagePct, 0, "+{0}% damage", ranks: Falling(150));
+            Add(Overpower, "Overpower", "overpower", ColumnMight, 6, 0, "Notable", 5, 2, WarEffect.CrushingChance, 10, "+{0}% chance of a crushing blow");
+            // The Bossbreaker's own answer (step D measured the Titan-slayer level
+            // with it on region bosses): damage against a region's boss only,
+            // so the world boss stays the Titan-slayer's.
+            Add(GiantsBane, "Giant's Bane", "giants_bane", ColumnMight, 6, 1, "Notable", 5, 2, WarEffect.RegionBossDamagePct, 30, "+{0}% damage against region bosses");
+            Add(Juggernaut, "Juggernaut", "juggernaut", ColumnMight, 7, 0, "Keystone", 1, 5, WarEffect.Juggernaut, 1, "Sunder strips twice as much (3% a hit without it), and each stack adds 2.5% damage; you swing 10% slower");
+            Add(Colossus, "Colossus", "colossus", ColumnMight, 7, 1, "Keystone", 1, 5, WarEffect.Colossus, 1, "+15% damage; -20% max health");
+
+            Add(KillerInstinct, "Killer Instinct", "killer_instinct", ColumnPrecision, 5, 1, "Notable", 10, 2, WarEffect.CritChancePoints, 0, "+{0}% crit chance", ranks: Falling(50));
+            Add(Serrated, "Serrated", "serrated", ColumnPrecision, 6, 0, "Notable", 10, 2, WarEffect.CritDamagePct, 0, "+{0}% crit damage", ranks: Falling(250));
+            Add(Quickening, "Quickening", "quickening", ColumnPrecision, 6, 1, "Notable", 5, 2, WarEffect.AttackIntervalPct, 10, "{0}% faster swings");
+            Add(Haemorrhage, "Haemorrhage", "haemorrhage", ColumnPrecision, 7, 0, "Keystone", 1, 5, WarEffect.Haemorrhage, 1, "Every crit bleeds for 40% more of its damage; -30% crit damage");
+            Add(Flurry, "Flurry", "flurry", ColumnPrecision, 7, 1, "Keystone", 1, 5, WarEffect.Flurry, 1, "A quarter of your crit chance becomes attack speed; -25% crit damage");
+
+            Add(Stoneskin, "Stoneskin", "stoneskin", ColumnGuard, 5, 0, "Notable", 10, 2, WarEffect.MaxHpPct, 0, "+{0}% max health", ranks: Falling(300));
+            Add(Deflect, "Deflect", "deflect", ColumnGuard, 5, 1, "Notable", 5, 2, WarEffect.BlockPoints, 20, "+{0} block chance");
+            Add(Vitae, "Vitae", "vitae", ColumnGuard, 6, 0, "Notable", 5, 2, WarEffect.BloodthirstPct, 8, "{0}% of your damage heals you");
+            Add(Parry, "Parry", "parry", ColumnGuard, 6, 1, "Notable", 5, 2, WarEffect.DodgePoints, 20, "+{0} dodge chance");
+            Add(Bastion, "Bastion", "bastion", ColumnGuard, 7, 0, "Keystone", 1, 5, WarEffect.Bastion, 1, "+30% max health and +10 block chance; -20% damage");
+            Add(Vampire, "Vampire", "vampire", ColumnGuard, 7, 1, "Keystone", 1, 5, WarEffect.Vampire, 1, "8% of your damage heals you; -15% max health");
 
             return t;
         }
@@ -280,6 +342,9 @@ namespace FolkIdle.Server.Engine
             WarEffect.TrophyGoldPct, WarEffect.CodexBonusPct,
             WarEffect.CounterstrokeOfDefence, WarEffect.KnowYourPreyPct,
             WarEffect.SunderPct, WarEffect.MomentumPct, WarEffect.BleedPct,
+            WarEffect.RegionBossDamagePct,
+            WarEffect.Midas, WarEffect.Sage, WarEffect.Juggernaut, WarEffect.Colossus,
+            WarEffect.Haemorrhage, WarEffect.Flurry, WarEffect.Bastion, WarEffect.Vampire,
             WarEffect.FamilyPowerPct, WarEffect.FamilyPrecisionPct, WarEffect.FamilyGuardPct, WarEffect.FamilyFortunePct,
         };
 
@@ -488,8 +553,18 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.SunderPct: e.SunderTenthsPerStack += v; break;
                     case WarEffect.MomentumPct: e.MomentumTenthsPerKill += v; break;
                     case WarEffect.BleedPct: e.BleedTenthsPct += v; break;
+                    case WarEffect.RegionBossDamagePct: e.RegionBossDamageTenthsPct += v; break;
+                    case WarEffect.Midas: e.Keystone = WarEffect.Midas; break;
+                    case WarEffect.Sage: e.Keystone = WarEffect.Sage; break;
+                    case WarEffect.Juggernaut: e.Keystone = WarEffect.Juggernaut; break;
+                    case WarEffect.Colossus: e.Keystone = WarEffect.Colossus; break;
+                    case WarEffect.Haemorrhage: e.Keystone = WarEffect.Haemorrhage; break;
+                    case WarEffect.Flurry: e.Keystone = WarEffect.Flurry; break;
+                    case WarEffect.Bastion: e.Keystone = WarEffect.Bastion; break;
+                    case WarEffect.Vampire: e.Keystone = WarEffect.Vampire; break;
                 }
             }
+            e.ApplyKeystoneTrades();
             return e;
         }
     }
@@ -564,6 +639,46 @@ namespace FolkIdle.Server.Engine
         public int SunderTenthsPerStack;
         public int MomentumTenthsPerKill;
         public int BleedTenthsPct;
+        /// <summary>The outer ring's keystone held, or WarEffect.Mechanic for none of them.</summary>
+        public WarEffect Keystone;
+        /// <summary>Juggernaut: each Sunder stack the monster carries adds this much damage (tenths of a percent).</summary>
+        public int SunderDamageTenthsPerStack;
+        /// <summary>Giant's Bane: damage against a region's boss, in tenths of a percent.</summary>
+        public int RegionBossDamageTenthsPct;
+
+        /// <summary>
+        /// The outer ring's keystones are TRADES on the summed effects - a gain
+        /// and a price - applied once, after every node is counted, so a
+        /// multiplier (Juggernaut's doubled Sunder) sees the whole column.
+        /// </summary>
+        /// <remarks>
+        /// Modul: TRADES THROUGH THE FIELDS EVERYTHING ALREADY READS. Each one is
+        /// written as numbers on the existing effects (gold, damage, health,
+        /// crit, speed, the bleed), so the live swing, the simulator, the
+        /// projection, the dungeon and the world boss strike all price it with
+        /// no new branch - the parity that took slice 2.3 weeks holds by
+        /// construction. The prices go NEGATIVE, which is why the damage and
+        /// interval reads accept a negative sum (EffectiveMilliAttackFor,
+        /// LiveAttackIntervalMs).
+        /// </remarks>
+        public void ApplyKeystoneTrades()
+        {
+            switch (Keystone)
+            {
+                case WarEffect.Midas: GoldTenthsPct += 200; DamageTenthsPct -= 100; break;
+                case WarEffect.Sage: XpTenthsPct += 200; DamageTenthsPct -= 100; break;
+                case WarEffect.Juggernaut:
+                    SunderTenthsPerStack = SunderTenthsPerStack > 0 ? SunderTenthsPerStack * 2 : 30;
+                    SunderDamageTenthsPerStack += 25;
+                    AttackIntervalTenthsPct -= 100;
+                    break;
+                case WarEffect.Colossus: DamageTenthsPct += 150; MaxHpTenthsPct -= 200; break;
+                case WarEffect.Haemorrhage: BleedTenthsPct += 400; CritDamageTenthsPct -= 300; break;
+                case WarEffect.Flurry: FrenzyTenths += 250; CritDamageTenthsPct -= 250; break;
+                case WarEffect.Bastion: MaxHpTenthsPct += 300; BlockTenths += 100; DamageTenthsPct -= 200; break;
+                case WarEffect.Vampire: BloodthirstTenths += 80; MaxHpTenthsPct -= 150; break;
+            }
+        }
 
         public const int SunderMaxStacks = 10;
         public const int MomentumMaxStreak = 15;

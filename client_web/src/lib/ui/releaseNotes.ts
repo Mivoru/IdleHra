@@ -35,6 +35,23 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.88.0',
+    date: '2026-11-14',
+    headline: 'The skill tree grows: a lane for every kind of fight.',
+    sections: [
+      {
+        title: 'Skill tree',
+        items: [
+          'Every column has three new rows - its lane. Fortune farms gold and experience, Might breaks region bosses, Precision wins long fights and the world boss, Guard holds the dungeon.',
+          'New mechanics: Momentum (you swing faster with every kill in a row), Sunder (each hit strips the monster\'s armour), Lacerate (a crit bleeds) and Giant\'s Bane (more damage to region bosses).',
+          'Eight new keystones, two at the top of each column. Most are trades - Midas pays more gold for a little damage, Colossus hits harder with less health - and you still hold only one keystone at a time.',
+          'The whole tree costs far more points than anyone has, so a build is a choice. Everyone has a free respec to try it.',
+          'Might hits a little harder: Edge and Heavy Hand were raised.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.87.0',
     date: '2026-11-14',
     sections: [
