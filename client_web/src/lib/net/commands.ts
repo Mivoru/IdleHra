@@ -1645,7 +1645,7 @@ export const BUILDINGS: readonly {
     // rarer - the old blurb promised something the engine forbids.
     // From SELECTION_UNLOCK_LEVELS, not written out: the literal "one at 4,
     // two at 7, three at 10" outlived the 2026-11-13 change to 1/4/7 here.
-    what: `Required to breed at all. Its level decides how many aptitudes you may breed FOR - one from level ${SELECTION_UNLOCK_LEVELS[0]}, two from ${SELECTION_UNLOCK_LEVELS[1]}, three from ${SELECTION_UNLOCK_LEVELS[2]} - and opens a third expedition slot at ${EXPEDITION_THIRD_SLOT_GROUNDS} (up to ${EXPEDITION_MAX_BOUGHT_SLOTS} more can be bought with gold on the Expeditions tab).`,
+    what: `Required to breed at all. Its level decides how many aptitudes you may breed FOR - one from level ${SELECTION_UNLOCK_LEVELS[0]}, two from ${SELECTION_UNLOCK_LEVELS[1]}, three from ${SELECTION_UNLOCK_LEVELS[2]} - and opens a third expedition slot at ${EXPEDITION_THIRD_SLOT_GROUNDS} (up to ${EXPEDITION_MAX_BOUGHT_SLOTS} more can be bought with gold on the Expeditions screen).`,
   },
   {
     id: 5,

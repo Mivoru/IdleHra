@@ -1556,7 +1556,7 @@
 
           <h3 id="expeditions">Expeditions</h3>
           <p class="dim small">
-            A grown ancestor on the bench can go on an expedition from the Bloodline screen's Expeditions tab, for
+            A grown ancestor on the bench can go on an expedition from the Expeditions screen (Play menu), for
             4, 8 or 12 hours, and comes back with a <strong>loot chest of your highest region</strong>. You have
             two expedition slots, three from Breeding Grounds level {EXPEDITION_THIRD_SLOT_GROUNDS}, and up to {EXPEDITION_MAX_BOUGHT_SLOTS} more bought with gold (the
             first costs about a day of your own income, the second about three days). While away an ancestor cannot

@@ -52,7 +52,7 @@ if (LANGUAGE_CODES.length === 0) {
 export const SCREENS = [
   // Task 95: regrouped (Play, Hero, Make, Friends & Guilds, Game) and renamed
   // - Home not Map, Auto-Eat not Supplies, Friends not Community.
-  'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve', 'Dungeon',
+  'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve', 'Dungeon', 'Expeditions',
   'Character', 'Skill Tree', 'Rebirth', 'Wardrobe', 'Chest', 'Auto-Eat',
   'Village', 'Crafting', 'Forge', 'Bloodline', 'Codex',
   // Community, Guild and Market are menu entries of their own since task 95, as
@@ -65,7 +65,6 @@ export const SCREENS = [
   'Market · cosmetics',
   'Bloodline · Ancestors',
   'Bloodline · Inheritance',
-  'Bloodline · Expeditions',
   // Before the More sheet: that one is measured OPEN and left open, so it
   // must stay the last destination.
   'Home · event shop',
@@ -110,7 +109,6 @@ function subTab(screen, key) {
 export const OVERLAYS = {
   'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
   'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
-  'Bloodline · Expeditions': subTab('Bloodline', 'expeditions'),
   'Leaderboards': subTab('Community', 'leaderboards'),
   // Task 95: the phone's More sheet, measured OPEN - its tiles, the tab bar
   // under it and the header over it are what check:touch and check:overlap
