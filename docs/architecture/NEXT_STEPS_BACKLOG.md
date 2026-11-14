@@ -19,6 +19,35 @@ do next.
 
 ---
 
+# 2026-11-14/15 night - World boss duel; region-2 catch-22; branch cleanup
+
+**Read `docs/design/WORLD_BOSS_REWORK_2026_11_14.md`.** The owner asked for the
+shield wheel to be replaced. Six proposals were written; four model evaluators
+(Fable, Sonnet, Haiku, Opus), each seeing only the brief, picked **P4 + P6**
+unanimously: your character fights Chernobog and you make three calls (Guard /
+Strike / Evade) against named moves; the right answer depends on the move, the
+build's stance and the omen of the day.
+
+- **#418 (client 1.90.0)**: `BossDuelRules`, `BossDuelService`, routes
+  `/api/v1/worldboss/duel` + `/duel/call`, tick quote
+  (`WorldBossTickCoordinator.DrainDuelQuotes`), `BossDuel.svelte`, three
+  ElevenLabs SFX (**not yet heard by a person**). Flag
+  `FOLKIDLE_BOSS_MINIGAME=duel` (box `.env`; was `wheel`). The wheel code stays
+  behind `wheel` until the owner has played the duel - then delete
+  ShieldWheel*, the plate UI and the wheel exercise blocks.
+- Economy kept: M 1.0..2.0 (ledger: random 1.36-1.45, best 2.00).
+- **#417**: a region boss opens the next region's gathering
+  (`GatheringReach`), owner option A for the region-2 catch-22.
+- Branches: 266 local + ~390 remote merged branches deleted; three WIP
+  snapshots kept as tags `archive/*`; night worktrees removed after copying
+  `bot-runs/` to `D:\FolkIdleBackupsot-runs\`.
+
+Open: the Forge meter (P6's shared moment); re-measure the HP factor after the
+first duel week (Mon 2026-11-16 is also the first TreeStrike week, so both
+change at once - read the Mon/Tue strikes before blaming either).
+
+---
+
 # 2026-11-13 - Lineage and rebirth overhaul; game review
 
 **Read `docs/design/LINEAGE_REBIRTH_OVERHAUL.md`** (decisions, numbers, what
