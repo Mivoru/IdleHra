@@ -43,18 +43,40 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void A_kill_window_finds_pets_at_one_in_a_hundred_thousand()
+        public void Each_monster_pet_has_a_rare_variant_at_twice_the_bonus()
+        {
+            var rare = PetRegistry.RareMonsterPool;
+            Assert.Equal(PetRegistry.MonsterPool.Count, rare.Count);
+            Assert.Equal(2 * PetRegistry.MonsterPetPct, PetRegistry.RareMonsterPetPct);
+            Assert.Equal(PetRegistry.MonsterPetPerKill / 2, PetRegistry.RareMonsterPetPerKill, 12);
+            foreach (var normal in PetRegistry.MonsterPool)
+            {
+                var variant = PetRegistry.Find(normal.Id + "_rare");
+                Assert.NotNull(variant);
+                Assert.Equal(PetSource.MonsterRare, variant!.Source);
+                Assert.Equal(normal.Art, variant.Art);
+                Assert.Equal(normal.Bonuses[0].Stat, variant.Bonuses[0].Stat);
+                Assert.Equal(PetRegistry.RareMonsterPetPct, variant.Bonuses[0].Pct);
+                Assert.True(PetRegistry.IsMonsterPet(variant));
+            }
+        }
+
+        [Fact]
+        public void A_kill_window_finds_pets_at_one_in_a_hundred_thousand_and_rare_ones_at_half_that()
         {
             while (PetEngine.Drops.TryDequeue(out _)) { }
             int found = PetRegistry.RollMonsterPets(986_000_001L, 10_000_000L, new Random(7));
-            Assert.Equal(100, found);
-            int queued = 0;
+            Assert.Equal(150, found);
+            int ordinary = 0, rare = 0;
             while (PetEngine.Drops.TryDequeue(out var note))
             {
-                Assert.Equal(PetSource.Monster, PetRegistry.Find(note.PetId)!.Source);
-                queued++;
+                var source = PetRegistry.Find(note.PetId)!.Source;
+                if (source == PetSource.Monster) ordinary++;
+                else if (source == PetSource.MonsterRare) rare++;
+                else Assert.Fail($"{note.PetId} is not a monster pet");
             }
-            Assert.Equal(100, queued);
+            Assert.Equal(100, ordinary);
+            Assert.Equal(50, rare);
 
             // Nobody to give it to, nothing rolled.
             Assert.Equal(0, PetRegistry.RollMonsterPets(0, 10_000_000L, new Random(7)));

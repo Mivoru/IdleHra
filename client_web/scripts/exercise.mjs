@@ -4748,6 +4748,37 @@ await go('Character');
       waiting > 0 && (await waitFor(async () => (await mailWith50()) === 0)),
       `${waiting} claimed, ${await mailWith50()} left`,
     );
+
+    // Owner, 2026-11-14: every monster pet has a rare variant (+16%, 1 in
+    // 200,000), drawn with a blue glow and a blue name. Found through the
+    // same queue; the window must name it in the rare colour. A second run
+    // makes it a duplicate - its mail is claimed again, so the mailbox ends
+    // as it began.
+    const rareView = await apiGet('/api/v1/pets').catch(() => null);
+    const rarePool = (rareView?.Pets ?? []).filter((p) => p.Source === 7);
+    record('ten rare monster pets are listed with their odds', rarePool.length === 10 && rareView?.RareMonsterPetChancePerKill > 0,
+      `${rarePool.length} rare pets, 1 in ${Math.round(1 / (rareView?.RareMonsterPetChancePerKill || 1))}`);
+    const rare = rarePool.find((p) => p.Id === 'pet_hugin_rare') ?? rarePool[0];
+    if (rare) {
+      await go('Combat');
+      await apiPost('/api/v1/dev/pet-drop', { PetId: rare.Id });
+      const rareShown = await petWindow.first().waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+      const rareId = rareShown ? await page.locator('.pet-found').first().getAttribute('data-pet') : null;
+      const blueName = rareShown ? (await page.locator('.pet-found h2.pet-rare-name').count()) > 0 : false;
+      const glow = rareShown ? (await page.locator('.pet-found .art.pet-rare-art').count()) > 0 : false;
+      record('a rare pet opens its window with the blue glow and the rare-coloured name', rareShown && rareId === rare.Id && blueName && glow,
+        rareShown ? `${rareId}, name ${blueName}, glow ${glow}` : 'no window');
+      await closePetWindows();
+      if ((await mailWith50()) > 0) {
+        await go('Mail');
+        const again = page.locator('ul.mail li', { hasText: 'found you again' });
+        const n = await again.count();
+        for (let i = 0; i < n; i++) {
+          await again.first().getByRole('button', { name: 'Claim' }).click();
+          await page.waitForTimeout(400);
+        }
+      }
+    }
   }
 }
 

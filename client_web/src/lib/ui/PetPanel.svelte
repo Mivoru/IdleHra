@@ -9,7 +9,7 @@
   // slot buttons pick which slot the choices fill; the server refuses slot 2
   // before then (SlotLocked), so the buttons only appear once it is open.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { assignPet, fetchPets, petKeys, PET_SOURCE, type Pet } from '../net/pets';
+  import { assignPet, fetchPets, petKeys, PET_SOURCE, type Pet, isRarePet } from '../net/pets';
   import { EVENT_PHASE, oneIn } from '../net/seasonalEvent';
   import { playerState, pushLocalNotice } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
@@ -83,9 +83,9 @@
     {/if}
     {#if mine}
       <div class="current" data-testid="pet-current" data-pet={mine.Id}>
-        <img src={spriteUrl(mine.Art)} alt="" decoding="async" />
+        <img src={spriteUrl(mine.Art)} alt="" decoding="async" class:pet-rare-art={isRarePet(mine)} />
         <div class="what">
-          <strong>{mine.Name}</strong>
+          <strong class:pet-rare-name={isRarePet(mine)}>{mine.Name}</strong>
           <span class="tiny bonus">{mine.Bonuses.join(' · ')}</span>
         </div>
         <button type="button" class="tiny-btn" disabled={busy} onclick={() => place(null)} data-testid="pet-rest">
@@ -99,9 +99,9 @@
         {#each others as pet (pet.Id)}
           <li>
             <button type="button" class="choice" disabled={busy} onclick={() => place(pet)} data-testid="pet-choice" data-pet={pet.Id}>
-              <img src={spriteUrl(pet.Art)} alt="" loading="lazy" decoding="async" />
+              <img src={spriteUrl(pet.Art)} alt="" loading="lazy" decoding="async" class:pet-rare-art={isRarePet(pet)} />
               <span class="what">
-                <strong>{pet.Name}</strong>
+                <strong class:pet-rare-name={isRarePet(pet)}>{pet.Name}</strong>
                 <span class="tiny bonus">{pet.Bonuses.join(' · ')}</span>
                 {#if pet.CharacterId === characterId}
                   <span class="tiny dim">In this character's other slot - moves here</span>

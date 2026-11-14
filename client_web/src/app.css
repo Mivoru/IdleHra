@@ -2097,3 +2097,21 @@ nav button.active {
     color-mix(in srgb, var(--section) 8%, transparent)
   );
 }
+
+/* Modul: A RARE PET GLOWS BLUE (owner, 2026-11-14). The rare variants of the
+   monster pets share the ordinary pet's art; what tells them apart is a blue
+   light behind the creature and the name in the rare colour (--rarity-4,
+   the item ladder's own Rare). Global, because a pet is drawn on the
+   Character slot, the pet picker, the found window and the Wiki. */
+.pet-rare-art {
+  background: radial-gradient(circle at 50% 55%, rgb(120 200 255 / 0.85), rgb(74 163 223 / 0.45) 45%, rgb(74 163 223 / 0.12) 65%, transparent 74%);
+  border-radius: 50%;
+  /* Static: an infinite filter animation repaints every frame, which the
+     phone GPU budget (gpuBudget.test.ts) forbids. */
+  filter: drop-shadow(0 0 4px rgb(140 210 255 / 0.95)) drop-shadow(0 0 12px rgb(74 163 223 / 0.85));
+}
+.pet-rare-name {
+  color: #5ab8ff !important;
+  text-shadow: 0 0 6px rgb(74 163 223 / 0.8), 0 0 1px rgb(20 60 110 / 0.9);
+}
+

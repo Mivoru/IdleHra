@@ -8,7 +8,12 @@
 import { authedGet, authedPost } from './auth';
 
 /** PetSource on the server. */
-export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4, Rebirth: 5, WorldBoss: 6 } as const;
+export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4, Rebirth: 5, WorldBoss: 6, MonsterRare: 7 } as const;
+
+/** A monster pet's rare variant (owner, 2026-11-14): drawn with a blue glow and a blue name. */
+export function isRarePet(pet: Pick<Pet, 'Source'> | null | undefined): boolean {
+  return pet?.Source === PET_SOURCE.MonsterRare;
+}
 
 export interface Pet {
   Id: string;
@@ -34,6 +39,8 @@ export interface PetsView {
   Characters: { Id: string; Name: string }[];
   /** The monster pets' odds per kill (PetRegistry.MonsterPetPerKill). */
   MonsterPetChancePerKill: number;
+  /** The rare variants' odds per kill (PetRegistry.RareMonsterPetPerKill), a roll of their own. */
+  RareMonsterPetChancePerKill?: number;
   /** What a monster pet already owned pays instead, by mail. */
   DuplicateDiamonds: number;
   /** Task 114: whether this account's characters have a second pet slot. */
@@ -71,6 +78,7 @@ export function petSourceLine(pet: Pet): string {
   if (pet.Source === PET_SOURCE.RareDrop) return 'A rare find - any kill or harvest during the event may bring it.';
   if (pet.Source === PET_SOURCE.Boss) return 'Follows whoever first breaks The Cailleach’s sixth winter.';
   if (pet.Source === PET_SOURCE.Monster) return 'Found on any kill, any time - rarely.';
+  if (pet.Source === PET_SOURCE.MonsterRare) return 'The rare variant: found on any kill, any time - half as often as the ordinary one, twice the bonus.';
   if (pet.Source === PET_SOURCE.Rebirth) return 'Follows whoever takes the tenth rebirth.';
   if (pet.Source === PET_SOURCE.WorldBoss) return 'Follows whoever deals Chernobog a million damage in one week.';
   return 'Sold in the event shop.';

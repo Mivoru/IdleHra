@@ -220,7 +220,7 @@ namespace FolkIdle.Server.Domain.Progression
             var pet = PetRegistry.Find(note.PetId);
             if (pet == null) return DropOutcome.Nothing;
             if (await GrantAsync(db, note.PlayerId, note.PetId, utcNow)) return DropOutcome.New;
-            if (pet.Source != PetSource.Monster) return DropOutcome.Nothing;
+            if (!PetRegistry.IsMonsterPet(pet)) return DropOutcome.Nothing;
 
             // Owner, 2026-10-12: a duplicate opens the pet window too, saying
             // what it paid. Counted rather than flagged, so two duplicates

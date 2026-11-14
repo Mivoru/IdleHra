@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.89.0',
+    date: '2026-11-14',
+    headline: 'Rare pets.',
+    sections: [
+      {
+        title: 'Pets',
+        items: [
+          'Every monster pet now has a rare variant: twice the bonus (+16% instead of +8%), found on any kill at 1 in 200,000 - half as often as the ordinary pet, in a roll of its own.',
+          'A rare pet glows blue and wears its name in the rare colour, on the Character screen, in the pet picker and when it finds you. A rare one you already own pays diamonds like any duplicate.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.88.0',
     date: '2026-11-14',
     headline: 'The skill tree grows: a lane for every kind of fight.',
