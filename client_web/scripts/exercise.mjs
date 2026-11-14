@@ -101,7 +101,6 @@ const SUB_TABS = {
   Breeding: ['Bloodline', 'breeding'],
   Ancestors: ['Bloodline', 'ancestors'],
   Inheritance: ['Bloodline', 'inheritance'],
-  Expeditions: ['Bloodline', 'expeditions'],
   // Task 76 made Friends, Market, Guild and Leaderboards one family. Task 95
   // gave Community (which opens Friends), Market and Guild menu entries of
   // their own; Leaderboards is still only a tab.

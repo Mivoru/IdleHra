@@ -297,14 +297,17 @@
 </div>
 
 <style>
+  /* Centred on a wide screen (owner, 2026-11-14: it sat against the left edge). */
   .exp-wrap {
     max-width: 44rem;
+    margin-inline: auto;
   }
 
   .expeditions {
     display: grid;
     gap: 0.5rem;
     max-width: 44rem;
+    margin-inline: auto;
   }
 
   h3 {

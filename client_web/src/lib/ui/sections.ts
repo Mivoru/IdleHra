@@ -33,7 +33,7 @@ const SECTION_OF: Record<string, Section> = {
   forge: 'make',
   breeding: 'make',
   ancestors: 'make',
-  expeditions: 'make',
+  expeditions: 'combat',
   inheritance: 'make',
   codex: 'make',
   social: 'community',

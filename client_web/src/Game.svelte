@@ -102,6 +102,9 @@
         { key: 'worldboss', label: 'World Boss' },
         { key: 'delve', label: 'The Delve' },
         { key: 'dungeon', label: 'Dungeon' },
+        // Owner, 2026-11-14: an activity, found next to the other ones - it
+        // was a fourth tab under Bloodline, where nobody looked for it.
+        { key: 'expeditions', label: 'Expeditions' },
       ],
     },
     {
@@ -205,7 +208,6 @@
         { key: 'breeding', label: 'Breeding' },
         { key: 'ancestors', label: 'Ancestors' },
         { key: 'inheritance', label: 'Inheritance' },
-        { key: 'expeditions', label: 'Expeditions' },
       ],
     },
     social: {
@@ -218,7 +220,7 @@
       ],
     },
   };
-  const TAB_ONLY_KEYS = ['ancestors', 'inheritance', 'expeditions', 'market', 'guildops', 'leaderboards'] as const;
+  const TAB_ONLY_KEYS = ['ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
 
   // Modul: SCREENS REACHED THROUGH A HEADER CHIP, not a menu entry. The
   // seasonal event's screen exists only while an event runs, and a menu
