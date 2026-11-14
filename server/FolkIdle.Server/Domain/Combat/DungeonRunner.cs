@@ -102,6 +102,8 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 var p = payload;
                 SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+                // A dungeon is a boss fight: no farming streak comes in with it.
+                p.KillStreak = 0;
                 CombatStats stats = SimulationEngine.LiveCombatStats(in p);
                 long maxMilliHp = Math.Max(1000L, SimulationEngine.EffectiveMaxMilliHpFor(in p, in stats));
                 // The tick's own attack (aptitudes, inheritance, the lineage's scale) -
@@ -112,7 +114,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // live tick (crit, double hit, the skill tree, the codex, burn,
                 // Riposte). The plain CombatDamageModel swing dealt about a
                 // twentieth of a real character's damage.
-                var swing = HuntingProjection.PlayerSwing.For(in p, in stats, in boss, rawMilliAttack);
+                var swing = HuntingProjection.PlayerSwing.For(in p, in stats, in boss, rawMilliAttack, _bossMilliHp);
                 party.Add(new Member
                 {
                     Swing = swing,
@@ -141,6 +143,7 @@ namespace FolkIdle.Server.Domain.Combat
         {
             var p = payload;
             SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+            p.KillStreak = 0;
             CombatStats stats = SimulationEngine.LiveCombatStats(in p);
             long maxHp = SimulationEngine.EffectiveMaxMilliHpFor(in p, in stats) / 1000;
             long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(ref p, in stats, SimulationEngine.LineageOf(in p).DamageScalePerLevelPct);

@@ -540,6 +540,16 @@ namespace FolkIdle.Server.Engine
         public int WarSwingCount;
         public int WarHitCount;
 
+        // Modul: THE FIGHT-SHAPED MECHANICS (skill tree v3 step B, 2026-11-14).
+        // Sunder stacks and the bleed live for ONE monster and are cleared at
+        // every spawn; the kill streak runs across kills and is cleared by a
+        // death. All three are transient fight state: never persisted, and a
+        // relog starts them at zero, as a respawn would.
+        public byte SunderStacks;
+        public byte KillStreak;
+        public byte BleedSecondsLeft;
+        public long BleedMilliPool;
+
         // Modul: the old tree's Insight limb by name (Craft, Harvest, Scholar),
         // the only slots of ids 0-19 still read. The War switch (rework slice
         // 2.5) refunded and deleted every old row, and nothing can buy these

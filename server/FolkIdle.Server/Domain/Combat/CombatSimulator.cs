@@ -171,6 +171,8 @@ namespace FolkIdle.Server.Domain.Combat
                 int next = accumulator + (int)quiet + 1;
                 if (SimulationEngine.HasCrossedInterval(next, playerInterval)) break;
                 if (SimulationEngine.HasCrossedInterval(next, monster.AttackIntervalMs)) break;
+                // A bleed pays on every tenth tick of the fight clock.
+                if (payload.BleedSecondsLeft > 0 && next % 10 == 0) break;
                 quiet++;
                 // A fight that never swings (an interval of 0) has nothing to wait for.
                 if (quiet >= 600) break;

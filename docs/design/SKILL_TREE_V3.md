@@ -142,3 +142,28 @@ not by hand.
 2. Aptitude scaling (breeding decides the build): **yes.**
 3. Loadouts **bound to activities automatically** (world boss, dungeon,
    grind), still switchable by hand outside a fight.
+
+## Status
+
+- **Step A - done, deployed 2026-11-14.** #407 one keystone (1.85.0; on load
+  Tomda was refunded 20 points, Mivoru 10). #408 builds (1.86.0): the existing
+  BuildPreset rows are the loadouts, switching is free
+  (`SkillTreeEngine.EquipPresetTreeAsync`), and a preset can be bound to the
+  world boss or the dungeon (`SkillLoadoutEngine`, laid over a payload COPY).
+- **Step B - built 2026-11-14, nodes HIDDEN.** Sunder (id 93), Momentum (94)
+  and Lacerate, the bleed (95), are wired in `ResolvePlayerSwing` /
+  `RunCombatTick` (the live tick and the per-swing simulator alike), and in
+  `HuntingProjection.PlayerSwing.For` - Sunder as the fight's average armour,
+  the bleed as the share delivered before the monster dies, Momentum as a full
+  streak against anything but a region boss - and so in the dungeon too. The
+  fight state is per slot (`CharacterActivityState`) and cleared at every
+  spawn; the streak is cleared by a death. Parity at the x4 test scale,
+  offline/live kills: sunder r3 175/174, lacerate r3 226/226, lacerate r5
+  139/138, momentum r3 1029/998. The bleed costs the simulator's jump +19%
+  ticked ticks (68,166 to 81,009 over 12 h on a region-5 farm): measure it on
+  the Ampere box before step D makes it buyable. Real-scale values per rank:
+  Sunder 2% armour per stack (10 stacks), Momentum 0.5% faster per kill (15
+  kills), the bleed 10% of the crit over 3 s. Step C's matrix sets them
+  properly.
+- Not yet: a combat-feed line for the bleed tick; the nodes' art and their
+  place in the tree (step D).

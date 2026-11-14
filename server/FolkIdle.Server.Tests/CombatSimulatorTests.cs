@@ -23,7 +23,13 @@ namespace FolkIdle.Server.Tests
     [Collection("Static loot queues")]
     public class CombatSimulatorTests
     {
-        public CombatSimulatorTests() => ContentRegistry.Initialize();
+        private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+        public CombatSimulatorTests(Xunit.Abstractions.ITestOutputHelper output)
+        {
+            _output = output;
+            ContentRegistry.Initialize();
+        }
 
         private const long Hour = 36_000;
 
@@ -127,6 +133,44 @@ namespace FolkIdle.Server.Tests
             start = TestTree.With(start, (WarTreeRegistry.LastStand, 1));
             start.LastStandCooldownRemaining = 300;
             AssertSameWindow(start, "last stand");
+        }
+
+        /// <summary>
+        /// Skill tree v3 step B: the bleed pays on every tenth tick of the fight
+        /// clock, so a jump must stop there; Sunder and the kill streak only
+        /// change on swings and kills. Each is held to the ticked window exactly,
+        /// on a fast region-3 farm and a slow region-5 one.
+        /// </summary>
+        [Theory]
+        [InlineData(3, "lacerate")]
+        [InlineData(5, "lacerate")]
+        [InlineData(3, "sunder")]
+        [InlineData(3, "momentum")]
+        [InlineData(5, "all three")]
+        public void TheFightShapedMechanics_JumpExactly(int region, string which)
+        {
+            int monster = ContentRegistry.FirstCanonicalMonsterId + ((region - 1) * 5) + 2;
+            var start = OfflineCombatParityTests.Build(region, true, monster, 20_000, 0);
+            start = which switch
+            {
+                "lacerate" => TestTree.With(start, (WarTreeRegistry.Lacerate, 3)),
+                "sunder" => TestTree.With(start, (WarTreeRegistry.Sunder, 3)),
+                "momentum" => TestTree.With(start, (WarTreeRegistry.Momentum, 3)),
+                _ => TestTree.With(start, (WarTreeRegistry.Lacerate, 3), (WarTreeRegistry.Sunder, 3), (WarTreeRegistry.Momentum, 3)),
+            };
+            AssertSameWindow(start, $"{which} r{region}");
+        }
+
+        /// <summary>What the bleed costs the jump: ticks run per hour with and without it, printed.</summary>
+        [Fact]
+        public void TheBleed_CostsTheJumpLittle()
+        {
+            var bare = OfflineCombatParityTests.Build(5, true, ContentRegistry.FirstCanonicalMonsterId + 22, 20_000, 0);
+            var bled = TestTree.With(bare, (WarTreeRegistry.Lacerate, 3));
+            var a = CombatSimulator.Run(ref bare, 12 * Hour, new Random(7));
+            var b = CombatSimulator.Run(ref bled, 12 * Hour, new Random(7));
+            _output.WriteLine($"12 h ticked: {a.TicksTicked} without the bleed, {b.TicksTicked} with it ({100.0 * b.TicksTicked / Math.Max(1, a.TicksTicked):F0}%)");
+            Assert.True(b.TicksTicked * 3 < b.TicksRun, $"ticked {b.TicksTicked} of {b.TicksRun}");
         }
 
         [Fact]

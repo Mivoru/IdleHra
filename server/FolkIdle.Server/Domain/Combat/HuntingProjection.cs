@@ -211,6 +211,10 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
                 TickStatePayload copy = payload;
+                // Momentum, as the streak an hour of farming holds: full after
+                // the first MomentumMaxStreak kills, nothing against a boss.
+                if (WarTreeRegistry.Resolve(in copy).MomentumTenthsPerKill > 0)
+                    copy.KillStreak = SimulationEngine.IsRegionBossId(monsterId) ? (byte)0 : (byte)WarEffects.MomentumMaxStreak;
                 CombatStats stats = SimulationEngine.LiveCombatStats(in copy);
                 long maxMilliHp = SimulationEngine.EffectiveMaxMilliHpFor(in copy, in stats);
                 long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(
@@ -715,12 +719,30 @@ namespace FolkIdle.Server.Domain.Combat
                 StdDev = Math.Sqrt(Math.Max(0.0, second - (mean * mean)));
             }
 
-            public static PlayerSwing For(in TickStatePayload payload, in CombatStats stats, in MonsterDefinition monster, long rawMilliAttack)
+            public static PlayerSwing For(in TickStatePayload payload, in CombatStats stats, in MonsterDefinition target, long rawMilliAttack, double fightMilliHp = 0)
             {
-                double pHit = CombatDamageModel.HitChance(in stats, in monster);
+                double pHit = CombatDamageModel.HitChance(in stats, in target);
                 double pCrit = SimulationEngine.LiveCritChancePct(in payload, in stats) / 100.0;
                 float critMult = SimulationEngine.LiveCritMultiplier(in payload, in stats);
                 double pDouble = SimulationEngine.DoubleStrikeChance(in payload);
+                var fightWar = WarTreeRegistry.Resolve(in payload);
+                double fightHp = fightMilliHp > 0 ? fightMilliHp : target.MaxHp * 1000.0;
+
+                // Modul: SUNDER AS THE FIGHT'S AVERAGE ARMOUR (skill tree v3
+                // step B). The live swing strips armour hit by hit; here the
+                // monster is priced at the armour it has on an AVERAGE connecting
+                // hit of a fight this long - stacks 0, 1, 2 ... capped, over the
+                // hits it takes to kill. A long fight sits near the cap, a monster
+                // that dies in two hits barely below its own armour.
+                MonsterDefinition monster = target;
+                if (fightWar.SunderTenthsPerStack > 0 && monster.Armor > 0)
+                {
+                    double plain = Landed(in payload, in stats, in target, rawMilliAttack, 1.0f);
+                    double hits = plain > 0 ? Math.Max(1.0, fightHp / plain) : 1.0;
+                    double avgStacks = AverageSunderStacks(hits);
+                    double cut = Math.Min(1.0, avgStacks * fightWar.SunderTenthsPerStack / 1000.0);
+                    monster.Armor = (int)Math.Round(target.Armor * (1.0 - cut));
+                }
 
                 double normal = Landed(in payload, in stats, in monster, rawMilliAttack, 1.0f);
                 double crit = Landed(in payload, in stats, in monster, rawMilliAttack, critMult);
@@ -755,6 +777,25 @@ namespace FolkIdle.Server.Domain.Combat
                 crit *= echo;
                 dbl *= echo;
 
+                // Modul: THE BLEED AS AN EXPECTATION ON EVERY CRIT (skill tree v3
+                // step B). A crit adds BleedTenthsPct of itself to a pool paid over
+                // BleedSeconds; the pool dies with the monster, so the share that
+                // lands depends on how long the fight still runs after the crit.
+                // Crits fall evenly over a fight of T seconds; the delivered share
+                // is the mean of min(1, (T - t) / BleedSeconds), which is
+                // 1 - BleedSeconds / (2T) for a long fight and T / (2 BleedSeconds)
+                // for one shorter than the bleed.
+                if (fightWar.BleedTenthsPct > 0 && pCrit > 0)
+                {
+                    double meanHit = pHit * ((1 - pCrit) * normal + pCrit * crit);
+                    double swings = meanHit > 0 ? fightHp / meanHit : 1.0;
+                    double seconds = swings * SimulationEngine.LiveAttackIntervalMs(in payload, in stats) / 1000.0;
+                    double delivered = BleedDeliveredShare(seconds);
+                    double bleed = 1.0 + fightWar.BleedTenthsPct / 1000.0 * delivered;
+                    crit *= bleed;
+                    dbl *= bleed;
+                }
+
                 long bloodthirst = SimulationEngine.BloodthirstTenths(in payload);
                 double burnFactor = stats.SetBurnApplicationActive ? 1.0 + SimulationEngine.BurnDamageFraction : 1.0;
 
@@ -764,7 +805,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // scaling them (SwingsToKill reads the outcomes, not the mean),
                 // and the same factor goes into burnFactor so the heals - which
                 // a Riposte does not pay - stay on the hit alone.
-                long riposte = SimulationEngine.RiposteMilliDamage(in payload, in stats, in monster, rawMilliAttack);
+                long riposte = SimulationEngine.RiposteMilliDamage(in payload, in stats, in target, rawMilliAttack);
                 if (riposte > 0)
                 {
                     int monsterMs = monster.AttackIntervalMs > 0 ? monster.AttackIntervalMs : 2000;
@@ -781,6 +822,23 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
                 return new PlayerSwing(pHit, pCrit, pDouble, normal, crit, dbl, stats.LifestealPct, bloodthirst, burnFactor);
+            }
+
+            /// <summary>Mean Sunder stacks over the connecting hits of a fight that takes this many.</summary>
+            internal static double AverageSunderStacks(double hits)
+            {
+                int cap = WarEffects.SunderMaxStacks;
+                if (hits <= 1.0) return 0.0;
+                if (hits <= cap + 1) return (hits - 1.0) / 2.0;
+                return (cap * (cap + 1) / 2.0 + cap * (hits - cap - 1.0)) / hits;
+            }
+
+            /// <summary>The share of a bleed that lands before a fight of this many seconds ends.</summary>
+            internal static double BleedDeliveredShare(double fightSeconds)
+            {
+                double b = WarEffects.BleedSeconds;
+                if (fightSeconds <= 0) return 0.0;
+                return fightSeconds >= b ? 1.0 - b / (2.0 * fightSeconds) : fightSeconds / (2.0 * b);
             }
 
             /// <summary>
