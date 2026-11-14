@@ -5,7 +5,7 @@
   // comes from - so this page cannot list a pet the game does not have, or
   // miss one it added.
   import { createQuery } from '@tanstack/svelte-query';
-  import { fetchPets, petKeys, petSourceLine, PET_SOURCE, type Pet } from '../net/pets';
+  import { fetchPets, petKeys, petSourceLine, PET_SOURCE, type Pet, isRarePet } from '../net/pets';
   import { oneIn } from '../net/seasonalEvent';
   import { spriteUrl } from './spriteUrl';
   import { formatNumber } from './format';
@@ -14,6 +14,7 @@
 
   const GROUPS: { title: string; sources: number[] }[] = [
     { title: 'Monster pets - found on any kill', sources: [PET_SOURCE.Monster] },
+    { title: 'Rare monster pets - half as often, twice the bonus', sources: [PET_SOURCE.MonsterRare] },
     { title: 'Event pets - from a seasonal event', sources: [PET_SOURCE.Shop, PET_SOURCE.RareDrop, PET_SOURCE.Boss] },
     { title: 'The rebirth pet', sources: [PET_SOURCE.Rebirth] },
     { title: 'The world boss pet', sources: [PET_SOURCE.WorldBoss] },
@@ -38,6 +39,12 @@
       <strong>Any kill</strong> has a {oneIn(pets.data.MonsterPetChancePerKill)} chance to bring one of the monster pets, at
       random - whatever you fight, online or away.
     </li>
+    {#if pets.data.RareMonsterPetChancePerKill}
+      <li>
+        Each monster pet has a <strong class="pet-rare-name">rare variant</strong> with twice its bonus. Any kill has
+        a separate {oneIn(pets.data.RareMonsterPetChancePerKill)} chance to bring one of them, drawn with a blue glow.
+      </li>
+    {/if}
     <li>
       Found a monster pet you already have? It pays <strong>{formatNumber(pets.data.DuplicateDiamonds)} diamonds</strong> by
       mail instead.
@@ -55,9 +62,9 @@
     <div class="pet-grid">
       {#each group.pets as pet (pet.Id)}
         <div class="pet-card" data-testid="wiki-pet">
-          <img src={spriteUrl(pet.Art)} alt="" loading="lazy" decoding="async" />
+          <img src={spriteUrl(pet.Art)} alt="" loading="lazy" decoding="async" class:pet-rare-art={isRarePet(pet)} />
           <div class="what">
-            <strong>{pet.Name}</strong>
+            <strong class:pet-rare-name={isRarePet(pet)}>{pet.Name}</strong>
             <span class="bonus">{pet.Bonuses.join(' · ')}</span>
             <span class="dim tiny">{petSourceLine(pet)}</span>
           </div>

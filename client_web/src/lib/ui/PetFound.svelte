@@ -15,7 +15,7 @@
   // (stores/game.ts processCommandResults), and the drop's own result (67, 69,
   // 71) is one, so the pets query re-reads the moment a drop is saved.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { assignPet, fetchPets, markPetSeen, petKeys, petSourceLine, PET_SOURCE, type Pet, type PetsView } from '../net/pets';
+  import { assignPet, fetchPets, markPetSeen, petKeys, petSourceLine, PET_SOURCE, type Pet, type PetsView, isRarePet } from '../net/pets';
   import { oneIn } from '../net/seasonalEvent';
   import { playerState, pushLocalNotice } from '../stores/game';
   import { workersOf, workerName } from './workers';
@@ -55,6 +55,9 @@
   function howFound(p: Pet, view: PetsView): string {
     if (p.Source === PET_SOURCE.Monster) {
       return `Found on any kill, any time: a ${oneIn(view.MonsterPetChancePerKill)} chance per kill, then one of the monster pets at random.`;
+    }
+    if (p.Source === PET_SOURCE.MonsterRare && view.RareMonsterPetChancePerKill) {
+      return `A rare variant: a ${oneIn(view.RareMonsterPetChancePerKill)} chance per kill, then one of the ten at random - twice the ordinary pet's bonus.`;
     }
     return petSourceLine(p);
   }
@@ -115,12 +118,12 @@
       testid="pet-found"
     >
       <div class="pet-found" data-pet={pet.Id} data-duplicate={duplicate}>
-        <div class="art">
+        <div class="art" class:pet-rare-art={isRarePet(pet)}>
           {#if !duplicate}<span class="burst"><Burst count={14} reach={4} /></span>{/if}
           <img src={spriteUrl(pet.Art)} alt="" decoding="async" />
         </div>
         <p class="kicker">{duplicate ? 'Found again' : 'A pet has found you'}</p>
-        <h2>{pet.Name}</h2>
+        <h2 class:pet-rare-name={isRarePet(pet)}>{pet.Name}</h2>
 
         <ul class="bonuses" aria-label="What it gives">
           {#each pet.Bonuses as bonus (bonus)}

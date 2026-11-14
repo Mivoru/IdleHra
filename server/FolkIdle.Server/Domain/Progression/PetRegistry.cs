@@ -38,6 +38,8 @@ namespace FolkIdle.Server.Domain.Progression
         Rebirth = 5,
         /// <summary>The world boss's top weekly damage milestone, once per account (owner, 2026-10-13).</summary>
         WorldBoss = 6,
+        /// <summary>A monster pet's rare variant: any kill, any time, half as often, twice the bonus (owner, 2026-11-14).</summary>
+        MonsterRare = 7,
     }
 
     public sealed record PetBonus(PetStat Stat, int Pct);
@@ -100,6 +102,17 @@ namespace FolkIdle.Server.Domain.Progression
         public const double MonsterPetPerKill = 1.0 / 100_000.0;
 
         /// <summary>
+        /// The rare variants of the monster pets (owner, 2026-11-14): the same
+        /// ten, +16% to the same stat (twice the +8%), found at 1 in 200,000
+        /// kills - half the ordinary odds - in a roll of their own, so an
+        /// ordinary pet never turns into a rare one and the ten ordinary ones
+        /// keep their odds. Each is its own pet id ("pet_hugin_rare"): owned,
+        /// placed and paid for as a duplicate exactly like any other pet.
+        /// </summary>
+        public const int RareMonsterPetPct = 16;
+        public const double RareMonsterPetPerKill = 1.0 / 200_000.0;
+
+        /// <summary>
         /// Diamonds mailed for a monster pet the account already has (owner,
         /// 2026-10-10). Not 100: once the fastest farmer owns the pool, a
         /// duplicate every ~3 days at 100 would be ~230 a week - four times
@@ -158,6 +171,17 @@ namespace FolkIdle.Server.Domain.Progression
             Monster("ogham_monolith", "Ogham Monolith", PetStat.Armour),
             Monster("dagdas_cauldron", "Dagda's Cauldron", PetStat.GatherYield),
 
+            RareMonster("hugin", "Hugin", PetStat.Xp),
+            RareMonster("nisse", "Nisse", PetStat.Gold),
+            RareMonster("cu_sidhe", "Cú Sídhe", PetStat.Damage),
+            RareMonster("cait_sidhe", "Cait Sídhe", PetStat.CritDamage),
+            RareMonster("ignis_fatuus", "Ignis Fatuus", PetStat.DropChance),
+            RareMonster("kikimora", "Kikimora", PetStat.GatherSpeed),
+            RareMonster("backahast", "Bäckahäst", PetStat.WorldBossDamage),
+            RareMonster("llamhigyn_y_dwr", "Llamhigyn y Dŵr", PetStat.MaxHp),
+            RareMonster("ogham_monolith", "Ogham Monolith", PetStat.Armour),
+            RareMonster("dagdas_cauldron", "Dagda's Cauldron", PetStat.GatherYield),
+
             new PetDefinition(PhoenixId, "Phoenix", PetSource.Rebirth, 0, "Pets/phoenix.webp",
                 new[] { new PetBonus(PetStat.Damage, PhoenixPct), new PetBonus(PetStat.MaxHp, PhoenixPct), new PetBonus(PetStat.Xp, PhoenixPct) }),
 
@@ -169,8 +193,19 @@ namespace FolkIdle.Server.Domain.Progression
             => new("pet_" + slug, name, PetSource.Monster, 0,
                    "Pets/" + slug + ".webp", new[] { new PetBonus(stat, MonsterPetPct) });
 
+        /// <summary>The same art as the ordinary pet; the client draws the rare glow.</summary>
+        private static PetDefinition RareMonster(string slug, string name, PetStat stat)
+            => new("pet_" + slug + "_rare", "Rare " + name, PetSource.MonsterRare, 0,
+                   "Pets/" + slug + ".webp", new[] { new PetBonus(stat, RareMonsterPetPct) });
+
         /// <summary>The monster pets, in registry order - the pool a kill draws from.</summary>
         public static readonly IReadOnlyList<PetDefinition> MonsterPool = All.Where(p => p.Source == PetSource.Monster).ToArray();
+
+        /// <summary>The rare variants, in registry order - drawn by a roll of their own.</summary>
+        public static readonly IReadOnlyList<PetDefinition> RareMonsterPool = All.Where(p => p.Source == PetSource.MonsterRare).ToArray();
+
+        /// <summary>A pet a kill can bring - ordinary or rare - and so paid in diamonds when owned again.</summary>
+        public static bool IsMonsterPet(PetDefinition pet) => pet.Source is PetSource.Monster or PetSource.MonsterRare;
 
         /// <summary>
         /// Rolls <paramref name="kills"/> kills for a monster pet and queues
@@ -182,10 +217,18 @@ namespace FolkIdle.Server.Domain.Progression
         public static int RollMonsterPets(long playerId, long kills, Random random)
         {
             if (playerId <= 0 || kills <= 0 || MonsterPool.Count == 0) return 0;
-            int found = SeasonalEventEarning.Draw((int)Math.Min(kills, int.MaxValue), MonsterPetPerKill, random);
+            int count = (int)Math.Min(kills, int.MaxValue);
+            int found = Drop(playerId, MonsterPool, SeasonalEventEarning.Draw(count, MonsterPetPerKill, random), random);
+            if (RareMonsterPool.Count > 0)
+                found += Drop(playerId, RareMonsterPool, SeasonalEventEarning.Draw(count, RareMonsterPetPerKill, random), random);
+            return found;
+        }
+
+        private static int Drop(long playerId, IReadOnlyList<PetDefinition> pool, int found, Random random)
+        {
             for (int i = 0; i < found; i++)
             {
-                var pet = MonsterPool[random.Next(MonsterPool.Count)];
+                var pet = pool[random.Next(pool.Count)];
                 // A simulated away window counts the find instead (CombatSimulator).
                 if (Domain.Combat.SimulationEngine.Simulating is { } simulating) simulating.PetDrops.Add(pet.Id);
                 else PetEngine.Drops.Enqueue(new PetDropNote(playerId, pet.Id));

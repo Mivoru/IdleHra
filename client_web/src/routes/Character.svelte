@@ -58,7 +58,7 @@
   import { pickerRows } from '../lib/ui/equipPicker';
   import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
   import PetPanel from '../lib/ui/PetPanel.svelte';
-  import { fetchPets, petKeys } from '../lib/net/pets';
+  import { fetchPets, petKeys, isRarePet } from '../lib/net/pets';
   import { spriteUrl } from '../lib/ui/spriteUrl';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
@@ -640,8 +640,8 @@
             >
               <span class="slotname">Pet</span>
               {#if petOf}
-                <img class="petart" src={spriteUrl(petOf.Art)} alt="" decoding="async" />
-                <span class="gearname">{petOf.Name}</span>
+                <img class="petart" class:pet-rare-art={isRarePet(petOf)} src={spriteUrl(petOf.Art)} alt="" decoding="async" />
+                <span class="gearname" class:pet-rare-name={isRarePet(petOf)}>{petOf.Name}</span>
               {:else}
                 <span class="empty" aria-hidden="true">+</span>
                 <span class="gearname dim">empty</span>

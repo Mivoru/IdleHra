@@ -406,6 +406,7 @@ namespace FolkIdle.Server.Network
                     Characters = characters,
                     // The monster pets' odds, from the constant the roll uses.
                     MonsterPetChancePerKill = PetRegistry.MonsterPetPerKill,
+                    RareMonsterPetChancePerKill = PetRegistry.RareMonsterPetPerKill,
                     DuplicateDiamonds = PetRegistry.DuplicateDiamonds,
                     // Task 114: the second pet slot and what opens it.
                     SecondSlotOpen = await db.PlayerRecords.AsNoTracking()
