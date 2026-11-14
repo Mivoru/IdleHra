@@ -30,6 +30,9 @@
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
   import ShieldWheel from '../lib/ui/ShieldWheel.svelte';
+  import BossDuel from '../lib/ui/BossDuel.svelte';
+  import { fetchDuel, issueDuel, type DuelChallenge, type DuelOmen } from '../lib/net/rest';
+  import { raceIcon } from '../lib/ui/sprites';
   import {
     fetchBossBoard,
     fetchBossChallenge,
@@ -56,6 +59,14 @@
   // update.
   let wheelMode = $state('off');
   const wheelStrikes = $derived(wheelMode === 'wheel');
+  // Modul: THE DUEL (2026-11-14) replaced the wheel under the same flag
+  // (FOLKIDLE_BOSS_MINIGAME=duel). It shares the wheel's REST strike - the
+  // auto-strike, the daily attempt - but plays as BossDuel, with no plates.
+  const duelStrikes = $derived(wheelMode === 'duel');
+  let omen = $state<DuelOmen | null>(null);
+  let duelChallenge = $state<DuelChallenge | null>(null);
+  let duelResumable = $state<DuelChallenge | null>(null);
+  let openingDuel = $state(false);
   let practiceChallenge = $state<ShieldWheelChallenge | null>(null);
   let strikeChallenge = $state<ShieldWheelChallenge | null>(null);
   let resumable = $state<ShieldWheelChallenge | null>(null);
@@ -75,9 +86,56 @@
         // A real strike left open (the app was closed mid-run) can be picked
         // up where it was: the server kept its throws and its clock.
         if (answer.Challenge && !answer.Challenge.Practice) resumable = answer.Challenge;
+        if (answer.Mode === 'duel') void loadDuel();
       })
       .catch(() => (wheelMode = 'off'));
   });
+
+  async function loadDuel() {
+    try {
+      const state = await fetchDuel();
+      if (!state) return;
+      omen = state.Omen;
+      if (state.Resolved) pushLocalNotice(worldBossResultSentence(state.Resolved.Result, state.Resolved.Damage), worldBossResultTone(state.Resolved.Result));
+      if (state.Challenge && !state.Challenge.Practice) duelResumable = state.Challenge;
+    } catch {
+      // The screen still works without the omen; the duel button asks again.
+    }
+  }
+
+  async function openDuel(practice: boolean) {
+    if (openingDuel) return;
+    openingDuel = true;
+    autoResult = null;
+    try {
+      const state = await issueDuel(practice);
+      if (state) omen = state.Omen;
+      if (state && (state.Result === 'Issued' || state.Result === 'Outstanding') && state.Challenge) {
+        if (!practice) duelResumable = null;
+        duelChallenge = state.Challenge;
+      } else if (state) {
+        pushLocalNotice(worldBossResultSentence(state.Result) || 'The duel could not be started.', 'error');
+      }
+    } catch (err) {
+      pushLocalNotice(err instanceof Error ? err.message : 'The duel could not be started.', 'error');
+    } finally {
+      openingDuel = false;
+    }
+  }
+
+  function closeDuel() {
+    duelChallenge = null;
+  }
+
+  function leaveDuel() {
+    if (duelChallenge && !duelChallenge.Practice) duelResumable = duelChallenge;
+    duelChallenge = null;
+  }
+
+  async function duelAgain() {
+    duelChallenge = null;
+    await openDuel(true);
+  }
 
   async function openStrike() {
     if (openingStrike) return;
@@ -270,7 +328,7 @@
     autoResult = null;
     play('hitMelee');
     try {
-      const answer = await strikeBoss({ Mode: 'Auto', Plate: selectedPlate });
+      const answer = await strikeBoss(duelStrikes ? { Mode: 'Auto' } : { Mode: 'Auto', Plate: selectedPlate });
       if (answer && answer.Result === 'Landed') {
         autoResult = answer;
         if (answer.BrokePlate >= 0) tap('heavy');
@@ -283,7 +341,7 @@
   }
 
   function attack() {
-    if (wheelStrikes) return void autoStrike();
+    if (wheelStrikes || duelStrikes) return void autoStrike();
     if (striking) return;
     const outcome = attackWorldBoss({
       plateIndex: selectedPlate,
@@ -333,6 +391,9 @@
   const heroArt = $derived(board ? spriteUrl(enraged ? board.EnragedArt : board.BossArt) : '');
   const heroName = $derived(enraged ? 'the Black Serpent' : bossName);
   const registered = $derived(board?.Me?.Registered ?? false);
+  const duelBossArt = $derived(board ? spriteUrl(board.BossArt) : '');
+  const duelSerpentArt = $derived(board ? spriteUrl(board.EnragedArt) : '');
+  const duelHeroArt = $derived(raceIcon(Number(snap?.Slot1_RaceId ?? 0), false));
 
   // The next milestone the player has not reached this week, for the progress bar.
   const myDamage = $derived(board?.Me?.Damage ?? 0);
@@ -467,7 +528,23 @@
         </span>
       </div>
 
-      {#if wheelStrikes}
+      {#if duelStrikes}
+        {#if omen}
+          <p class="omen-card small" data-testid="boss-omen">
+            <strong>Omen of the day: {omen.Name}.</strong> {omen.Text}
+          </p>
+        {/if}
+        <!-- The strike: the duel. Up to 2x for three right calls. -->
+        <button
+          class="attack primary"
+          data-guide="worldboss-strike"
+          data-testid="duel-strike"
+          disabled={(strikeBlockedReason !== '' && !duelResumable) || openingDuel}
+          onclick={() => openDuel(false)}
+        >
+          {duelResumable ? 'Finish your duel' : `Fight ${heroName}`}
+        </button>
+      {:else if wheelStrikes}
         <!-- The strike: the shield wheel. Up to 2x for a skilled run, and never
              less than a quick strike on the best plate it struck. -->
         <button
@@ -485,15 +562,19 @@
           Strike plate {selectedPlate + 1}
         </button>
       {/if}
-      {#if strikeBlockedReason && !resumable}
+      {#if strikeBlockedReason && !resumable && !duelResumable}
         <p class="strike-reason dim tiny" role="status">{strikeBlockedReason}</p>
+      {:else if duelResumable}
+        <p class="strike-reason dim tiny" role="status">Your duel is waiting where you left it.</p>
       {:else if resumable}
         <p class="strike-reason dim tiny" role="status">Your strike is waiting where you left it.</p>
       {/if}
 
       {#if autoResult}
         <p class="auto-result small" role="status" data-testid="auto-card" data-damage={autoResult.Damage}>
-          {#if autoResult.Landings.some((l) => l.WeakHit)}
+          {#if duelStrikes}
+            Quick strike:
+          {:else if autoResult.Landings.some((l) => l.WeakHit)}
             Plate {selectedPlate + 1} was the soft one this time:
           {:else if autoResult.BrokePlate >= 0}
             You broke plate {autoResult.BrokePlate + 1} for everyone:
@@ -502,6 +583,35 @@
         </p>
       {/if}
 
+      {#if duelStrikes}
+        <button
+          type="button"
+          class="disclosure"
+          data-testid="quick-strike-toggle"
+          aria-expanded={quickOpen}
+          onclick={() => (quickOpen = !quickOpen)}
+        >
+          <span>Quick strike (no duel, 1x)</span>
+          <span class="chev" aria-hidden="true">{quickOpen ? '▴' : '▾'}</span>
+        </button>
+        {#if quickOpen}
+          <div class="quick">
+            <p class="dim tiny">No duel: your character strikes once at 1x. It spends today's strike.</p>
+            <button
+              class="auto"
+              data-testid="auto-strike"
+              disabled={strikeBlockedReason !== '' || duelResumable !== null}
+              onclick={attack}
+            >
+              Quick strike
+            </button>
+          </div>
+        {/if}
+        <button class="practice" disabled={openingDuel} onclick={() => openDuel(true)} data-testid="duel-practice">
+          Practice the duel
+        </button>
+        <p class="dim tiny practice-note">Free: it spends no strike and deals no damage.</p>
+      {:else}
       <h3>Its armour</h3>
       <ul class="armour-plates" aria-label="The boss's armour">
         {#each Array(BOSS_PLATE_COUNT) as _, index}
@@ -576,6 +686,7 @@
           Practice the shield wheel
         </button>
         <p class="dim tiny practice-note">Free: it spends no strike and deals no damage.</p>
+      {/if}
       {/if}
     </section>
   </div>
@@ -697,7 +808,16 @@
             One strike a day, every day. {attemptsLeft > 0 ? `It refills ${refillAt}.` : refillLabel}
             A new boss arrives every Monday.
           </p>
-          {#if wheelStrikes}
+          {#if duelStrikes}
+            <p class="dim tiny">
+              <strong>The duel:</strong> your character fights {bossName} with your world-boss build. Three
+              times he winds up a move - Crushing Blow, Black Flame, a curse, a shade - and you call
+              <strong>Guard</strong>, <strong>Strike</strong> or <strong>Evade</strong>. Each right call adds to the
+              strike, and three right calls land Svarog's Hammer: up to <strong>2x</strong>. Your build changes
+              which answers are right, and so does the <strong>omen of the day</strong>. As the Black Serpent he
+              has new moves.
+            </p>
+          {:else if wheelStrikes}
             <p class="dim tiny">
               Five plates, and one of them is soft - a <strong>different one for every strike</strong>,
               chosen among the plates still standing. A hit on it does
@@ -735,6 +855,21 @@
   {/key}
 {/if}
 
+{#if duelChallenge}
+  {#key duelChallenge.ChallengeId}
+    <BossDuel
+      challenge={duelChallenge}
+      bossArt={duelBossArt}
+      serpentArt={duelSerpentArt}
+      bossName={bossName}
+      heroArt={duelHeroArt}
+      onclose={closeDuel}
+      onagain={duelAgain}
+      onleave={leaveDuel}
+    />
+  {/key}
+{/if}
+
 {#if strikeChallenge}
   {#key strikeChallenge.ChallengeId}
     <ShieldWheel challenge={strikeChallenge} onclose={closeStrike} onagain={closeStrike} onleave={leaveStrike} />
@@ -742,6 +877,13 @@
 {/if}
 
 <style>
+  .omen-card {
+    border-left: 3px solid var(--accent, #ffb347);
+    padding: 6px 8px;
+    margin: 4px 0 8px;
+    background: rgba(255, 179, 71, 0.08);
+    border-radius: 4px;
+  }
   /* Centred on a wide screen (owner, 2026-09-28): a 34rem column hugging the
      left edge of a 1900px window read as a layout that had not loaded. Two
      columns from 60rem (task 105): the strike on the left, the board and the

@@ -158,6 +158,57 @@ damage burst).
 - A result card that recaps the strike and the player's rank today.
 - The boss's HP bar as a carved stone bar with cracks that grow.
 
-## 5. Evaluation
+## 5. Evaluation (2026-11-14, one run, as the owner asked)
 
-Filled in after the four evaluators answer (section 6).
+Four evaluators (Fable, Sonnet, Haiku, Opus) each read only sections 1-4 of
+this document, with no recommendation in it, and answered once.
+
+| Evaluator | Choice | P1 | P2 | P3 | P4 | P5 | P6 |
+|---|---|---|---|---|---|---|---|
+| Fable | P4 + P6 (P1's visible intent for the calls) | 7 | 3 | 5 | **9** | 4 | 8 |
+| Sonnet | P4 + P6 | 6 | 3 | 4 | **8** | 3 | 7 |
+| Haiku | P4 + P6 | 7 | 4 | 5 | **8** | 4 | 6 |
+| Opus | P4 + P6 | 7 | 3 | 5 | **8** | 4 | 8 |
+
+**Unanimous: P4 + P6.** What they agreed on, and what was built from it:
+
+- ~40 s with a speed-up; three decision calls; 3 big buttons; a generous
+  window (4-6 s) with a neutral default on timeout. Built: 6 s, 1x/2x.
+- The right answer depends on the move AND the build AND the omen, or it
+  becomes a lookup table (all four named this risk). Built: per-stance
+  answers (Might / Precision / Guard, from the deepest combat column of the
+  world-boss build) and a daily omen whose move always comes.
+- The server is the single truth; the client never re-simulates (all four
+  named drift as the top technical risk). Built: the server deals every blow
+  at issue and answers each call with its hit; the base hit is quoted by the
+  tick at issue and carried on the order, so shown == credited.
+- Two of four (Fable, Opus) said drop the hold-to-charge Focus button (a
+  reflex input, bad one-handed); the finisher should come from the calls.
+  Built that way: three right calls land Svarog's Hammer (+0.1x).
+- The Forge meter (P6's shared moment) was everyone's "last" item: not built
+  yet.
+
+## 6. What was built (PR "world boss duel", client 1.90.0)
+
+- `BossDuelRules` (moves, answers, stances, omens, M), `BossDuelService`
+  (REST: `GET/POST /api/v1/worldboss/duel`, `POST /api/v1/worldboss/duel/call`),
+  `WorldBossTickCoordinator.DrainDuelQuotes`, mode `FOLKIDLE_BOSS_MINIGAME=duel`.
+  The wheel stays in the code behind `wheel` until the owner has played the
+  duel; then it can be deleted.
+- Economy unchanged: M from 1.0 to 2.0, the wheel's Floor and Cap. Measured
+  (`BossDuelTests` ledger, 20,000 duels per stance): random answers 1.36
+  (Balanced) to 1.45 (Precision/Guard); best answers 2.00. The wheel's random
+  tapping was 1.35. FairShare was 0.35 at first and paid guessing 1.43-1.50,
+  so it is 0.15.
+- No plates in duel mode: the weak plate's 3x and the crowd deduction are
+  gone; auto-strike is a plain 1.0x.
+- Client `BossDuel.svelte`: the boss art (Black Serpent art when enraged),
+  the player's race portrait, blows with floating numbers, hit flash, a lunge,
+  a small shake on heavy hits, a wind-up pulse and telegraph sound, verdict
+  feedback by text and border style (not colour alone), a result card that
+  names the right answer. Reduced motion turns every animation off.
+- `exercise.mjs` world-boss block: practice touches nothing; a real duel
+  spends the strike and the card's damage equals the board's gain; 32/32.
+
+Open: the Forge meter; a roar per move (ElevenLabs SFX); a ticker of other
+players' hits; re-measure the HP factor after the first duel week.

@@ -120,8 +120,6 @@
     DEEP_MAX_LANTERNS,
     DEEP_TITLE_FLOORS,
     WORLD_BOSS_DAMAGE_FLOOR,
-    WORLD_BOSS_PLATES,
-    WORLD_BOSS_WEAK_MULTIPLIER,
     DAILY_LOGIN_MATRICES,
     DAILY_LOGIN_DAY7_DIAMONDS,
     ACHIEVEMENTS,
@@ -1825,23 +1823,30 @@
               reward.
             </li>
             <li>
-              <strong>Below a quarter of his health he becomes the Black Serpent</strong> - and the shield
-              wheel spins faster.
+              <strong>Below a quarter of his health he becomes the Black Serpent</strong>, with moves of his
+              own: Venom Spit, Tail Sweep and Death Coil.
             </li>
             <li>
-              <strong>You strike with the shield wheel.</strong> The {WORLD_BOSS_PLATES} armour plates spin
-              as a ring; you have five spears, and a spear on the seam in the middle of a plate is the best
-              hit. When the wheel stops and he winds up a blow, press the side it comes from and your next
-              spear is a guaranteed seam on the plate you pick. A skilled run is worth up to 2x.
+              <strong>You strike in a duel.</strong> Your character fights him with your world-boss build, and
+              three times he winds up a named move - a Crushing Blow, the Black Flame, a curse, a shade. Read
+              it and call <strong>Guard</strong>, <strong>Strike</strong> or <strong>Evade</strong>. Every right
+              call adds to the strike, a call that only holds adds a little, and three right calls land
+              Svarog's Hammer: up to 2x. There is no rush to it - you have six seconds a call.
             </li>
             <li>
-              <strong>One plate is soft, a different one every strike</strong> - chosen among the plates
-              still standing. A hit on it does {WORLD_BOSS_WEAK_MULTIPLIER}x and glows for you alone; a hit
-              anywhere else <strong>breaks</strong> that plate for everyone. The armour grows back at midnight UTC.
+              <strong>Your build changes the right answers.</strong> A Guard build can take the Crushing Blow on
+              its shield; a Precision build slips the Black Flame and finds the gap in the Serpent Coil; a Might
+              build breaks the Curse of Night before it closes. The deepest of your Might, Precision and Guard
+              columns decides.
             </li>
             <li>
-              Not quick with your thumbs? <strong>Quick strike</strong> hits the plate you choose at the base
-              multiplier. Practice is free and deals no damage.
+              <strong>An omen every day.</strong> Each day of the week one god changes one answer - Perun's
+              Thunder on Monday says meet the Crushing Blow head-on - and that move always comes in that day's
+              duel. The omen is on the World Boss screen before you fight.
+            </li>
+            <li>
+              In no mood to fight? <strong>Quick strike</strong> hits once at the base multiplier. Practice is
+              free and deals no damage, and the result card says which answer was right.
             </li>
             <li>Your hit is your character's real attack power, floored at {formatNumber(WORLD_BOSS_DAMAGE_FLOOR)} before any multiplier.</li>
             <li><strong>He stays after he falls.</strong> Keep striking for your milestones and your place until Sunday.</li>

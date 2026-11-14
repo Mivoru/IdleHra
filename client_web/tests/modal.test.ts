@@ -28,6 +28,9 @@ const NOT_YET_MODAL = new Set([
   // overlay stack - and has no scrim to duplicate; a Modal card would put the
   // dungeon in a box.
   'lib/ui/ChestOpening.svelte',
+  // The world boss duel (2026-11-14): a full-screen arena, built like
+  // ChestOpening from Modal's own parts (portal, openModal, overlay stack).
+  'lib/ui/BossDuel.svelte',
 ]);
 
 function svelteFiles(dir: string): string[] {

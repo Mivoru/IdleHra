@@ -261,15 +261,26 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         }
 
         /// <summary>
-        /// The day's three moves: the omen's move always once (when this form
-        /// can make it), the rest drawn without repeats from the form's pool.
-        /// The order is shuffled, so the omen's move is not always first.
+        /// The day's three moves: the omen's move always once, the rest drawn
+        /// without repeats from the form's pool. The order is shuffled, so the
+        /// omen's move is not always first.
         /// </summary>
+        /// <remarks>
+        /// Modul: ALWAYS, even outside the form's pool (found in the first
+        /// screenshot run, 2026-11-15). Saturday's and Sunday's omens name
+        /// serpent moves, and before the Black Serpent form those never came -
+        /// so two days a week the omen said nothing. On those days the serpent
+        /// stirs in him early: the omen's move comes anyway.
+        /// </remarks>
         public static DuelMove[] DrawMoves(bool enraged, DuelOmen omen, Func<int, int> uniform)
         {
             var pool = new List<DuelMove>(enraged ? SerpentPool : NormalPool);
             var picked = new List<DuelMove>(Calls);
-            if (pool.Remove(omen.Move)) picked.Add(omen.Move);
+            if (Enum.IsDefined(omen.Move))
+            {
+                pool.Remove(omen.Move);
+                picked.Add(omen.Move);
+            }
             while (picked.Count < Calls && pool.Count > 0)
             {
                 int i = uniform(pool.Count);
@@ -322,19 +333,32 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// <summary>The finisher, struck only when every call was right.</summary>
         public static long FinisherHit(long baseHit) => (long)Math.Round(baseHit * FinisherBonus);
 
-        /// <summary>One line the result card shows for a call.</summary>
+        /// <summary>The right answer to a move for this stance and omen (the first, if two are right).</summary>
+        public static DuelOption BestAnswer(DuelMove move, DuelStance stance, DuelOmen omen)
+        {
+            foreach (var o in new[] { DuelOption.Guard, DuelOption.Strike, DuelOption.Evade })
+                if (Judge(move, o, stance, omen) == DuelVerdict.Right) return o;
+            return DuelOption.Guard;
+        }
+
+        /// <summary>
+        /// One line the result card shows for a call. A call that was not right
+        /// names the answer that was - the duel is learnt by reading, and a card
+        /// that only says "wrong" teaches nothing (first screenshot run).
+        /// </summary>
         public static string Explain(DuelMove move, DuelOption option, DuelVerdict verdict, DuelStance stance, DuelOmen omen)
         {
             string name = Def(move).Name;
-            if (option == DuelOption.None) return $"{name}: no answer in time.";
+            string best = BestAnswer(move, stance, omen).ToString();
+            if (option == DuelOption.None) return $"{name}: no answer in time - {best} was right.";
             if (omen.Move == move && omen.Answer == option) return $"{name}: {omen.Name} was with you.";
             bool stanceRight = StanceVerdict(stance, move, option) == DuelVerdict.Right;
             return verdict switch
             {
                 DuelVerdict.Right when stanceRight => $"{name}: your {stance} build turned it.",
                 DuelVerdict.Right => $"{name}: the right answer.",
-                DuelVerdict.Fair => $"{name}: it held, but there was a better answer.",
-                _ => $"{name}: the wrong answer - he punished it.",
+                DuelVerdict.Fair => $"{name}: it held, but {best} was better.",
+                _ => $"{name}: he punished it - {best} was right.",
             };
         }
     }

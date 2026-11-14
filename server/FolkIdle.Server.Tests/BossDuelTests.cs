@@ -86,11 +86,19 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void AWrongCall_NamesTheRightAnswer()
+        {
+            var mokosh = BossDuelRules.Omens[1]; // Curse of Night, not this move
+            string line = BossDuelRules.Explain(DuelMove.CrushingBlow, DuelOption.Strike, DuelVerdict.Wrong, DuelStance.Balanced, mokosh);
+            Assert.Contains("Evade was right", line);
+        }
+
+        [Fact]
         public void TimedOutCall_IsWrong() =>
             Assert.Equal(DuelVerdict.Wrong, BossDuelRules.Judge(DuelMove.CrushingBlow, DuelOption.None, DuelStance.Guard, BossDuelRules.Omens[0]));
 
         [Fact]
-        public void OmensMoveAlwaysComes_WhenTheFormCanMakeIt()
+        public void OmensMoveAlwaysComes_EvenOutsideTheFormsPool()
         {
             var rng = new Random(7);
             foreach (var omen in BossDuelRules.Omens)
@@ -102,8 +110,8 @@ namespace FolkIdle.Server.Tests
                     {
                         var moves = BossDuelRules.DrawMoves(enraged, omen, rng.Next);
                         Assert.Equal(BossDuelRules.Calls, moves.Distinct().Count());
-                        Assert.All(moves, m => Assert.Contains(m, pool));
-                        if (pool.Contains(omen.Move)) Assert.Contains(omen.Move, moves);
+                        Assert.All(moves, m => Assert.True(pool.Contains(m) || m == omen.Move));
+                        Assert.Contains(omen.Move, moves);
                     }
                 }
             }
