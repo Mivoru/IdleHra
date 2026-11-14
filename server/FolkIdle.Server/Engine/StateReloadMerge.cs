@@ -156,6 +156,10 @@ namespace FolkIdle.Server.Engine
                 reloaded.RestedHpPending = live.RestedHpPending;
                 reloaded.CombatTargetTickAccumulator = live.CombatTargetTickAccumulator;
                 reloaded.TargetStatusEffectBitmask = live.TargetStatusEffectBitmask;
+                reloaded.SunderStacks = live.SunderStacks;
+                reloaded.KillStreak = live.KillStreak;
+                reloaded.BleedSecondsLeft = live.BleedSecondsLeft;
+                reloaded.BleedMilliPool = live.BleedMilliPool;
                 reloaded.GatheringProgressTicks = live.GatheringProgressTicks;
                 reloaded.HarvestLoopCount = live.HarvestLoopCount;
                 reloaded.ActivityHaltReason = live.ActivityHaltReason;
@@ -183,6 +187,10 @@ namespace FolkIdle.Server.Engine
             reloaded.CachedEffectiveMaxHp = live.CachedEffectiveMaxHp;
             reloaded.RestedHpPending = live.RestedHpPending;
             reloaded.CombatTargetTickAccumulator = live.CombatTargetTickAccumulator;
+            reloaded.SunderStacks = live.SunderStacks;
+            reloaded.KillStreak = live.KillStreak;
+            reloaded.BleedSecondsLeft = live.BleedSecondsLeft;
+            reloaded.BleedMilliPool = live.BleedMilliPool;
             reloaded.TargetStatusEffectBitmask = live.TargetStatusEffectBitmask;
             reloaded.GatheringProgressTicks = live.GatheringProgressTicks;
             reloaded.HarvestLoopCount = live.HarvestLoopCount;

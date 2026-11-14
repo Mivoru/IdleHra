@@ -158,7 +158,7 @@ namespace FolkIdle.Server.Network
         /// <summary>The tree's shape and text. Public: it is the same for everyone.</summary>
         internal static object DescribeSkillTree()
         {
-            var nodes = WarTreeRegistry.All().Select(n =>
+            var nodes = WarTreeRegistry.All().Where(n => !n.Hidden).Select(n =>
             {
                 bool bridge = n.Kind == "Bridge";
                 int gate = bridge ? WarTreeRegistry.BridgeGate : WarTreeRegistry.RowGates[n.Row];
@@ -338,7 +338,7 @@ namespace FolkIdle.Server.Network
                         Blocked = HearthTreeRegistry.BlockedReason(n.Id, basis, left),
                         NextCost = HearthTreeRegistry.CostOf(n.Id, basis[n.Id]),
                     }).ToArray()
-                    : WarTreeRegistry.All().Select(n => new
+                    : WarTreeRegistry.All().Where(n => !n.Hidden).Select(n => new
                     {
                         n.Id,
                         Blocked = WarTreeRegistry.BlockedReason(n.Id, basis, left),

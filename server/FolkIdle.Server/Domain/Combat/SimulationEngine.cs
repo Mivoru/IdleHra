@@ -4196,6 +4196,13 @@ namespace FolkIdle.Server.Domain.Combat
                 float cut = LiveCritChancePct(in payload, in combatStats) / 100f * (warSpeed.FrenzyTenths / 1000f);
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - Math.Clamp(cut, 0f, 0.9f))));
             }
+            // Momentum (skill tree v3 step B): each kill in a row cuts the
+            // interval, never against a boss - a streak is a farming thing.
+            int momentum = MomentumTenthsPct(in payload, in warSpeed);
+            if (momentum > 0)
+            {
+                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - momentum / 1000f)));
+            }
             // Ruin's price: every source of attack speed counts at
             // WarEffects.RuinSpeedSharePct. The price grows with the speed a
             // character has while the gain does not, so a fast build pays most:
@@ -4207,6 +4214,41 @@ namespace FolkIdle.Server.Domain.Combat
                 playerAttackSpeedMs = BaseAttackIntervalMs - (BaseAttackIntervalMs - playerAttackSpeedMs) * WarEffects.RuinSpeedSharePct / 100;
             }
             return playerAttackSpeedMs;
+        }
+
+        /// <summary>Whether the payload's current monster is a region's boss.</summary>
+        internal static bool FightingRegionBoss(in TickStatePayload payload) => IsRegionBossId(payload.CurrentMonsterId);
+
+        /// <summary>Whether this monster id is a region's boss.</summary>
+        internal static bool IsRegionBossId(int id)
+        {
+            if (id <= 0) return false;
+            int tier = ContentRegistry.GetMonsterRegionTier(id);
+            if (tier < RaceUnlockRegistry.FirstRegion || tier > RaceUnlockRegistry.LastRegion) return false;
+            return RaceUnlockRegistry.GetRegionBossMonsterId(tier) == id;
+        }
+
+        /// <summary>Momentum's interval cut now, in tenths of a percent: the streak times the rank's value, nothing against a boss.</summary>
+        internal static int MomentumTenthsPct(in TickStatePayload payload, in WarEffects war)
+        {
+            if (war.MomentumTenthsPerKill <= 0 || payload.KillStreak <= 0 || FightingRegionBoss(in payload)) return 0;
+            return Math.Min((int)payload.KillStreak, WarEffects.MomentumMaxStreak) * war.MomentumTenthsPerKill;
+        }
+
+        /// <summary>The monster's armour after this many Sunder stacks.</summary>
+        internal static int SunderedArmour(int armour, int stacks, in WarEffects war)
+        {
+            if (war.SunderTenthsPerStack <= 0 || stacks <= 0 || armour <= 0) return armour;
+            int cut = Math.Min(1000, Math.Min(stacks, WarEffects.SunderMaxStacks) * war.SunderTenthsPerStack);
+            return (int)((long)armour * (1000 - cut) / 1000L);
+        }
+
+        /// <summary>Clears the fight state that lives for one monster: Sunder and the bleed.</summary>
+        internal static void ClearMonsterFightState(ref TickStatePayload payload)
+        {
+            payload.SunderStacks = 0;
+            payload.BleedSecondsLeft = 0;
+            payload.BleedMilliPool = 0;
         }
 
         /// <summary>
@@ -4520,6 +4562,9 @@ namespace FolkIdle.Server.Domain.Combat
         {
             // Read before the respawn clears CurrentMonsterId, which the check needs.
             bool seasonalFight = TryGetSeasonalBoss(in payload, out _);
+            // A death ends the streak and the monster's fight state.
+            payload.KillStreak = 0;
+            ClearMonsterFightState(ref payload);
             long seasonalReturn = payload.SeasonalBossReturnActivityId;
 
             payload.PlayerHp = effectiveMaxHp;
@@ -4654,6 +4699,10 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.RestedHpPending, ref parked.RestedHpPending);
             Swap(ref payload.CombatTargetTickAccumulator, ref parked.CombatTargetTickAccumulator);
             Swap(ref payload.TargetStatusEffectBitmask, ref parked.TargetStatusEffectBitmask);
+            Swap(ref payload.SunderStacks, ref parked.SunderStacks);
+            Swap(ref payload.KillStreak, ref parked.KillStreak);
+            Swap(ref payload.BleedSecondsLeft, ref parked.BleedSecondsLeft);
+            Swap(ref payload.BleedMilliPool, ref parked.BleedMilliPool);
             Swap(ref payload.GatheringProgressTicks, ref parked.GatheringProgressTicks);
             Swap(ref payload.HarvestLoopCount, ref parked.HarvestLoopCount);
             Swap(ref payload.ActivityHaltReason, ref parked.ActivityHaltReason);
@@ -5317,9 +5366,24 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.CurrentMonsterHp = SpawnHpFor(in payload);
                 payload.CombatTargetTickAccumulator = 0;
                 payload.AteThisFight = false;
+                ClearMonsterFightState(ref payload);
             }
 
             payload.CombatTargetTickAccumulator++;
+
+            // The bleed: once a second of this fight's clock, an even share of
+            // what is left in the pool. Before the swings, so a bleed that kills
+            // is a kill like any other (the check further down sees it). A
+            // warded boss takes nothing from it, as from a swing.
+            if (payload.BleedSecondsLeft > 0 && payload.CurrentMonsterHp > 0 && payload.CombatTargetTickAccumulator % 10 == 0)
+            {
+                long share = payload.BleedMilliPool / payload.BleedSecondsLeft;
+                payload.BleedMilliPool -= share;
+                payload.BleedSecondsLeft--;
+                bool bleedWarded = TryGetAscensionModifiers(in payload, out var bleedMods) && bleedMods.Ward
+                    && payload.CombatTargetTickAccumulator < payload.AscensionWardUntilTenths;
+                if (!bleedWarded && share > 0) payload.CurrentMonsterHp -= share;
+            }
 
             var activeMonster = ContentRegistry.Monsters[payload.CurrentMonsterId - 1];
 
@@ -5882,10 +5946,16 @@ namespace FolkIdle.Server.Domain.Combat
                 // read neither the codex yield nor the drop multiplier, and the
                 // owner confirmed that is the rule (2026-09-30).
 
+                // Momentum: a kill adds to the streak; a boss neither adds nor breaks it.
+                if (!FightingRegionBoss(in payload) && payload.KillStreak < WarEffects.MomentumMaxStreak
+                    && WarTreeRegistry.Resolve(in payload).MomentumTenthsPerKill > 0)
+                    payload.KillStreak++;
+
                 payload.CurrentMonsterId = fallbackId;
                 payload.CurrentMonsterHp = SpawnHpFor(in payload);
                 payload.CombatTargetTickAccumulator = 0;
                 payload.AteThisFight = false;
+                ClearMonsterFightState(ref payload);
 
                 if (seasonalReturn >= 0) ReturnFromSeasonalBoss(ref payload, seasonalReturn);
             }
@@ -6019,7 +6089,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // "First" is a monster still at full health: no field to
                 // remember, and the projection can price exactly that.
                 bool firstStrike = warHit.FirstStrikeTenthsPct > 0 && payload.CurrentMonsterHp >= SpawnHpFor(in payload);
-                int defenderArmor = activeMonster.Armor;
+                // Sunder: the stacks this monster already carries thin its armour.
+                int defenderArmor = SunderedArmour(activeMonster.Armor, payload.SunderStacks, in warHit);
                 // Modul: and the player's armour PENETRATION, which this
                 // call never passed and nothing else applied - so Might's
                 // second effect and every armor_pen_flat affix in the game
@@ -6081,6 +6152,19 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 payload.CurrentMonsterHp -= netDamage;
+
+                // Modul: THE FIGHT-SHAPED MECHANICS (skill tree v3 step B). A
+                // landed hit adds a Sunder stack for the NEXT hit, and a crit
+                // opens (or feeds) a bleed that RunCombatTick pays once a second
+                // of the fight clock. Both die with the monster, so they pay in a
+                // long fight and barely at all against trash.
+                if (warHit.SunderTenthsPerStack > 0 && netDamage > 0 && payload.SunderStacks < WarEffects.SunderMaxStacks)
+                    payload.SunderStacks++;
+                if (warHit.BleedTenthsPct > 0 && payload.LastHitWasCrit == 1 && netDamage > 0)
+                {
+                    payload.BleedMilliPool += (long)netDamage * warHit.BleedTenthsPct / 1000L;
+                    payload.BleedSecondsLeft = WarEffects.BleedSeconds;
+                }
 
                 if (!warded && wardMods.Ward && payload.CurrentMonsterHp > 0)
                 {

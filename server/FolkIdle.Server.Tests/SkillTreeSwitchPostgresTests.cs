@@ -120,7 +120,7 @@ namespace FolkIdle.Server.Tests
             var current = new byte[WarTreeRegistry.Slots];
             var target = new byte[WarTreeRegistry.Slots];
             foreach (var n in WarTreeRegistry.All())
-                if (!WarTreeRegistry.IsPending(n.Id) && n.Fork < n.Id && (n.Column == WarTreeRegistry.ColumnMight || n.Column == WarTreeRegistry.ColumnPrecision) && n.Kind != "Bridge")
+                if (!WarTreeRegistry.IsPending(n.Id) && !n.Hidden && n.Fork < n.Id && (n.Column == WarTreeRegistry.ColumnMight || n.Column == WarTreeRegistry.ColumnPrecision) && n.Kind != "Bridge")
                     target[n.Id] = (byte)n.MaxLevel;
             string? plan = WarTreeRegistry.PlanReason(current, target, 500, out _);
             Assert.NotNull(plan);

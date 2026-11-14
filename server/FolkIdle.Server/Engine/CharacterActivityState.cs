@@ -127,5 +127,13 @@ namespace FolkIdle.Server.Engine
         public long AgeTicks;
         public int AgePhase;
         public long GeneticVector;
+
+        // Skill tree v3 step B: this slot's own fight state (TickStatePayload's
+        // Sunder, kill streak and bleed), swapped with the register like the
+        // monster's health - two slots fight two monsters.
+        public byte SunderStacks;
+        public byte KillStreak;
+        public byte BleedSecondsLeft;
+        public long BleedMilliPool;
     }
 }

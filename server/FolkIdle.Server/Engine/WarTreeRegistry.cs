@@ -56,6 +56,12 @@ namespace FolkIdle.Server.Engine
         CodexBonusPct,
         /// <summary>Crit chance from defence: tenths of a percent of the dodge plus block points.</summary>
         CounterstrokeOfDefence,
+        /// <summary>Sunder: each connecting hit strips this much of the monster's armour (tenths of a percent), up to WarEffects.SunderMaxStacks.</summary>
+        SunderPct,
+        /// <summary>Momentum: each kill in a row cuts the swing interval by this much (tenths of a percent), up to WarEffects.MomentumMaxStreak; not against bosses.</summary>
+        MomentumPct,
+        /// <summary>Bleed: a crit also bleeds this share of its damage (tenths of a percent) over WarEffects.BleedSeconds; bleeds add up.</summary>
+        BleedPct,
         /// <summary>Phase 5.1: the column's affix family is this share stronger, in tenths of a percent. Read by AffixFamilies, not Resolve.</summary>
         FamilyPowerPct,
         FamilyPrecisionPct,
@@ -114,6 +120,9 @@ namespace FolkIdle.Server.Engine
         // Phase 5.1 (2026-11-03): the affix-family nodes, at free rank-buffer
         // ids after the Hearth half (56-87).
         public const int PowerAffinity = 88, PrecisionAffinity = 89, GuardAffinity = 90, FortuneAffinity = 91;
+        // Skill tree v3 step B (2026-11-14): the fight-shaped mechanics, HIDDEN
+        // until the outer ring (step D) gives them a place on the screen.
+        public const int Sunder = 93, Momentum = 94, Lacerate = 95;
 
         /// <summary>The table, indexed by rank-buffer slot; null where no War node sits.</summary>
         public static readonly WarNodeDef?[] Nodes = Build();
@@ -139,12 +148,12 @@ namespace FolkIdle.Server.Engine
         private static WarNodeDef?[] Build()
         {
             var t = new WarNodeDef?[SkillRankBuffer.Length];
-            void Add(int id, string name, string icon, int column, int row, int lane, string kind, int max, int cost, WarEffect effect, int perRank, string text, int fork = -1, int bridge = -1, int[]? ranks = null)
+            void Add(int id, string name, string icon, int column, int row, int lane, string kind, int max, int cost, WarEffect effect, int perRank, string text, int fork = -1, int bridge = -1, int[]? ranks = null, bool hidden = false)
                 => t[id] = new WarNodeDef
                 {
                     Id = id, Name = name, Icon = icon, Column = column, Row = row, Lane = lane, Kind = kind,
                     MaxLevel = max, CostPerRank = cost, Effect = effect, PerRankTenths = perRank, EffectText = text,
-                    Fork = fork, BridgeColumn = bridge, RankValues = ranks,
+                    Fork = fork, BridgeColumn = bridge, RankValues = ranks, Hidden = hidden,
                 };
 
             // ---- Fortune: farms richer, and grows stronger slowly --------------
@@ -240,6 +249,17 @@ namespace FolkIdle.Server.Engine
             // A conversion, as Frenzy is: defence buys crit chance directly.
             Add(Counterstroke, "Counterstroke", "counterstroke", ColumnPrecision, 2, 2, "Bridge", 3, 2, WarEffect.CounterstrokeOfDefence, 0, "Crit chance +{0}% of your dodge and block", bridge: ColumnGuard, ranks: new[] { 5, 10, 15 });
 
+            // Modul: THE FIGHT-SHAPED MECHANICS (skill tree v3 step B). Each one
+            // is strong in one kind of fight and weak in another, which is the
+            // point (owner, 2026-11-14): Sunder and the bleed grow with a long
+            // fight (bosses, the world boss, the dungeon) and do little to trash
+            // that dies in two swings; Momentum grows with a streak of kills and
+            // does nothing against a boss. HIDDEN: wired, tested and priced, but
+            // not drawn or sold until the outer ring places them (step D).
+            Add(Sunder, "Sunder", "sunder", ColumnMight, 3, -1, "Notable", 3, 2, WarEffect.SunderPct, 20, "Each hit strips {0}% of the monster's armour, up to 10 times", hidden: true);
+            Add(Momentum, "Momentum", "momentum", ColumnFortune, 3, -1, "Notable", 3, 2, WarEffect.MomentumPct, 5, "Each kill in a row makes you swing {0}% faster, up to 15 kills; not against bosses", hidden: true);
+            Add(Lacerate, "Lacerate", "lacerate", ColumnPrecision, 3, -1, "Notable", 3, 2, WarEffect.BleedPct, 100, "A crit also bleeds for {0}% of its damage over 3 seconds", hidden: true);
+
             return t;
         }
 
@@ -259,6 +279,7 @@ namespace FolkIdle.Server.Engine
             WarEffect.LootLuckPct, WarEffect.GoldPct, WarEffect.MaterialStackPct, WarEffect.RarityElevationPct, WarEffect.XpPct,
             WarEffect.TrophyGoldPct, WarEffect.CodexBonusPct,
             WarEffect.CounterstrokeOfDefence, WarEffect.KnowYourPreyPct,
+            WarEffect.SunderPct, WarEffect.MomentumPct, WarEffect.BleedPct,
             WarEffect.FamilyPowerPct, WarEffect.FamilyPrecisionPct, WarEffect.FamilyGuardPct, WarEffect.FamilyFortunePct,
         };
 
@@ -327,7 +348,7 @@ namespace FolkIdle.Server.Engine
         {
             if (Get(id) is not { } n) return "No such skill.";
             if (levels.Length < SkillRankBuffer.Length) return "Skill tree not loaded.";
-            if (IsPending(id)) return "Not in the game yet - coming soon.";
+            if (IsPending(id) || n.Hidden) return "Not in the game yet - coming soon.";
             if (levels[id] >= n.MaxLevel) return "Already at its limit.";
             // Before the gates: "you already hold one" is the answer that matters.
             if (n.Kind == "Keystone" && HeldKeystone(levels, except: id) is { } held)
@@ -464,6 +485,9 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
                     case WarEffect.CounterstrokeOfDefence: e.CounterstrokeTenths += v; break;
                     case WarEffect.KnowYourPreyPct: e.KnowYourPreyTenthsPct += v; break;
+                    case WarEffect.SunderPct: e.SunderTenthsPerStack += v; break;
+                    case WarEffect.MomentumPct: e.MomentumTenthsPerKill += v; break;
+                    case WarEffect.BleedPct: e.BleedTenthsPct += v; break;
                 }
             }
             return e;
@@ -494,6 +518,8 @@ namespace FolkIdle.Server.Engine
         public string EffectText { get; init; } = string.Empty;
         /// <summary>The value at each rank when it is not linear (Crushing Blow's 3 / 6 / 10%); null for rank x PerRankTenths.</summary>
         public int[]? RankValues { get; init; }
+        /// <summary>Wired and priced but not drawn or sold yet (skill tree v3 step B, placed by step D).</summary>
+        public bool Hidden { get; init; }
 
         public int ValueAt(int rank)
             => rank <= 0 ? 0 : RankValues is { } list ? list[Math.Min(rank, list.Length) - 1] : rank * PerRankTenths;
@@ -535,6 +561,13 @@ namespace FolkIdle.Server.Engine
         public int CodexBonusTenthsPct;
         public int CounterstrokeTenths;
         public int KnowYourPreyTenthsPct;
+        public int SunderTenthsPerStack;
+        public int MomentumTenthsPerKill;
+        public int BleedTenthsPct;
+
+        public const int SunderMaxStacks = 10;
+        public const int MomentumMaxStreak = 15;
+        public const int BleedSeconds = 3;
 
         public const int RuinEvery = 8;
         public const float RuinMultiplier = 1.7f;

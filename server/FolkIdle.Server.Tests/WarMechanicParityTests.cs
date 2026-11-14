@@ -80,6 +80,11 @@ namespace FolkIdle.Server.Tests
             // Riposte's row does; block alone moves no kills.
             yield return new object[] { "counterstroke + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Counterstroke }, new byte[] { 5, 3 }, true };
             yield return new object[] { "know your prey r3", 3, r3, new[] { WarTreeRegistry.KnowYourPrey }, new byte[] { 3 } };
+            // Skill tree v3 step B: the fight-shaped mechanics (hidden nodes, set directly).
+            yield return new object[] { "sunder r3", 3, r3, new[] { WarTreeRegistry.Sunder }, new byte[] { 3 } };
+            yield return new object[] { "lacerate r3", 3, r3, new[] { WarTreeRegistry.Lacerate }, new byte[] { 3 } };
+            yield return new object[] { "momentum r3", 3, r3, new[] { WarTreeRegistry.Momentum }, new byte[] { 3 } };
+            yield return new object[] { "lacerate r5", 5, r5, new[] { WarTreeRegistry.Lacerate }, new byte[] { 3 } };
         }
 
         /// <summary>
