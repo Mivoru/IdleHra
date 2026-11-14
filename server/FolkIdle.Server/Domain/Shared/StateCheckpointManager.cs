@@ -1039,6 +1039,12 @@ namespace FolkIdle.Server.Domain.Shared
             // than persisting as a permanently wrong permission.
             int highestUnlockedRegion = RegionUnlockGate.HighestUnlockedRegion(defeatedBosses);
 
+            // Modul: a felled boss opens the next region's gathering too, not
+            // only its door (the region-2 catch-22, 2026-11-14). Players who
+            // beat a boss before this rule existed get the nodes on login.
+            highestLocationReached = FolkIdle.Server.Domain.Combat.GatheringReach.Raise(
+                highestLocationReached, highestUnlockedRegion);
+
             // The same codex rows, kept as a bitmask so the tick loop can ask
             // "has this player beaten THIS boss" without a query - which
             // HighestUnlockedRegion cannot answer for region 5.

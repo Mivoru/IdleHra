@@ -1485,14 +1485,14 @@ await go('Gathering');
     .filter({ has: page.getByRole('heading', { name: 'Fishing', exact: true }) })
     .last();
   // The first location is the only one a fresh account has reached, so it is
-  // the only one with a Gather button - the rest read "Fight here first".
+  // the only one with a Gather button - the rest read "Beat the boss before".
   const fishBtn = fishingSection.getByRole('button', { name: 'Gather' }).first();
   const deployed = (await fishBtn.count()) > 0;
   if (deployed) await fishBtn.click();
 
   record(
     'gathering is locked to locations the player has reached',
-    (await page.getByText('Fight here first').count()) > 0,
+    (await page.getByText('Beat the boss before').count()) > 0,
     'later locations are gated',
   );
   await page.waitForTimeout(9000);
