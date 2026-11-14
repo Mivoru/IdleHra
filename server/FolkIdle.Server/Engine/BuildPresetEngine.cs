@@ -95,8 +95,14 @@ namespace FolkIdle.Server.Engine
         public DateTime UpdatedAtUtc { get; set; }
         /// <summary>The War half already is this preset's.</summary>
         public bool TreeMatches { get; set; }
-        /// <summary>Applying needs a respec: the preset lacks a rank the player holds.</summary>
+        /// <summary>Always false since skill tree v3 (switching is free); kept for old clients.</summary>
         public bool NeedsRespec { get; set; }
+        /// <summary>The player's whole War budget still buys this build.</summary>
+        public bool Affordable { get; set; }
+        /// <summary>The build's keystone, or empty.</summary>
+        public string Keystone { get; set; } = string.Empty;
+        /// <summary>SkillLoadoutEngine.Activity flags this preset fights for.</summary>
+        public int BoundActivities { get; set; }
     }
 
     public sealed class BuildPresetTreeResult
@@ -131,7 +137,8 @@ namespace FolkIdle.Server.Engine
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             var rows = await db.BuildPresets.AsNoTracking().Where(p => p.PlayerId == playerId).OrderBy(p => p.Slot).ToListAsync();
             var current = await SkillTreeEngine.LoadRanksAsync(db, playerId);
-            return rows.Select(r => ToView(r, current)).ToList();
+            int available = await AvailableAsync(db, playerId);
+            return rows.Select(r => ToView(r, current, available)).ToList();
         }
 
         /// <summary>
@@ -161,7 +168,8 @@ namespace FolkIdle.Server.Engine
             row.WarRanks = BuildPresetRules.EncodeWarRanks(ranks);
             row.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync();
-            return ToView(row, ranks);
+            await SkillLoadoutEngine.RefreshCacheAsync(db, playerId);
+            return ToView(row, ranks, await AvailableAsync(db, playerId));
         }
 
         public async Task<bool> DeleteAsync(long playerId, int slot)
@@ -169,76 +177,45 @@ namespace FolkIdle.Server.Engine
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             int removed = await db.BuildPresets.Where(p => p.PlayerId == playerId && p.Slot == slot).ExecuteDeleteAsync();
+            await SkillLoadoutEngine.RefreshCacheAsync(db, playerId);
             return removed > 0;
         }
 
         /// <summary>
-        /// Makes the War half of the tree the preset's: nothing when it already
-        /// is, a plain commit when the preset only adds ranks, and otherwise a
-        /// respec (the free one, a grant, or gold when <paramref name="payWithGold"/>)
-        /// followed by a commit.
+        /// Makes the War half of the tree the preset's, for free: nothing when
+        /// it already is, otherwise SkillTreeEngine.EquipPresetTreeAsync.
         /// </summary>
         /// <remarks>
-        /// Modul: CHECKED BEFORE THE RESPEC. The respec and the commit are two
-        /// transactions, so a preset the player can no longer afford (fewer
-        /// points after a rebirth, a node renamed by a tree change) would leave
-        /// a respecced, empty tree behind. The commit's own rule is run first
-        /// against the points the respec would hand back, and a preset that
-        /// would fail is refused with nothing spent.
+        /// Modul: SWITCHING IS FREE NOW (owner, 2026-11-14, skill tree v3). This
+        /// used to respec - the free one, a grant or gold - whenever the preset
+        /// lacked a rank the player held, which made a saved build a one-off.
+        /// Builds for farming, bosses and dungeons only mean something if the
+        /// player can move between them, so the switch replays the whole War
+        /// budget from an empty tree in one transaction. A respec is still what
+        /// it takes to make a NEW build. payWithGold is kept for old clients
+        /// and ignored.
         /// </remarks>
         public async Task<BuildPresetTreeResult> ApplyTreeAsync(long playerId, int slot, bool payWithGold)
         {
             if (!BuildPresetRules.IsSlot(slot)) return new BuildPresetTreeResult { Reason = "No such preset." };
-
-            byte[] current;
-            byte[] target;
-            int available;
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 var preset = await db.BuildPresets.AsNoTracking().FirstOrDefaultAsync(p => p.PlayerId == playerId && p.Slot == slot);
                 if (preset == null) return new BuildPresetTreeResult { Reason = "That preset is empty." };
-                var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
-                if (player == null) return new BuildPresetTreeResult { Reason = "No such player." };
-                current = await SkillTreeEngine.LoadRanksAsync(db, playerId);
-                target = BuildPresetRules.DecodeWarRanks(preset.WarRanks);
-                available = player.AvailableSkillPoints;
+                var current = await SkillTreeEngine.LoadRanksAsync(db, playerId);
+                if (BuildPresetRules.SameWar(current, BuildPresetRules.DecodeWarRanks(preset.WarRanks)))
+                    return new BuildPresetTreeResult { Changed = false };
             }
 
-            if (BuildPresetRules.SameWar(current, target)) return new BuildPresetTreeResult { Changed = false };
-
-            // The commit keeps the Hearth half as it is.
-            var draft = (byte[])current.Clone();
-            foreach (var n in WarTreeRegistry.All()) draft[n.Id] = target[n.Id];
-
-            var engine = new SkillTreeEngine(_serviceProvider, _playerRegistry);
-            if (BuildPresetRules.OnlyAdds(current, target))
-            {
-                var commit = await engine.CommitAsync(playerId, draft);
-                return new BuildPresetTreeResult { Reason = commit.Reason, Changed = commit.Reason == null, Spent = commit.Spent };
-            }
-
-            var empty = new byte[WarTreeRegistry.Slots];
-            int afterRespec = available + WarTreeRegistry.PointsSpent(current);
-            string? planned = WarTreeRegistry.PlanReason(empty, target, afterRespec, out _);
-            if (planned != null) return new BuildPresetTreeResult { Reason = $"This build no longer fits: {planned}" };
-
-            var respec = await engine.RespecAsync(playerId, payWithGold);
-            if (respec.Reason != null) return new BuildPresetTreeResult { Reason = respec.Reason };
-
-            // The commit reads the respecced (empty) War half itself.
-            var result = await engine.CommitAsync(playerId, draft);
-            return new BuildPresetTreeResult
-            {
-                Reason = result.Reason == null ? null : $"The respec went through, but the build was not bought: {result.Reason}",
-                Changed = true,
-                Respecced = true,
-                GoldSpent = respec.GoldSpent,
-                Spent = result.Spent,
-            };
+            var result = await new SkillTreeEngine(_serviceProvider, _playerRegistry).EquipPresetTreeAsync(playerId, slot);
+            return new BuildPresetTreeResult { Reason = result.Reason, Changed = result.Reason == null, Spent = result.Spent };
         }
 
-        private static BuildPresetView ToView(BuildPreset row, byte[] current)
+        private static async Task<int> AvailableAsync(FolkIdleDbContext db, long playerId)
+            => (await db.PlayerRecords.AsNoTracking().Where(p => p.Id == playerId).Select(p => (int?)p.AvailableSkillPoints).FirstOrDefaultAsync()) ?? 0;
+
+        private static BuildPresetView ToView(BuildPreset row, byte[] current, int available)
         {
             var ranks = BuildPresetRules.DecodeWarRanks(row.WarRanks);
             bool matches = BuildPresetRules.SameWar(current, ranks);
@@ -254,7 +231,11 @@ namespace FolkIdle.Server.Engine
                 PointsSpent = WarTreeRegistry.PointsSpent(ranks),
                 UpdatedAtUtc = row.UpdatedAtUtc,
                 TreeMatches = matches,
-                NeedsRespec = !matches && !BuildPresetRules.OnlyAdds(current, ranks),
+                // Switching is free since skill tree v3; kept for old clients.
+                NeedsRespec = false,
+                Affordable = SkillLoadoutEngine.Affordable(ranks, SkillLoadoutEngine.Budget(available, current)),
+                Keystone = WarTreeRegistry.HeldKeystone(ranks)?.Name ?? string.Empty,
+                BoundActivities = row.BoundActivities,
             };
         }
     }

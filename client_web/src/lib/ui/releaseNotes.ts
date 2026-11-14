@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.86.0',
+    date: '2026-11-14',
+    headline: 'A build for every fight.',
+    sections: [
+      {
+        title: 'Builds',
+        items: [
+          'Switching between your saved builds is now free - no respec, no gold.',
+          'Bind a build to the world boss or the dungeon: that fight uses the build\'s skill tree, while your current tree keeps farming. Find it under Builds on the Character screen.',
+          'Each saved build shows its keystone, and warns you when it costs more skill points than you have now.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.85.0',
     date: '2026-11-14',
     headline: 'One keystone at a time - pick what your build is about.',

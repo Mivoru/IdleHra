@@ -4951,6 +4951,27 @@ await go('Character');
         const summary = (await slot.innerText().catch(() => '')) ?? '';
         record('a build preset saves the current attributes and tree', saved && /Might \d/.test(summary) && /tree \d+ pts/.test(summary),
           saved ? summary.replace(/\s+/g, ' ').slice(0, 120) : 'the saved slot never said it is the current build');
+        // Skill tree v3 step A (2026-11-14): bind the build to the world boss,
+        // read the binding back from the server, then unbind it - the slot is
+        // cleared right after, so nothing is left bound either way.
+        const slotNo = emptyIndex + 1;
+        const chip = page.getByTestId(`build-bind-worldboss-${slotNo}`);
+        await chip.click().catch(() => {});
+        const pressed = await page
+          .waitForFunction((id) => document.querySelector(`[data-testid="${id}"]`)?.getAttribute('aria-pressed') === 'true', `build-bind-worldboss-${slotNo}`, { timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+        const listed = await apiGet('/api/v1/skilltree/presets').catch(() => null);
+        const boundRow = listed?.Presets?.find((x) => x.Slot === slotNo);
+        record('a build can be bound to the world boss, and the server keeps it', pressed && ((boundRow?.BoundActivities ?? 0) & 1) === 1,
+          `pressed ${pressed}, BoundActivities ${boundRow?.BoundActivities}`);
+        await chip.click().catch(() => {});
+        const unbound = await page
+          .waitForFunction((id) => document.querySelector(`[data-testid="${id}"]`)?.getAttribute('aria-pressed') === 'false', `build-bind-worldboss-${slotNo}`, { timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+        record('the world boss binding comes off again', unbound);
+
         await slot.locator('button', { hasText: 'Clear' }).first().click().catch(() => {});
         const cleared = await slot.locator('text=Empty.').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
         record('a build preset slot can be cleared again', cleared);

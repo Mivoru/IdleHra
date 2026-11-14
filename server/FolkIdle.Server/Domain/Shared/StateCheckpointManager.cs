@@ -833,6 +833,8 @@ namespace FolkIdle.Server.Domain.Shared
             if (skillTreeRefund > 0) Console.WriteLine($"Skill tree switch: player {playerId} refunded {skillTreeRefund} points from today's tree.");
             int keystoneRefund = await SkillTreeEngine.ReconcileSingleKeystoneAsync(dbContext, playerId);
             if (keystoneRefund > 0) Console.WriteLine($"One-keystone switch: player {playerId} refunded {keystoneRefund} points of keystones.");
+            // The builds bound to the world boss and the dungeon, into the cache the tick reads.
+            await SkillLoadoutEngine.RefreshCacheAsync(dbContext, playerId);
 
             var player = await dbContext.PlayerRecords.FindAsync(playerId);
 

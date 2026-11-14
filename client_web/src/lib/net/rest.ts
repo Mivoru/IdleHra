@@ -2720,9 +2720,19 @@ export interface BuildPreset {
   UpdatedAtUtc: string;
   /** The tree already is this preset's. */
   TreeMatches: boolean;
-  /** Applying the tree needs a respec (the preset lacks a rank you hold). */
+  /** Always false since skill tree v3: switching is free. Kept for old servers. */
   NeedsRespec: boolean;
+  /** Your whole skill point budget still buys this build (a rebirth can shrink it). */
+  Affordable?: boolean;
+  /** The build's keystone, or ''. */
+  Keystone?: string;
+  /** BUILD_ACTIVITY flags: the activities that fight with this build's tree. */
+  BoundActivities?: number;
 }
+
+/** Activities a build can be bound to (SkillLoadoutEngine.Activity on the server). */
+export const BUILD_ACTIVITY = { WorldBoss: 1, Dungeon: 2 } as const;
+export type BuildActivityName = 'worldboss' | 'dungeon';
 
 export interface BuildPresetList {
   MaxSlots: number;
@@ -2754,6 +2764,13 @@ export async function saveBuildPreset(
 export async function deleteBuildPreset(slot: number): Promise<boolean> {
   const res = await authedPost<{ Removed: boolean }>('/api/v1/skilltree/presets/delete', { Slot: slot });
   return res?.Removed ?? false;
+}
+
+/** Binds (or unbinds) a build to an activity; one build per activity. Null on success. */
+export async function bindBuildPreset(slot: number, activity: BuildActivityName, on: boolean): Promise<string | null> {
+  const res = await authedPost<{ Reason: string | null }>('/api/v1/skilltree/presets/bind', { Slot: slot, Activity: activity, On: on });
+  if (!res) throw new AuthError('POST /api/v1/skilltree/presets/bind answered nothing', 500);
+  return res.Reason;
 }
 
 /** Makes the War half of the tree the preset's; a refusal answers with its Reason. */

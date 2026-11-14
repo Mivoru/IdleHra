@@ -106,6 +106,18 @@ namespace FolkIdle.Server.Domain.Combat
             // In whole hit points, because the boss's health pool is
             // whole rather than milli.
             long serverAttack = currentPayload.CachedEffectiveMilliAttack / 1000L;
+
+            // Modul: THE WORLD BOSS BUILD (skill tree v3 step A). A build bound
+            // to the world boss strikes with its own attack, computed on a COPY
+            // of the payload with that build's ranks - the live tree, the cache
+            // and the character's own fight are untouched.
+            var bossCopy = currentPayload;
+            if (SkillLoadoutEngine.Apply(ref bossCopy, SkillLoadoutEngine.Activity.WorldBoss))
+            {
+                var bossStats = SimulationEngine.LiveCombatStats(in bossCopy);
+                serverAttack = SimulationEngine.EffectiveMilliAttackFor(ref bossCopy, in bossStats,
+                    SimulationEngine.LineageOf(in bossCopy).DamageScalePerLevelPct) / 1000L;
+            }
             if (serverAttack < 1L) serverAttack = 1L;
 
             return (long)Math.Min(

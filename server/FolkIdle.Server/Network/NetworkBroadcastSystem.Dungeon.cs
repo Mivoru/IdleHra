@@ -53,6 +53,8 @@ namespace FolkIdle.Server.Network
             if (snapshot == null) return null;
             var payload = snapshot.Value.Payload;
             SimulationEngine.SwapSlotIntoActiveRegister(ref payload, 0);
+            // The build bound to the dungeon fights it (SkillLoadoutEngine); the copy, never the live tree.
+            SkillLoadoutEngine.Apply(ref payload, SkillLoadoutEngine.Activity.Dungeon);
             return snapshot.Value with { Payload = payload };
         }
 
