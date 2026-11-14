@@ -144,7 +144,7 @@ namespace FolkIdle.Server.Tests
             return TestTree.With(p, ranks.Select(kv => (kv.Key, kv.Value)).ToArray());
         }
 
-        private sealed record Scores(int Points, double GrindKills, double GrindGold, double BossKills, double DungeonStage, long StrikeToday, double SustainedBossDps);
+        private sealed record Scores(int Points, double GrindKills, double GrindGold, double BossKills, double DungeonStage, long StrikeToday, long StrikeTree, double SustainedBossDps);
 
         private static Scores Score(Dictionary<int, byte> ranks)
         {
@@ -184,20 +184,40 @@ namespace FolkIdle.Server.Tests
             }
 
             // The world boss: today's strike, and what the swing sustains against a boss that never dies.
-            long strike;
+            long strike, strikeTree;
             double sustained;
             {
                 var p = Dressed(bossId, ranks);
                 var stats = SimulationEngine.LiveCombatStats(in p);
                 long raw = SimulationEngine.EffectiveMilliAttackFor(ref p, in stats, SimulationEngine.LineageOf(in p).DamageScalePerLevelPct);
                 p.CachedEffectiveMilliAttack = raw;
-                strike = WorldBossTickCoordinator.ServerStrikeDamage(ref p);
+                strike = p.CachedEffectiveMilliAttack / 1000L;
+                strikeTree = WorldBossTickCoordinator.TreeStrike(ref p);
                 var monster = ContentRegistry.Monsters[bossId - 1];
                 var swing = HuntingProjection.PlayerSwing.For(in p, in stats, in monster, raw, fightMilliHp: 1e13);
                 sustained = swing.Mean / 1000.0 * 1000.0 / Math.Max(1, SimulationEngine.LiveAttackIntervalMs(in p, in stats));
             }
 
-            return new Scores(Points(ranks), kills / 3, gold / 3, bossKills / 3, stage, strike, sustained);
+            return new Scores(Points(ranks), kills / 3, gold / 3, bossKills / 3, stage, strike, strikeTree, sustained);
+        }
+
+        /// <summary>
+        /// The tree strike leaves a treeless character exactly where the old
+        /// strike had it, and a build that raises the sustained swing strikes
+        /// harder by that much.
+        /// </summary>
+        [Fact]
+        public void The_tree_strike_is_the_old_strike_without_a_tree_and_grows_with_it()
+        {
+            int bossId = RaceUnlockRegistry.GetRegionBossMonsterId(Region);
+            var bare = Dressed(bossId, new Dictionary<int, byte>());
+            var stats = SimulationEngine.LiveCombatStats(in bare);
+            long attack = SimulationEngine.EffectiveMilliAttackFor(ref bare, in stats, SimulationEngine.LineageOf(in bare).DamageScalePerLevelPct) / 1000L;
+            Assert.InRange(WorldBossTickCoordinator.TreeStrike(ref bare), attack - 1, attack + 1);
+
+            var titan = Dressed(bossId, Archetypes().Single(a => a.Name.StartsWith("Titan")).Ranks);
+            Assert.True(WorldBossTickCoordinator.TreeStrike(ref titan) > attack * 1.15,
+                $"a crit-and-bleed build should strike well above the bare attack {attack}");
         }
 
         [Fact]
@@ -207,10 +227,10 @@ namespace FolkIdle.Server.Tests
 
             var sb = new StringBuilder();
             sb.AppendLine($"Region {Region}, geared reference character, real values (scale 1). Grind/boss: per hour, mean of 3 seeds.");
-            sb.AppendLine("| build | points | grind kills | grind gold | boss kills | dungeon stage | world boss strike today | sustained boss dps |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| build | points | grind kills | grind gold | boss kills | dungeon stage | WB strike (attack only) | WB strike (tree, from 2026-11-16) | sustained boss dps |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
             foreach (var (name, s) in rows)
-                sb.AppendLine($"| {name} | {s.Points} | {s.GrindKills:F0} | {s.GrindGold:F0} | {s.BossKills:F1} | {s.DungeonStage:F2} | {s.StrikeToday} | {s.SustainedBossDps:F0} |");
+                sb.AppendLine($"| {name} | {s.Points} | {s.GrindKills:F0} | {s.GrindGold:F0} | {s.BossKills:F1} | {s.DungeonStage:F2} | {s.StrikeToday} | {s.StrikeTree} | {s.SustainedBossDps:F0} |");
 
             // Who is best where.
             string Best(Func<Scores, double> f) => rows.OrderByDescending(r => f(r.S)).First().Name;
@@ -219,7 +239,8 @@ namespace FolkIdle.Server.Tests
             sb.AppendLine($"best grind gold: {Best(s => s.GrindGold)}");
             sb.AppendLine($"best boss kills: {Best(s => s.BossKills)}");
             sb.AppendLine($"best dungeon: {Best(s => s.DungeonStage)}");
-            sb.AppendLine($"best world boss strike today: {Best(s => s.StrikeToday)}");
+            sb.AppendLine($"best world boss strike (attack only): {Best(s => s.StrikeToday)}");
+            sb.AppendLine($"best world boss strike (tree): {Best(s => s.StrikeTree)}");
             sb.AppendLine($"best sustained boss dps: {Best(s => s.SustainedBossDps)}");
             _output.WriteLine(sb.ToString());
             Console.WriteLine(sb.ToString());
@@ -229,6 +250,7 @@ namespace FolkIdle.Server.Tests
             {
                 Assert.True(s.GrindKills > 0, $"{name} killed nothing on the grind");
                 Assert.True(s.StrikeToday > 0, $"{name} strikes the world boss for nothing");
+                Assert.True(s.StrikeTree > 0, $"{name} strikes the world boss for nothing with the tree");
                 Assert.True(s.SustainedBossDps > 0, $"{name} sustains no damage");
             }
         }

@@ -1809,6 +1809,12 @@
               striking.
             </li>
             <li>
+              <strong>Your skill tree counts.</strong> From the week of 16 November a strike is your attack
+              times what your skill tree adds to your sustained damage against a boss - crit,
+              attack speed and your keystone all count. A build bound to the world boss (Character, Builds)
+              strikes with its own tree.
+            </li>
+            <li>
               <strong>Strike from Wednesday without registering</strong> and your damage is yours alone:
               it counts for your milestones and your place, never against his health or for the kill
               reward.

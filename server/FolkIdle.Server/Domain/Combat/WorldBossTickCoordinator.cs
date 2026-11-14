@@ -112,12 +112,27 @@ namespace FolkIdle.Server.Domain.Combat
             // of the payload with that build's ranks - the live tree, the cache
             // and the character's own fight are untouched.
             var bossCopy = currentPayload;
-            if (SkillLoadoutEngine.Apply(ref bossCopy, SkillLoadoutEngine.Activity.WorldBoss))
+            bool bound = SkillLoadoutEngine.Apply(ref bossCopy, SkillLoadoutEngine.Activity.WorldBoss);
+            if (bound)
             {
                 var bossStats = SimulationEngine.LiveCombatStats(in bossCopy);
                 serverAttack = SimulationEngine.EffectiveMilliAttackFor(ref bossCopy, in bossStats,
                     SimulationEngine.LineageOf(in bossCopy).DamageScalePerLevelPct) / 1000L;
             }
+
+            // Modul: THE STRIKE PRICES THE TREE (owner, 2026-11-14, skill tree v3
+            // step C). The strike was attack x pet x potion, so every build hit
+            // the world boss within 1% of every other (BuildSituationMatrixTests:
+            // 2,770-2,815) - crit, the bleed, Sunder, attack speed and every
+            // keystone counted for nothing. It is now the attack WITHOUT the
+            // tree times how much the tree raises the sustained swing against a
+            // boss that never dies (TreeStrikeFactor), so a treeless character
+            // strikes exactly as before. From the encounter that starts on
+            // TreeStrikeFromUtc: the boss's health is set from Monday and
+            // Tuesday's strikes, so switching mid-week would make that week's
+            // boss soft.
+            if (GameClock.UtcNow >= TreeStrikeFromUtc)
+                serverAttack = TreeStrike(ref bossCopy);
             if (serverAttack < 1L) serverAttack = 1L;
 
             return (long)Math.Min(
@@ -127,6 +142,48 @@ namespace FolkIdle.Server.Domain.Combat
                     * (1.0 + AffixFamilies.Totals(in currentPayload).WorldBossDamageTenthsPct / 1000.0)
                     // Boss-bane Philtre counts against the world boss too.
                     * (1.0 + Domain.Shared.PotionRegistry.MagnitudeOf(currentPayload.ActiveDefensivePotionId, Domain.Shared.PotionKind.Bossbane) / 100.0));
+        }
+
+        /// <summary>The first encounter whose strikes price the tree: Monday 2026-11-16, registration day.</summary>
+        internal static readonly DateTime TreeStrikeFromUtc = new(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc);
+
+        /// <summary>
+        /// The world boss as a fight target: the last region's boss, with a pool
+        /// that never empties and no swing of its own (so Riposte answers nothing).
+        /// </summary>
+        private static MonsterDefinition WorldBossTarget()
+        {
+            var boss = ContentRegistry.Monsters[RaceUnlockRegistry.GetRegionBossMonsterId(RaceUnlockRegistry.LastRegion) - 1];
+            boss.MaxHp = int.MaxValue;
+            boss.AttackIntervalMs = int.MaxValue / 2;
+            return boss;
+        }
+
+        /// <summary>
+        /// Whole hit points for one strike: the attack without the War tree,
+        /// times the tree's lift on the sustained swing (damage per second of
+        /// PlayerSwing against WorldBossTarget, with the tree over without it).
+        /// </summary>
+        internal static long TreeStrike(ref TickStatePayload payload)
+        {
+            var with = payload;
+            with.KillStreak = 0; // a world boss is a boss: no farming streak
+            var without = with;
+            foreach (var n in WarTreeRegistry.All()) without.SkillRanks[n.Id] = 0;
+
+            var target = WorldBossTarget();
+            double Dps(ref TickStatePayload p, out long raw)
+            {
+                var stats = SimulationEngine.LiveCombatStats(in p);
+                raw = SimulationEngine.EffectiveMilliAttackFor(ref p, in stats, SimulationEngine.LineageOf(in p).DamageScalePerLevelPct);
+                var swing = HuntingProjection.PlayerSwing.For(in p, in stats, in target, raw, fightMilliHp: 1e13);
+                return swing.Mean / Math.Max(1, SimulationEngine.LiveAttackIntervalMs(in p, in stats));
+            }
+
+            double dpsWith = Dps(ref with, out _);
+            double dpsWithout = Dps(ref without, out long rawWithout);
+            double lift = dpsWithout > 0 ? dpsWith / dpsWithout : 1.0; // below 1 is allowed: a keystone may trade damage away
+            return (long)Math.Min(uint.MaxValue, rawWithout / 1000.0 * lift);
         }
 
         internal static void Apply(ref TickStatePayload payload, in WorldBossAttemptUpdateNotification worldBossAttemptUpdate)
