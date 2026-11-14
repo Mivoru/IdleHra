@@ -31,6 +31,7 @@
   import { play } from '../lib/ui/audio';
   import ShieldWheel from '../lib/ui/ShieldWheel.svelte';
   import BossDuel from '../lib/ui/BossDuel.svelte';
+  import Modal from '../lib/ui/Modal.svelte';
   import { fetchDuel, issueDuel, type DuelChallenge, type DuelOmen } from '../lib/net/rest';
   import { raceIcon } from '../lib/ui/sprites';
   import {
@@ -394,6 +395,36 @@
   const duelBossArt = $derived(board ? spriteUrl(board.BossArt) : '');
   const duelSerpentArt = $derived(board ? spriteUrl(board.EnragedArt) : '');
   const duelHeroArt = $derived(raceIcon(Number(snap?.Slot1_RaceId ?? 0), false));
+
+  // Modul: THE SERPENT RISES - ONCE A WEEK, ON SCREEN (2026-11-15, the duel's
+  // effects pass; the evaluators' third effect). The 25% line used to change
+  // only a portrait, so a player who opened the screen after it never saw the
+  // moment. The first visit after it, in each encounter, shows the change;
+  // the flag lives in localStorage keyed by the encounter's end, so it is per
+  // device and per week, and a blocked store only means it shows again.
+  const serpentKey = $derived(endEpoch > 0 ? `folkidle.serpentSeen.${endEpoch}` : '');
+  let serpentIntro = $state(false);
+  $effect(() => {
+    if (!enraged || !serpentKey || !board) return;
+    let seen = false;
+    try {
+      seen = localStorage.getItem(serpentKey) === '1';
+    } catch {
+      seen = false;
+    }
+    if (!seen) {
+      serpentIntro = true;
+      play('worldBossHiss');
+    }
+  });
+  function closeSerpentIntro() {
+    serpentIntro = false;
+    try {
+      if (serpentKey) localStorage.setItem(serpentKey, '1');
+    } catch {
+      // Private mode: it shows again next visit, which is harmless.
+    }
+  }
 
   // The next milestone the player has not reached this week, for the progress bar.
   const myDamage = $derived(board?.Me?.Damage ?? 0);
@@ -855,6 +886,20 @@
   {/key}
 {/if}
 
+{#if serpentIntro && board}
+  <Modal label="The Black Serpent rises" width="24rem" layout="block" onClose={closeSerpentIntro} testid="serpent-intro">
+    <div class="serpent-intro">
+      <img class="serpent-art" src={spriteUrl(board.EnragedArt)} alt="The Black Serpent" decoding="async" />
+      <h3>The Black Serpent rises</h3>
+      <p class="small">
+        Driven below a quarter of his strength, {bossName} sheds his skin. The Black Serpent fights on - with Venom
+        Spit, Tail Sweep and Death Coil. Read them like his blows.
+      </p>
+      <button class="primary" type="button" onclick={closeSerpentIntro}>Face it</button>
+    </div>
+  </Modal>
+{/if}
+
 {#if duelChallenge}
   {#key duelChallenge.ChallengeId}
     <BossDuel
@@ -877,6 +922,33 @@
 {/if}
 
 <style>
+  .serpent-intro {
+    text-align: center;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+  }
+  .serpent-intro .serpent-art {
+    width: min(100%, 16rem);
+    height: auto;
+    border-radius: 10px;
+    animation: serpent-rise 900ms ease-out 1 both;
+  }
+  .serpent-intro h3 {
+    margin: 0;
+  }
+  .serpent-intro button {
+    min-height: 44px;
+    min-width: 8rem;
+  }
+  @keyframes serpent-rise {
+    0% { transform: scale(0.82) translateY(12px); opacity: 0; filter: brightness(0.3); }
+    60% { opacity: 1; filter: brightness(1.25); }
+    100% { transform: scale(1) translateY(0); filter: brightness(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .serpent-intro .serpent-art { animation: none; }
+  }
   .omen-card {
     border-left: 3px solid var(--accent, #ffb347);
     padding: 6px 8px;

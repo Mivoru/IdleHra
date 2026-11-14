@@ -943,10 +943,31 @@ Design: `docs/design/LINEAGE_REBIRTH_OVERHAUL.md` (sections 1-9) and
   DungeonTicketDay / DungeonFirstClearMask` are pre-rework and written by
   nothing; the Dungeon lives in `DungeonProgress`.
 
-## 19b. The world boss: the shield wheel and the weekly payout (task 36)
+## 19b. The world boss: the duel (since 2026-11-15), the shield wheel, the weekly payout
 
-**The flag.** `FOLKIDLE_BOSS_MINIGAME` = `off` | `practice` | `wheel`, read once
-at start-up (`BossMinigameSettings`).
+**The flag.** `FOLKIDLE_BOSS_MINIGAME` = `off` | `practice` | `wheel` | `duel`,
+read once at start-up (`BossMinigameSettings`). **Production runs `duel`**
+(box `.env`, switched 2026-11-15 with client 1.90.0). `duel` rides the wheel's
+strike pipeline (REST orders, the daily attempt, opcode 32 answered
+`WorldBossUpdateRequired`), so the engine's `WheelMode` is true for both.
+
+**The duel** (`BossDuelRules`, `BossDuelService`; design and the four-model
+vote in `docs/design/WORLD_BOSS_REWORK_2026_11_14.md`):
+- `GET|POST /api/v1/worldboss/duel` (state with the omen of the day / issue a
+  real or practice duel), `POST /api/v1/worldboss/duel/call` (answer call 0-2).
+- At issue the service asks the tick for a quote
+  (`PlayerSessionRegistry.WorldBossQuoteQueue`, drained by
+  `WorldBossTickCoordinator.DrainDuelQuotes`): the base hit
+  (`ServerStrikeDamage`) and the stance of the world-boss build. The order
+  carries the quote as `QuotedAttack`, so the blows on screen and the damage
+  credited are the same number.
+- The last call submits a `WorldBossStrikeOrder` with no landings,
+  `Multiplier` = M (1.0..2.0) and `Skill` = right calls / 3 for the sandbag
+  detector. An abandoned duel lands after 180 s with the calls it had.
+- Auto-strike in duel mode has no plate and pays 1.0x. No plates in the UI.
+
+The wheel below is still in the code behind `wheel`, to be deleted once the
+owner has played the duel.
 
 **The REST routes** (`WorldBossStrikeService`, hand-written DTOs in `rest.ts`,
 the result list pinned by `worldBossResults.test.ts`):
