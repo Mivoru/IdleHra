@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.84.0',
+    date: '2026-11-14',
+    sections: [
+      {
+        title: 'Gold',
+        items: [
+          'Loot chests and expedition provisions are now priced by the gold you earn yourself - fighting, salvage and the Town Hall - over the last week. Gold from chests, the Gold dungeon, mail and the market no longer makes the next chest bigger, so chests stop snowballing. Provisions get a little cheaper.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.83.0',
     date: '2026-11-14',
     sections: [
