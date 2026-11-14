@@ -344,7 +344,10 @@
                 <br />{node.BaseMasteryXpReward} xp
               </span>
               {#if locked}
-                <span class="dim tiny lock">Fight here first</span>
+                <!-- Modul: the previous region's boss opens these nodes
+                     (server GatheringReach, 2026-11-14). "Fight here first"
+                     sent players into fights their larder could not hold. -->
+                <span class="dim tiny lock">Beat the boss before</span>
               {:else}
                 <button
                   class="tiny-btn"

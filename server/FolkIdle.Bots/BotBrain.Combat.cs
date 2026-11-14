@@ -451,6 +451,11 @@ namespace FolkIdle.Bots
         /// first monster of the next location, when the projection gives at
         /// least one kill before death (or holds with food). A death there
         /// waits two levels before the next try.
+        ///
+        /// Since 2026-11-14 the server opens a region's gathering when the
+        /// previous boss falls (GatheringReach), so reached == open after any
+        /// boss kill and this returns 0. Kept for accounts hydrated before
+        /// the rule, and as a guard should the rule ever change.
         /// </summary>
         private long ChooseScout(bool hasFood)
         {

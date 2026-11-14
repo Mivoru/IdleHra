@@ -4642,6 +4642,16 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.HighestUnlockedRegion = clearedBossRegion + 1;
             }
 
+            // Modul: THE REGION-2 CATCH-22 (owner decision 2026-11-14, option
+            // A). Gathering used to open only on the first kill IN a location,
+            // but a region's fights need that region's fish: on region-1 fish
+            // every region-2 monster projected a death, so no playtest bot ever
+            // got through, even at level 30. The boss is the gate now - when it
+            // falls, the next region's gathering opens with its door. Same rule
+            // at hydration (StateCheckpointManager), so it holds after a login.
+            payload.HighestLocationReached = GatheringReach.Raise(
+                payload.HighestLocationReached, payload.HighestUnlockedRegion);
+
             // Modul: and the boss stops being a first clear. Deliberately NOT
             // behind the `< LastRegion` guard above: clearing region 5's boss
             // opens no sixth region, so a mask folded into that condition
