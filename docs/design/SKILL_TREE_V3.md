@@ -167,3 +167,33 @@ not by hand.
   properly.
 - Not yet: a combat-feed line for the bleed tick; the nodes' art and their
   place in the tree (step D).
+- **Step C - the matrix, 2026-11-14.** `BuildSituationMatrixTests` prints
+  five archetypes at the same 88 points on the region-5 reference character
+  (real values; grind and boss = an hour of the per-swing simulator, 3 seeds;
+  dungeon = highest stage won plus the next boss's share; world boss = today's
+  strike and the sustained swing against a boss that never dies):
+
+  | build | grind kills | grind gold | boss kills | dungeon | WB strike today | sustained dps |
+  |---|---|---|---|---|---|---|
+  | Generalist | 111 | 327,765 | 13.0 | 4.08 | 2,787 | 3,670 |
+  | Grind (Fortune + Momentum) | 137 | 408,360 | 12.7 | 4.00 | 2,787 | 3,504 |
+  | Bossbreaker (Might + Sunder) | 109 | 296,660 | 14.0 | 4.07 | 2,815 | 3,612 |
+  | Titan-slayer (Precision + Bleed) | 146 | 397,670 | 17.0 | 4.11 | 2,787 | 4,899 |
+  | Warden (Guard) | 85 | 231,140 | 8.0 | 4.44 | 2,774 | 2,796 |
+
+  Controls (the same build minus its mechanic, 82 points): Momentum is worth
+  +26% grind kills and nothing on the boss (situational, as meant); the bleed
+  +15-17% everywhere a fight lasts (region-5 fights do); Sunder only +8% on
+  the boss - too weak. Findings for step D:
+  1. **The world boss ignores the tree.** The strike is attack x pet x potion,
+     so every build hits for 2,770-2,815; crit, the bleed, Sunder and every
+     keystone count for nothing there. Titan-slayer needs the strike to price
+     the sustained swing (owner decision: the weekly payout ranks by damage).
+  2. **Precision outclasses Might** even without the bleed (127 vs 109 grind
+     kills, 4,176 vs 3,579 sustained): Might's nodes need raising, or
+     Precision's lowering, before the ring is placed.
+  3. **Sunder needs ~2.5x** (2% to about 5% per stack per rank) to give the
+     Bossbreaker its +20-30% on bosses.
+  4. The dungeon rewards survival (Warden best at 4.44) - already situational;
+     its stage resolution is coarse, read the boss share.
+  5. Delve is not in the matrix yet.
