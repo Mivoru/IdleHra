@@ -3,6 +3,8 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
+using FolkIdle.Server.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FolkIdle.Server.Network
 {
@@ -124,6 +126,45 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Build preset apply error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally { context.Response.Close(); }
+        }
+
+        /// <summary>
+        /// POST { Slot, Activity: "worldboss" | "dungeon", On }: binds a preset to
+        /// an activity, which then fights with its tree (SkillLoadoutEngine).
+        /// One preset per activity. A refusal answers 200 with its Reason.
+        /// </summary>
+        private async Task HandleBuildPresetBind(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+                int slot;
+                SkillLoadoutEngine.Activity activity;
+                bool on;
+                try
+                {
+                    string body = await ReadBodyAsync(context);
+                    using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                    var root = parsed.RootElement;
+                    slot = IntOf(root, "Slot");
+                    activity = SkillLoadoutEngine.Parse(root.TryGetProperty("Activity", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : null);
+                    on = root.TryGetProperty("On", out var o) && o.ValueKind == JsonValueKind.True;
+                }
+                catch (JsonException) { context.Response.StatusCode = 400; return; }
+                if (!BuildPresetRules.IsSlot(slot) || activity == SkillLoadoutEngine.Activity.None) { context.Response.StatusCode = 400; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                string? reason = await SkillLoadoutEngine.BindAsync(db, playerId, slot, activity, on);
+                await WriteJsonAsync(context, new { Reason = reason });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Build preset bind error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally { context.Response.Close(); }

@@ -172,6 +172,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
 
+                    b.Property<int>("BoundActivities")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Constitution")
                         .HasColumnType("integer");
 

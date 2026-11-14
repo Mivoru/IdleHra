@@ -52,6 +52,7 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/skilltree/presets/save" && method == "POST") { await HandleBuildPresetSave(context); return true; }
             if (requestPath == "/api/v1/skilltree/presets/delete" && method == "POST") { await HandleBuildPresetDelete(context); return true; }
             if (requestPath == "/api/v1/skilltree/presets/apply" && method == "POST") { await HandleBuildPresetApply(context); return true; }
+            if (requestPath == "/api/v1/skilltree/presets/bind" && method == "POST") { await HandleBuildPresetBind(context); return true; }
             return false;
         }
 

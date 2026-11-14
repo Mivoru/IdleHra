@@ -685,6 +685,12 @@
             both. Each column ends in a <strong>keystone</strong>, and you can hold only one keystone
             at a time: it is what your build is built around, and a respec changes it.
           </p>
+          <p class="dim small">
+            <strong>Builds.</strong> The Character screen keeps three saved builds - attributes and skill tree. Switching
+            between them is free. Bind a build to the <strong>world boss</strong> or the <strong>dungeon</strong> and that
+            fight uses the build's skill tree, while your current tree keeps farming. A bound build that costs more skill
+            points than you have (after a rebirth) is not used until you have them again.
+          </p>
           {#if treeDef}
             <div class="scroll">
               <table>

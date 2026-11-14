@@ -477,6 +477,103 @@ namespace FolkIdle.Server.Engine
             return result;
         }
 
+        /// <summary>
+        /// Puts a saved build on: the live War tree becomes the preset's ranks,
+        /// for free (skill tree v3 step A). Hearth is left alone.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A SWITCH, NOT A RESPEC. The whole War budget (free points
+        /// plus points in the tree) is replayed from an empty tree through
+        /// PlanReason, so a build the player can no longer afford - a rebirth
+        /// shrinks the budget - is refused with the node it stops at, and the
+        /// live tree is untouched. It spends no respec and no gold: owner
+        /// 2026-11-14, switching builds is part of the game, not a cost. A
+        /// respec is still what it takes to MAKE a new build.
+        /// </remarks>
+        public Task<SkillTreeCommitResult> EquipPresetTreeAsync(long playerId, int slot)
+            => CommitRetryingAsync(() => EquipPresetTreeOnceAsync(playerId, slot), "Preset switch", playerId);
+
+        private async Task<SkillTreeCommitResult> EquipPresetTreeOnceAsync(long playerId, int slot)
+        {
+            var result = new SkillTreeCommitResult { Reason = "That preset is empty." };
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            var strategy = db.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                db.ChangeTracker.Clear();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    var loadout = await db.BuildPresets.AsNoTracking().FirstOrDefaultAsync(l => l.PlayerId == playerId && l.Slot == slot);
+                    var player = await db.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
+                    if (loadout == null || player == null)
+                    {
+                        await transaction.SafeRollbackAsync();
+                        result = new SkillTreeCommitResult { Reason = player == null ? "No such player." : "That preset is empty." };
+                        return;
+                    }
+
+                    var rows = (await db.PlayerSkillTreeNodes
+                        .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
+                        .ToListAsync())
+                        .Where(r => WarTreeRegistry.Get(r.BranchId) != null)
+                        .ToList();
+                    var current = new byte[WarTreeRegistry.Slots];
+                    foreach (var row in rows) current[row.BranchId] = (byte)Math.Clamp(row.Level, 0, WarTreeRegistry.Get(row.BranchId)!.MaxLevel);
+
+                    int budget = SkillLoadoutEngine.Budget(player.AvailableSkillPoints, current);
+                    var target = BuildPresetRules.DecodeWarRanks(loadout.WarRanks);
+                    string? reason = WarTreeRegistry.PlanReason(new byte[WarTreeRegistry.Slots], target, budget, out int cost);
+                    if (reason != null)
+                    {
+                        await transaction.SafeRollbackAsync();
+                        result = new SkillTreeCommitResult { Reason = $"This build no longer fits: {reason}", Levels = Array.ConvertAll(current, b => (int)b), AvailableSkillPoints = player.AvailableSkillPoints };
+                        return;
+                    }
+
+                    foreach (var n in WarTreeRegistry.All())
+                    {
+                        if (target[n.Id] == current[n.Id]) continue;
+                        var row = rows.FirstOrDefault(r => r.BranchId == n.Id);
+                        if (row == null) db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = playerId, BranchId = n.Id, Level = target[n.Id] });
+                        else if (target[n.Id] == 0) db.PlayerSkillTreeNodes.Remove(row);
+                        else row.Level = target[n.Id];
+                    }
+                    player.AvailableSkillPoints = budget - cost;
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    foreach (var n in WarTreeRegistry.All())
+                    {
+                        if (target[n.Id] == current[n.Id]) continue;
+                        _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
+                        {
+                            PlayerId = playerId,
+                            BranchId = n.Id,
+                            NewLevel = target[n.Id],
+                            RemainingSkillPoints = player.AvailableSkillPoints,
+                            FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
+                            PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
+                        });
+                    }
+
+                    result = new SkillTreeCommitResult { Levels = Array.ConvertAll(target, b => (int)b), AvailableSkillPoints = player.AvailableSkillPoints, Spent = cost };
+                }
+                catch
+                {
+                    await transaction.SafeRollbackAsync();
+                    throw;
+                }
+            });
+
+            return result;
+        }
+
         /// <summary>Craft points left: earned from the row's gathering mastery, minus the Hearth ranks held.</summary>
         public static int HearthPointsAvailable(PlayerRecord player, ReadOnlySpan<byte> ranks)
             => HearthPoints.Earned(player.WoodcuttingMasteryLevel, player.MiningMasteryLevel,

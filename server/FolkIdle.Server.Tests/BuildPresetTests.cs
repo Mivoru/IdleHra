@@ -118,7 +118,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task ADifferentTree_IsRespeccedWithTheFreeRespec_ThenBought()
+        public async Task ADifferentTree_IsSwitchedForFree_WithNoRespecSpent()
         {
             var targets = OneRankTargets();
             Assert.True(targets.Count >= 2, "the tree has fewer than two first-row nodes");
@@ -140,12 +140,14 @@ namespace FolkIdle.Server.Tests
             var applied = await engine.ApplyTreeAsync(playerId, 2, payWithGold: false);
 
             Assert.Null(applied.Reason);
-            Assert.True(applied.Respecced);
+            Assert.True(applied.Changed);
+            Assert.False(applied.Respecced);
             Assert.Equal(0L, applied.GoldSpent);
             var held2 = await RanksAsync(playerId);
             Assert.True(BuildPresetRules.SameWar(targets[1], held2));
             var player = await PlayerAsync(playerId);
-            Assert.True(player.FreeRespecUsed);
+            // Skill tree v3: switching builds is free - the free respec is still there.
+            Assert.False(player.FreeRespecUsed);
             // A's cost came back and B's was paid.
             Assert.Equal(pointsBefore + WarTreeRegistry.PointsSpent(targets[0]) - WarTreeRegistry.PointsSpent(targets[1]),
                 player.AvailableSkillPoints);
@@ -186,6 +188,105 @@ namespace FolkIdle.Server.Tests
             Assert.False((await PlayerAsync(playerId)).FreeRespecUsed);
             var held3 = await RanksAsync(playerId);
             Assert.True(BuildPresetRules.SameWar(targets[0], held3));
+        }
+
+        [Fact]
+        public async Task ABoundPreset_IsLaidOverACopy_AndOnlyForItsActivity()
+        {
+            var targets = OneRankTargets();
+            long playerId = await CreatePlayerAsync(skillPoints: 100);
+            var engine = new BuildPresetEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+            var tree = new SkillTreeEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+
+            Assert.Null((await tree.CommitAsync(playerId, targets[1])).Reason);
+            await engine.SaveAsync(playerId, 1, "Boss", 0, 0, 0, 0);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Null(await SkillLoadoutEngine.BindAsync(db, playerId, 1, SkillLoadoutEngine.Activity.WorldBoss, true));
+                await db.PlayerSkillTreeNodes.Where(r => r.PlayerId == playerId).ExecuteDeleteAsync();
+            }
+            Assert.Null((await tree.CommitAsync(playerId, targets[0])).Reason);
+            var live = await RanksAsync(playerId);
+            int free = (await PlayerAsync(playerId)).AvailableSkillPoints;
+
+            var payload = new TickStatePayload { PlayerId = playerId, AvailableSkillPoints = free };
+            for (int i = 0; i < live.Length; i++) payload.SkillRanks[i] = live[i];
+
+            var copy = payload;
+            Assert.True(SkillLoadoutEngine.Apply(ref copy, SkillLoadoutEngine.Activity.WorldBoss));
+            var laid = new byte[WarTreeRegistry.Slots];
+            for (int i = 0; i < laid.Length; i++) laid[i] = copy.SkillRanks[i];
+            Assert.True(BuildPresetRules.SameWar(targets[1], laid));
+            // The original is untouched, and the dungeon has no bound build.
+            Assert.Equal(live[Array.FindIndex(targets[0], b => b > 0)], payload.SkillRanks[Array.FindIndex(targets[0], b => b > 0)]);
+            var dungeon = payload;
+            Assert.False(SkillLoadoutEngine.Apply(ref dungeon, SkillLoadoutEngine.Activity.Dungeon));
+
+            // Binding the activity to another slot moves it; unbinding clears it.
+            await engine.SaveAsync(playerId, 2, "Other", 0, 0, 0, 0);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Null(await SkillLoadoutEngine.BindAsync(db, playerId, 2, SkillLoadoutEngine.Activity.WorldBoss, true));
+                var rows = await db.BuildPresets.AsNoTracking().Where(r => r.PlayerId == playerId).OrderBy(r => r.Slot).ToListAsync();
+                Assert.Equal(0, rows[0].BoundActivities);
+                Assert.Equal((int)SkillLoadoutEngine.Activity.WorldBoss, rows[1].BoundActivities);
+                Assert.Null(await SkillLoadoutEngine.BindAsync(db, playerId, 2, SkillLoadoutEngine.Activity.WorldBoss, false));
+            }
+            var after = payload;
+            Assert.False(SkillLoadoutEngine.Apply(ref after, SkillLoadoutEngine.Activity.WorldBoss));
+        }
+
+        [Fact]
+        public async Task ABoundPresetThePlayerCannotAfford_FallsBackToTheLiveTree()
+        {
+            var targets = OneRankTargets();
+            long playerId = await CreatePlayerAsync(skillPoints: 100);
+            var engine = new BuildPresetEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+            var tree = new SkillTreeEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+            Assert.Null((await tree.CommitAsync(playerId, targets[1])).Reason);
+            await engine.SaveAsync(playerId, 1, "Dungeon", 0, 0, 0, 0);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                Assert.Null(await SkillLoadoutEngine.BindAsync(db, playerId, 1, SkillLoadoutEngine.Activity.Dungeon, true));
+
+            // A rebirth-like budget: nothing held, nothing free.
+            var payload = new TickStatePayload { PlayerId = playerId, AvailableSkillPoints = 0 };
+            Assert.False(SkillLoadoutEngine.Apply(ref payload, SkillLoadoutEngine.Activity.Dungeon));
+            var listed = (await engine.ListAsync(playerId)).Single();
+            Assert.Equal((int)SkillLoadoutEngine.Activity.Dungeon, listed.BoundActivities);
+        }
+
+        [Fact]
+        public async Task TheWorldBossStrike_HitsWithTheBoundBuild_NotTheLiveTree()
+        {
+            long playerId = await CreatePlayerAsync(skillPoints: 100);
+            var engine = new BuildPresetEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+            var tree = new SkillTreeEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+
+            // The boss build: Edge (+damage) at its limit. The live tree: nothing.
+            var boss = new byte[WarTreeRegistry.Slots];
+            boss[WarTreeRegistry.Edge] = (byte)WarTreeRegistry.Get(WarTreeRegistry.Edge)!.MaxLevel;
+            Assert.Null((await tree.CommitAsync(playerId, boss)).Reason);
+            await engine.SaveAsync(playerId, 1, "Boss", 0, 0, 0, 0);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                await db.PlayerSkillTreeNodes.Where(r => r.PlayerId == playerId).ExecuteDeleteAsync();
+
+            var payload = new TickStatePayload { PlayerId = playerId, SkillTreeVersion = WarTreeRegistry.CurrentVersion, AvailableSkillPoints = 100, STR = 40, DEX = 10, CON = 10, LCK = 5, CurrentLevel = 30 };
+            var stats = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in payload);
+            payload.CachedEffectiveMilliAttack = FolkIdle.Server.Domain.Combat.SimulationEngine.EffectiveMilliAttackFor(
+                ref payload, in stats, FolkIdle.Server.Domain.Combat.SimulationEngine.LineageOf(in payload).DamageScalePerLevelPct);
+            long unbound = FolkIdle.Server.Domain.Combat.WorldBossTickCoordinator.ServerStrikeDamage(ref payload);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                Assert.Null(await SkillLoadoutEngine.BindAsync(db, playerId, 1, SkillLoadoutEngine.Activity.WorldBoss, true));
+            long bound = FolkIdle.Server.Domain.Combat.WorldBossTickCoordinator.ServerStrikeDamage(ref payload);
+
+            Assert.True(bound > unbound, $"bound {bound} should beat unbound {unbound}");
+            // The live payload kept its own (empty) tree.
+            Assert.Equal(0, payload.SkillRanks[WarTreeRegistry.Edge]);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                Assert.Null(await SkillLoadoutEngine.BindAsync(db, playerId, 1, SkillLoadoutEngine.Activity.WorldBoss, false));
+            Assert.Equal(unbound, FolkIdle.Server.Domain.Combat.WorldBossTickCoordinator.ServerStrikeDamage(ref payload));
         }
 
         [Fact]

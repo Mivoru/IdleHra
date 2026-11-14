@@ -34,5 +34,8 @@ namespace FolkIdle.Server.Models
         public string WarRanks { get; set; } = string.Empty;
 
         public DateTime UpdatedAtUtc { get; set; }
+
+        /// <summary>SkillLoadoutEngine.Activity flags: the activities that fight with this preset's tree.</summary>
+        public int BoundActivities { get; set; }
     }
 }
