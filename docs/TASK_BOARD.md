@@ -209,6 +209,30 @@ Needs phase 3, and is best after 2b. **2026-11-03: 5.1 families built (roadmap
 8.2 status); the owner picked signatures S1-S8 + S10 (5.2), built after 2b.5
 with the four stateful mechanics.**
 
+
+### 136. Rare variants of the monster pets - BUILD (owner, 2026-11-14)
+
+**Owner:** every one of the ten monster pets (`PetRegistry`, today +8% to one
+stat at 1 in 100,000 kills, `MonsterPetPerKill`) gets a **rare** variant:
+**+16%** to the same stat, at **1 in 200,000** kills. Shown with a **blue glow
+behind the pet and a blue (rare-coloured) name**.
+
+What is actually true today: the ten monster pets each roll once per kill
+from their own monster at `MonsterPetPerKill`; a duplicate pays
+`DuplicateDiamonds`; the pet popup and the pet slot read the registry by id.
+
+Acceptance:
+- The rare variant is its own pet id per monster pet (for example
+  `hugin_rare`), +16% to the same stat, rolled independently at 1/200,000 per
+  kill from the same monster; a duplicate pays diamonds like any pet.
+- Offline kills roll it too (the simulator's kill tally, as the normal pets).
+- Client: the pet card, slot and found-popup draw a blue glow behind the art
+  and the name in the rare colour; the Wiki pet table lists the variants and
+  their odds; release notes.
+- A test pins the rate and the bonus (+16% = 2 x the normal pet), and the
+  popup round-trips in `exercise.mjs` via the dev grant.
+- Measure first: how many monster pets the three players found so far, to
+  say how long a rare one takes (expected 200,000 kills per monster).
 ### 37. The Deep - measure the retune (PAST DUE since 2026-10-14, roadmap 3.1)
 
 **Re-measured 2026-11-13 (read-only, gold_income_daily / gold_spend_daily,
