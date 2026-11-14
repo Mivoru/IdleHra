@@ -1756,7 +1756,9 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/worldboss/challenge"
                 || requestPath == "/api/v1/worldboss/throw"
                 || requestPath == "/api/v1/worldboss/strike"
-                || requestPath == "/api/v1/worldboss/practice/score")
+                || requestPath == "/api/v1/worldboss/practice/score"
+                || requestPath == "/api/v1/worldboss/duel"
+                || requestPath == "/api/v1/worldboss/duel/call")
             {
                 await HandleWorldBossStrikeRoute(context, requestPath);
                 return;
@@ -4220,9 +4222,15 @@ namespace FolkIdle.Server.Network
                 string method = context.Request.HttpMethod;
                 object? answer = null;
 
+                var duel = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.BossDuelService>();
+
                 if (requestPath == "/api/v1/worldboss/challenge" && method == "GET")
                 {
                     answer = await service.GetChallengeAsync(playerId);
+                }
+                else if (requestPath == "/api/v1/worldboss/duel" && method == "GET")
+                {
+                    answer = duel.Get(playerId);
                 }
                 else if (method == "POST")
                 {
@@ -4241,6 +4249,20 @@ namespace FolkIdle.Server.Network
                                     if (parsed.RootElement.TryGetProperty("Practice", out var p) && p.ValueKind == JsonValueKind.True) practice = true;
                                 }
                                 answer = await service.IssueChallengeAsync(playerId, practice);
+                                break;
+                            case "/api/v1/worldboss/duel":
+                                bool duelPractice = false;
+                                if (!string.IsNullOrWhiteSpace(body))
+                                {
+                                    using var parsedDuel = JsonDocument.Parse(body);
+                                    if (parsedDuel.RootElement.TryGetProperty("Practice", out var dp) && dp.ValueKind == JsonValueKind.True) duelPractice = true;
+                                }
+                                answer = await duel.IssueAsync(playerId, duelPractice);
+                                break;
+                            case "/api/v1/worldboss/duel/call":
+                                var callRequest = JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.DuelCallRequest>(body, WorldBossStrikeJson);
+                                if (callRequest == null) { context.Response.StatusCode = 400; return; }
+                                answer = await duel.CallAsync(playerId, callRequest);
                                 break;
                             case "/api/v1/worldboss/throw":
                                 var throwRequest = JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.ThrowRequest>(body, WorldBossStrikeJson);

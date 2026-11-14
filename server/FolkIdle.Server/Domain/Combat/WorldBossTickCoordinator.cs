@@ -63,7 +63,8 @@ namespace FolkIdle.Server.Domain.Combat
                         // power, so the engine prices the base hit at its
                         // 1,000 floor and the strike is SPENT, like any other.
                         // An honest client always has a session here.
-                        engine.QueueStrike(order, 0);
+                        // A duel was quoted from a live payload at issue, so its number stands.
+                        engine.QueueStrike(order, order.QuotedAttack ?? 0);
                         continue;
                     }
                     if (payload.WorldBossAttemptCount >= WorldBossEngine.MaxAttemptsPerDay)
@@ -71,12 +72,49 @@ namespace FolkIdle.Server.Domain.Combat
                         order.Complete(WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NoAttemptsLeft));
                         continue;
                     }
-                    engine.QueueStrike(order, ServerStrikeDamage(ref payload));
+                    engine.QueueStrike(order, order.QuotedAttack ?? ServerStrikeDamage(ref payload));
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"World boss strike order failed for player {order.PlayerId}: {ex.Message}");
                     order.Complete(WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed));
+                }
+            }
+            return taken;
+        }
+
+        /// <summary>
+        /// Answers the duel quotes REST is waiting on: the striker's base hit
+        /// (ServerStrikeDamage, the same number a strike is priced from) and
+        /// the stance of the build the world boss fights with. No session is
+        /// answered with null - a duel needs a live character (the security
+        /// review's rule for the wheel, 2026-09-26).
+        /// </summary>
+        internal static int DrainDuelQuotes(PlayerSessionRegistry registry, Dictionary<long, TickStatePayload> activePlayers)
+        {
+            int budget = registry.WorldBossQuoteQueue.Count;
+            int taken = 0;
+            while (taken < budget && registry.WorldBossQuoteQueue.TryDequeue(out var request))
+            {
+                taken++;
+                try
+                {
+                    ref var payload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, request.PlayerId);
+                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref payload))
+                    {
+                        request.Completion.TrySetResult(null);
+                        continue;
+                    }
+                    long attack = ServerStrikeDamage(ref payload);
+                    var copy = payload;
+                    SkillLoadoutEngine.Apply(ref copy, SkillLoadoutEngine.Activity.WorldBoss);
+                    var stance = BossDuelRules.StanceOf(copy.SkillRanks);
+                    request.Completion.TrySetResult(new DuelQuote(attack, stance));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Duel quote failed for player {request.PlayerId}: {ex.Message}");
+                    request.Completion.TrySetResult(null);
                 }
             }
             return taken;
@@ -221,7 +259,7 @@ namespace FolkIdle.Server.Domain.Combat
             // rather than obeyed (spec 4). Its plate press would be a strike
             // priced on the encounter-wide weak plate, which wheel mode no
             // longer keeps, and its answer has no room for the private result.
-            if (ctx.WorldBossEngine.MinigameMode == BossMinigameMode.Wheel)
+            if (ctx.WorldBossEngine.MinigameMode is BossMinigameMode.Wheel or BossMinigameMode.Duel)
             {
                 ctx.PlayerRegistry.EnqueueCommandResult(
                     currentPayload.PlayerId,

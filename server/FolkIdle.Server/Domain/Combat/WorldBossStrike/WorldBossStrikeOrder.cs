@@ -46,6 +46,18 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// </summary>
         public bool IsPlayed { get; init; }
 
+        /// <summary>
+        /// A duel's base hit, quoted by the tick when the duel was issued
+        /// (BossDuelService). The fight on screen was drawn from this number,
+        /// so the strike is priced from it too rather than from whatever the
+        /// payload says a minute later - otherwise the blows shown and the
+        /// damage credited could disagree. Null for wheel and auto strikes.
+        /// </summary>
+        public long? QuotedAttack { get; init; }
+
+        /// <summary>The duel's skill score (share of right calls). Null = score the landings, as the wheel does.</summary>
+        public double? Skill { get; init; }
+
         public TaskCompletionSource<WorldBossStrikeOutcome> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

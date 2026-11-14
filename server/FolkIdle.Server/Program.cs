@@ -436,6 +436,8 @@ serviceCollection.AddSingleton<FolkIdle.Server.Domain.Combat.WorldBossStrike.Wor
 serviceCollection.AddSingleton(sp => new FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeService(
     sp.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossChallengeRegistry>(),
     sp.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameSettings>()));
+serviceCollection.AddSingleton(sp => new FolkIdle.Server.Domain.Combat.WorldBossStrike.BossDuelService(
+    sp.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameSettings>()));
 serviceCollection.AddSingleton<FolkIdle.Server.Domain.Economy.DelveEngine>();
 
 // Modul: registers IHttpClientFactory - required by
@@ -522,6 +524,17 @@ worldBossEngine.EnsureSnapshotAsync().GetAwaiter().GetResult();
 // which only exists from here on. Until this line every real path is Disabled.
 serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeService>()
     .AttachBoard(worldBossEngine);
+// Modul: the duel (2026-11-14) needs the board and a way to ask the tick for a
+// quote: the striker's base hit and stance, read from the live payload.
+serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.BossDuelService>()
+    .Attach(worldBossEngine, async playerId =>
+    {
+        var request = new FolkIdle.Server.Domain.Combat.WorldBossStrike.DuelQuoteRequest { PlayerId = playerId };
+        playerRegistry.WorldBossQuoteQueue.Enqueue(request);
+        var done = await Task.WhenAny(request.Completion.Task,
+            Task.Delay(FolkIdle.Server.Domain.Combat.WorldBossStrike.BossDuelService.QuoteWait));
+        return done == request.Completion.Task ? request.Completion.Task.Result : null;
+    });
 // Modul: the Guild War unlock cache starts Locked and the matchmaking pass is
 // its only refresher, so a restart of an ALREADY-unlocked server refused war
 // commands with "locked" until that first pass ran - minutes, if the database

@@ -138,7 +138,10 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public BossMinigameMode MinigameMode { get; }
 
-        private bool WheelMode => MinigameMode == BossMinigameMode.Wheel;
+        // Modul: the duel (2026-11-14) rides the wheel's strike pipeline - the
+        // REST orders, the daily attempt, the regrowing armour - so "wheel
+        // mode" here means "strikes come over REST", whichever game priced them.
+        private bool WheelMode => MinigameMode is BossMinigameMode.Wheel or BossMinigameMode.Duel;
 
         public WorldBossEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry, BossMinigameMode? minigameMode = null)
         {
@@ -870,7 +873,7 @@ namespace FolkIdle.Server.Engine
                 attempt.AttemptCount++;
                 // The skill score of a strike the player PLAYED - an auto-strike
                 // is not a choice to play badly, so the detector never sees it.
-                double? skill = order.IsPlayed ? WorldBossStrikeRules.Score(order.Landings) : null;
+                double? skill = order.IsPlayed ? (order.Skill ?? WorldBossStrikeRules.Score(order.Landings)) : null;
                 var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, skill, await LevelOfAsync(db, playerId), GameClock.UtcNow);
                 // Modul: the quest line's "strike the world boss" step. The
                 // attempt rows are DELETED when the boss dies, so they cannot be
