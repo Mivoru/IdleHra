@@ -493,3 +493,30 @@ one), so it is a proposal for the owner, not part of this PR.
 2. **Population effects** (world boss HP from registration strikes, market)
    reflect 10-20 bots. That is not a speed problem and lockstep does not fix
    it.
+
+## Rebirth night after the lineage overhaul (2026-11-14)
+
+One lockstep night on main as of 2026-11-13 (`6c248a31`: unlimited rebirth,
+aptitude milestones, Boons, per-slot bloodline), CRON_SCALE 8, mix
+`optimal:3,patientbare:3,eagerkit:3,patient:3`, 300 game hours, seed 2.
+300 game hours took 361 wall minutes. Output stayed in the frozen worktree
+(`IdleHra-night5/bot-runs/night-20261114-rebirth-s8`), not committed.
+
+| | first life | after rebirth 1 | after rebirth 2 |
+|---|---|---|---|
+| hours to level 50 (median) | 42 (34-53, n=12) | 18.3 (11.6-20, n=6) | 13.2 (11.2-17.5, n=5) |
+
+- Only optimal and eagerkit rebirth (2 each, all 6 bots); patient and
+  patientbare never do, by persona design. Rebirths land at level 63-77,
+  not at 50: the personas push the life on before cashing it.
+- Rebirth 1 at 108-198 h; rebirth 2 at 192-294 h; the gap between the two
+  is 72-96 h (median 84).
+- Each life climbs faster than the last (42 h, 18 h, 13 h to level 50) -
+  the overhaul's intent (+XP below peak, Boons, inherited aptitudes) shows
+  in the measurement, and no life got slower.
+- Patientbare, which never rebirths, reached region 5 at 267 h (all 3); no
+  rebirthing bot opened region 5 inside 300 h, because each rebirth spends
+  ~20 h climbing back.
+- Dungeon: 0-4 losses per bot, 9-12 wins, ~72 sweeps; Delve ~35 runs each.
+- Caveat: bots play one character the way their persona says, not three
+  real players' rosters; read the shape (each life faster), not the hours.

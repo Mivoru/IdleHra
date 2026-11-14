@@ -196,6 +196,25 @@ guarded by serverMirrors. #395 embers drift over Combat and Make
 (compositor-only `body::after`, off for reduced motion and the light scheme)
 (1.81.0). Full exercise on main after #394: 451/451.
 
+Overnight 2026-11-13/14 (owner: "continue till 08:00, add your own
+improvements"): #398 **Claim and resend** - one button claims every
+returned chest and sends the strongest free ancestors out again; a party away
+shows its local return time (1.82.0). #401/#403 expedition odds, slot counts
+and aptitude growth constants are exported from `commands.ts` and pinned to
+the C# in `serverMirrors.test.ts` (Wiki and the Breeding Grounds card read
+them). #404 the Expeditions screen remembers trip length and the provisions
+toggle in localStorage (1.83.0). TASK_BOARD 129 (flaky server tests) closed
+after five consecutive green full runs (2241/2241, 8.5-8.8 min each); 111,
+112, 130 and 131 measured on prod and recorded there. A lockstep rebirth night
+(CRON_SCALE 8, 12 bots, 300 h) is in `docs/design/LOCKSTEP_SIM.md`: median
+hours to level 50 fall from 42 (first life) to 18 and then 13 after each
+rebirth.
+
+**OWNER DECISION open: PR #402** - loot chests (and Provisions prices) price
+by income from earned sources only (`GoldRewardScale.EarnedSources`), not
+from sales and mail; prod effect Mivoru -28%, Tomda -6%, boss -12%. CI green,
+deliberately not merged.
+
 Daily activity board (owner's idea: dungeon, delve, world boss, auto-eat
 low, children, village hints) - **owner said not now**; Home's "Your road"
 card is the nearest existing thing.
