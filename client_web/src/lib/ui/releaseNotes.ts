@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.83.0',
+    date: '2026-11-14',
+    sections: [
+      {
+        title: 'Expeditions',
+        items: [
+          'The Expeditions screen remembers the trip length you picked and whether provisions were on, so the next visit starts where you left it.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.82.0',
     date: '2026-11-14',
     headline: 'One tap to claim and send your expeditions again.',
