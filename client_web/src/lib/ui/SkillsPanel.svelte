@@ -672,8 +672,16 @@
      the panel, the painting re-scaled whenever the detail sheet or the draft
      bar changed the panel's height. Pinned to the top at its own height, it
      never moves; below it the panel is the painting's own dark. */
-  .panel {
-    background: #0b0d12;
+  /* Modul: THE DARK BELOW THE PAINTING MUST WIN (owner, 2026-11-14: the tree
+     ended and the panel turned light under it). The global section tint
+     (app.css, `.panel:not(.panel--sunken)` with !important) made every panel
+     translucent and section-coloured, which replaced this dark - invisible
+     while five rows fitted inside the painting, glaring once the outer ring
+     made the tree taller. Matched in kind, with this component's higher
+     specificity; and the layer is taller for the eight rows. */
+  .panel.skills {
+    background: #0b0d12 !important;
+    background-color: #0b0d12 !important;
   }
   .panel::before {
     content: '';
@@ -681,7 +689,7 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 46rem;
+    height: 64rem;
     z-index: -1;
     pointer-events: none;
     background:
