@@ -118,9 +118,9 @@ const SCREENS_TO_WATCH = [
   // needs an account nobody has locally; noted rather than claimed.
   { screen: 'Chest', why: 'VirtualList over the inventory (fixture-sized)' },
   { screen: 'Village', why: 'the densest static layout in the game' },
-  // Task 36: the shield wheel spins for the whole 12 s sample - one rAF loop
-  // writing one style.transform a frame, which is the budget this proves.
-  { screen: 'World Boss · shield wheel', why: 'the spinning shield wheel (one rAF loop, one transform a frame)' },
+  // The duel (2026-11-15) replaced the wheel: sampled at its first call -
+  // the 100 ms call timer and the wind-up animation over the boss art.
+  { screen: 'World Boss · duel', why: 'the duel at a call (100 ms timer, one finite wind-up animation)' },
 ];
 
 console.log(`\n=== 390x844, main thread throttled ${CPU_SLOWDOWN}x, ${SAMPLE_SECONDS}s per screen ===\n`);
