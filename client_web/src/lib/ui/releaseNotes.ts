@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.93.0',
+    date: '2026-11-15',
+    headline: 'Bleed, burn and thorns show up in the fight.',
+    sections: [
+      {
+        title: 'Combat',
+        items: [
+          "Lacerate's bleed is finally visible: each second of bleeding shows a small crimson number with a drop that sinks below the monster, and the fight log says how much it bled.",
+          'A burning hit flickers with fire and turns orange, with a BURN label.',
+          'Damage your thorns reflect back is shown in green with a THORNS label.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.92.0',
     date: '2026-11-15',
     headline: 'World boss rewards rebalanced.',
