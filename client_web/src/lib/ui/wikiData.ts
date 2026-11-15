@@ -636,6 +636,82 @@ export const WORLD_BOSS_MILESTONES: readonly { damage: number; goldMinutes: numb
   { damage: 400_000, goldMinutes: 180, diamonds: 15, reward: 'Chernobog avatar, title "Chainer of the Dark"' },
   { damage: 1_000_000, goldMinutes: 0, diamonds: 0, reward: 'the Black Serpent pet (+12% damage, +12% critical damage)' },
 ];
+/**
+ * The world boss duel's answers (BossDuelRules.cs), for the Wiki's table of
+ * which answer is right for which build. Owner, 2026-11-15: "the wiki could
+ * say, for each build, which answer is right". Pinned element by element
+ * against the server's own switch arms by wiki.test.ts - an answer table
+ * written down twice is the kind of copy this codebase has drifted before.
+ */
+export type DuelAnswer = 'Guard' | 'Strike' | 'Evade';
+export type DuelBuild = 'Balanced' | 'Might' | 'Precision' | 'Guard';
+export const DUEL_MOVES: readonly { move: string; name: string; serpentOnly: boolean }[] = [
+  { move: 'CrushingBlow', name: 'Crushing Blow', serpentOnly: false },
+  { move: 'BlackFlame', name: 'Black Flame', serpentOnly: false },
+  { move: 'SerpentCoil', name: 'Serpent Coil', serpentOnly: false },
+  { move: 'CurseOfNight', name: 'Curse of Night', serpentOnly: false },
+  { move: 'SummonShade', name: 'Summon Shade', serpentOnly: false },
+  { move: 'VenomSpit', name: 'Venom Spit', serpentOnly: true },
+  { move: 'TailSweep', name: 'Tail Sweep', serpentOnly: true },
+  { move: 'DeathCoil', name: 'Death Coil', serpentOnly: true },
+];
+/** BaseVerdict: the right and the fair answer for everyone, before build and omen. */
+export const DUEL_BASE: readonly { move: string; answer: DuelAnswer; verdict: 'Right' | 'Fair' }[] = [
+  { move: 'CrushingBlow', answer: 'Evade', verdict: 'Right' },
+  { move: 'CrushingBlow', answer: 'Guard', verdict: 'Fair' },
+  { move: 'BlackFlame', answer: 'Strike', verdict: 'Right' },
+  { move: 'BlackFlame', answer: 'Evade', verdict: 'Fair' },
+  { move: 'SerpentCoil', answer: 'Strike', verdict: 'Right' },
+  { move: 'SerpentCoil', answer: 'Evade', verdict: 'Fair' },
+  { move: 'CurseOfNight', answer: 'Evade', verdict: 'Right' },
+  { move: 'CurseOfNight', answer: 'Guard', verdict: 'Fair' },
+  { move: 'SummonShade', answer: 'Strike', verdict: 'Right' },
+  { move: 'SummonShade', answer: 'Guard', verdict: 'Fair' },
+  { move: 'VenomSpit', answer: 'Guard', verdict: 'Right' },
+  { move: 'VenomSpit', answer: 'Evade', verdict: 'Fair' },
+  { move: 'TailSweep', answer: 'Evade', verdict: 'Right' },
+  { move: 'TailSweep', answer: 'Guard', verdict: 'Fair' },
+  { move: 'DeathCoil', answer: 'Strike', verdict: 'Right' },
+  { move: 'DeathCoil', answer: 'Guard', verdict: 'Fair' },
+];
+/** StanceVerdict: what each build turns right (or fair) for itself. */
+export const DUEL_BUILD_ANSWERS: readonly { build: DuelBuild; move: string; answer: DuelAnswer; verdict: 'Right' | 'Fair' }[] = [
+  { build: 'Might', move: 'CurseOfNight', answer: 'Strike', verdict: 'Right' },
+  { build: 'Might', move: 'CrushingBlow', answer: 'Strike', verdict: 'Fair' },
+  { build: 'Might', move: 'TailSweep', answer: 'Strike', verdict: 'Fair' },
+  { build: 'Precision', move: 'BlackFlame', answer: 'Evade', verdict: 'Right' },
+  { build: 'Precision', move: 'SerpentCoil', answer: 'Evade', verdict: 'Right' },
+  { build: 'Precision', move: 'VenomSpit', answer: 'Evade', verdict: 'Right' },
+  { build: 'Guard', move: 'CrushingBlow', answer: 'Guard', verdict: 'Right' },
+  { build: 'Guard', move: 'SummonShade', answer: 'Guard', verdict: 'Right' },
+  { build: 'Guard', move: 'SerpentCoil', answer: 'Guard', verdict: 'Fair' },
+];
+/** BossDuelRules.Omens, Monday = 0. */
+export const DUEL_OMENS: readonly { day: number; name: string; move: string; answer: DuelAnswer }[] = [
+  { day: 0, name: "Perun's Thunder", move: 'CrushingBlow', answer: 'Strike' },
+  { day: 1, name: "Mokosh's Veil", move: 'CurseOfNight', answer: 'Guard' },
+  { day: 2, name: "Svarog's Fire", move: 'BlackFlame', answer: 'Guard' },
+  { day: 3, name: 'Veles in the Reeds', move: 'SummonShade', answer: 'Evade' },
+  { day: 4, name: "Dazhbog's Dawn", move: 'SerpentCoil', answer: 'Evade' },
+  { day: 5, name: "Stribog's Wind", move: 'VenomSpit', answer: 'Strike' },
+  { day: 6, name: "Simargl's Wing", move: 'TailSweep', answer: 'Strike' },
+];
+export const DUEL_BUILDS: readonly DuelBuild[] = ['Balanced', 'Might', 'Precision', 'Guard'];
+
+/** The right and fair answers to a move for a build, before the day's omen - BossDuelRules.Judge without the omen. */
+export function duelAnswers(move: string, build: DuelBuild): { right: DuelAnswer[]; fair: DuelAnswer[] } {
+  const right: DuelAnswer[] = [];
+  const fair: DuelAnswer[] = [];
+  for (const answer of ['Guard', 'Strike', 'Evade'] as DuelAnswer[]) {
+    const own = DUEL_BUILD_ANSWERS.find((b) => b.build === build && b.move === move && b.answer === answer);
+    const base = DUEL_BASE.find((b) => b.move === move && b.answer === answer);
+    const verdict = own?.verdict ?? base?.verdict;
+    if (verdict === 'Right') right.push(answer);
+    else if (verdict === 'Fair') fair.push(answer);
+  }
+  return { right, fair };
+}
+
 /** WorldBossRewards.PlaceGoldHours / KillGoldHours / SandbaggerKillSharePct, and GoldRewardScale.FloorGold. */
 export const WORLD_BOSS_PLACE_GOLD_HOURS: readonly number[] = [3, 2, 1];
 export const WORLD_BOSS_KILL_GOLD_HOURS = 2;
@@ -850,6 +926,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'deep', title: 'The Deep', keywords: 'deep delve below floor eight stake toll lantern refill titles lamplighter deepest board weekly record' },
 
   { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'chernobog svarog black serpent registration reveal milestone avatar title pet kill reward sandbag duel omen guard strike evade stance quick strike damage board' },
+  { tab: 'events', anchor: 'worldboss-duel', title: 'Duel answers by build', keywords: 'duel answer right wrong fair build stance might precision guard balanced omen crushing blow black flame serpent coil curse shade venom tail death coil' },
   { tab: 'events', anchor: 'seasonal', title: 'Seasonal events', keywords: 'samhain halloween pumpkins event currency shop avatar festival' },
   { tab: 'events', anchor: 'cailleach', title: 'The seasonal boss', keywords: 'cailleach samhain boss tiers winter first clear diamonds mini vampire' },
   { tab: 'events', anchor: 'pets', title: 'Pets', keywords: 'pet witch ghostie pixie skeleton dog black cat wolf pup mini vampire bonus slot rare drop monster kill hugin nisse cait cu sidhe ignis kikimora backahast llamhigyn ogham dagda cauldron duplicate diamonds' },

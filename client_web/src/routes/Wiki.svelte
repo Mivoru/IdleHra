@@ -103,6 +103,10 @@
     WORLD_BOSS_HP_FACTOR_MAX,
     WORLD_BOSS_REGISTRATION_LEVEL,
     WORLD_BOSS_MILESTONES,
+    DUEL_MOVES,
+    DUEL_OMENS,
+    DUEL_BUILDS,
+    duelAnswers,
     WORLD_BOSS_PLACE_GOLD_HOURS,
     WORLD_BOSS_KILL_GOLD_HOURS,
     WORLD_BOSS_SANDBAG_SHARE_PCT,
@@ -1851,6 +1855,48 @@
             <li>Your hit is your character's real attack power, floored at {formatNumber(WORLD_BOSS_DAMAGE_FLOOR)} before any multiplier.</li>
             <li><strong>He stays after he falls.</strong> Keep striking for your milestones and your place until Sunday.</li>
           </ul>
+
+          <h3 id="worldboss-duel">Duel answers by build</h3>
+          <p class="dim small">
+            Your build is the deepest of your Might, Precision and Guard columns in the build the world boss fights
+            with (5 points or more, and deeper than the other two); anything else is Balanced. <strong>Bold</strong> is
+            the right answer; "fair" holds, for a little. The day's omen overrides one move - see below.
+          </p>
+          <div class="scroll">
+            <table data-testid="wiki-duel-answers">
+              <thead><tr><th>Move</th>{#each DUEL_BUILDS as build}<th>{build}</th>{/each}</tr></thead>
+              <tbody>
+                {#each DUEL_MOVES as m (m.move)}
+                  <tr>
+                    <td>{m.name}{#if m.serpentOnly}{' '}<span class="dim tiny">(Serpent)</span>{/if}</td>
+                    {#each DUEL_BUILDS as build}
+                      {@const a = duelAnswers(m.move, build)}
+                      <td><strong>{a.right.join(' / ')}</strong>{#if a.fair.length}{' '}<span class="dim tiny">- fair: {a.fair.join(', ')}</span>{/if}</td>
+                    {/each}
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+          <p class="dim small">
+            The omens. On its day, the omen's answer is right for everyone and the move always comes; the answer it
+            replaces drops to fair, unless your build owns it.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead><tr><th>Day</th><th>Omen</th><th>Move</th><th>Right answer</th></tr></thead>
+              <tbody>
+                {#each DUEL_OMENS as o (o.day)}
+                  <tr>
+                    <td>{['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][o.day]}</td>
+                    <td>{o.name}</td>
+                    <td>{DUEL_MOVES.find((m) => m.move === o.move)?.name ?? o.move}</td>
+                    <td><strong>{o.answer}</strong></td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
 
           <h3 id="worldboss-rewards">Chernobog's rewards</h3>
           <p class="dim small">
