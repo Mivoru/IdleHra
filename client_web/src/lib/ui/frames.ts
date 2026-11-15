@@ -7,7 +7,7 @@
 //
 // Ornament grows with rarity: Common is a plain band, Rare adds studs, Epic
 // a knotwork outer ring, Legendary a crown of points and a slow glow.
-export type FrameStyle = 'band' | 'rope' | 'studs' | 'knot' | 'crown';
+export type FrameStyle = 'band' | 'rope' | 'studs' | 'knot' | 'crown' | 'horns';
 
 export interface FrameDrawing {
   style: FrameStyle;
@@ -60,4 +60,9 @@ export const FRAME_DRAWINGS: Readonly<Record<string, FrameDrawing>> = {
   frame_monument_r3: { style: 'studs', color: '#b5652b', accent: '#ffd49a', glow: true },
   frame_monument_r4: { style: 'knot', color: '#6f9fb8', accent: '#e8f7ff', glow: true },
   frame_monument_r5: { style: 'crown', color: '#2b2230', accent: '#d9b25c', glow: true },
+
+  // The Chronicle seasons' level-40 frames (2026-11-15) - bound. Ids are
+  // ChronicleRegistry's FrameId per season; tests/cosmetics.test.ts reads them.
+  // Veles: bull horns of gold over a ring of marsh bronze.
+  frame_chronicle_veles: { style: 'horns', color: '#7a5a2c', accent: '#e8c25a', glow: true },
 };

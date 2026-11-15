@@ -24,6 +24,8 @@ namespace FolkIdle.Server.Domain.Economy
         Expedition = 5,
         // The login week (2026-11-15): day four and day seven.
         LoginReward = 6,
+        // The Chronicle pass (2026-11-15): track chests and the overflow chest.
+        Chronicle = 7,
     }
 
     /// <summary>

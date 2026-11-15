@@ -8,7 +8,7 @@
 import { authedGet, authedPost } from './auth';
 
 /** PetSource on the server. */
-export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4, Rebirth: 5, WorldBoss: 6, MonsterRare: 7 } as const;
+export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4, Rebirth: 5, WorldBoss: 6, MonsterRare: 7, Chronicle: 8 } as const;
 
 /** A monster pet's rare variant (owner, 2026-11-14): drawn with a blue glow and a blue name. */
 export function isRarePet(pet: Pick<Pet, 'Source'> | null | undefined): boolean {
@@ -80,6 +80,7 @@ export function petSourceLine(pet: Pet): string {
   if (pet.Source === PET_SOURCE.Monster) return 'Found on any kill, any time - rarely.';
   if (pet.Source === PET_SOURCE.MonsterRare) return 'The rare variant: found on any kill, any time - half as often as the ordinary one, twice the bonus.';
   if (pet.Source === PET_SOURCE.Rebirth) return 'Follows whoever takes the tenth rebirth.';
+  if (pet.Source === PET_SOURCE.Chronicle) return "The prize at level 50 of this season's Chronicle pass.";
   if (pet.Source === PET_SOURCE.WorldBoss) return 'Follows whoever deals Chernobog a million damage in one week.';
   return 'Sold in the event shop.';
 }

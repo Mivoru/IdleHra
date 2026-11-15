@@ -66,6 +66,7 @@ namespace FolkIdle.Server.Models
         public DbSet<DungeonProgress> DungeonProgress { get; set; }
         public DbSet<PlayerMissionDay> PlayerMissionDays { get; set; }
         public DbSet<PlayerMissionCounter> PlayerMissionCounters { get; set; }
+        public DbSet<PlayerChronicleSeason> PlayerChronicleSeasons { get; set; }
         public DbSet<Expedition> Expeditions { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
@@ -528,6 +529,8 @@ namespace FolkIdle.Server.Models
                 b.HasKey(d => new { d.PlayerId, d.DayKey });
                 b.Property(d => d.Actions).HasMaxLength(64);
             });
+            modelBuilder.Entity<PlayerChronicleSeason>()
+                .HasKey(c => new { c.PlayerId, c.Season });
             modelBuilder.Entity<PlayerMissionCounter>(b =>
             {
                 b.HasKey(c => new { c.PlayerId, c.DayKey, c.Action, c.Detail });

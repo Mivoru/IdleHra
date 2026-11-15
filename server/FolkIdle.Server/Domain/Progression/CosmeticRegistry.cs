@@ -32,6 +32,7 @@ namespace FolkIdle.Server.Domain.Progression
         Dev = 9,
         /// <summary>A day of the login week (owner, 2026-11-15).</summary>
         LoginReward = 10,
+        Chronicle = 11,
     }
 
     /// <param name="Art">For an avatar, the monster whose portrait it is (the
@@ -149,6 +150,8 @@ namespace FolkIdle.Server.Domain.Progression
                     milestone.Rebirths >= Engine.RebirthRules.RewardedRebirths ? Legendary : Epic,
                     milestone.Name, milestone.Art, Bound: true));
             }
+            // The Chronicle seasons' avatar and frame (2026-11-15) - bound, Legendary.
+            list.AddRange(ChronicleRegistry.Cosmetics());
             // Chernobog's milestone avatars (owner, 2026-10-13) - bound, Legendary.
             foreach (var avatar in Combat.WorldBossStrike.WorldBossRewards.Avatars)
             {

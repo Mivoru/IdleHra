@@ -2,19 +2,18 @@
   // Modul: THE CHRONICLE BUBBLE (owner, 2026-11-15: "in Clash Royale it sits
   // in a bubble at the side of the screen, with a red number of rewards ready
   // to claim"). It floats bottom-left, opposite the chat dock, on every
-  // screen. Today it opens the daily missions; when the Chronicle pass lands
-  // (step 3) the same bubble opens the pass and the badge counts its rewards
-  // too.
+  // screen, and opens the Chronicle window - on the missions tab when only
+  // missions are waiting, on the pass otherwise.
   //
-  // The badge is the server's Claimable - finished, unclaimed missions plus a
-  // ready bonus - polled once a minute, so the client never decides what is
-  // done.
+  // The badge is the server's two Claimable counts added up - pass levels
+  // reached and unclaimed, and finished missions - polled once a minute, so
+  // the client never decides what is done. The ring shows the season level.
   import { createQuery } from '@tanstack/svelte-query';
-  import { fetchMissions, queryKeys } from '../net/rest';
+  import { fetchChronicle, fetchMissions, queryKeys } from '../net/rest';
   import { playerState } from '../stores/game';
   import { onboardingDismissed } from '../stores/tutorial';
   import { guidedStage } from '../stores/guided';
-  import { missionsOpen } from './missions';
+  import { chronicleView } from './missions';
 
   // Not during the guided first minute: that has one thing to point at.
   const visible = $derived($playerState !== null && guidedStage($playerState, $onboardingDismissed) === null);
@@ -25,20 +24,31 @@
     enabled: visible,
     refetchInterval: 60_000,
   }));
+  const pass = createQuery(() => ({
+    queryKey: queryKeys.chronicle,
+    queryFn: fetchChronicle,
+    enabled: visible,
+    refetchInterval: 60_000,
+  }));
 
-  // A failed poll hides the bubble rather than showing a stale or empty count:
-  // it is a shortcut, and the missions are still in the window next time.
-  const claimable = $derived(day.isError ? 0 : (day.data?.Claimable ?? 0));
-  const done = $derived(day.data ? day.data.Missions.filter((m) => m.Done).length : 0);
-  const total = $derived(day.data?.Missions.length ?? 0);
+  // A failed poll counts as nothing waiting rather than showing a stale count:
+  // the bubble is a shortcut, and the window loads its own data.
+  const missionsReady = $derived(day.isError ? 0 : (day.data?.Claimable ?? 0));
+  const passReady = $derived(pass.isError ? 0 : (pass.data?.Claimable ?? 0));
+  const claimable = $derived(missionsReady + passReady);
+  const level = $derived(pass.data?.Level ?? 0);
+
+  function open() {
+    chronicleView.set(missionsReady > 0 && passReady === 0 ? 'missions' : 'pass');
+  }
 </script>
 
-{#if visible && day.data && !day.isError}
+{#if visible && (day.data || pass.data)}
   <button
     class="bubble"
-    onclick={() => missionsOpen.set(true)}
-    aria-label={claimable > 0 ? `Daily missions, ${claimable} to claim` : `Daily missions, ${done} of ${total} done`}
-    title="Daily missions"
+    onclick={open}
+    aria-label={claimable > 0 ? `Chronicle, ${claimable} to claim` : `Chronicle, level ${level}`}
+    title="Chronicle and daily missions"
     data-testid="chronicle-bubble"
   >
     <span class="glyph" aria-hidden="true">
@@ -47,7 +57,7 @@
         <path d="M8.5 8.5l1.5 1.5 3-3M8.5 14.5l1.5 1.5 3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </span>
-    <span class="progress" aria-hidden="true">{done}/{total}</span>
+    <span class="progress" aria-hidden="true">Lv {level}</span>
     {#if claimable > 0}
       <span class="badge" data-testid="chronicle-badge" aria-hidden="true">{claimable}</span>
     {/if}

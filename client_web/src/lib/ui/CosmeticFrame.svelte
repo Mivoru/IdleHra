@@ -48,6 +48,13 @@
       <circle cx="50" cy="50" r="42" fill="none" stroke={drawing.color} stroke-width="4" />
       <circle cx="50" cy="50" r="47" fill="none" stroke={drawing.accent} stroke-width="3" stroke-dasharray="7 3 2 3" />
       <circle cx="50" cy="50" r="47" fill="none" stroke={drawing.color} stroke-width="1.2" />
+    {:else if drawing.style === 'horns'}
+      <!-- A ring with two curved horns rising off its top, mirrored. -->
+      <circle cx="50" cy="50" r="43" fill="none" stroke={drawing.accent} stroke-width="7" />
+      <circle cx="50" cy="50" r="43" fill="none" stroke={drawing.color} stroke-width="4.5" />
+      <path d="M33,13 C22,9 12,4 7,-9 C9,4 17,13 30,19 Z" fill={drawing.accent} stroke={drawing.color} stroke-width="1.4" stroke-linejoin="round" />
+      <path d="M67,13 C78,9 88,4 93,-9 C91,4 83,13 70,19 Z" fill={drawing.accent} stroke={drawing.color} stroke-width="1.4" stroke-linejoin="round" />
+      <circle cx="50" cy="7" r="3.2" fill={drawing.accent} stroke={drawing.color} stroke-width="1" />
     {:else}
       <circle cx="50" cy="50" r="42" fill="none" stroke={drawing.color} stroke-width="4.5" />
       <circle cx="50" cy="50" r="45.5" fill="none" stroke={drawing.accent} stroke-width="1.2" />

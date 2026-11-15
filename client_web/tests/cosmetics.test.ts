@@ -81,7 +81,10 @@ describe('task 54 cosmetics mirrors', () => {
     expect(greatWorks).toMatch(/FrameId\(int region\) => \$"frame_monument_r\{region\}"/);
     const last = Number(greatWorks.match(/LastRegion = (\d+);/)![1]);
     const monument = Array.from({ length: last }, (_, i) => `frame_monument_r${i + 1}`);
-    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument].sort());
+    // 2026-11-15: plus each Chronicle season's frame (only the seasons with art are defined).
+    const chronicle = [...read('Domain', 'Progression', 'ChronicleRegistry.cs').matchAll(/"(frame_chronicle_[a-z0-9_]+)"/g)].map((m) => m[1]);
+    expect(chronicle.length).toBeGreaterThan(0);
+    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument, ...chronicle].sort());
   });
 
   it('has a portrait for every avatar', () => {

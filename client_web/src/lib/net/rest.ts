@@ -43,6 +43,7 @@ export const queryKeys = {
   villageQuote: ['village', 'quote'] as const,
   loginBonus: ['meta', 'loginBonus'] as const,
   missions: ['meta', 'missions'] as const,
+  chronicle: ['meta', 'chronicle'] as const,
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
   deepestBoard: ['meta', 'leaderboard', 'deepest'] as const,
@@ -1391,6 +1392,69 @@ export async function claimMissions(): Promise<MissionClaim> {
 /** Swaps one unfinished rotating mission for another, with the day's free reroll. */
 export async function rerollMission(slot: number): Promise<MissionReroll> {
   return (await authedPost<MissionReroll>('/api/v1/missions/reroll', { Slot: slot }))!;
+}
+
+// Modul: THE CHRONICLE PASS (owner, 2026-11-15; CHRONICLE_PASS.md step 3).
+// Free only, 50 levels of 100 XP a 30-day season, levelled by the daily
+// missions' XP. Every figure - gold already scaled to the player's income,
+// what is ready - is the server's.
+export interface ChronicleReward {
+  /** "Gold" | "Diamonds" | "Tickets" | "LootChest" | "WardrobeChest" | "Avatar" | "Frame" | "Pet" */
+  Kind: string;
+  Amount: number;
+  /** Gold only: today's figure for this reward. */
+  Gold: number;
+  Label: string;
+  /** Avatar and Pet: a sprite path. Frame: the frame id (drawn, not painted). */
+  Art: string | null;
+  /** LootChest: "Gold" | "Ancient" ...; WardrobeChest: the rarity name. */
+  Chest: string | null;
+}
+
+export interface ChronicleLevel {
+  Level: number;
+  State: 'Claimed' | 'Ready' | 'Locked';
+  Rewards: ChronicleReward[];
+}
+
+export interface ChroniclePass {
+  Season: number;
+  SeasonName: string;
+  Xp: number;
+  Level: number;
+  XpIntoLevel: number;
+  XpPerLevel: number;
+  Levels: number;
+  SecondsLeft: number;
+  Track: ChronicleLevel[];
+  OverflowReady: number;
+  OverflowClaimed: number;
+  OverflowProgress: number;
+  /** Ready levels plus ready bonus chests - the bubble's badge. */
+  Claimable: number;
+  PetName: string;
+  PetBonus: string;
+}
+
+export interface ChronicleClaim {
+  Outcome: 'Ok' | 'NothingToClaim' | 'PlayerNotFound';
+  LevelsClaimed: number[];
+  Gold: number;
+  Diamonds: number;
+  Tickets: number;
+  Chests: string[];
+  Keepsakes: string[];
+  OverflowChests: number;
+  Pass: ChroniclePass;
+}
+
+export function fetchChronicle(): Promise<ChroniclePass> {
+  return authedGet<ChroniclePass>('/api/v1/chronicle');
+}
+
+/** Claims one reached level, or everything ready when `level` is omitted. */
+export async function claimChronicle(level?: number): Promise<ChronicleClaim> {
+  return (await authedPost<ChronicleClaim>('/api/v1/chronicle/claim', level === undefined ? {} : { Level: level }))!;
 }
 
 export interface LeaderboardEntry {

@@ -4166,6 +4166,146 @@
       "credits": 0,
       "seconds": 3,
       "at": "2026-11-14T23:20:34.283Z"
+    },
+    {
+      "id": "chronicle_veles_avatar_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A square character portrait avatar in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted shading, the same head-and-shoulders bust framing, the same moody painted sky behind. The subject is a different character: Veles, the Slavic horned god of the underworld, cattle and wealth. Broad weathered face with a deep knowing smile and amber glowing eyes, long dark beard braided with gold rings, great curved bull horns rising from his brow, a cloak of thick brown bear fur over dark leather, a black serpent coiling over one shoulder, gnarled roots and willow branches behind him, a faint glint of gold coins. Earthy browns, deep greens and warm gold against a misty marsh dusk. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/chronicle_veles_avatar_v1.jpg",
+      "bytes": 868996,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1325,
+        "totalTokenCount": 1970,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 202,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 20,
+      "at": "2026-11-15T13:51:00.323Z"
+    },
+    {
+      "id": "chronicle_veles_avatar_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A square character portrait avatar in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted shading, the same head-and-shoulders bust framing, the same moody painted sky behind. The subject is a different character: Veles, the Slavic horned god of the underworld, cattle and wealth. Broad weathered face with a deep knowing smile and amber glowing eyes, long dark beard braided with gold rings, great curved bull horns rising from his brow, a cloak of thick brown bear fur over dark leather, a black serpent coiling over one shoulder, gnarled roots and willow branches behind him, a faint glint of gold coins. Earthy browns, deep greens and warm gold against a misty marsh dusk. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/chronicle_veles_avatar_v2.jpg",
+      "bytes": 855404,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1340,
+        "totalTokenCount": 2028,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 245,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 17,
+      "at": "2026-11-15T13:51:17.316Z"
+    },
+    {
+      "id": "chronicle_veles_pet_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A game pet creature in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted texture detail, the same three-quarter view, a single whole creature on a small patch of ground, nothing else. The creature is a different one: the Golden Aurochs of Veles, a young spectral aurochs calf, sturdy and proud, shaggy dark brown coat, great curved golden horns, gold rings in its ears, glowing amber eyes, faint golden mist curling from its hooves, standing on a small mound of dark marsh earth with a few gold coins. Whole creature fully inside the frame with margin on every side. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/chronicle_veles_pet_v1.jpg",
+      "bytes": 568613,
+      "usage": {
+        "promptTokenCount": 462,
+        "candidatesTokenCount": 1327,
+        "totalTokenCount": 2006,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 204
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 217,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T13:51:31.818Z"
+    },
+    {
+      "id": "chronicle_veles_pet_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A game pet creature in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted texture detail, the same three-quarter view, a single whole creature on a small patch of ground, nothing else. The creature is a different one: the Golden Aurochs of Veles, a young spectral aurochs calf, sturdy and proud, shaggy dark brown coat, great curved golden horns, gold rings in its ears, glowing amber eyes, faint golden mist curling from its hooves, standing on a small mound of dark marsh earth with a few gold coins. Whole creature fully inside the frame with margin on every side. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/chronicle_veles_pet_v2.jpg",
+      "bytes": 675613,
+      "usage": {
+        "promptTokenCount": 462,
+        "candidatesTokenCount": 1307,
+        "totalTokenCount": 1973,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 204
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 204,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T13:51:46.949Z"
     }
   ]
 }
