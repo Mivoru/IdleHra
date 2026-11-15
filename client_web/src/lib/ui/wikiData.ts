@@ -630,9 +630,9 @@ export const WORLD_BOSS_WEAK_MULTIPLIER = 3;
  */
 export const WORLD_BOSS_MILESTONES: readonly { damage: number; goldMinutes: number; diamonds: number; reward: string }[] = [
   { damage: 10_000, goldMinutes: 15, diamonds: 5, reward: '' },
-  { damage: 25_000, goldMinutes: 30, diamonds: 10, reward: '' },
-  { damage: 60_000, goldMinutes: 60, diamonds: 15, reward: 'Svarog avatar' },
-  { damage: 150_000, goldMinutes: 120, diamonds: 15, reward: 'Black Serpent avatar, title "Serpent Bane"' },
+  { damage: 25_000, goldMinutes: 30, diamonds: 5, reward: '' },
+  { damage: 60_000, goldMinutes: 60, diamonds: 10, reward: 'Svarog avatar' },
+  { damage: 150_000, goldMinutes: 120, diamonds: 10, reward: 'Black Serpent avatar, title "Serpent Bane"' },
   { damage: 400_000, goldMinutes: 180, diamonds: 15, reward: 'Chernobog avatar, title "Chainer of the Dark"' },
   { damage: 1_000_000, goldMinutes: 0, diamonds: 0, reward: 'the Black Serpent pet (+12% damage, +12% critical damage)' },
 ];

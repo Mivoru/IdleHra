@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.92.0',
+    date: '2026-11-15',
+    headline: 'World boss rewards rebalanced.',
+    sections: [
+      {
+        title: 'World boss',
+        items: [
+          "The weekly damage milestones pay 45 diamonds instead of 60 - Svarog's forge pays the rest, so a week of duels still adds up to about the same.",
+          'Gold, avatars, titles and the Black Serpent pet are unchanged.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.91.0',
     date: '2026-11-15',
     headline: "Svarog's forge.",
