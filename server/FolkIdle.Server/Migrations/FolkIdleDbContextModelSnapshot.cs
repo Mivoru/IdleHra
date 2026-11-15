@@ -2699,6 +2699,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("AttemptDateKey")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("ForgeFillFed")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsRegistered")
                         .HasColumnType("boolean");
 
@@ -3055,6 +3058,15 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<byte>("EventState")
                         .HasColumnType("smallint");
+
+                    b.Property<int>("ForgeCharge")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ForgeFills")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("ForgeLastFillEpoch")
+                        .HasColumnType("bigint");
 
                     b.Property<double>("HpFactor")
                         .HasColumnType("double precision");

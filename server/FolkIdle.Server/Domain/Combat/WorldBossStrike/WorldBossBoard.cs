@@ -74,6 +74,15 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         public long EventEndEpoch { get; set; }
         public int RegisteredCount { get; set; }
         public bool Defeated { get; set; }
+
+        // Svarog's forge (WorldBossForge): the shared meter the duel's right calls fill.
+        public int ForgeCharge { get; set; }
+        public int ForgeEmbersToFill { get; set; } = WorldBossForge.EmbersToFill;
+        public int ForgeFills { get; set; }
+        public long ForgeLastFillEpoch { get; set; }
+        public int ForgeDiamonds { get; set; } = WorldBossForge.DiamondsPerFill;
+        /// <summary>The asking player's last ember is in the fill now being built.</summary>
+        public bool ForgeFedByMe { get; set; }
         public long DefeatedAtEpoch { get; set; }
         /// <summary>The level a player must have to register.</summary>
         public int RegistrationLevel { get; set; } = LeaderboardTierRegistry.MinimumRankedLevel;
@@ -211,6 +220,10 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             }).ToList();
 
             int myIndex = ranked.FindIndex(r => r.PlayerId == playerId);
+            int? myForgeFill = await db.PlayerWorldBossAttempts.AsNoTracking()
+                .Where(a => a.PlayerId == playerId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId)
+                .Select(a => (int?)a.ForgeFillFed)
+                .FirstOrDefaultAsync();
             return new WorldBossBoardView
             {
                 TotalDamage = ranked.Sum(r => r.Damage),
@@ -227,6 +240,10 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 RegisteredCount = registered.Count,
                 Defeated = (snapshot?.DefeatedAtEpoch ?? 0) > 0,
                 DefeatedAtEpoch = snapshot?.DefeatedAtEpoch ?? 0,
+                ForgeCharge = snapshot?.ForgeCharge ?? 0,
+                ForgeFills = snapshot?.ForgeFills ?? 0,
+                ForgeLastFillEpoch = snapshot?.ForgeLastFillEpoch ?? 0,
+                ForgeFedByMe = snapshot != null && myForgeFill == snapshot.ForgeFills,
                 Milestones = milestones,
                 Places = places,
                 KillGold = GoldRewardScale.ForMinutes(hourly, WorldBossRewards.KillGoldHours * 60),

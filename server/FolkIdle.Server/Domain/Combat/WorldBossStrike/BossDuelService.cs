@@ -237,6 +237,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 IsPlayed = true,
                 QuotedAttack = c.Attack,
                 Skill = BossDuelRules.Skill(verdicts),
+                RightCalls = verdicts.Count(v => v == DuelVerdict.Right),
             };
         }
 

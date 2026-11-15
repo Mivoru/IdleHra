@@ -417,6 +417,34 @@
       play('worldBossHiss');
     }
   });
+  // Modul: SVAROG'S HAMMER FALLS - ONCE PER FILL, ON THIS DEVICE (owner
+  // 2026-11-15, the forge's option (a)). The board says how many times the
+  // forge has filled this encounter; a count above the one this device last
+  // showed plays the hammer once. Cosmetic: the hammer moves no health.
+  const forgeKey = $derived(endEpoch > 0 ? `folkidle.forgeSeen.${endEpoch}` : '');
+  let hammerFalling = $state(false);
+  $effect(() => {
+    const fills = board?.ForgeFills ?? 0;
+    if (!forgeKey || fills <= 0) return;
+    let seen = 0;
+    try {
+      seen = Number(localStorage.getItem(forgeKey) ?? 0);
+    } catch {
+      seen = fills; // no store: never replay on every visit
+    }
+    if (fills > seen) {
+      try {
+        localStorage.setItem(forgeKey, String(fills));
+      } catch {
+        // harmless
+      }
+      hammerFalling = true;
+      play('worldBossHammer');
+      setTimeout(() => (hammerFalling = false), 2600);
+    }
+  });
+  const forgePct = $derived(board && board.ForgeEmbersToFill > 0 ? Math.min(1, board.ForgeCharge / board.ForgeEmbersToFill) : 0);
+
   function closeSerpentIntro() {
     serpentIntro = false;
     try {
@@ -728,6 +756,24 @@
     <SeasonalBossPanel compact />
 
     {#if board}
+      {#if duelStrikes}
+        <section class="panel forge" data-testid="boss-forge" data-charge={board.ForgeCharge} data-fills={board.ForgeFills}>
+          <h3 class="first">Svarog's forge</h3>
+          <p class="small together">
+            <strong>{board.ForgeCharge} / {board.ForgeEmbersToFill}</strong> embers{#if board.ForgeFills > 0} - the hammer has fallen
+              {board.ForgeFills === 1 ? 'once' : `${board.ForgeFills} times`} this week{/if}.
+          </p>
+          <div class="bar forge-bar" role="progressbar" aria-label="Svarog's forge" aria-valuenow={board.ForgeCharge} aria-valuemin="0" aria-valuemax={board.ForgeEmbersToFill}>
+            <div class="bar-fill forge-fill" style="width: {forgePct * 100}%"></div>
+          </div>
+          <p class="dim tiny">
+            Every right call in a duel - yours or anyone's - adds an ember. When the forge is full, Svarog's hammer falls on
+            {bossName} and everyone who fed it gets {board.ForgeDiamonds} diamonds.
+            {#if board.ForgeFedByMe}Your embers are in this one.{/if}
+          </p>
+        </section>
+      {/if}
+
       <section class="panel" data-testid="boss-milestones">
         <h3 class="first">Your milestones this week</h3>
         <p class="small together">
@@ -886,6 +932,13 @@
   {/key}
 {/if}
 
+{#if hammerFalling}
+  <div class="hammer-fall" aria-hidden="true" data-testid="forge-hammer">
+    <span class="hammer-glyph">⚒</span>
+    <span class="hammer-text">Svarog's hammer falls!</span>
+  </div>
+{/if}
+
 {#if serpentIntro && board}
   <Modal label="The Black Serpent rises" width="24rem" layout="block" onClose={closeSerpentIntro} testid="serpent-intro">
     <div class="serpent-intro">
@@ -922,6 +975,48 @@
 {/if}
 
 <style>
+  .forge-bar {
+    height: 10px;
+  }
+  .forge-fill {
+    background: linear-gradient(90deg, #a83b16, #ff8a3d, #ffd27a);
+  }
+  .hammer-fall {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 45%, rgba(255, 170, 60, 0.35), transparent 60%);
+    animation: hammer-fade 2600ms ease-out 1 both;
+  }
+  .hammer-glyph {
+    font-size: 6rem;
+    line-height: 1;
+    color: #ffd27a;
+    text-shadow: 0 0 24px rgba(255, 140, 40, 0.9);
+    animation: hammer-drop 700ms cubic-bezier(0.5, 0, 0.75, 0) 1 both;
+  }
+  .hammer-text {
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: #fff3dc;
+    text-shadow: 0 2px 6px #000;
+  }
+  @keyframes hammer-drop {
+    0% { transform: translateY(-60vh) rotate(-30deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+  }
+  @keyframes hammer-fade {
+    0%, 75% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hammer-fall, .hammer-glyph { animation: none; }
+  }
   .serpent-intro {
     text-align: center;
     display: grid;

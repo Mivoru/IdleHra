@@ -319,7 +319,10 @@
             {:else}
               <p class="small">{worldBossResultSentence(strike.Result, strike.Damage)}</p>
             {/if}
-            <p class="tiny dim">{rightCount} of {calls.length} calls right.</p>
+            <p class="tiny dim">
+              {rightCount} of {calls.length} calls right.{#if !strike.NoDamageDealt && rightCount > 0}
+                {rightCount === 1 ? 'One ember' : `${rightCount} embers`} for Svarog's forge.{/if}
+            </p>
             <ul class="recap">
               {#each calls as c (c.Index)}
                 <li class={c.Verdict?.toLowerCase()}>

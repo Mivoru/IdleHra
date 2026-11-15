@@ -50,5 +50,12 @@ namespace FolkIdle.Server.Models
 
         /// <summary>Bit i set: weekly milestone i has been paid this encounter.</summary>
         public int MilestonesPaid { get; set; }
+
+        /// <summary>
+        /// The forge fill (WorldBossSnapshot.ForgeFills at the time) this
+        /// player last fed with a right duel call; -1 = never this encounter.
+        /// The fill that completes pays everyone whose value is its index.
+        /// </summary>
+        public int ForgeFillFed { get; set; } = -1;
     }
 }
