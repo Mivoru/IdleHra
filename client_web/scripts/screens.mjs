@@ -492,9 +492,9 @@ export async function navButton(page, name) {
  * is what stopped the first narrow-width sweep dead.
  */
 export async function go(page, label) {
-  // An open shield wheel covers the header. The challenge lives on the server,
-  // so a reload drops the overlay and loses nothing.
-  if ((await page.locator('[data-schedule]').count()) > 0) {
+  // An open shield wheel or duel covers the header. The challenge lives on the
+  // server, so a reload drops the overlay and loses nothing.
+  if ((await page.locator('[data-schedule], [data-testid="boss-duel"]').count()) > 0) {
     await page.reload({ waitUntil: 'networkidle' });
     await page
       .waitForFunction(() => !document.body.innerText.includes('Waiting for the first state snapshot'), { timeout: 30000 })
