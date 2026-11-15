@@ -30,6 +30,8 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>A world boss damage milestone's avatar, or the kill's chest (owner, 2026-10-13).</summary>
         WorldBoss = 8,
         Dev = 9,
+        /// <summary>A day of the login week (owner, 2026-11-15).</summary>
+        LoginReward = 10,
     }
 
     /// <param name="Art">For an avatar, the monster whose portrait it is (the

@@ -294,14 +294,20 @@ namespace FolkIdle.Server.Tests
         public async Task TheLoginReward_IsIncome_OncePerDay()
         {
             var player = await CreatePlayerAsync();
-            var options = _fixture.ServiceProvider.GetRequiredService<RetryingDbContextOptions>();
 
-            var first = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(options, player.PlayerGuid);
-            var again = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(options, player.PlayerGuid);
+            DailyLoginRewardEngine.ClaimResult first, again;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                first = await DailyLoginRewardEngine.ClaimAsync(db, player.Id, DateTime.UtcNow);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                again = await DailyLoginRewardEngine.ClaimAsync(db, player.Id, DateTime.UtcNow);
+            }
 
-            Assert.True(first.Granted);
-            Assert.False(again.Granted);
-            Assert.Equal(first.GoldGranted, (await IncomeAsync(player.Id))[GoldIncomeSource.LoginReward]);
+            Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.Ok, first.Outcome);
+            Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.AlreadyClaimed, again.Outcome);
+            Assert.Equal(first.Gold, (await IncomeAsync(player.Id))[GoldIncomeSource.LoginReward]);
         }
 
         [Fact]

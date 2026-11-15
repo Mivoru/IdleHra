@@ -738,8 +738,10 @@ Branch `claude/chernobog-world-boss`. Spec (owner decisions, all of them):
   25% of the kill gold, no chest, an `account_penalties` row (source 2) and a
   random taunt from Chernobog in World chat (`ChatEngine.EnqueueWorldSpeech`,
   sender id -2, which the client draws as Chernobog).
-- **Daily login** gold is x1 / x2 / x3 by completed seven-day cycle over the
-  account's life (`PlayerRecord.LoginCyclesCompleted`).
+- **Daily login** (rebuilt 2026-11-15, see `docs/design/CHRONICLE_PASS.md`):
+  claimed by hand from a window, keyed on `PlayerRecord.LoginRewardClaimDay`;
+  a missed day pauses the week; gold is minutes of earned income
+  (`GoldRewardScale`). The old x1/x2/x3 cycle multiplier is gone.
 - The dead `perun_avatar_reward_token` mail and the percentile brackets are gone.
   World boss mail no longer skips a full mailbox.
 - Migration `AddChernobogWorldBoss` is additive. The deploy week is upgraded in

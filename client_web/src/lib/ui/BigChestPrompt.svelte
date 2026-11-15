@@ -30,6 +30,7 @@
   import Modal from './Modal.svelte';
   import { EVENT_PHASE, eventThemeKey } from '../net/seasonalEvent';
   import { eventIntroClosed, eventIntroSeen } from './eventIntroSeen';
+  import { bigChestPending } from './bigChestPending';
 
   /** Past this many pieces the download is ~0.5 MB and the screens feel it. */
   const BIG_CHEST_PIECES = 3000;
@@ -79,6 +80,10 @@
   // A failed summary shows nothing: this is an offer, not a screen, and an
   // error box about a prompt nobody asked for would be noise.
   const wanted = $derived(eligible && !summary.isError && data !== null && data.Total >= BIG_CHEST_PIECES);
+  // Pending while it may still open: eligible and the summary not yet answered, or open now.
+  $effect(() => {
+    bigChestPending.set(!closed && !dismissedRecently() && (wanted || (eligible && summary.isPending)));
+  });
   const maxTier = $derived(data?.MaxSweepableQualityTier ?? 1);
 
   // Default: every region but the highest one the pile holds, Normal..Rare-ish

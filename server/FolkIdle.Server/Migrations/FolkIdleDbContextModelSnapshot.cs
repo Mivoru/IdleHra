@@ -2365,6 +2365,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("LoginCyclesCompleted")
                         .HasColumnType("integer");
 
+                    b.Property<long>("LoginRewardClaimDay")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("LoginStreakDays")
                         .HasColumnType("integer");
 

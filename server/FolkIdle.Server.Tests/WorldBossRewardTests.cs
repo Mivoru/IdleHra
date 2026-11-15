@@ -109,15 +109,5 @@ namespace FolkIdle.Server.Tests
         {
             Assert.Equal(gold, GoldRewardScale.ForMinutes(hourly, minutes));
         }
-
-        [Theory]
-        [InlineData(0, 1)]
-        [InlineData(1, 2)]
-        [InlineData(2, 3)]
-        [InlineData(9, 3)]
-        public void TheLoginRewardGrowsForThreeWeeksThenHolds(int cycles, int multiplier)
-        {
-            Assert.Equal(multiplier, DailyLoginRewardEngine.WeekMultiplier(cycles));
-        }
     }
 }

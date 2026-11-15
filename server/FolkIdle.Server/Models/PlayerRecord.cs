@@ -168,20 +168,23 @@ namespace FolkIdle.Server.Models
         // rule, which is the default, the same opt-in as the field above.
         public int AutoSalvageRegionTiers { get; set; }
 
-        // Modul: daily login reward tracking (DailyLoginRewardEngine).
-        // LastLoginTimestamp is the epoch second of the last login that was
-        // actually credited a reward - compared against the current UTC day
-        // boundary, not the exact previous login attempt, so multiple
-        // logins on the same UTC day never grant twice. LoginStreakDays
-        // counts consecutive credited days and resets to 1 (not 0) the
-        // moment a day is skipped, since a fresh streak still counts today.
+        // Modul: LastLoginTimestamp is the epoch second of the last password
+        // sign-in - guild succession reads it as "still around". It used to be
+        // the login reward's clock too; since 2026-11-15 the reward is claimed
+        // by hand and keyed on LoginRewardClaimDay instead (see
+        // DailyLoginRewardEngine). LoginStreakDays is the week day last
+        // claimed, 0-7; a missed day pauses it rather than resetting it.
         public long LastLoginTimestamp { get; set; }
         public int LoginStreakDays { get; set; }
+
+        /// <summary>UTC day number (epoch seconds / 86400) of the last login-week claim; 0 = never.</summary>
+        public long LoginRewardClaimDay { get; set; }
 
         // Modul: THE LOGIN REWARD GROWS FOR THREE WEEKS (owner, 2026-10-13).
         // Every completed seven-day cycle, over the account's whole life - a
         // broken streak does not send it back to week one. See
-        // DailyLoginRewardEngine.WeekMultiplier.
+        // DailyLoginRewardEngine. No longer scales the gold (that is minutes of
+        // income now); kept as the count of finished weeks.
         public int LoginCyclesCompleted { get; set; }
         public long GuildId { get; set; }
         public int ActiveOffensivePotionId { get; set; }

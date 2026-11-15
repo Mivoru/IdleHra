@@ -327,6 +327,23 @@ export async function dismissEventIntro(page, waitMs = 2500) {
     await page.waitForTimeout(300);
   }
   await dismissBigChestPrompt(page);
+  await dismissDailyLogin(page);
+  return shown;
+}
+
+/**
+ * The login week's window (DailyLoginWindow.svelte) opens at the first session
+ * of a UTC day with a claim open - every checker's first session, most days -
+ * and its scrim swallows the next click. "Later" closes it WITHOUT claiming, so
+ * a geometry or smoke run spends nothing. Returns whether it was shown.
+ */
+export async function dismissDailyLogin(page, waitMs = 2500) {
+  const later = page.getByTestId('daily-login-close');
+  const shown = await later.waitFor({ timeout: waitMs }).then(() => true).catch(() => false);
+  if (shown) {
+    await later.click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
   return shown;
 }
 

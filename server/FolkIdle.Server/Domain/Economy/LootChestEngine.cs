@@ -22,6 +22,8 @@ namespace FolkIdle.Server.Domain.Economy
         Dungeon = 4,
         // Expeditions (2026-11-13): an ancestor's haul (ExpeditionEngine).
         Expedition = 5,
+        // The login week (2026-11-15): day four and day seven.
+        LoginReward = 6,
     }
 
     /// <summary>

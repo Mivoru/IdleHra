@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.94.0',
+    date: '2026-11-15',
+    headline: 'A daily reward worth coming back for.',
+    sections: [
+      {
+        title: 'Daily reward',
+        items: [
+          'The daily reward now opens in its own window the first time you play each day, and you claim it with a button.',
+          "Gold is paid in hours of your own income, so it is worth the same whether you are level 10 or level 100.",
+          'The week has much more in it: dungeon tickets, a Gold loot chest, an Epic wardrobe chest, and on day 7 an Ancient chest with 100 diamonds.',
+          'Missing a day no longer resets the week. You carry on from where you were.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.93.0',
     date: '2026-11-15',
     headline: 'Bleed, burn and thorns show up in the fight.',
