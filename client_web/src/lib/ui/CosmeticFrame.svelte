@@ -1,5 +1,6 @@
 <script lang="ts">
   import { FRAME_DRAWINGS } from './frames';
+  import { spriteUrl } from './spriteUrl';
 
   interface Props {
     frameId: string | null;
@@ -32,6 +33,9 @@
   {#if drawing.glow && animate}
     <span class="halo" aria-hidden="true" style="--frame-color: {drawing.color}"></span>
   {/if}
+  {#if drawing.art}
+    <img class="painted" src={spriteUrl(drawing.art)} alt="" aria-hidden="true" decoding="async" loading="lazy" />
+  {:else}
   <svg class="frame" class:glow={drawing.glow} viewBox="0 0 100 100" aria-hidden="true" style="--frame-color: {drawing.color}">
     {#if drawing.style === 'band'}
       <circle cx="50" cy="50" r="43" fill="none" stroke={drawing.accent} stroke-width="8" />
@@ -63,9 +67,29 @@
       {/each}
     {/if}
   </svg>
+  {/if}
 {/if}
 
 <style>
+  /* The painting's canvas is 1.6x the box it was normalised on; drawn at
+     1.5x, its ring overlaps the portrait's rim by a hair (the way a real
+     frame does) and its ornaments stand less far into the name below. */
+  .painted {
+    position: absolute;
+    left: -25%;
+    top: -25%;
+    width: 150%;
+    height: 150%;
+    max-width: none;
+    pointer-events: none;
+    object-fit: contain;
+    /* Owner, 2026-11-15: ornaments hanging below the ring ran into the name
+       under the tile. Measured, the rings end at 81-91% of the painting, so the
+       fade starts below it and only the dangling ornaments melt away. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 98%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 98%);
+  }
+
   .frame {
     position: absolute;
     inset: 0;

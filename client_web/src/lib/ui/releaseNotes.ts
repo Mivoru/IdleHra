@@ -35,6 +35,23 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.97.0',
+    date: '2026-11-15',
+    headline: 'A new Wardrobe: painted frames and threads.',
+    sections: [
+      {
+        title: 'Wardrobe',
+        items: [
+          'All sixteen chest frames are now painted, each one different: oak, iron, rope, birch, bronze, silver, amber, river stone, knotwork, wyrm, frost, ember, sun, moon, storm and the world tree.',
+          'A piece you already own no longer gives a copy. It unravels into threads instead (Common 1, Rare 3, Epic 10, Legendary 30).',
+          'Unravel the spare copies you already have with one button.',
+          "Threads buy any piece you are missing, or one of four frames sold only for threads: Mokosh's frames.",
+          'Wardrobe chests drop from monsters a quarter as often, so a chest is worth opening again.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.96.1',
     date: '2026-11-15',
     sections: [

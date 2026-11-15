@@ -4306,6 +4306,688 @@
       "estimatedUsd": 0.134,
       "seconds": 15,
       "at": "2026-11-15T13:51:46.949Z"
+    },
+    {
+      "id": "pframe_oak_band",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a plain band of carved dark oak wood with visible grain and two small iron nails. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_oak_band.jpg",
+      "bytes": 566877,
+      "usage": {
+        "promptTokenCount": 175,
+        "candidatesTokenCount": 1276,
+        "totalTokenCount": 1724,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 175
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 273,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:15:39.749Z"
+    },
+    {
+      "id": "pframe_iron_band",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a band of hammered dark iron with rivets, slightly battle-worn. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_iron_band.jpg",
+      "bytes": 586590,
+      "usage": {
+        "promptTokenCount": 172,
+        "candidatesTokenCount": 1282,
+        "totalTokenCount": 1639,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 172
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 185,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:15:54.855Z"
+    },
+    {
+      "id": "pframe_rope_knot",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of thick braided hemp rope tied with a sailor knot at the bottom. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_rope_knot.jpg",
+      "bytes": 667125,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1295,
+        "totalTokenCount": 1708,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 239,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:16:09.043Z"
+    },
+    {
+      "id": "pframe_birch_ring",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of white birch bark with black bark marks and a small sprig of birch leaves. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_birch_ring.jpg",
+      "bytes": 626001,
+      "usage": {
+        "promptTokenCount": 176,
+        "candidatesTokenCount": 1296,
+        "totalTokenCount": 1681,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 176
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 209,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:16:23.076Z"
+    },
+    {
+      "id": "pframe_studded_bronze",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of polished bronze with eight round bronze studs. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_studded_bronze.jpg",
+      "bytes": 569135,
+      "usage": {
+        "promptTokenCount": 169,
+        "candidatesTokenCount": 1366,
+        "totalTokenCount": 1732,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 169
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 197,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:16:37.128Z"
+    },
+    {
+      "id": "pframe_silver_rivets",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of bright silver with engraved lines and small silver rivets. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_silver_rivets.jpg",
+      "bytes": 649764,
+      "usage": {
+        "promptTokenCount": 171,
+        "candidatesTokenCount": 1291,
+        "totalTokenCount": 1763,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 171
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 301,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:16:52.500Z"
+    },
+    {
+      "id": "pframe_amber_ring",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of warm gold set with glowing amber stones, a trapped insect in the biggest one. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_amber_ring.jpg",
+      "bytes": 633118,
+      "usage": {
+        "promptTokenCount": 177,
+        "candidatesTokenCount": 1305,
+        "totalTokenCount": 1820,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 177
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 338,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:17:07.647Z"
+    },
+    {
+      "id": "pframe_river_stone",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of smooth river stones in grey and teal, with tiny water droplets. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_river_stone.jpg",
+      "bytes": 558012,
+      "usage": {
+        "promptTokenCount": 173,
+        "candidatesTokenCount": 1359,
+        "totalTokenCount": 1744,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 173
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 212,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:17:22.330Z"
+    },
+    {
+      "id": "pframe_knotwork",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of interlaced purple and silver Celtic knotwork. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_knotwork.jpg",
+      "bytes": 663723,
+      "usage": {
+        "promptTokenCount": 170,
+        "candidatesTokenCount": 1285,
+        "totalTokenCount": 1664,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 170
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 209,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:17:36.158Z"
+    },
+    {
+      "id": "pframe_wyrm_coil",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a green-scaled wyrm coiled into a ring, biting its own tail. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_wyrm_coil.jpg",
+      "bytes": 605502,
+      "usage": {
+        "promptTokenCount": 173,
+        "candidatesTokenCount": 1286,
+        "totalTokenCount": 1676,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 173
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 217,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 16,
+      "at": "2026-11-15T16:17:51.888Z"
+    },
+    {
+      "id": "pframe_frost_rune",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of pale blue ice carved with glowing frost runes, icicles hanging from the bottom. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_frost_rune.jpg",
+      "bytes": 652236,
+      "usage": {
+        "promptTokenCount": 177,
+        "candidatesTokenCount": 1313,
+        "totalTokenCount": 1722,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 177
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 232,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:18:06.996Z"
+    },
+    {
+      "id": "pframe_ember_rune",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of black iron with glowing orange runes and small embers rising from it. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_ember_rune.jpg",
+      "bytes": 604776,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1308,
+        "totalTokenCount": 1670,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 188,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:18:21.737Z"
+    },
+    {
+      "id": "pframe_sun_crown",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a radiant golden sun ring with sharp sun rays forming a crown around it, warm glow. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_sun_crown.jpg",
+      "bytes": 716030,
+      "usage": {
+        "promptTokenCount": 176,
+        "candidatesTokenCount": 1325,
+        "totalTokenCount": 1661,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 176
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 160,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:18:36.741Z"
+    },
+    {
+      "id": "pframe_moon_crown",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a pale silver crescent-moon ring with small stars and a soft moonlight glow. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_moon_crown.jpg",
+      "bytes": 654168,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1263,
+        "totalTokenCount": 1630,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 193,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 13,
+      "at": "2026-11-15T16:18:49.870Z"
+    },
+    {
+      "id": "pframe_storm_crown",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a dark blue storm-cloud ring crackling with lightning bolts forming a crown. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_storm_crown.jpg",
+      "bytes": 568963,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1295,
+        "totalTokenCount": 1677,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 208,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:19:04.865Z"
+    },
+    {
+      "id": "pframe_worldtree",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of living golden-green world-tree branches and leaves, roots at the bottom, faint glow. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_worldtree.jpg",
+      "bytes": 653636,
+      "usage": {
+        "promptTokenCount": 179,
+        "candidatesTokenCount": 1279,
+        "totalTokenCount": 1690,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 179
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 232,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:19:19.867Z"
+    },
+    {
+      "id": "pframe_thread_spindle",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring wound from coloured wool thread around a wooden spindle at the bottom. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_thread_spindle.jpg",
+      "bytes": 634257,
+      "usage": {
+        "promptTokenCount": 173,
+        "candidatesTokenCount": 1292,
+        "totalTokenCount": 1646,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 173
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 181,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:19:33.654Z"
+    },
+    {
+      "id": "pframe_thread_loom",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring woven like a loom tapestry in red and white Slavic embroidery patterns. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_thread_loom.jpg",
+      "bytes": 781142,
+      "usage": {
+        "promptTokenCount": 173,
+        "candidatesTokenCount": 1297,
+        "totalTokenCount": 1686,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 173
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 216,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:19:48.573Z"
+    },
+    {
+      "id": "pframe_thread_golden",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of shining golden thread with a few loose glowing golden strands floating around it. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_thread_golden.jpg",
+      "bytes": 713549,
+      "usage": {
+        "promptTokenCount": 175,
+        "candidatesTokenCount": 1323,
+        "totalTokenCount": 1708,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 175
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 210,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:20:03.886Z"
+    },
+    {
+      "id": "pframe_thread_mokosh",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: Mokosh's crown: a ring of silver thread and spindles with a small horned moon on top, mystical glow. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_thread_mokosh.jpg",
+      "bytes": 569570,
+      "usage": {
+        "promptTokenCount": 182,
+        "candidatesTokenCount": 1317,
+        "totalTokenCount": 1768,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 182
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 269,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-15T16:20:18.396Z"
+    },
+    {
+      "id": "pframe_storm_crown_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a dark blue storm-cloud ring crackling with lightning bolts forming a crown. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_storm_crown_v1.jpg",
+      "bytes": 707581,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1269,
+        "totalTokenCount": 1658,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 215,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:21:28.086Z"
+    },
+    {
+      "id": "pframe_storm_crown_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a dark blue storm-cloud ring crackling with lightning bolts forming a crown. Painted fantasy game art with inked outlines. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/pframe_storm_crown_v2.jpg",
+      "bytes": 690102,
+      "usage": {
+        "promptTokenCount": 174,
+        "candidatesTokenCount": 1328,
+        "totalTokenCount": 1718,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 174
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 216,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 14,
+      "at": "2026-11-15T16:21:42.288Z"
     }
   ]
 }

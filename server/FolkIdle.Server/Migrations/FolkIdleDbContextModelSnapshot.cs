@@ -2764,6 +2764,22 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("player_titles");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.PlayerWardrobe", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PlayerId"));
+
+                    b.Property<long>("Threads")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlayerId");
+
+                    b.ToTable("PlayerWardrobes");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerWorldBossAttempt", b =>
                 {
                     b.Property<long>("PlayerId")

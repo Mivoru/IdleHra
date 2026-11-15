@@ -84,7 +84,10 @@ describe('task 54 cosmetics mirrors', () => {
     // 2026-11-15: plus each Chronicle season's frame (only the seasons with art are defined).
     const chronicle = [...read('Domain', 'Progression', 'ChronicleRegistry.cs').matchAll(/"(frame_chronicle_[a-z0-9_]+)"/g)].map((m) => m[1]);
     expect(chronicle.length).toBeGreaterThan(0);
-    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument, ...chronicle].sort());
+    // Plus the thread-only frames of the Wardrobe shop (2026-11-15).
+    const threadFrames = [...read('Domain', 'Progression', 'WardrobeThreads.cs').matchAll(/"(frame_thread_[a-z0-9_]+)"/g)].map((m) => m[1]);
+    expect(threadFrames).toHaveLength(4);
+    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument, ...chronicle, ...threadFrames].sort());
   });
 
   it('has a portrait for every avatar', () => {

@@ -28,9 +28,14 @@ namespace FolkIdle.Server.Domain.Progression
         IReadOnlyList<OwnedCosmetic> Owned,
         string? EquippedAvatarId,
         string? EquippedFrameId,
-        OpenedCosmetic? Opened);
+        OpenedCosmetic? Opened,
+        long Threads = 0,
+        int[]? ThreadPrice = null,
+        int[]? ThreadsPerDuplicate = null,
+        IReadOnlyList<ThreadExclusive>? ThreadExclusives = null);
 
-    public sealed record OpenedCosmetic(long Id, string DefinitionId, byte Kind, byte Rarity, string Name);
+    /// <param name="Duplicate">The piece was already owned, so it unravelled into <paramref name="Threads"/> instead of a copy.</param>
+    public sealed record OpenedCosmetic(long Id, string DefinitionId, byte Kind, byte Rarity, string Name, bool Duplicate = false, int Threads = 0);
 
     /// <summary>What another player wears, for chat and lists. Race and sex
     /// pick the default portrait when no avatar is worn. The worn title rides
@@ -75,7 +80,9 @@ namespace FolkIdle.Server.Domain.Progression
                 owned.Add(new OwnedCosmetic(row.Id, row.DefinitionId, row.Kind, row.Rarity, row.IsListed));
             }
 
-            return new CosmeticsView(result, chests, owned, player?.EquippedAvatarId, player?.EquippedFrameId, opened);
+            long threads = await WardrobeThreads.BalanceAsync(db, playerId);
+            return new CosmeticsView(result, chests, owned, player?.EquippedAvatarId, player?.EquippedFrameId, opened,
+                threads, WardrobeThreads.ShopPrice, WardrobeThreads.PerDuplicate, WardrobeThreads.Exclusives);
         }
 
         /// <summary>
@@ -110,6 +117,21 @@ namespace FolkIdle.Server.Domain.Progression
             int resultRarity = CosmeticRegistry.RollChestContent(rarity, random.NextDouble());
             var def = CosmeticRegistry.PickFromChest(resultRarity, random);
             db.CosmeticItems.Remove(chest);
+
+            // Modul: A DUPLICATE UNRAVELS INTO THREADS (owner, 2026-11-15)
+            // instead of a second copy - with the collection complete, copies
+            // were nearly all a chest ever gave. Copies already owned stay
+            // until the player unravels them (WardrobeThreads.UnravelAsync).
+            bool duplicate = await db.CosmeticItems.AnyAsync(c => c.PlayerId == playerId && c.DefinitionId == def.Id);
+            if (duplicate)
+            {
+                int gained = WardrobeThreads.PerDuplicate[Math.Clamp(def.Rarity, 0, CosmeticRegistry.MaxRarity)];
+                await db.SaveChangesAsync();
+                await WardrobeThreads.AddAsync(db, playerId, gained);
+                await tx.CommitAsync();
+                return (CosmeticResult.Ok, new OpenedCosmetic(0, def.Id, (byte)def.Kind, (byte)def.Rarity, def.Name, Duplicate: true, Threads: gained));
+            }
+
             var item = new CosmeticItem
             {
                 PlayerId = playerId,
