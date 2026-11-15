@@ -24,7 +24,12 @@
   const day = createQuery(() => ({
     queryKey: queryKeys.missions,
     queryFn: fetchMissions,
-    // While the tab is open an act on another device shows up within seconds.
+    // Modul: FRESH ON EVERY OPEN (owner, 2026-11-15: "opening five wardrobe
+    // chests did not register"). It had - the server counted all eleven - but
+    // the app-wide 30 s staleTime let the tab show the cached 0/1 it had
+    // fetched before the chests were opened. While open it refetches often.
+    staleTime: 0,
+    refetchOnMount: 'always' as const,
     refetchInterval: 10_000,
   }));
 
@@ -98,7 +103,7 @@
 {:else}
   <p class="dim small">
     {doneCount} of {view.Missions.length} done &middot; new missions in {hoursLeft(view.SecondsUntilNextDay)}.
-    Each pays {view.Missions[0]?.Xp ?? 30} Chronicle XP.
+    Each pays {view.Missions[0]?.Xp ?? 30} Chronicle XP &middot; {view.RerollsLeft} free swaps left.
   </p>
   <ol class="list" data-testid="missions-list">
     {#each view.Missions as m (m.Slot)}
@@ -115,8 +120,10 @@
           {#if !m.Done && MISSION_SCREEN[m.Action]}
             <button class="small-btn" onclick={() => go(m.Action)}>Go</button>
           {/if}
-          {#if !m.Done && !m.Fixed && view.RerollsLeft > 0}
-            <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy} title="Swap for another mission (free, once a day)" data-testid="missions-reroll">Swap</button>
+          {#if m.Swappable}
+            <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy}
+              title={m.Fixed ? 'This one cannot be done today - replace it (does not use a swap)' : `Swap for another mission (${view.RerollsLeft} free swaps left today)`}
+              data-testid="missions-reroll">{m.Fixed ? 'Replace' : 'Swap'}</button>
           {/if}
         </div>
       </li>

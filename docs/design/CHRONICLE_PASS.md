@@ -82,7 +82,7 @@ What shipped, and where it differs from the plan above it:
 | WardrobeChestOpened | `/api/v1/cosmetics/open` on `Ok` |
 | LootChestOpened | `/api/v1/chests/open` (amount = chests opened) |
 
-- **Routes:** `GET /api/v1/missions` (draws today on first call), `POST /api/v1/missions/claim` (claims every finished mission plus the bonus in one call, under a `FOR UPDATE` on the day row), `POST /api/v1/missions/reroll {Slot}` (one free swap a day, rotating and unfinished only).
+- **Routes:** `GET /api/v1/missions` (draws today on first call), `POST /api/v1/missions/claim` (claims every finished mission plus the bonus in one call, under a `FOR UPDATE` on the day row), `POST /api/v1/missions/reroll {Slot}` (two free swaps a day for unfinished ROTATING missions; a FIXED mission can be replaced, free, only when MissionRegistry.FixedMissionImpossible says it cannot be finished: the world boss is not up, or the dungeons on the launch day 2026-11-15).
 - **XP** banks on `PlayerMissionDays.XpEarned`, never on `PlayerRecords` (the checkpoint rewrites that row from the live payload). `MissionEngine.XpBetweenAsync` is what the pass sums over its season.
 - **Client:** `ChronicleBubble.svelte` floats bottom-left (opposite the chat dock) with a red badge = the server's `Claimable`, polled each minute. It is hidden during the guided first minute. `MissionsWindow.svelte` lists the day with Go buttons (`missions.ts` maps each action to a screen), Swap, and one Claim. In step 3 the same bubble opens the pass.
 - **QuestEngine** (3 kill/craft slots, no client) still runs and checkpoints. Removing it touches `TickStatePayload` and the checkpoint, so it is a separate cleanup.

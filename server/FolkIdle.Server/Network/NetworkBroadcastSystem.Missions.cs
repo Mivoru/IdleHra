@@ -60,11 +60,11 @@ namespace FolkIdle.Server.Network
                 object? answer;
                 if (action == "view")
                 {
-                    answer = await MissionEngine.ViewAsync(db, playerId, facts, utcNow);
+                    answer = await MissionEngine.ViewAsync(db, playerId, facts, utcNow, worldBossActive);
                 }
                 else if (action == "claim")
                 {
-                    var (outcome, xp, view) = await MissionEngine.ClaimAsync(db, playerId, facts, utcNow);
+                    var (outcome, xp, view) = await MissionEngine.ClaimAsync(db, playerId, facts, utcNow, worldBossActive);
                     answer = view == null ? null : new { Outcome = outcome.ToString(), XpGained = xp, Day = view };
                 }
                 else

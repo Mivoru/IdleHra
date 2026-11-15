@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.96.1',
+    date: '2026-11-15',
+    sections: [
+      {
+        title: 'Daily missions',
+        items: [
+          'Two free swaps a day for the changing missions.',
+          'A daily mission that cannot be done - the world boss is gone for the week - can be replaced without using a swap.',
+          'The missions window always shows the latest progress when you open it.',
+          'On a phone, the Chronicle button now sits above the chat button instead of on top of it.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.96.0',
     date: '2026-11-15',
     headline: "The Chronicle: Veles' season begins.",

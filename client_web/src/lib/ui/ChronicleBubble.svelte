@@ -6,8 +6,10 @@
   // missions are waiting, on the pass otherwise.
   //
   // The badge is the server's two Claimable counts added up - pass levels
-  // reached and unclaimed, and finished missions - polled once a minute, so
+  // reached and unclaimed, and finished missions - polled every 20 s, so
   // the client never decides what is done. The ring shows the season level.
+  // Every 20 s (was 60): a finished mission waiting a minute for its badge
+  // read as "it did not count" (owner, 2026-11-15).
   import { createQuery } from '@tanstack/svelte-query';
   import { fetchChronicle, fetchMissions, queryKeys } from '../net/rest';
   import { playerState } from '../stores/game';
@@ -28,13 +30,13 @@
     queryKey: queryKeys.missions,
     queryFn: fetchMissions,
     enabled: visible,
-    refetchInterval: 60_000,
+    refetchInterval: 20_000,
   }));
   const pass = createQuery(() => ({
     queryKey: queryKeys.chronicle,
     queryFn: fetchChronicle,
     enabled: visible,
-    refetchInterval: 60_000,
+    refetchInterval: 20_000,
   }));
 
   // A failed poll counts as nothing waiting rather than showing a stale count:
@@ -137,6 +139,31 @@
   @media (prefers-reduced-motion: reduce) {
     .badge {
       animation: none;
+    }
+  }
+
+  /* Modul: ON A PHONE THE CHAT BUBBLE OWNS THE CORNER (ChatBubble.svelte: 3rem,
+     0.75rem from the left and from the tab bar), and this sat right on top of
+     it (owner, 2026-11-15, with a screenshot). Same column, same size, one
+     step up - the onboarding coach already starts to the right of that
+     column, so nothing else is covered. */
+  @media (max-width: 40rem) {
+    .bubble {
+      left: calc(0.75rem + var(--sa-left));
+      bottom: calc(0.75rem + 3rem + 0.6rem + var(--sa-bottom) + var(--tabbar-h));
+      width: 3rem;
+      height: 3rem;
+      min-width: 3rem;
+      min-height: 3rem;
+    }
+
+    .glyph :global(svg) {
+      width: 20px;
+      height: 20px;
+    }
+
+    .progress {
+      font-size: 0.58rem;
     }
   }
 

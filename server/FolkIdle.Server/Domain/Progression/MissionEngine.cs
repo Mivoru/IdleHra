@@ -36,6 +36,8 @@ namespace FolkIdle.Server.Domain.Progression
             public bool Done { get; init; }
             public bool Claimed { get; init; }
             public bool Fixed { get; init; }
+            /// <summary>The server allows a swap of this slot now: a free swap, or a forced one for an impossible fixed mission.</summary>
+            public bool Swappable { get; init; }
             public int Xp { get; init; }
         }
 
@@ -167,8 +169,9 @@ namespace FolkIdle.Server.Domain.Progression
             return progress;
         }
 
-        public static DayView BuildView(PlayerMissionDay day, int[] progress, DateTime utcNow)
+        public static DayView BuildView(PlayerMissionDay day, int[] progress, DateTime utcNow, bool worldBossActive = true)
         {
+            bool freeLeft = day.RerollsUsed < MissionRegistry.FreeRerollsPerDay;
             var actions = Decode(day.Actions);
             var missions = new List<MissionView>(actions.Length);
             int claimable = 0;
@@ -189,6 +192,8 @@ namespace FolkIdle.Server.Domain.Progression
                     Done = done,
                     Claimed = claimed,
                     Fixed = def?.IsFixed ?? false,
+                    Swappable = def != null && !done && !claimed
+                        && (def.IsFixed ? MissionRegistry.FixedMissionImpossible(def.Action, day.DayKey, worldBossActive) : freeLeft),
                     Xp = MissionRegistry.XpPerMission,
                 });
             }
@@ -210,13 +215,13 @@ namespace FolkIdle.Server.Domain.Progression
             };
         }
 
-        public static async Task<DayView?> ViewAsync(FolkIdleDbContext db, long playerId, Func<Task<MissionFacts?>> facts, DateTime utcNow)
+        public static async Task<DayView?> ViewAsync(FolkIdleDbContext db, long playerId, Func<Task<MissionFacts?>> facts, DateTime utcNow, bool worldBossActive = true)
         {
             int dayKey = DayKeyOf(utcNow);
             var day = await EnsureDayAsync(db, playerId, dayKey, facts, utcNow);
             if (day == null) return null;
             var progress = await ProgressAsync(db, playerId, dayKey, Decode(day.Actions));
-            return BuildView(day, progress, utcNow);
+            return BuildView(day, progress, utcNow, worldBossActive);
         }
 
         /// <summary>
@@ -224,7 +229,7 @@ namespace FolkIdle.Server.Domain.Progression
         /// bonus once all of them are finished. One button, so a player never
         /// has to tap six times; the XP lands on PlayerMissionDays.XpEarned.
         /// </summary>
-        public static async Task<(ClaimOutcome Outcome, int XpGained, DayView? View)> ClaimAsync(FolkIdleDbContext db, long playerId, Func<Task<MissionFacts?>> facts, DateTime utcNow)
+        public static async Task<(ClaimOutcome Outcome, int XpGained, DayView? View)> ClaimAsync(FolkIdleDbContext db, long playerId, Func<Task<MissionFacts?>> facts, DateTime utcNow, bool worldBossActive = true)
         {
             int dayKey = DayKeyOf(utcNow);
             if (await EnsureDayAsync(db, playerId, dayKey, facts, utcNow) == null) return (ClaimOutcome.NotFound, 0, null);
@@ -259,13 +264,13 @@ namespace FolkIdle.Server.Domain.Progression
                 if (gained == 0)
                 {
                     await tx.SafeRollbackAsync();
-                    return (ClaimOutcome.NothingToClaim, 0, BuildView(day, progress, utcNow));
+                    return (ClaimOutcome.NothingToClaim, 0, BuildView(day, progress, utcNow, worldBossActive));
                 }
 
                 day.XpEarned += gained;
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
-                return (ClaimOutcome.Ok, gained, BuildView(day, progress, utcNow));
+                return (ClaimOutcome.Ok, gained, BuildView(day, progress, utcNow, worldBossActive));
             }
             catch
             {
@@ -275,9 +280,21 @@ namespace FolkIdle.Server.Domain.Progression
         }
 
         /// <summary>
-        /// Swaps one rotating mission that is not yet finished for another the
-        /// player can do, using the day's free reroll.
+        /// Swaps one unfinished mission for a rotating one the player can do:
+        /// a rotating mission with one of the day's free swaps, a fixed one only
+        /// when it cannot be finished (and then without using a free swap).
         /// </summary>
+        /// <remarks>
+        /// Modul: FIXED MISSIONS CAN BE SWAPPED TOO (owner, 2026-11-15: "what if
+        /// I already fought every dungeon today and have no tickets, or cannot
+        /// strike the world boss again?"). Acts done before the day was drawn
+        /// still count - the counters are per day - so on an ordinary day a
+        /// fixed mission is always finishable. Two cases are not: the missions'
+        /// own deploy day (acts before it were never counted), and a world boss
+        /// that dies after the day was drawn. Only those may be replaced: the
+        /// owner did not want free swaps turning every day into the easiest six
+        /// (MissionRegistry.FixedMissionImpossible).
+        /// </remarks>
         public static async Task<(RerollOutcome Outcome, DayView? View)> RerollAsync(FolkIdleDbContext db, long playerId, int slot, Func<Task<MissionFacts?>> facts, DateTime utcNow)
         {
             int dayKey = DayKeyOf(utcNow);
@@ -295,35 +312,48 @@ namespace FolkIdle.Server.Domain.Progression
                 var progress = await ProgressAsync(db, playerId, dayKey, actions);
 
                 RerollOutcome? refusal = null;
-                if (day.RerollsUsed >= MissionRegistry.FreeRerollsPerDay) refusal = RerollOutcome.NoRerollsLeft;
-                else if (slot < 0 || slot >= actions.Length
+                bool forced = false;
+                if (slot < 0 || slot >= actions.Length
                     || !MissionRegistry.TryGet(actions[slot], out var def)
-                    || def.IsFixed
                     || progress[slot] >= def.Target
                     || (day.ClaimedMask & (1 << slot)) != 0)
+                {
                     refusal = RerollOutcome.NotRerollable;
+                }
+                else if (def.IsFixed)
+                {
+                    // Only an impossible fixed mission, and it costs no free swap.
+                    if (MissionRegistry.FixedMissionImpossible(def.Action, dayKey, f.WorldBossActive)) forced = true;
+                    else refusal = RerollOutcome.NotRerollable;
+                }
+                else if (day.RerollsUsed >= MissionRegistry.FreeRerollsPerDay)
+                {
+                    refusal = RerollOutcome.NoRerollsLeft;
+                }
 
                 MissionAction? pick = null;
                 if (refusal == null)
                 {
-                    pick = MissionRegistry.RerollPick(playerId, dayKey, day.RerollsUsed + 1, actions, f);
+                    // A forced swap draws with its own salt, so it never moves
+                    // the order the free swaps draw from.
+                    pick = MissionRegistry.RerollPick(playerId, dayKey, forced ? 100 + slot : day.RerollsUsed + 1, actions, f);
                     if (pick == null) refusal = RerollOutcome.NothingElseToOffer;
                 }
 
                 if (refusal != null)
                 {
                     await tx.SafeRollbackAsync();
-                    return (refusal.Value, BuildView(day, progress, utcNow));
+                    return (refusal.Value, BuildView(day, progress, utcNow, f.WorldBossActive));
                 }
 
                 actions[slot] = pick!.Value;
                 day.Actions = Encode(actions);
-                day.RerollsUsed++;
+                if (!forced) day.RerollsUsed++;
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
 
                 var fresh = await ProgressAsync(db, playerId, dayKey, actions);
-                return (RerollOutcome.Ok, BuildView(day, fresh, utcNow));
+                return (RerollOutcome.Ok, BuildView(day, fresh, utcNow, f.WorldBossActive));
             }
             catch
             {
