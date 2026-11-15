@@ -61,7 +61,7 @@ export const SCREENS = [
   // 'Store' left the menu while it sells nothing (task 71); the route stays.
   'Progress', 'Wiki', 'Settings',
   // Not a nav button: a STATE of one. See OVERLAYS below.
-  'World Boss · shield wheel',
+  'World Boss · duel',
   'Market · cosmetics',
   'Bloodline · Ancestors',
   'Bloodline · Inheritance',
@@ -124,13 +124,19 @@ export const OVERLAYS = {
       return true;
     },
   },
-  'World Boss · shield wheel': {
+  // Modul: the duel replaced the wheel (2026-11-15). The geometry checks
+  // measure a practice duel at its first call - the busiest frame: the omen
+  // read, three answer buttons and the timer over the boss art.
+  'World Boss · duel': {
     screen: 'World Boss',
     open: async (page) => {
-      const practice = page.getByRole('button', { name: /Practice the shield wheel/i }).first();
+      const practice = page.getByTestId('duel-practice').first();
       if ((await practice.count()) === 0) return false;
       await practice.click();
-      await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 }).catch(() => {});
+      const begin = page.getByTestId('duel-begin');
+      if (!(await begin.waitFor({ timeout: 10000 }).then(() => true).catch(() => false))) return false;
+      await begin.click();
+      await page.getByTestId('duel-call').waitFor({ timeout: 30000 }).catch(() => {});
       await page.waitForTimeout(400);
       return true;
     },
@@ -486,9 +492,9 @@ export async function navButton(page, name) {
  * is what stopped the first narrow-width sweep dead.
  */
 export async function go(page, label) {
-  // An open shield wheel covers the header. The challenge lives on the server,
-  // so a reload drops the overlay and loses nothing.
-  if ((await page.locator('[data-schedule]').count()) > 0) {
+  // An open shield wheel or duel covers the header. The challenge lives on the
+  // server, so a reload drops the overlay and loses nothing.
+  if ((await page.locator('[data-schedule], [data-testid="boss-duel"]').count()) > 0) {
     await page.reload({ waitUntil: 'networkidle' });
     await page
       .waitForFunction(() => !document.body.innerText.includes('Waiting for the first state snapshot'), { timeout: 30000 })

@@ -7441,8 +7441,31 @@ if (want('new-player')) {
       // fresh account proves the practice path does not lean on either. No
       // taps at all: the run times out, is scored at the floor, and the card
       // still says what happened.
+      // Modul: under the duel (2026-11-15) the same proof plays a practice
+      // duel: three calls answered Guard, and the card says nothing was dealt.
+      const duelPractice = fresh.getByTestId('duel-practice').first();
       const practice = fresh.getByRole('button', { name: /Practice the shield wheel/i }).first();
-      if ((await practice.count()) > 0) {
+      if ((await duelPractice.count()) > 0) {
+        await duelPractice.click();
+        const begun = await fresh.getByTestId('duel-begin').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+        if (begun) {
+          await fresh.getByTestId('duel-speed').click().catch(() => {});
+          await fresh.getByTestId('duel-begin').click();
+          for (let i = 0; i < 3; i++) {
+            const asked = await fresh.waitForSelector('[data-testid="duel-call"] button.option:not([disabled])', { timeout: 30000 }).then(() => true).catch(() => false);
+            if (!asked) break;
+            await fresh.getByTestId('duel-option-Guard').click();
+            await fresh.waitForSelector('[data-testid="duel-verdict"]', { timeout: 10000 }).catch(() => {});
+          }
+        }
+        const card = await fresh
+          .getByTestId('duel-result')
+          .waitFor({ timeout: 45000 })
+          .then(() => fresh.getByTestId('duel-result').innerText())
+          .catch(() => '');
+        record('a brand-new account can finish a practice duel', /no damage dealt/i.test(card), card ? card.split('\n')[0] : 'no result card');
+        await fresh.getByTestId('duel-close').click().catch(() => {});
+      } else if ((await practice.count()) > 0) {
         await practice.click();
         const card = await fresh
           .locator('[data-testid="practice-card"]')
@@ -7452,7 +7475,7 @@ if (want('new-player')) {
         record('a brand-new account can finish a shield wheel practice run', /No damage dealt/i.test(card), card ? card.split('\n')[0] : 'no result card');
         await fresh.locator('[data-schedule]').getByRole('button', { name: /^\s*Close\s*$/i }).first().click().catch(() => {});
       } else {
-        record('a brand-new account can finish a shield wheel practice run', false, 'no Practice button for the new account');
+        record('a brand-new account can finish a practice run', false, 'no Practice button for the new account');
       }
     }
 

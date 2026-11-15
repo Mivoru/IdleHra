@@ -212,3 +212,23 @@ this document, with no recommendation in it, and answered once.
 
 Open: the Forge meter; a roar per move (ElevenLabs SFX); a ticker of other
 players' hits; re-measure the HP factor after the first duel week.
+
+## 7. Questions for the owner (after you have played the duel)
+
+1. **Delete the shield wheel?** It is still in the code behind
+   `FOLKIDLE_BOSS_MINIGAME=wheel` (ShieldWheel.svelte, the wheel scorer and
+   schedule, the plate UI, two exercise blocks - roughly 3,000 lines).
+   Recommendation: delete it after one week of the duel, if you do not want
+   it back. Switching back today is one line in the box `.env`.
+2. **The Forge meter** (P6's shared moment, the one piece not built). Options:
+   - (a) cosmetic only: every right call by anyone fills Svarog's forge; when
+     it fills, everyone sees the hammer fall on the World Boss screen and gets
+     a small mail (e.g. 5 diamonds). No change to damage or HP sizing.
+   - (b) a damage burst: the full forge deals a fixed share of his health.
+     Changes the HP math the Chernobog spec sized (5.5-7.0x) - needs a week
+     of duel data first.
+   Recommendation: (a) now, (b) only if the boss stops falling.
+3. **Sounds** - the roar, the serpent hiss and the hammer were generated
+   with ElevenLabs and loudness-matched by measurement, but no person has
+   listened to them. If one is wrong, `tools/assets/manifest.json` has the
+   prompts (`sfx_boss_*`, `sfx_serpent_hiss`).
