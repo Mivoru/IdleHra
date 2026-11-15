@@ -83,6 +83,11 @@
     max-width: none;
     pointer-events: none;
     object-fit: contain;
+    /* Owner, 2026-11-15: ornaments hanging below the ring ran into the name
+       under the tile. Measured, the rings end at 81-91% of the painting, so the
+       fade starts below it and only the dangling ornaments melt away. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 98%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 98%);
   }
 
   .frame {

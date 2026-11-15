@@ -578,7 +578,7 @@
 
   .tile-name {
     /* Room under a painted frame's lower ornaments (2026-11-15). */
-    margin-top: 0.3rem;
+    margin-top: 0.5rem;
     font-size: 0.8rem;
     line-height: 1.2;
     overflow-wrap: anywhere;
