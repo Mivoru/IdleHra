@@ -48,6 +48,16 @@ export interface OpenedCosmetic {
   Kind: number;
   Rarity: number;
   Name: string;
+  /** Already owned: it unravelled into `Threads` instead of a copy (2026-11-15). */
+  Duplicate?: boolean;
+  Threads?: number;
+}
+
+/** A thread-only frame in the Wardrobe shop. */
+export interface ThreadExclusive {
+  Id: string;
+  Name: string;
+  Price: number;
 }
 
 /** Mirrors CosmeticResult in CosmeticEngine.cs - pinned by tests/cosmetics.test.ts. */
@@ -69,6 +79,13 @@ export interface CosmeticsView {
   EquippedAvatarId: string | null;
   EquippedFrameId: string | null;
   Opened: OpenedCosmetic | null;
+  /** Wardrobe threads: what duplicates unravel into (2026-11-15). */
+  Threads?: number;
+  /** A chosen chest piece's price in threads, by rarity 1-4. */
+  ThreadPrice?: number[];
+  /** Threads one duplicate gives, by rarity 1-4. */
+  ThreadsPerDuplicate?: number[];
+  ThreadExclusives?: ThreadExclusive[];
 }
 
 export interface WornCosmetics {
@@ -114,6 +131,16 @@ export function fetchCosmetics(): Promise<CosmeticsView> {
 
 export function openChest(rarity: number): Promise<CosmeticsView | null> {
   return authedPost<CosmeticsView>('/api/v1/cosmetics/open', { Rarity: rarity });
+}
+
+/** Unravels every spare copy into threads. The view's Result is "Unravelled:<pieces>:<threads>" or "NothingSpare". */
+export function unravelSpares(): Promise<CosmeticsView | null> {
+  return authedPost<CosmeticsView>('/api/v1/cosmetics/unravel', {});
+}
+
+/** Buys one piece with threads. Result: "Ok" | "NotForSale" | "AlreadyOwned" | "NotEnoughThreads". */
+export function buyWithThreads(id: string): Promise<CosmeticsView | null> {
+  return authedPost<CosmeticsView>('/api/v1/cosmetics/buy', { Id: id });
 }
 
 /** Wear an avatar/frame by definition id, or go back to the default with null. */

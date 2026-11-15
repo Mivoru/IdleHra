@@ -59,22 +59,23 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void MonsterChestsDropAsRarelyAsTheirTwinItemTier()
+        public void MonsterChestsDropAQuarterAsOftenAsTheirTwinItemTier()
         {
             // The owner's words: Common as rare as Mythic, Rare as Relic, Epic
-            // as Ancient, Legendary as Divine.
+            // as Ancient, Legendary as Divine - then a quarter of that
+            // (owner, 2026-11-15: ~23 chests a day and hundreds unopened).
             Assert.Equal(new[] { 0, RarityTier.Mythic, RarityTier.Relic, RarityTier.Ancient, RarityTier.Divine }, CosmeticRegistry.TwinItemTier);
 
             for (int r = 1; r <= 4; r++)
             {
-                double expected = CombatLootEngine.EquipmentDropChance * RarityTier.BaseShare(CosmeticRegistry.TwinItemTier[r]);
+                double expected = CombatLootEngine.EquipmentDropChance * RarityTier.BaseShare(CosmeticRegistry.TwinItemTier[r]) * 0.25;
                 Assert.Equal(expected, CosmeticRegistry.ChestChancePerKill(r), 12);
             }
 
-            // Measured, not decoration: about one Common chest per 2,600 kills,
-            // one Legendary per 131,000.
-            Assert.InRange(1.0 / CosmeticRegistry.ChestChancePerKill(CosmeticRegistry.Common), 2500, 2700);
-            Assert.InRange(1.0 / CosmeticRegistry.ChestChancePerKill(CosmeticRegistry.Legendary), 125_000, 137_000);
+            // Measured, not decoration: about one Common chest per 10,400 kills,
+            // one Legendary per 524,000.
+            Assert.InRange(1.0 / CosmeticRegistry.ChestChancePerKill(CosmeticRegistry.Common), 10_000, 10_800);
+            Assert.InRange(1.0 / CosmeticRegistry.ChestChancePerKill(CosmeticRegistry.Legendary), 500_000, 548_000);
 
             // The ladder: rarest first, then nothing.
             double legendary = CosmeticRegistry.ChestChancePerKill(4);

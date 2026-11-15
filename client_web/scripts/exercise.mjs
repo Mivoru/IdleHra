@@ -428,6 +428,17 @@ async function dailyMissionsStep() {
   await page.waitForTimeout(300);
 }
 
+// Wardrobe threads (2026-11-15): the balance renders from the server's view,
+// and a painted frame actually loads (a broken sprite path renders nothing).
+async function wardrobeThreadsStep() {
+  const view = await apiGet('/api/v1/cosmetics');
+  await go('Wardrobe');
+  const shown = await page.getByTestId('threads-balance').innerText({ timeout: 10000 }).catch(() => '');
+  record('the Wardrobe shows the threads balance', shown.trim() === String(view?.Threads ?? 0), `${shown} vs ${view?.Threads}`);
+  const painted = await page.locator('img.painted').first().evaluate((img) => img.complete && img.naturalWidth > 0).catch(() => false);
+  record('a painted frame loads', painted, painted ? 'ok' : 'no painted frame image loaded');
+}
+
 // The big-chest prompt: the fixture holds thousands of pieces, so it MUST
 // offer to clear some, count what the chosen regions x rarity would take, and
 // close on "Keep everything" without selling (the fixture's chest is the
@@ -455,6 +466,7 @@ async function bigChestPromptStep() {
   await bigChestPromptStep();
   await dailyLoginStep();
   await dailyMissionsStep();
+  await wardrobeThreadsStep();
   const stillBlocked = await page.locator('.backdrop, .modal-scrim').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }

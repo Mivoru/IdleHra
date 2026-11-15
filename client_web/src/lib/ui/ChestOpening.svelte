@@ -305,11 +305,17 @@
           {rarityNames[opened.Rarity]} {opened.Kind === COSMETIC_KIND.Avatar ? 'avatar' : 'frame'}
           &middot; from a {chestName} chest
         </span>
+        {#if opened.Duplicate}
+          <!-- Owner, 2026-11-15: a piece already owned unravels into threads. -->
+          <span class="dupe" data-testid="chest-duplicate">Already yours - unravelled into +{opened.Threads ?? 0} threads</span>
+        {/if}
         {#if size > 1}
           <span class="batch-count" data-testid="chest-batch-count">{cursor + 1} of {batchDone ? results.length : size}</span>
         {/if}
         <div class="actions">
-          <button class="primary" disabled={worn} onclick={wear} data-testid="chest-wear">{worn ? 'Worn' : 'Wear it'}</button>
+          {#if !opened.Duplicate}
+            <button class="primary" disabled={worn} onclick={wear} data-testid="chest-wear">{worn ? 'Worn' : 'Wear it'}</button>
+          {/if}
           {#if size > 1 && (cursor < results.length - 1 || !batchDone)}
             <button
               class="next"
@@ -338,6 +344,11 @@
 </div>
 
 <style>
+  .dupe {
+    font-weight: 600;
+    color: var(--accent);
+  }
+
   .chest-stage {
     /* The painting's shape, and where its lit floor spot is - the chest's
        base goes there. Portrait art for a portrait window. */

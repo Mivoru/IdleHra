@@ -33,6 +33,8 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>A day of the login week (owner, 2026-11-15).</summary>
         LoginReward = 10,
         Chronicle = 11,
+        /// <summary>Bought with wardrobe threads (2026-11-15).</summary>
+        Threads = 12,
     }
 
     /// <param name="Art">For an avatar, the monster whose portrait it is (the
@@ -152,6 +154,8 @@ namespace FolkIdle.Server.Domain.Progression
             }
             // The Chronicle seasons' avatar and frame (2026-11-15) - bound, Legendary.
             list.AddRange(ChronicleRegistry.Cosmetics());
+            // The thread-only frames (2026-11-15) - bound, bought in the Wardrobe shop.
+            list.AddRange(WardrobeThreads.Cosmetics());
             // Chernobog's milestone avatars (owner, 2026-10-13) - bound, Legendary.
             foreach (var avatar in Combat.WorldBossStrike.WorldBossRewards.Avatars)
             {
@@ -223,8 +227,14 @@ namespace FolkIdle.Server.Domain.Progression
             0, RarityTier.Mythic, RarityTier.Relic, RarityTier.Ancient, RarityTier.Divine,
         };
 
+        // Modul: A QUARTER OF THE TWIN RATE (owner, 2026-11-15). Measured the
+        // week before: the busiest account got ~160 chests from kills (~23 a
+        // day) and two accounts held 223 and 328 unopened - a chest had stopped
+        // being an event. The ladder between rarities is unchanged.
+        public const double KillChestShare = 0.25;
+
         public static double ChestChancePerKill(int rarity)
-            => CombatLootEngine.EquipmentDropChance * RarityTier.BaseShare(TwinItemTier[rarity]);
+            => CombatLootEngine.EquipmentDropChance * RarityTier.BaseShare(TwinItemTier[rarity]) * KillChestShare;
 
         /// <summary>
         /// One roll per kill against the cumulative ladder, rarest first, so a

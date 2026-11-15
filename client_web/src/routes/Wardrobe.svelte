@@ -18,6 +18,8 @@
     fetchCosmetics,
     loadCosmeticCatalogue,
     openChest,
+    unravelSpares,
+    buyWithThreads,
     rarityClass,
     type CosmeticCatalogue,
     type CosmeticDefinition,
@@ -84,7 +86,69 @@
       return;
     }
     client.setQueryData(cosmeticKeys.mine, next);
-    message = next.Result && next.Result !== 'Ok' ? COSMETIC_RESULT_SENTENCES[next.Result] : '';
+    message = next.Result && next.Result !== 'Ok' ? (COSMETIC_RESULT_SENTENCES[next.Result] ?? '') : '';
+  }
+
+  // Modul: WARDROBE THREADS (owner, 2026-11-15). A duplicate from a chest
+  // unravels into threads; spare copies already owned unravel on request; and
+  // threads buy a missing chest piece or one of the thread-only frames.
+  const threads = $derived(Number(view?.Threads ?? 0));
+  const exclusives = $derived(view?.ThreadExclusives ?? []);
+  const exclusiveIds = $derived(new Set(exclusives.map((e) => e.Id)));
+  const spareCount = $derived.by(() => {
+    let n = 0;
+    for (const [id, c] of copies) {
+      const def = (catalogue?.Items ?? []).find((d) => d.Id === id);
+      if (def && !def.Bound && c > 1) n += c - 1;
+    }
+    return n;
+  });
+
+  function priceOf(def: CosmeticDefinition): number {
+    const ex = exclusives.find((e) => e.Id === def.Id);
+    if (ex) return ex.Price;
+    if (def.Bound) return 0;
+    return view?.ThreadPrice?.[def.Rarity] ?? 0;
+  }
+
+  async function unravel(): Promise<void> {
+    if (busy) return;
+    busy = true;
+    try {
+      const next = await unravelSpares();
+      settle(next);
+      // Threads results are strings outside CosmeticResult (the server's
+      // WardrobeThreads outcomes), so they are read as plain text.
+      const result = String(next?.Result ?? '');
+      const parts = result.split(':');
+      if (parts[0] === 'Unravelled') message = `${parts[1]} spare copies unravelled into ${parts[2]} threads.`;
+      else if (result === 'NothingSpare') message = 'You have no spare copies to unravel.';
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function buy(def: CosmeticDefinition): Promise<void> {
+    if (busy) return;
+    busy = true;
+    try {
+      const next = await buyWithThreads(def.Id);
+      settle(next);
+      const result = String(next?.Result ?? '');
+      message = result === 'Ok' ? `${def.Name} is yours.`
+        : result === 'NotEnoughThreads' ? `${def.Name} costs ${priceOf(def)} threads.`
+        : result === 'AlreadyOwned' ? `You already have ${def.Name}.`
+        : result === 'NotForSale' ? `${def.Name} cannot be bought with threads.` : message;
+    } finally {
+      busy = false;
+    }
+  }
+
+  // A locked piece: buy it when threads can, otherwise say where it comes from.
+  function tapLocked(def: CosmeticDefinition): void {
+    const price = priceOf(def);
+    if (price > 0 && threads >= price) void buy(def);
+    else message = sourceOf(def);
   }
 
   function open(rarity: number, batch = 1): void {
@@ -107,9 +171,11 @@
   // the piece comes from: a chest of its rarity, or - for a Bound piece, which
   // is never in a chest (cosmetics.ts) - the Boss Ascension ladder.
   function sourceOf(def: CosmeticDefinition): string {
+    if (exclusiveIds.has(def.Id)) return `${def.Name} is sold only for threads: ${priceOf(def)}. You have ${threads}.`;
+    const price = priceOf(def);
     return def.Bound
-      ? `${def.Name} is earned on the Boss Ascension ladder, never found in a chest.`
-      : `${def.Name} is most likely from a ${rarityNames[def.Rarity]} chest (any chest can give it), or from another player on the market.`;
+      ? `${def.Name} is earned elsewhere in the game (the Boss Ascension ladder, a Great Work, an event or the Chronicle), never found in a chest.`
+      : `${def.Name} is most likely from a ${rarityNames[def.Rarity]} chest (any chest can give it), from the market, or for ${price} threads - you have ${threads}.`;
   }
 
   // "×4" said nothing; spare copies are what the cosmetic market sells.
@@ -122,7 +188,7 @@
   // collector. Defaults to All, which is what the screen always showed.
   let ownedOnly = $state(false);
   const shownAvatars = $derived(ownedOnly ? avatars.filter((d) => ownedIds.has(d.Id)) : avatars);
-  const shownFrames = $derived(ownedOnly ? frames.filter((d) => ownedIds.has(d.Id)) : frames);
+  const shownFrames = $derived((ownedOnly ? frames.filter((d) => ownedIds.has(d.Id)) : frames).filter((d) => !exclusiveIds.has(d.Id)));
 
   async function wear(kind: number, id: string | null): Promise<void> {
     if (busy) return;
@@ -174,6 +240,41 @@
   {#if message}
     <p class="notice" role="status">{message}</p>
   {/if}
+
+  <section class="panel threads" data-testid="wardrobe-threads">
+    <h2>Threads <span class="count thread-count" data-testid="threads-balance">{threads}</span></h2>
+    <p class="dim small">
+      A piece you already own unravels into threads instead of a copy
+      (Common {view?.ThreadsPerDuplicate?.[1] ?? 1}, Rare {view?.ThreadsPerDuplicate?.[2] ?? 3}, Epic {view?.ThreadsPerDuplicate?.[3] ?? 10}, Legendary {view?.ThreadsPerDuplicate?.[4] ?? 30}).
+      Tap a locked piece to buy it, or take one of Mokosh's frames below - sold only for threads.
+    </p>
+    {#if spareCount > 0}
+      <button onclick={unravel} disabled={busy} data-testid="unravel-spares">Unravel {spareCount} spare copies</button>
+    {/if}
+    {#if exclusives.length > 0}
+      <div class="collection exclusive-row">
+        {#each exclusives as ex (ex.Id)}
+          {@const def = (catalogue?.Items ?? []).find((d) => d.Id === ex.Id)}
+          {@const owned = ownedIds.has(ex.Id)}
+          {#if def}
+            <button
+              class="tile {rarityClass(def.Rarity)}"
+              class:locked={!owned}
+              class:worn={view?.EquippedFrameId === def.Id}
+              disabled={busy}
+              onclick={() => (owned ? wear(COSMETIC_KIND.Frame, def.Id) : buy(def))}
+              data-testid="exclusive-{def.Id}"
+              title={owned ? `Wear ${def.Name}` : `${def.Name} - ${ex.Price} threads`}
+            >
+              <Avatar avatarId={view?.EquippedAvatarId ?? null} frameId={def.Id} raceId={selfWorn?.RaceId ?? 0} female={selfWorn?.IsFemale ?? false} size="tile" />
+              <span class="tile-name">{def.Name}</span>
+              <span class="tile-rarity">{owned ? 'Owned' : `${ex.Price} threads`}</span>
+            </button>
+          {/if}
+        {/each}
+      </div>
+    {/if}
+  </section>
 
   <section class="panel chests">
     <h2>Chests {#if totalChests > 0}<span class="count">{totalChests}</span>{/if}</h2>
@@ -249,7 +350,7 @@
           class:worn={view?.EquippedAvatarId === def.Id}
           aria-disabled={!owned}
           disabled={busy}
-          onclick={() => (owned ? wear(COSMETIC_KIND.Avatar, def.Id) : (message = sourceOf(def)))}
+          onclick={() => (owned ? wear(COSMETIC_KIND.Avatar, def.Id) : tapLocked(def))}
           data-testid="avatar-{def.Id}"
           title={owned ? `Wear ${def.Name}` : `${def.Name} - from a ${rarityNames[def.Rarity]} chest`}
         >
@@ -283,7 +384,7 @@
           class:worn={view?.EquippedFrameId === def.Id}
           aria-disabled={!owned}
           disabled={busy}
-          onclick={() => (owned ? wear(COSMETIC_KIND.Frame, def.Id) : (message = sourceOf(def)))}
+          onclick={() => (owned ? wear(COSMETIC_KIND.Frame, def.Id) : tapLocked(def))}
           data-testid="frame-{def.Id}"
           title={owned ? `Wear ${def.Name}` : `${def.Name} - from a ${rarityNames[def.Rarity]} chest`}
         >
@@ -319,6 +420,14 @@
   .notice {
     margin: 0;
     color: var(--warn);
+  }
+
+  .thread-count {
+    color: var(--accent);
+  }
+
+  .exclusive-row {
+    margin-top: 0.6rem;
   }
 
   .panel h2 {
@@ -468,6 +577,8 @@
   }
 
   .tile-name {
+    /* Room under a painted frame's lower ornaments (2026-11-15). */
+    margin-top: 0.3rem;
     font-size: 0.8rem;
     line-height: 1.2;
     overflow-wrap: anywhere;

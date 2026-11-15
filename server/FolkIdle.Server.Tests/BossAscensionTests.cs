@@ -180,7 +180,9 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(10, CosmeticRegistry.All.Count(d => d.Bound && d.Id.StartsWith("frame_ascent_")));
             // Plus one per Chronicle season with keepsakes (2026-11-15).
             int chronicleFrames = ChronicleRegistry.SeasonsWithArt.Count;
-            Assert.Equal(15 + chronicleFrames, CosmeticRegistry.All.Count(d => d.Bound && d.Kind == CosmeticKind.Frame));
+            // And the thread-only frames of the Wardrobe shop (2026-11-15).
+            int threadFrames = WardrobeThreads.Exclusives.Count;
+            Assert.Equal(15 + chronicleFrames + threadFrames, CosmeticRegistry.All.Count(d => d.Bound && d.Kind == CosmeticKind.Frame));
 
             // The Deep's titles are untouched by the ladder's.
             Assert.Empty(TitleRegistry.ForDeepFloor(0));

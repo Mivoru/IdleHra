@@ -749,6 +749,17 @@ Branch `claude/chernobog-world-boss`. Spec (owner decisions, all of them):
   needs a `Record` call beside its commit, or `EveryMissionActionHasAWriter`
   fails. Open: a gold-spend ledger (for "spend 12 h of gold"), removing the
   old `QuestEngine`.
+- **Wardrobe threads + painted frames** (2026-11-15, client 1.97.0): measured
+  first - collections were complete (25-31 avatars, 14-31 frames), 223/328
+  chests unopened, ~23 chests/day for the top account. Kill chest odds are a
+  quarter of the twin-tier rate (`CosmeticRegistry.KillChestShare`); a
+  duplicate unravels into threads (1/3/10/30) instead of a copy
+  (`WardrobeThreads`, table `PlayerWardrobes`); spare copies unravel on
+  request; threads buy a missing chest piece (10x a duplicate's value) or one
+  of four bound "Mokosh" frames (250/400/600/1000). The 16 chest frames are
+  Gemini paintings under `SpritesWeb/Frames/`, normalised so the ring's hole
+  centroid sits on the portrait (`frames.ts` `art`, drawn at 150% in
+  `CosmeticFrame`). Prompts are the `pframe_*` entries in `tools/assets/gemini.json`.
 - **Chronicle pass** (2026-11-15, client 1.96.0, `CHRONICLE_PASS.md` step 3):
   free 50-level track per 30-day season, XP = the missions' banked days.
   **Due before 2026-12-15:** Morana's (season 2) avatar + pet paintings, frame

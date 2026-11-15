@@ -5,6 +5,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,6 +106,8 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/cosmetics/catalogue" && method == "GET") { await HandleCosmeticsCatalogue(context); return true; }
             if (requestPath == "/api/v1/cosmetics" && method == "GET") { await HandleCosmeticsView(context); return true; }
             if (requestPath == "/api/v1/cosmetics/open" && method == "POST") { await HandleCosmeticsOpen(context); return true; }
+            if (requestPath == "/api/v1/cosmetics/unravel" && method == "POST") { await HandleCosmeticsThreads(context, null); return true; }
+            if (requestPath == "/api/v1/cosmetics/buy" && method == "POST") { await HandleCosmeticsThreads(context, "buy"); return true; }
             if (requestPath == "/api/v1/cosmetics/equip" && method == "POST") { await HandleCosmeticsEquip(context); return true; }
             if (requestPath == "/api/v1/cosmetics/worn" && method == "GET") { await HandleCosmeticsWorn(context); return true; }
             return false;
@@ -185,6 +188,55 @@ namespace FolkIdle.Server.Network
         }
 
         /// <summary>{ "Rarity": 1-4 } - opens one chest of that rarity.</summary>
+        // POST /api/v1/cosmetics/unravel - every spare copy into threads.
+        // POST /api/v1/cosmetics/buy { Id } - one piece for threads.
+        // Both answer the Wardrobe view, with Result naming the outcome.
+        private async Task HandleCosmeticsThreads(HttpListenerContext context, string? action)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                string? id = null;
+                if (action == "buy")
+                {
+                    try
+                    {
+                        string body = await ReadBodyAsync(context);
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        id = parsed.RootElement.TryGetProperty("Id", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
+                    }
+                    catch (JsonException) { context.Response.StatusCode = 400; return; }
+                    if (string.IsNullOrEmpty(id)) { context.Response.StatusCode = 400; return; }
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                string result;
+                if (action == "buy")
+                {
+                    result = (await WardrobeThreads.BuyAsync(db, playerId, id!, GameClock.UtcNow)).ToString();
+                }
+                else
+                {
+                    var (outcome, pieces, threads) = await WardrobeThreads.UnravelAsync(db, playerId);
+                    result = outcome == WardrobeThreads.UnravelOutcome.Ok ? $"Unravelled:{pieces}:{threads}" : outcome.ToString();
+                }
+                db.ChangeTracker.Clear();
+                await WriteJsonAsync(context, await CosmeticEngine.ViewAsync(db, playerId, result));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cosmetics threads error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleCosmeticsOpen(HttpListenerContext context)
         {
             try

@@ -1301,6 +1301,126 @@
         "tools/assets/staging/ref_black_serpent.png"
       ],
       "prompt": "A game pet creature in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted texture detail, the same three-quarter view, a single whole creature on a small patch of ground, nothing else. The creature is a different one: the Golden Aurochs of Veles, a young spectral aurochs calf, sturdy and proud, shaggy dark brown coat, great curved golden horns, gold rings in its ears, glowing amber eyes, faint golden mist curling from its hooves, standing on a small mound of dark marsh earth with a few gold coins. Whole creature fully inside the frame with margin on every side."
+    },
+    {
+      "id": "pframe_oak_band",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a plain band of carved dark oak wood with visible grain and two small iron nails. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_iron_band",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a band of hammered dark iron with rivets, slightly battle-worn. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_rope_knot",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of thick braided hemp rope tied with a sailor knot at the bottom. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_birch_ring",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of white birch bark with black bark marks and a small sprig of birch leaves. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_studded_bronze",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of polished bronze with eight round bronze studs. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_silver_rivets",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of bright silver with engraved lines and small silver rivets. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_amber_ring",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of warm gold set with glowing amber stones, a trapped insect in the biggest one. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_river_stone",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of smooth river stones in grey and teal, with tiny water droplets. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_knotwork",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of interlaced purple and silver Celtic knotwork. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_wyrm_coil",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a green-scaled wyrm coiled into a ring, biting its own tail. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_frost_rune",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of pale blue ice carved with glowing frost runes, icicles hanging from the bottom. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_ember_rune",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of black iron with glowing orange runes and small embers rising from it. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_sun_crown",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a radiant golden sun ring with sharp sun rays forming a crown around it, warm glow. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_moon_crown",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a pale silver crescent-moon ring with small stars and a soft moonlight glow. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_storm_crown",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a dark blue storm-cloud ring crackling with lightning bolts forming a crown. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_worldtree",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of living golden-green world-tree branches and leaves, roots at the bottom, faint glow. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_thread_spindle",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring wound from coloured wool thread around a wooden spindle at the bottom. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_thread_loom",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring woven like a loom tapestry in red and white Slavic embroidery patterns. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_thread_golden",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of shining golden thread with a few loose glowing golden strands floating around it. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_thread_mokosh",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: Mokosh's crown: a ring of silver thread and spindles with a small horned moon on top, mystical glow. Painted fantasy game art with inked outlines."
     }
   ]
 }
