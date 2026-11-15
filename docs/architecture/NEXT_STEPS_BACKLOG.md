@@ -749,6 +749,10 @@ Branch `claude/chernobog-world-boss`. Spec (owner decisions, all of them):
   needs a `Record` call beside its commit, or `EveryMissionActionHasAWriter`
   fails. Open: a gold-spend ledger (for "spend 12 h of gold"), removing the
   old `QuestEngine`.
+- **Chronicle pass** (2026-11-15, client 1.96.0, `CHRONICLE_PASS.md` step 3):
+  free 50-level track per 30-day season, XP = the missions' banked days.
+  **Due before 2026-12-15:** Morana's (season 2) avatar + pet paintings, frame
+  drawing and pet stat - an undefined season pays chests instead of keepsakes.
 - The dead `perun_avatar_reward_token` mail and the percentile brackets are gone.
   World boss mail no longer skips a full mailbox.
 - Migration `AddChernobogWorldBoss` is additive. The deploy week is upgraded in

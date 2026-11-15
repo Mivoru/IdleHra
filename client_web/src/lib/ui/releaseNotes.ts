@@ -35,6 +35,24 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.96.0',
+    date: '2026-11-15',
+    headline: "The Chronicle: Veles' season begins.",
+    sections: [
+      {
+        title: 'The Chronicle',
+        items: [
+          "A free season pass with 50 levels. The first season, Veles' Chronicle, runs for 30 days.",
+          'Daily missions fill it: finish all of them on 25 of the 30 days and you reach the end.',
+          'Every level pays something: gold, dungeon tickets, diamonds or a chest. There are 300 diamonds in a season.',
+          "Level 25 gives the Veles avatar, level 40 the Veles' Horns frame, and level 50 the Golden Aurochs pet (+12% gold).",
+          'Past level 50, every 100 XP earns a bonus Gold loot chest.',
+          'The round button in the bottom-left corner opens the Chronicle and your missions. The red number shows how much is ready to claim.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.95.0',
     date: '2026-11-15',
     headline: 'Daily missions.',

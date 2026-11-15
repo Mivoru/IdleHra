@@ -56,6 +56,7 @@
     QuestLine: 'Quest rewards',
     LootChest: 'Loot chests',
     Dungeon: 'The Gold dungeon',
+    Chronicle: 'The Chronicle pass',
   };
 
   type Window = 'Last7Days' | 'Last30Days' | 'SinceRecorded';

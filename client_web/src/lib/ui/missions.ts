@@ -4,8 +4,8 @@
 // "Go" button - the hint says where to do it.
 import { writable } from 'svelte/store';
 
-/** True while the missions window is open - the side bubble and the Progress screen both open it. */
-export const missionsOpen = writable(false);
+/** Which tab of the Chronicle window is open, or null when it is closed. The side bubble opens it. */
+export const chronicleView = writable<null | 'pass' | 'missions'>(null);
 
 /** Where each MissionAction is done, as a requestScreen key. */
 export const MISSION_SCREEN: Record<string, string> = {

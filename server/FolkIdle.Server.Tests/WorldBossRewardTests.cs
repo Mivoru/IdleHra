@@ -59,9 +59,17 @@ namespace FolkIdle.Server.Tests
             // the Serpent is the strongest single bonus apart from them - and
             // still the bigger pet in total (24% against 16%).
             int strongestElsewhere = PetRegistry.All
-                .Where(p => p.Id != serpent.Id && p.Source != PetSource.MonsterRare)
+                .Where(p => p.Id != serpent.Id && p.Source != PetSource.MonsterRare && p.Source != PetSource.Chronicle)
                 .SelectMany(p => p.Bonuses).Max(b => b.Pct);
             Assert.True(12 > strongestElsewhere);
+            // Owner, 2026-11-15: a Chronicle season pet MATCHES one of the
+            // Serpent's bonuses (+12%) on a single stat - never more, and the
+            // Serpent stays the bigger pet in total (24% against 12%).
+            Assert.All(PetRegistry.All.Where(p => p.Source == PetSource.Chronicle), p =>
+            {
+                Assert.Single(p.Bonuses);
+                Assert.True(p.Bonuses[0].Pct <= 12);
+            });
             int rareTotal = PetRegistry.RareMonsterPool.Max(p => p.Bonuses.Sum(b => b.Pct));
             Assert.True(serpent.Bonuses.Sum(b => b.Pct) > rareTotal);
         }

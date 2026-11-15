@@ -5,32 +5,32 @@
   // from what this player has open - so nothing here can be impossible.
   //
   // One Claim button takes every finished mission and, once all are done, the
-  // bonus. Each mission pays Chronicle XP, banked for the pass.
+  // bonus. Each mission pays Chronicle XP - the pass's only input, so a claim
+  // here refreshes the pass tab too. The Missions tab of ChronicleWindow.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { claimMissions, fetchMissions, queryKeys, rerollMission, type MissionDay } from '../net/rest';
   import { requestScreen } from '../stores/navigation';
   import { play } from './audio';
-  import { MISSION_SCREEN, missionsOpen } from './missions';
-  import Modal from './Modal.svelte';
+  import { MISSION_SCREEN } from './missions';
+
+  interface Props {
+    /** Closes the window before a "Go" changes screen. */
+    onLeave: () => void;
+  }
+
+  let { onLeave }: Props = $props();
 
   const client = useQueryClient();
   const day = createQuery(() => ({
     queryKey: queryKeys.missions,
     queryFn: fetchMissions,
-    enabled: $missionsOpen,
-    // While the window is open an act on another device shows up within seconds.
-    refetchInterval: $missionsOpen ? 10_000 : false,
+    // While the tab is open an act on another device shows up within seconds.
+    refetchInterval: 10_000,
   }));
 
   let busy = $state(false);
   let gained = $state(0);
   let note = $state('');
-
-  function close() {
-    missionsOpen.set(false);
-    gained = 0;
-    note = '';
-  }
 
   function put(view: MissionDay) {
     client.setQueryData(queryKeys.missions, view);
@@ -46,6 +46,7 @@
       if (result.Outcome === 'Ok') {
         gained = result.XpGained;
         play('itemSold');
+        void client.invalidateQueries({ queryKey: queryKeys.chronicle });
       } else {
         note = 'Nothing new to claim yet.';
       }
@@ -76,7 +77,7 @@
   function go(action: string) {
     const screen = MISSION_SCREEN[action];
     if (!screen) return;
-    close();
+    onLeave();
     requestScreen(screen);
   }
 
@@ -90,85 +91,57 @@
   const doneCount = $derived(view ? view.Missions.filter((m) => m.Done).length : 0);
 </script>
 
-{#if $missionsOpen}
-  <Modal label="Daily missions" tone="brass" width="32rem" layout="block" onClose={close} testid="missions">
-    {#snippet header()}
-      <div class="head">
-        <h2>Daily missions</h2>
-        <button class="close" aria-label="Close" onclick={close} data-testid="missions-close">&times;</button>
-      </div>
-    {/snippet}
-    {#snippet footer()}
-      <div class="foot">
-        {#if gained > 0}<span class="gained" data-testid="missions-gained">+{gained} Chronicle XP</span>{/if}
-        <button class="primary" onclick={claim} disabled={busy || !view || view.Claimable === 0} data-testid="missions-claim">
-          {view && view.Claimable > 0 ? `Claim (${view.Claimable})` : 'Claim'}
-        </button>
-      </div>
-    {/snippet}
-
-    {#if day.isError}
-      <p class="error small">The missions could not be loaded. Try again in a moment.</p>
-    {:else if !view}
-      <p class="dim small">Loading...</p>
-    {:else}
-      <p class="dim small">
-        {doneCount} of {view.Missions.length} done &middot; new missions in {hoursLeft(view.SecondsUntilNextDay)}.
-        Each pays {view.Missions[0]?.Xp ?? 30} Chronicle XP, banked for the Chronicle pass.
-      </p>
-      <ol class="list" data-testid="missions-list">
-        {#each view.Missions as m (m.Slot)}
-          <li class="mission" class:done={m.Done} class:claimed={m.Claimed} data-action={m.Action} data-done={m.Done} data-claimed={m.Claimed}>
-            <div class="text">
-              <span class="title">{m.Title}{#if m.Fixed}<span class="tag">daily</span>{/if}</span>
-              <span class="hint dim tiny">{m.Hint}</span>
-              <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax={m.Target} aria-valuenow={m.Progress}>
-                <span style:width="{Math.min(100, (m.Progress / m.Target) * 100)}%"></span>
-              </div>
-            </div>
-            <div class="side">
-              <span class="count">{m.Claimed ? 'Claimed' : `${m.Progress}/${m.Target}`}</span>
-              {#if !m.Done && MISSION_SCREEN[m.Action]}
-                <button class="small-btn" onclick={() => go(m.Action)}>Go</button>
-              {/if}
-              {#if !m.Done && !m.Fixed && view.RerollsLeft > 0}
-                <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy} title="Swap for another mission (free, once a day)" data-testid="missions-reroll">Swap</button>
-              {/if}
-            </div>
-          </li>
-        {/each}
-      </ol>
-      <div class="bonus" class:ready={view.AllDone && !view.BonusClaimed} class:taken={view.BonusClaimed} data-testid="missions-bonus">
-        <span>All done bonus</span>
-        <span>{view.BonusClaimed ? 'Claimed' : `+${view.BonusXp} XP`}</span>
-      </div>
-      {#if note}<p class="small dim">{note}</p>{/if}
-    {/if}
-  </Modal>
+{#if day.isError}
+  <p class="error small">The missions could not be loaded. Try again in a moment.</p>
+{:else if !view}
+  <p class="dim small">Loading...</p>
+{:else}
+  <p class="dim small">
+    {doneCount} of {view.Missions.length} done &middot; new missions in {hoursLeft(view.SecondsUntilNextDay)}.
+    Each pays {view.Missions[0]?.Xp ?? 30} Chronicle XP.
+  </p>
+  <ol class="list" data-testid="missions-list">
+    {#each view.Missions as m (m.Slot)}
+      <li class="mission" class:done={m.Done} class:claimed={m.Claimed} data-action={m.Action} data-done={m.Done} data-claimed={m.Claimed}>
+        <div class="text">
+          <span class="title">{m.Title}{#if m.Fixed}<span class="tag">daily</span>{/if}</span>
+          <span class="hint dim tiny">{m.Hint}</span>
+          <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax={m.Target} aria-valuenow={m.Progress}>
+            <span style:width="{Math.min(100, (m.Progress / m.Target) * 100)}%"></span>
+          </div>
+        </div>
+        <div class="side">
+          <span class="count">{m.Claimed ? 'Claimed' : `${m.Progress}/${m.Target}`}</span>
+          {#if !m.Done && MISSION_SCREEN[m.Action]}
+            <button class="small-btn" onclick={() => go(m.Action)}>Go</button>
+          {/if}
+          {#if !m.Done && !m.Fixed && view.RerollsLeft > 0}
+            <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy} title="Swap for another mission (free, once a day)" data-testid="missions-reroll">Swap</button>
+          {/if}
+        </div>
+      </li>
+    {/each}
+  </ol>
+  <div class="bonus" class:ready={view.AllDone && !view.BonusClaimed} class:taken={view.BonusClaimed} data-testid="missions-bonus">
+    <span>All done bonus</span>
+    <span>{view.BonusClaimed ? 'Claimed' : `+${view.BonusXp} XP`}</span>
+  </div>
+  {#if note}<p class="small dim">{note}</p>{/if}
+  <div class="foot">
+    {#if gained > 0}<span class="gained" data-testid="missions-gained">+{gained} Chronicle XP</span>{/if}
+    <button class="primary" onclick={claim} disabled={busy || view.Claimable === 0} data-testid="missions-claim">
+      {view.Claimable > 0 ? `Claim (${view.Claimable})` : 'Claim'}
+    </button>
+  </div>
 {/if}
 
 <style>
-  .head {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .head h2 {
-    margin: 0;
-    flex: 1;
-  }
-
-  .close {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
   .foot {
     display: flex;
     gap: 0.6rem;
     align-items: center;
     justify-content: flex-end;
+    margin-top: 0.6rem;
   }
 
   .gained {

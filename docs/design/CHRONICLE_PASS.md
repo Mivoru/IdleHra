@@ -4,7 +4,7 @@ Approved by the owner on 2026-11-15. This document holds the plan for three PRs,
 
 1. **Daily login window**: built and deployed (#428, client 1.94.0).
 2. **Daily missions**: built (client 1.95.0, migration `DailyMissions`).
-3. **Chronicle pass**: last. It levels from mission XP.
+3. **Chronicle pass**: built (client 1.96.0, migration `ChronicleSeasons`). It levels from mission XP.
 
 ## Owner decisions
 
@@ -87,19 +87,27 @@ What shipped, and where it differs from the plan above it:
 - **Client:** `ChronicleBubble.svelte` floats bottom-left (opposite the chat dock) with a red badge = the server's `Claimable`, polled each minute. It is hidden during the guided first minute. `MissionsWindow.svelte` lists the day with Go buttons (`missions.ts` maps each action to a screen), Swap, and one Claim. In step 3 the same bubble opens the pass.
 - **QuestEngine** (3 kill/craft slots, no client) still runs and checkpoints. Removing it touches `TickStatePayload` and the checkpoint, so it is a separate cleanup.
 
-## 3. Chronicle pass (last)
+## 3. Chronicle pass (built)
 
-- **30-day seasons, 50 levels, 100 pass XP a level, 5,000 XP in total.**
-- **Mission XP:** 30 XP per mission, plus 20 XP for finishing all six. A full day is 200 XP, so **finishing all missions on 25 of the 30 days reaches level 50 exactly.** A player who finishes 4 of 6 every day ends near level 36.
-- XP past level 50 fills a bonus chest every 100 XP (the Clash Royale overflow).
-- **Rewards:**
-  - gold as minutes of income
-  - about 300 diamonds a season (for scale: the Delve pays at most 60 a week)
-  - Gold and Ancient loot chests, legendary wardrobe chests, dungeon tickets
-  - a season avatar at level 25, a season frame at level 40
-  - the season pet at level 50 (+12%, one stat)
-- **UI:** a bubble on the side of the main screen with a red badge counting the rewards ready to claim. The pass screen is a vertical track, laid out like Clash Royale's.
-- **Server-authoritative.** The old pass (`PlayerChroniclePasses`, hidden since 2026-09-28) took its XP from the client and granted item ids that do not exist. Its table can be reused; its claim path cannot.
+- **Seasons:** 30 days, numbered from UTC day 20772 (2026-11-15, the day the missions shipped, so day-one XP counts). `ChronicleRegistry.SeasonNumberFor(dayKey)`. Names cycle through the list below.
+- **XP is not stored by the pass.** It is `MissionEngine.XpBetweenAsync(seasonStart, seasonEnd)`, the sum of `PlayerMissionDays.XpEarned`. The pass and the missions can never disagree. `PlayerChronicleSeasons` (PlayerId, Season) holds only the claimed-level bitmask and the overflow chests paid.
+- **Track (owner-approved 2026-11-15).** Each block of 5 levels pays 60 min of gold, +1 ticket at every gate, 15 diamonds, 90 min of gold, then a chest:
+
+  | Level | Reward |
+  |---|---|
+  | 5, 15, 35 | Gold loot chest |
+  | 20, 45 | Ancient loot chest |
+  | 10, 30 | Legendary wardrobe chest |
+  | 25 | avatar |
+  | 40 | frame |
+  | 50 | pet (+12%, one stat) |
+
+  +25 diamonds at 10/20/25/30/40/45. Season totals (pinned in `ChronicleRegistryTests`): 300 diamonds, 25 h of gold income, 3 Gold + 2 Ancient + 2 Legendary-wardrobe chests, 10 ticket sets. Past 50, every 100 XP pays a Gold loot chest (at most 10 a season).
+- **Routes:** `GET /api/v1/chronicle`, `POST /api/v1/chronicle/claim {Level?}` (one level, or everything ready plus overflow). One transaction under the `PlayerRecords` row lock; the XP is summed under the lock. Gold and diamonds move in the DB, so the handler sends ReloadState and BillingSync, as the login week does.
+- **Keepsakes need paintings.** `PetTests.Every_pet_has_art_on_disk` and the cosmetics tests require art. A season is "defined" in `ChronicleRegistry.Defined` only once its avatar and pet exist under `client/Assets/Images/SpritesWeb/Chronicle/`. An undefined season still runs with its name, but pays a Legendary wardrobe chest at 25 and an Ancient chest at 50, and has no frame drawing. **Before season 2 (2026-12-15), generate Morana's avatar and pet** with `tools/assets/gemini.mjs` (the Veles entries in `gemini.json` are the template: Morana's rebirth avatar is the style reference for the portrait, and the Black Serpent flattened on green is the reference for the pet). Then add the season to `Defined`, draw its frame in `client_web/src/lib/ui/frames.ts`, and pick its pet stat. Veles cost about $0.54 for 2 variants each on `gemini-3-pro-image`.
+- **Season 1, Veles:** avatar "Veles", frame "Veles' Horns" (the new `horns` style in `CosmeticFrame.svelte`), pet "Golden Aurochs", +12% gold. Veles is the god of cattle and wealth.
+- **Client:** the bottom-left bubble (`ChronicleBubble.svelte`) shows the season level, and its red badge is pass-ready + missions-ready. It opens `ChronicleWindow.svelte` with two tabs: `ChroniclePassPanel` (the vertical road, Clash-Royale style, scrolled to the player's place, keepsakes drawn large) and `MissionsPanel`.
+- The old `PlayerChroniclePasses` table and its opcodes (46, 59) stay dead. Removing them is a separate cleanup.
 
 ### Season names
 

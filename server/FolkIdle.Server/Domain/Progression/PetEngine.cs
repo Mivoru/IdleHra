@@ -180,7 +180,13 @@ namespace FolkIdle.Server.Domain.Progression
             {
                 if (owned[key] is Guid g && !living.Contains(g)) owned[key] = null;
             }
-            return PetRegistry.All.Select(p => new PetView(
+            // A Chronicle pet shows only once owned, or while it is THIS
+            // season's prize - past seasons' pets are not a list of things
+            // the player can no longer get.
+            string seasonPet = ChronicleRegistry.Season(ChronicleRegistry.SeasonNumberFor(MissionEngine.DayKeyOf(GameClock.UtcNow))).PetId;
+            return PetRegistry.All
+                .Where(p => p.Source != PetSource.Chronicle || owned.ContainsKey(p.Id) || p.Id == seasonPet)
+                .Select(p => new PetView(
                 p.Id, p.Name, (int)p.Source, p.EventId, p.Art,
                 p.Bonuses.Select(PetRegistry.Describe).ToList(),
                 owned.ContainsKey(p.Id),

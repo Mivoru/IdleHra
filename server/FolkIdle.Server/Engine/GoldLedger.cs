@@ -59,6 +59,8 @@ namespace FolkIdle.Server.Engine
         LootChest = 14,
         /// <summary>The Gold dungeon's payout (DungeonEngine) - a reward, so never part of the earned base.</summary>
         Dungeon = 15,
+        /// <summary>The Chronicle pass's gold levels - a reward, never part of the earned base.</summary>
+        Chronicle = 16,
     }
 
     /// <summary>

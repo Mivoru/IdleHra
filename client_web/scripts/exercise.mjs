@@ -384,6 +384,7 @@ async function dailyMissionsStep() {
   record('the missions bubble is on screen', shown, `${before.Missions.length} missions, ${before.Claimable} to claim`);
   if (!shown) return;
   await bubble.click();
+  await page.getByTestId('chronicle-tab-missions').click();
   const rows = await page.getByTestId('missions-list').locator('li').count().catch(() => 0);
   record("the missions window lists the server's day", rows === before.Missions.length && rows > 0, `${rows} rows`);
 
@@ -409,7 +410,21 @@ async function dailyMissionsStep() {
     record('claiming banks Chronicle XP on the server', after?.XpEarnedToday > now.XpEarnedToday && after?.Claimable === 0,
       `${now.XpEarnedToday} -> ${after?.XpEarnedToday} XP; ${gained}`);
   }
-  await page.getByTestId('missions-close').click().catch(() => {});
+  // The pass tab reads the XP the missions banked: its total must be the sum
+  // the server reports, and anything ready must claim and leave nothing ready.
+  await page.getByTestId('chronicle-tab-pass').click();
+  const pass = await apiGet('/api/v1/chronicle');
+  const track = await page.getByTestId('chronicle-track').locator('li[data-level]').count().catch(() => 0);
+  record('the Chronicle track draws all fifty levels', track === 50 && pass?.Levels === 50,
+    `${track} levels, season ${pass?.Season} level ${pass?.Level} (${pass?.Xp} XP)`);
+  if (pass?.Claimable > 0) {
+    await page.getByTestId('chronicle-claim-all').click();
+    await page.getByTestId('chronicle-got').waitFor({ timeout: 8000 }).catch(() => {});
+    const after = await apiGet('/api/v1/chronicle');
+    record('claiming the Chronicle leaves nothing ready', after?.Claimable === 0,
+      `${pass.Claimable} ready -> ${after?.Claimable}`);
+  }
+  await page.getByTestId('chronicle-close').click().catch(() => {});
   await page.waitForTimeout(300);
 }
 

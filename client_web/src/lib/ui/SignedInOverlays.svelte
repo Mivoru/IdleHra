@@ -20,7 +20,7 @@
   import SeasonalFightWindow from './SeasonalFightWindow.svelte';
   import ChatDock from './ChatDock.svelte';
   import ChronicleBubble from './ChronicleBubble.svelte';
-  import MissionsWindow from './MissionsWindow.svelte';
+  import ChronicleWindow from './ChronicleWindow.svelte';
   import PlayerProfileModal from './PlayerProfileModal.svelte';
 </script>
 
@@ -68,8 +68,8 @@
 <!-- The Cailleach's fight: opened from the World Boss screen, outlives a change of screen. -->
 <SeasonalFightWindow />
 <ChatDock />
-<!-- Daily missions: the side bubble opens the window (CHRONICLE_PASS.md step 2). -->
+<!-- The Chronicle pass and daily missions: the side bubble opens the window (CHRONICLE_PASS.md). -->
 <ChronicleBubble />
-<MissionsWindow />
+<ChronicleWindow />
 <!-- The one profile host: any name opens it through stores/profile.ts. -->
 <PlayerProfileModal />

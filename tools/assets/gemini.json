@@ -1284,6 +1284,23 @@
       "aspect": "1:1",
       "out": "client/Assets/Images/SpritesWeb/SkillIcons/vampire.webp",
       "prompt": "A square game skill icon: a single painted object, centred, on the same dark navy blue background with a soft vignette as the reference, warm rim light, Slavic folklore fantasy. No text, no frame, no border. The object: pale fangs above a goblet of dark red wine, a bat silhouette."
+    },
+    {
+      "id": "chronicle_veles_avatar",
+      "model": "gemini-3-pro-image",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Rebirth/avatars/morana.webp"
+      ],
+      "prompt": "A square character portrait avatar in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted shading, the same head-and-shoulders bust framing, the same moody painted sky behind. The subject is a different character: Veles, the Slavic horned god of the underworld, cattle and wealth. Broad weathered face with a deep knowing smile and amber glowing eyes, long dark beard braided with gold rings, great curved bull horns rising from his brow, a cloak of thick brown bear fur over dark leather, a black serpent coiling over one shoulder, gnarled roots and willow branches behind him, a faint glint of gold coins. Earthy browns, deep greens and warm gold against a misty marsh dusk."
+    },
+    {
+      "id": "chronicle_veles_pet",
+      "model": "gemini-3-pro-image",
+      "key": "pure green (#00FF00)",
+      "references": [
+        "tools/assets/staging/ref_black_serpent.png"
+      ],
+      "prompt": "A game pet creature in EXACTLY the same art style as this reference image: the same inked comic linework, the same painted texture detail, the same three-quarter view, a single whole creature on a small patch of ground, nothing else. The creature is a different one: the Golden Aurochs of Veles, a young spectral aurochs calf, sturdy and proud, shaggy dark brown coat, great curved golden horns, gold rings in its ears, glowing amber eyes, faint golden mist curling from its hooves, standing on a small mound of dark marsh earth with a few gold coins. Whole creature fully inside the frame with margin on every side."
     }
   ]
 }

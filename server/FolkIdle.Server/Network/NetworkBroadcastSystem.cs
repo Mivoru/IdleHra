@@ -2103,6 +2103,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // The Chronicle pass - see NetworkBroadcastSystem.Chronicle.cs.
+            if (await TryHandleChronicleAsync(context, requestPath))
+            {
+                return;
+            }
+
             // Modul: UI audit follow-up. No player-statistics engine
             // existed anywhere server-side. Rather than invent new
             // tracking, this aggregates fields that are already

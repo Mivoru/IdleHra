@@ -40,6 +40,8 @@ namespace FolkIdle.Server.Domain.Progression
         WorldBoss = 6,
         /// <summary>A monster pet's rare variant: any kill, any time, half as often, twice the bonus (owner, 2026-11-14).</summary>
         MonsterRare = 7,
+        /// <summary>A Chronicle season's level-50 reward, +12% to one stat (owner, 2026-11-15).</summary>
+        Chronicle = 8,
     }
 
     public sealed record PetBonus(PetStat Stat, int Pct);
@@ -187,7 +189,7 @@ namespace FolkIdle.Server.Domain.Progression
 
             new PetDefinition(BlackSerpentId, "Black Serpent", PetSource.WorldBoss, 0, "Pets/black_serpent.webp",
                 new[] { new PetBonus(PetStat.Damage, BlackSerpentPct), new PetBonus(PetStat.CritDamage, BlackSerpentPct) }),
-        };
+        }.Concat(ChronicleRegistry.Pets()).ToArray();
 
         private static PetDefinition Monster(string slug, string name, PetStat stat)
             => new("pet_" + slug, name, PetSource.Monster, 0,

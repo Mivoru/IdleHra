@@ -1807,6 +1807,25 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("PlayerChroniclePasses");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.PlayerChronicleSeason", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Season")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("ClaimedMask")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("OverflowClaimed")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PlayerId", "Season");
+
+                    b.ToTable("PlayerChronicleSeasons");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerCollectionEntry", b =>
                 {
                     b.Property<long>("PlayerId")
