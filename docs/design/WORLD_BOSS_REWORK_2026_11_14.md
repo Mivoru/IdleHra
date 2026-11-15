@@ -228,6 +228,10 @@ players' hits; re-measure the HP factor after the first duel week.
      Changes the HP math the Chernobog spec sized (5.5-7.0x) - needs a week
      of duel data first.
    Recommendation: (a) now, (b) only if the boss stops falling.
+   **Decided 2026-11-15: (a). Built and DEPLOYED (#422, client 1.91.0,
+   migration `WorldBossForge`):** `WorldBossForge` - 15 embers (right duel
+   calls, anyone's) fill the forge; each feeder of that fill gets 5 diamonds;
+   the hammer animation plays once per fill per device. No damage.
 3. **Sounds** - the roar, the serpent hiss and the hammer were generated
    with ElevenLabs and loudness-matched by measurement, but no person has
    listened to them. If one is wrong, `tools/assets/manifest.json` has the
