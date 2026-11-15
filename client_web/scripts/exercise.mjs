@@ -369,6 +369,50 @@ async function dailyLoginStep() {
   await page.waitForTimeout(300);
 }
 
+// Daily missions (2026-11-15, CHRONICLE_PASS.md step 2). Round-trips: a
+// dev-granted loot chest is opened (the shelf ends where it began) and the
+// mission counter must move - the writer, the worker and the read side all at
+// once, since a list of missions that never progress renders perfectly.
+async function dailyMissionsStep() {
+  const before = await apiGet('/api/v1/missions');
+  if (!before || !Array.isArray(before.Missions)) {
+    record('the daily missions answer', false, 'no state');
+    return;
+  }
+  const bubble = page.getByTestId('chronicle-bubble');
+  const shown = await bubble.waitFor({ timeout: 8000 }).then(() => true).catch(() => false);
+  record('the missions bubble is on screen', shown, `${before.Missions.length} missions, ${before.Claimable} to claim`);
+  if (!shown) return;
+  await bubble.click();
+  const rows = await page.getByTestId('missions-list').locator('li').count().catch(() => 0);
+  record("the missions window lists the server's day", rows === before.Missions.length && rows > 0, `${rows} rows`);
+
+  const chestMission = before.Missions.find((m) => m.Action === 'LootChestOpened');
+  if (chestMission && !chestMission.Done) {
+    await apiPost('/api/v1/dev/chests/grant', { Tier: 1, Region: 1 });
+    await apiPost('/api/v1/chests/open', { Tier: 1, Count: 1 });
+    let after = null;
+    for (let i = 0; i < 10; i++) {
+      await page.waitForTimeout(700);
+      after = await apiGet('/api/v1/missions');
+      if (after?.Missions?.[chestMission.Slot]?.Progress > chestMission.Progress) break;
+    }
+    record('opening a loot chest moves its mission', after?.Missions?.[chestMission.Slot]?.Progress > chestMission.Progress,
+      `${chestMission.Progress} -> ${after?.Missions?.[chestMission.Slot]?.Progress}`);
+  }
+
+  const now = await apiGet('/api/v1/missions');
+  if (now?.Claimable > 0) {
+    await page.getByTestId('missions-claim').click();
+    const gained = await page.getByTestId('missions-gained').innerText({ timeout: 6000 }).catch(() => '');
+    const after = await apiGet('/api/v1/missions');
+    record('claiming banks Chronicle XP on the server', after?.XpEarnedToday > now.XpEarnedToday && after?.Claimable === 0,
+      `${now.XpEarnedToday} -> ${after?.XpEarnedToday} XP; ${gained}`);
+  }
+  await page.getByTestId('missions-close').click().catch(() => {});
+  await page.waitForTimeout(300);
+}
+
 // The big-chest prompt: the fixture holds thousands of pieces, so it MUST
 // offer to clear some, count what the chosen regions x rarity would take, and
 // close on "Keep everything" without selling (the fixture's chest is the
@@ -395,6 +439,7 @@ async function bigChestPromptStep() {
   await eventIntroStep();
   await bigChestPromptStep();
   await dailyLoginStep();
+  await dailyMissionsStep();
   const stillBlocked = await page.locator('.backdrop, .modal-scrim').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }

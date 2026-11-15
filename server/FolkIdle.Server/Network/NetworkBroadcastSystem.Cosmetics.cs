@@ -211,6 +211,7 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 var (result, opened) = await CosmeticEngine.OpenAsync(db, playerId, rarity, Random.Shared, GameClock.UtcNow);
+                if (result == CosmeticResult.Ok) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.WardrobeChestOpened);
                 await WriteJsonAsync(context, await CosmeticEngine.ViewAsync(db, playerId, result.ToString(), opened));
             }
             catch (Exception ex)

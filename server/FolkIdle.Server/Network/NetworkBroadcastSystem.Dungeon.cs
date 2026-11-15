@@ -256,7 +256,12 @@ namespace FolkIdle.Server.Network
                 {
                     var (sOutcome, sReason, sResult, sReward, sTickets) = await DungeonEngine.RunAsync(
                         db, playerId, kind, stage, payload, food.ItemId, food.Count, income, GameClock.UtcNow, Random.Shared, sweep: true);
-                    if (sResult != null) await AfterDungeonRunAsync(db, playerId, sResult, sReward, food.SlotIndex, food.ItemId);
+                    if (sResult != null)
+                    {
+                        await AfterDungeonRunAsync(db, playerId, sResult, sReward, food.SlotIndex, food.ItemId);
+                        // A sweep is a fight at this gate for the daily mission.
+                        FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DungeonFight, detail: (int)kind);
+                    }
                     await WriteJsonAsync(context, new { Outcome = sOutcome.ToString(), Reason = sReason ?? string.Empty, Finished = true, Result = sResult, Reward = sReward, Tickets = sTickets });
                     return;
                 }
@@ -274,6 +279,9 @@ namespace FolkIdle.Server.Network
                     await WriteJsonAsync(context, new { Outcome = outcome.ToString(), Reason = reason ?? string.Empty, Tickets = tickets });
                     return;
                 }
+                // The ticket is spent: this run counts as a fight at this gate,
+                // however it ends.
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DungeonFight, detail: (int)kind);
 
                 var run = new DungeonLiveRun
                 {

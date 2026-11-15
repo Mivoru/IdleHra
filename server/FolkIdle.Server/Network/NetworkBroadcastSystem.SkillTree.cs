@@ -404,6 +404,7 @@ namespace FolkIdle.Server.Network
 
                 var engine = new SkillTreeEngine(_serviceProvider, _playerSessionRegistry);
                 var result = hearth ? await engine.CommitHearthAsync(playerId, draft) : await engine.CommitAsync(playerId, draft);
+                if (result.Reason == null && result.Spent > 0) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.SkillPointSpent, result.Spent);
                 await WriteJsonAsync(context, result);
             }
             catch (Exception ex)

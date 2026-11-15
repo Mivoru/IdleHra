@@ -891,6 +891,9 @@ namespace FolkIdle.Server.Network
         // constraint by construction.
         private async Task HandleChatDispatchAsync(ChatEngine.ChatDispatchItem item)
         {
+            // Every accepted player message passes here once, whisper or not;
+            // system announcements carry no sender.
+            FolkIdle.Server.Domain.Progression.MissionEvents.Record(item.Packet.SenderPlayerId, FolkIdle.Server.Domain.Progression.MissionAction.ChatMessage);
             System.Collections.Generic.HashSet<long> blockedByRecipients = await GetPlayersWhoBlockedAsync(item.Packet.SenderPlayerId);
 
             ResponseChatMessagePacket chatPacket = item.Packet;
@@ -2090,6 +2093,12 @@ namespace FolkIdle.Server.Network
 
             // The login week - see NetworkBroadcastSystem.LoginWeek.cs.
             if (await TryHandleLoginWeekAsync(context, requestPath))
+            {
+                return;
+            }
+
+            // Daily missions - see NetworkBroadcastSystem.Missions.cs.
+            if (await TryHandleMissionsAsync(context, requestPath))
             {
                 return;
             }
@@ -4425,6 +4434,7 @@ namespace FolkIdle.Server.Network
                     }
 
                     outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.DescendAsync(playerId, quotedStake));
+                    if (outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DelveDeep);
                 }
                 else if (requestPath == "/api/v1/delve/deep/lantern")
                 {

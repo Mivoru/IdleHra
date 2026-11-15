@@ -466,6 +466,7 @@ namespace FolkIdle.Server.Domain.Progression
                 }
 
                 await transaction.CommitAsync();
+                MissionEvents.Record(playerId, MissionAction.FeastThrown);
 
                 _playerRegistry.VillagerRecruitmentUpdateQueue.Enqueue(new VillagerRecruitmentNotification
                 {

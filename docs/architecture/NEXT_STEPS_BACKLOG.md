@@ -742,6 +742,13 @@ Branch `claude/chernobog-world-boss`. Spec (owner decisions, all of them):
   claimed by hand from a window, keyed on `PlayerRecord.LoginRewardClaimDay`;
   a missed day pauses the week; gold is minutes of earned income
   (`GoldRewardScale`). The old x1/x2/x3 cycle multiplier is gone.
+- **Daily missions** (2026-11-15, client 1.95.0, `CHRONICLE_PASS.md` step 2):
+  six a day in `PlayerMissionDays`, acts counted through `MissionEvents.Record`
+  -> `MissionProgressWorker` -> `PlayerMissionCounters`; XP banks on
+  `PlayerMissionDays.XpEarned` for the pass (step 3, next). A new mission act
+  needs a `Record` call beside its commit, or `EveryMissionActionHasAWriter`
+  fails. Open: a gold-spend ledger (for "spend 12 h of gold"), removing the
+  old `QuestEngine`.
 - The dead `perun_avatar_reward_token` mail and the percentile brackets are gone.
   World boss mail no longer skips a full mailbox.
 - Migration `AddChernobogWorldBoss` is additive. The deploy week is upgraded in

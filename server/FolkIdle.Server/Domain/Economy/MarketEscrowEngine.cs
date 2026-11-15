@@ -118,6 +118,7 @@ namespace FolkIdle.Server.Domain.Economy
                 _playerRegistry.EnqueueCommandResult(playerId, outcome.ResultCode.Value);
             }
 
+            if (outcome.Listed) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.MarketListed);
             return outcome.Listed;
         }
 

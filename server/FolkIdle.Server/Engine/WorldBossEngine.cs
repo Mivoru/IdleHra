@@ -936,6 +936,8 @@ namespace FolkIdle.Server.Engine
                 AttemptCount = updatedAttemptCount
             });
             _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
+            // Both strike paths (opcode 32 and the duel) pass through here.
+            FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.WorldBossStrike);
             RefreshLocalSnapshot(snapshot);
         }
 

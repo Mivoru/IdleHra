@@ -380,6 +380,7 @@ namespace FolkIdle.Server.Domain.Economy
                         ResultingQualityTier = targetItem.QualityTier
                     });
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                    FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.ItemFused);
 
                     return ForgeSplicingResult.Success;
                 }
@@ -762,6 +763,7 @@ namespace FolkIdle.Server.Domain.Economy
                 await transaction.CommitAsync();
 
                 Console.WriteLine($"Stack fusion: player {playerId} fused {plan.TotalFusions}x {sample.BaseItemId} for {plan.GoldCost} gold.");
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.ItemFused, plan.TotalFusions);
                 _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification
                 {
                     PlayerId = playerId,

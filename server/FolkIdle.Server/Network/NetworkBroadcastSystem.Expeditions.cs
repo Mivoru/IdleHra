@@ -51,6 +51,7 @@ namespace FolkIdle.Server.Network
                     catch (JsonException) { context.Response.StatusCode = 400; return true; }
 
                     var result = await ExpeditionEngine.StartAsync(db, playerId, characterId, hours, now, provision);
+                    if (result == ExpeditionStartResult.Started) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.ExpeditionSent);
                     if (provision && result == ExpeditionStartResult.Started)
                     {
                         // Provisions took gold from the database; the live wallet follows on reload.
