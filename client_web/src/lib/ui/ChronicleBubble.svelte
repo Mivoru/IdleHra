@@ -140,6 +140,31 @@
     }
   }
 
+  /* Modul: ON A PHONE THE CHAT BUBBLE OWNS THE CORNER (ChatBubble.svelte: 3rem,
+     0.75rem from the left and from the tab bar), and this sat right on top of
+     it (owner, 2026-11-15, with a screenshot). Same column, same size, one
+     step up - the onboarding coach already starts to the right of that
+     column, so nothing else is covered. */
+  @media (max-width: 40rem) {
+    .bubble {
+      left: calc(0.75rem + var(--sa-left));
+      bottom: calc(0.75rem + 3rem + 0.6rem + var(--sa-bottom) + var(--tabbar-h));
+      width: 3rem;
+      height: 3rem;
+      min-width: 3rem;
+      min-height: 3rem;
+    }
+
+    .glyph :global(svg) {
+      width: 20px;
+      height: 20px;
+    }
+
+    .progress {
+      font-size: 0.58rem;
+    }
+  }
+
   :global(:root) {
     --bubble-ink: #3a2410;
     --bubble-hi: #f6d98a;
