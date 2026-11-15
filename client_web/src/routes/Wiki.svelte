@@ -1868,10 +1868,10 @@
               <tbody>
                 {#each DUEL_MOVES as m (m.move)}
                   <tr>
-                    <td>{m.name}{#if m.serpentOnly} <span class="dim tiny">(Serpent)</span>{/if}</td>
+                    <td>{m.name}{#if m.serpentOnly}{' '}<span class="dim tiny">(Serpent)</span>{/if}</td>
                     {#each DUEL_BUILDS as build}
                       {@const a = duelAnswers(m.move, build)}
-                      <td><strong>{a.right.join(' / ')}</strong>{#if a.fair.length}<span class="dim tiny"> - fair: {a.fair.join(', ')}</span>{/if}</td>
+                      <td><strong>{a.right.join(' / ')}</strong>{#if a.fair.length}{' '}<span class="dim tiny">- fair: {a.fair.join(', ')}</span>{/if}</td>
                     {/each}
                   </tr>
                 {/each}
