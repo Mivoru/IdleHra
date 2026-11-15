@@ -130,6 +130,9 @@ describe('what a line says', () => {
     expect(describeCombatLine(line({ amount: 500, flags: CombatEventFlag.Burn }), 'Field Mouse')).toBe(
       'You hit Field Mouse for 500 (burning)',
     );
+    expect(describeCombatLine(line({ amount: 31, flags: CombatEventFlag.Bleed }), 'Field Mouse')).toBe(
+      'Field Mouse bleeds for 31',
+    );
     expect(describeCombatLine(line({ amount: 12, flags: CombatEventFlag.Thorns }), 'Field Mouse')).toBe(
       'Thorns reflect 12',
     );

@@ -26,7 +26,7 @@ import {
   shouldPublishVisual,
   type InterpolatedFields,
 } from '../net/interpolation';
-import { DamageFeed, type DamageEvent } from './damage';
+import { DamageFeed, type DamageEvent, type DamageSource } from './damage';
 import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
 import { claimSeasonalDeath, noteSeasonalCombatEvent, noteSeasonalResults, resetSeasonalFightSession } from './seasonalFight';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, shouldPlayErrorTone, type CommandResultEntry } from './commandResults';
@@ -1190,9 +1190,19 @@ export function startSession(token: string): void {
       if (kind === CombatEventKind.PlayerMiss) play('playerMiss');
       if (kind !== CombatEventKind.PlayerHit) return;
 
+      // Modul: WHERE THE DAMAGE CAME FROM decides how it looks. A bleed tick
+      // and a thorns reflection are PlayerHit events too, but no weapon moved,
+      // so they float in their own colour and make no swing sound or spark -
+      // a bleed ticks every second, and a whoosh on each would be noise.
+      const flags = Number(packet.Flags);
+      const source: DamageSource =
+        (flags & CombatEventFlag.Bleed) !== 0 ? 'bleed'
+        : (flags & CombatEventFlag.Thorns) !== 0 ? 'thorns'
+        : 'hit';
+
       const hit = damageFeed.push(
         Number(packet.Amount),
-        (Number(packet.Flags) & CombatEventFlag.Crit) !== 0,
+        (flags & CombatEventFlag.Crit) !== 0,
         Number(get(playerState)?.EquippedWeaponKind ?? 0),
         // Modul: THE CLOCK pump() PRUNES WITH, not serverNowMs(). The two
         // disagree by the server offset AND by every second the phone slept,
@@ -1202,14 +1212,19 @@ export function startSession(token: string): void {
         // the DOM, so they piled up, and every return to Combat remounted the
         // pile and replayed it as one stack of overlapping text and a stutter.
         performance.timeOrigin + performance.now(),
-        (Number(packet.Flags) & CombatEventFlag.DoubleStrike) !== 0,
-        Number(packet.Proc ?? 0),
+        {
+          isDoubleCrit: (flags & CombatEventFlag.DoubleStrike) !== 0,
+          proc: Number(packet.Proc ?? 0),
+          source,
+          isBurn: (flags & CombatEventFlag.Burn) !== 0,
+        },
       );
       if (hit === null) return;
 
       damageEvents.set(damageFeed.current);
       typicalHit.set(damageFeed.typicalHit);
       startPump();
+      if (hit.source !== 'hit') return;
 
       // Modul: A HIT MADE A SOUND AND A MARK.
       //

@@ -129,4 +129,22 @@ describe('the typical hit', () => {
     for (let i = 0; i < 16; i++) feed.push(1000, false, MELEE, 2000);
     expect(feed.typicalHit).toBe(1000);
   });
+
+  // A bleed share is a slice of one crit landing every second. Counted as a
+  // swing it would drag the median down until every real hit read as 'big'.
+  it('leaves bleed ticks and thorns out of the typical hit', () => {
+    const feed = new DamageFeed();
+    for (let i = 0; i < 4; i++) feed.push(1000, false, MELEE, 1000);
+    for (let i = 0; i < 12; i++) feed.push(30, false, MELEE, 1000, { source: 'bleed' });
+    feed.push(5, false, MELEE, 1000, { source: 'thorns' });
+    expect(feed.typicalHit).toBe(1000);
+  });
+
+  it('carries the source and the burn flag onto the event', () => {
+    const feed = new DamageFeed();
+    expect(feed.push(30, false, MELEE, 1000, { source: 'bleed' })!.source).toBe('bleed');
+    expect(feed.push(400, false, MELEE, 1000, { isBurn: true })!.isBurn).toBe(true);
+    // Burn belongs to a swing; a reflected blow never burns.
+    expect(feed.push(9, false, MELEE, 1000, { source: 'thorns', isBurn: true })!.isBurn).toBe(false);
+  });
 });

@@ -47,6 +47,7 @@ export const CombatEventFlag = {
   Burn: 4,
   Thorns: 8,
   DoubleStrike: 16,
+  Bleed: 32,
 } as const;
 
 export interface CombatLogLine {
@@ -150,11 +151,13 @@ export function describeCombatLine(line: CombatLogLine, monsterName: string): st
   const blocked = (line.flags & CombatEventFlag.Blocked) !== 0;
   const burn = (line.flags & CombatEventFlag.Burn) !== 0;
   const thorns = (line.flags & CombatEventFlag.Thorns) !== 0;
+  const bleed = (line.flags & CombatEventFlag.Bleed) !== 0;
   const amount = formatNumber(line.amount);
 
   switch (line.kind) {
     case CombatEventKind.PlayerHit:
       if (thorns) return `Thorns reflect ${amount}`;
+      if (bleed) return `${monsterName} bleeds for ${amount}`;
       return `${crit ? 'Critical! ' : ''}You hit ${monsterName} for ${amount}${burn ? ' (burning)' : ''}`;
     case CombatEventKind.PlayerMiss:
       return `You miss ${monsterName}`;

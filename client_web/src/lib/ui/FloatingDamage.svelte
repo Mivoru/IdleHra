@@ -47,8 +47,10 @@
       class="hit"
       class:crit={event.isCrit}
       class:double={event.isDoubleCrit}
+      class:burn={event.isBurn}
+      data-source={event.source}
       data-proc={calloutFor(event.proc)?.tone ?? null}
-      data-size={magnitude(event.amount)}
+      data-size={event.source === 'hit' ? magnitude(event.amount) : null}
       style="--x: {10 + event.offset * 80}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
     >
       <span class="num">-{formatNumber(event.amount)}</span>
@@ -58,6 +60,12 @@
         <span class="tag">DOUBLE CRIT!!</span>
       {:else if event.isCrit}
         <span class="tag">CRIT!</span>
+      {:else if event.source === 'bleed'}
+        <span class="tag">BLEED</span>
+      {:else if event.source === 'thorns'}
+        <span class="tag">THORNS</span>
+      {:else if event.isBurn}
+        <span class="tag">BURN</span>
       {/if}
     </span>
   {/each}
@@ -259,6 +267,109 @@
     80% { translate: 2px 1px; }
   }
 
+  /* Modul: DAMAGE THAT NO SWING DEALT LOOKS LIKE ITS SOURCE. A bleed share,
+     a reflected blow and a burn used to float as the same red number as a
+     swing - the bleed not at all, since the server published nothing for it.
+     Each has its own hue AND its own shape of motion, so the difference
+     survives for someone who cannot tell the colours apart. */
+
+  /* Bleed: small, dark crimson, slanted, and it DRIPS - sinks instead of
+     rising, with a drop shape beside it. It ticks every second, so it is
+     the quietest number on screen on purpose. */
+  .hit[data-source='bleed'] {
+    --half: 2.2rem;
+    top: 40%;
+    font-size: 1.05rem;
+    font-style: italic;
+    color: #e0304a;
+    -webkit-text-stroke: 3px #1a0004;
+    text-shadow: 0 0 6px rgba(150, 0, 20, 0.9);
+    animation-name: bleed-drip;
+  }
+
+  .hit[data-source='bleed'] .num::before {
+    content: '';
+    display: inline-block;
+    width: 0.45em;
+    height: 0.45em;
+    margin-right: 0.22em;
+    vertical-align: 0.1em;
+    background: #b0102a;
+    border: 1px solid #1a0004;
+    border-radius: 0 50% 50% 50%;
+    transform: rotate(45deg);
+  }
+
+  .hit[data-source='bleed'] .tag {
+    color: #d42a44;
+    font-style: normal;
+  }
+
+  /* Thorns: briar green, swept in from the player's side - it is the
+     monster's own blow coming back, not a swing from above. */
+  .hit[data-source='thorns'] {
+    --half: 2.6rem;
+    font-size: 1.15rem;
+    color: #a8e07a;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 8px rgba(70, 140, 40, 0.95);
+    animation-name: float-up, riposte-sweep;
+    animation-duration: var(--life), 220ms;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1), ease-out;
+  }
+
+  .hit[data-source='thorns'] .tag {
+    color: #6fae3c;
+  }
+
+  /* Burn: the swing still sets the colour (a burning crit stays yellow),
+     but it gets a flickering fire glow, and an ordinary hit turns ember
+     orange with a BURN tag. */
+  /* A skill callout keeps its own glow and motion; the tag still says BURN
+     only when nothing louder claimed it. */
+  .hit.burn:not([data-proc]) {
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 -2px 8px rgba(255, 120, 20, 0.95),
+      0 -6px 16px rgba(255, 60, 0, 0.7);
+    animation-name: float-up, burn-flicker;
+    animation-duration: var(--life), 180ms;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1), steps(2);
+    animation-iteration-count: 1, 8;
+  }
+
+  .hit.burn:not(.crit):not([data-proc]) {
+    color: #ff9a3c;
+  }
+
+  .hit.burn .tag {
+    color: #ff6a1a;
+  }
+
+  @keyframes bleed-drip {
+    0% {
+      transform: translateY(-0.4rem) scale(0.7);
+      opacity: 0;
+    }
+    12% {
+      transform: translateY(0) scale(1.05);
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(1.8rem) scale(0.95);
+      opacity: 0;
+    }
+  }
+
+  @keyframes burn-flicker {
+    from { filter: brightness(1); }
+    to { filter: brightness(1.35); }
+  }
+
   /* Size carries the difference as well as hue, so the distinction survives
      for someone who cannot separate orange from red. It scales a non-crit
      only: a crit is already the loudest thing on screen. */
@@ -304,6 +415,11 @@
     }
     .hit[data-proc='ruin']::before {
       display: none;
+    }
+    .hit[data-source='bleed'],
+    .hit[data-source='thorns'],
+    .hit.burn {
+      animation: none;
     }
   }
 </style>

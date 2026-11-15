@@ -5395,7 +5395,22 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.BleedSecondsLeft--;
                 bool bleedWarded = TryGetAscensionModifiers(in payload, out var bleedMods) && bleedMods.Ward
                     && payload.CombatTargetTickAccumulator < payload.AscensionWardUntilTenths;
-                if (!bleedWarded && share > 0) payload.CurrentMonsterHp -= share;
+                if (!bleedWarded && share > 0)
+                {
+                    payload.CurrentMonsterHp -= share;
+                    // Whole hit points like every other line; a share under
+                    // one point moves the bar and says nothing.
+                    if (share >= 1000L)
+                    {
+                        CombatEventFeed.Publish(
+                            payload.PlayerId,
+                            payload.CurrentMonsterId,
+                            Network.ResponseCombatEventPacket.KindPlayerHit,
+                            (int)Math.Min(int.MaxValue, share / 1000L),
+                            (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                            Network.ResponseCombatEventPacket.FlagBleed);
+                    }
+                }
             }
 
             var activeMonster = ContentRegistry.Monsters[payload.CurrentMonsterId - 1];
