@@ -58,6 +58,9 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// <summary>The duel's skill score (share of right calls). Null = score the landings, as the wheel does.</summary>
         public double? Skill { get; init; }
 
+        /// <summary>A duel's right calls - the embers it feeds Svarog's forge (WorldBossForge). 0 for wheel and auto strikes.</summary>
+        public int RightCalls { get; init; }
+
         public TaskCompletionSource<WorldBossStrikeOutcome> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

@@ -79,5 +79,12 @@ namespace FolkIdle.Server.Models
         /// the kill reward is paid with everything else on Sunday.
         /// </summary>
         public long DefeatedAtEpoch { get; set; }
+
+        // Modul: SVAROG'S FORGE (2026-11-15, WorldBossForge). Right duel calls
+        // this encounter, short of the next fill; how many times it has filled;
+        // and when it last did, so the screen can show the hammer falling once.
+        public int ForgeCharge { get; set; }
+        public int ForgeFills { get; set; }
+        public long ForgeLastFillEpoch { get; set; }
     }
 }

@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.91.0',
+    date: '2026-11-15',
+    headline: "Svarog's forge.",
+    sections: [
+      {
+        title: 'World boss',
+        items: [
+          "Every right call in a duel - yours or anyone's - adds an ember to Svarog's forge. When it is full, his hammer falls on Chernobog and everyone who fed it gets 5 diamonds.",
+          'The forge is on the World Boss screen, with your share; it starts cold every Monday.',
+          'Below a quarter of his health, the first visit shows the Black Serpent rising.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.90.0',
     date: '2026-11-15',
     headline: 'Chernobog, face to face: the world boss duel.',

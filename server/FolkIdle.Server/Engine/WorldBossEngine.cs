@@ -422,6 +422,7 @@ namespace FolkIdle.Server.Engine
                 snapshot.HpRevealed = 0;
                 snapshot.HpFactor = 0;
                 snapshot.DefeatedAtEpoch = 0;
+                WorldBossForge.Reset(snapshot);
                 snapshot.LastActiveTimestamp = GameClock.UtcNowOffset.ToUnixTimeSeconds();
 
                 // Modul: a fresh set of armour, and a fresh secret.
@@ -874,7 +875,7 @@ namespace FolkIdle.Server.Engine
                 // The skill score of a strike the player PLAYED - an auto-strike
                 // is not a choice to play badly, so the detector never sees it.
                 double? skill = order.IsPlayed ? (order.Skill ?? WorldBossStrikeRules.Score(order.Landings)) : null;
-                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, skill, await LevelOfAsync(db, playerId), GameClock.UtcNow);
+                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, skill, await LevelOfAsync(db, playerId), GameClock.UtcNow, order.RightCalls);
                 // Modul: the quest line's "strike the world boss" step. The
                 // attempt rows are DELETED when the boss dies, so they cannot be
                 // the evidence; the act is latched here, in the strike's own

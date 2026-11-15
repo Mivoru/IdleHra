@@ -32,7 +32,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// </summary>
         public static async Task<StrikeBook> RecordStrikeAsync(
             FolkIdleDbContext db, WorldBossSnapshot snapshot, PlayerWorldBossAttempt attempt,
-            long credit, double? skill, int playerLevel, DateTime utcNow)
+            long credit, double? skill, int playerLevel, DateTime utcNow, int rightCalls = 0)
         {
             long now = new DateTimeOffset(DateTime.SpecifyKind(utcNow, DateTimeKind.Utc)).ToUnixTimeSeconds();
             bool defeatedNow = false;
@@ -83,6 +83,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             }
 
             var paid = await PayMilestonesAsync(db, attempt, utcNow);
+            await WorldBossForge.FeedAsync(db, snapshot, attempt, rightCalls, utcNow);
             return new StrikeBook(defeatedNow, paid);
         }
 

@@ -2928,6 +2928,8 @@ await go('World Boss');
     );
 
     if (active) {
+      const forgeBefore = await apiGet('/api/v1/worldboss/board');
+      record('the screen shows Svarog\'s forge', (await page.locator('[data-testid="boss-forge"]').count()) > 0);
       const real = await playDuel('[data-testid="duel-strike"]');
       await page
         .waitForFunction((n) => Number(document.querySelector('[data-testid="strike-chip"]')?.getAttribute('data-spent') ?? 0) > n, pipsBefore, { timeout: 10000 })
@@ -2935,6 +2937,12 @@ await go('World Boss');
       const damageAfter = await myDamage();
       record('a real duel lands damage on the result card', real !== null && real.damage > 0, real ? `${real.damage} (${real.verdicts.join(', ')})` : 'the duel did not open');
       record('the duel spends the strike', (await pipsNow()) > pipsBefore, `${pipsBefore} -> ${await pipsNow()}`);
+      // Svarog's forge (2026-11-15): one ember per right call, whoever made it.
+      const forgeAfter = await apiGet('/api/v1/worldboss/board');
+      const rights = real ? real.verdicts.filter((v) => v === 'Right').length : -1;
+      const embers = (forgeAfter?.ForgeCharge ?? 0) + (forgeAfter?.ForgeFills ?? 0) * (forgeAfter?.ForgeEmbersToFill ?? 15)
+        - ((forgeBefore?.ForgeCharge ?? 0) + (forgeBefore?.ForgeFills ?? 0) * (forgeBefore?.ForgeEmbersToFill ?? 15));
+      record('each right call feeds the forge one ember', embers === rights, `${rights} right, forge +${embers}`);
       record(
         "the card's damage is exactly what the board gained",
         real !== null && damageAfter - damageBefore === real.damage,

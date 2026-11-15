@@ -2474,6 +2474,13 @@ export interface WorldBossBoardView {
   RegisteredCount: number;
   Defeated: boolean;
   DefeatedAtEpoch: number;
+  /** Svarog's forge (WorldBossForge.cs): right duel calls this fill, out of ForgeEmbersToFill. */
+  ForgeCharge: number;
+  ForgeEmbersToFill: number;
+  ForgeFills: number;
+  ForgeLastFillEpoch: number;
+  ForgeDiamonds: number;
+  ForgeFedByMe: boolean;
   RegistrationLevel: number;
   Milestones: WorldBossMilestoneView[];
   Places: WorldBossPlaceView[];
