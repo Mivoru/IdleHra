@@ -42,6 +42,18 @@ build's stance and the omen of the day.
   snapshots kept as tags `archive/*`; night worktrees removed after copying
   `bot-runs/` to `D:\FolkIdleBackupsot-runs\`.
 
+Then **#419** (DEPLOYED 1.0.1882): the Black Serpent's intro opens once per
+encounter after the 25% line (localStorage `folkidle.serpentSeen.<endEpoch>`);
+`exercise.mjs`'s new-account proof plays a practice duel; `screens.mjs` has a
+`World Boss · duel` destination for the geometry checks. **#420**: smoke closes
+the serpent intro (production was at 8.2% HP that night); `check:perf` samples
+the duel. Verified that night: server suite 2288/2288, full exercise 443/444
+(the one red was the wheel's practice button, fixed in #419), clipping 0 of
+32 x 3, safearea 0/64, perf in budget, production smoke 32/32.
+
+**Owner questions:** section 7 of the design doc - delete the wheel, the Forge
+meter (cosmetic vs damage burst), and three SFX nobody has listened to yet.
+
 Open: the Forge meter (P6's shared moment); re-measure the HP factor after the
 first duel week (Mon 2026-11-16 is also the first TreeStrike week, so both
 change at once - read the Mon/Tue strikes before blaming either).
