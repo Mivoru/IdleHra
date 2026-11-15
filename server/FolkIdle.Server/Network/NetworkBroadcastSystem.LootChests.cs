@@ -90,6 +90,7 @@ namespace FolkIdle.Server.Network
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 bool tickets = await ChestsPayDungeonTicketsAsync(db, playerId);
                 var opened = await LootChestEngine.OpenAsync(db, playerId, (LootChestTier)tier, count, GameClock.UtcNow, Random.Shared, tickets);
+                if (opened.Count > 0) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.LootChestOpened, opened.Count);
                 db.ChangeTracker.Clear();
 
                 await WriteJsonAsync(context, new

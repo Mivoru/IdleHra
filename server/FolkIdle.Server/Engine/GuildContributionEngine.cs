@@ -53,6 +53,7 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.GuildDonation);
             }
             catch (Exception ex)
             {
@@ -120,6 +121,7 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.GuildDonation);
             }
             catch (Exception ex)
             {
@@ -186,6 +188,7 @@ namespace FolkIdle.Server.Engine
                     await db_gold.SaveChangesAsync();
                     await transaction_gold.CommitAsync();
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                    FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.GuildDonation);
                     return true;
                 }
                 catch (System.Exception ex)
@@ -247,6 +250,7 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.GuildDonation);
                 return true;
             }
             catch (Exception ex)

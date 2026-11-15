@@ -1982,6 +1982,63 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("player_lifetime_achievements");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.PlayerMissionCounter", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("DayKey")
+                        .HasColumnType("integer");
+
+                    b.Property<short>("Action")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("Detail")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PlayerId", "DayKey", "Action", "Detail");
+
+                    b.HasIndex("DayKey");
+
+                    b.ToTable("PlayerMissionCounters");
+                });
+
+            modelBuilder.Entity("FolkIdle.Server.Models.PlayerMissionDay", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("DayKey")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Actions")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("BonusClaimed")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ClaimedMask")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RerollsUsed")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("XpEarned")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PlayerId", "DayKey");
+
+                    b.ToTable("PlayerMissionDays");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerPet", b =>
                 {
                     b.Property<long>("Id")

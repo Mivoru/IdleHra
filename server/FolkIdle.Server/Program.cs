@@ -682,6 +682,10 @@ redisWriteBehindEngine.StartCron();
 // FunnelRecorder.Queue into player_funnel_events. See docs/ops/funnel.sql.
 var funnelRecorder = new FunnelRecorder(serviceProvider);
 funnelRecorder.StartCron();
+// Daily missions: producers call MissionEvents.Record; this drains the queue
+// into PlayerMissionCounters (docs/design/CHRONICLE_PASS.md, step 2).
+var missionProgressWorker = new MissionProgressWorker(serviceProvider);
+missionProgressWorker.StartCron();
 // Task 56: ten-minute samples of every online account's lifetime counters.
 var statSampler = new StatSampler(serviceProvider, playerRegistry);
 statSampler.StartCron();

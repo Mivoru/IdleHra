@@ -300,6 +300,8 @@ namespace FolkIdle.Server.Domain.Economy
                 // Funnel step 4, after the commit. See FunnelRecorder.
                 Engine.FunnelRecorder.Record(playerId, Engine.FunnelStep.FirstCraft);
 
+                RecordCraftMissions(playerId, recipe, quantityProduced);
+
                 // Enqueue completion
                 _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
                 {
@@ -544,12 +546,27 @@ namespace FolkIdle.Server.Domain.Economy
                 if (ownTransaction != null) await ownTransaction.CommitAsync();
 
                 Engine.FunnelRecorder.Record(playerId, Engine.FunnelStep.FirstCraft);
+                // A job left running while away counts for the day it is
+                // settled, like the live one.
+                RecordCraftMissions(playerId, recipe, (int)Math.Min(int.MaxValue, produced));
                 return new OfflineCraftResult(crafts, produced, granted);
             }
             finally
             {
                 if (ownTransaction != null) await ownTransaction.DisposeAsync();
             }
+        }
+
+        // Daily missions: a tool is any *_axe_/_pickaxe_/_fishing_rod_ *_tool
+        // result; a potion is anything off the Alchemy bench (profession 5).
+        private static void RecordCraftMissions(long playerId, ContentRegistry.RecipeDefinition recipe, int produced)
+        {
+            const int AlchemyProfession = 5;
+            if (produced <= 0) return;
+            if (ContentRegistry.GetToolKind(ContentRegistry.GetItemBaseId(recipe.ResultItemId)) >= 0)
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.ToolCrafted, produced);
+            if (recipe.ProfessionType == AlchemyProfession)
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.PotionCrafted, produced);
         }
 
         private static int ResolveRegionTierForItem(int itemId)

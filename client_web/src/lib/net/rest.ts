@@ -42,6 +42,7 @@ export const queryKeys = {
   villageNewcomers: ['village', 'newcomers'] as const,
   villageQuote: ['village', 'quote'] as const,
   loginBonus: ['meta', 'loginBonus'] as const,
+  missions: ['meta', 'missions'] as const,
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
   deepestBoard: ['meta', 'leaderboard', 'deepest'] as const,
@@ -1334,6 +1335,62 @@ export async function claimLoginBonus(): Promise<LoginBonusClaim> {
     }
     throw error;
   }
+}
+
+// Modul: DAILY MISSIONS (owner, 2026-11-15; docs/design/CHRONICLE_PASS.md
+// step 2). The server draws the day, counts the acts and decides what is
+// claimable; the client only shows it. Missions pay Chronicle XP, banked for
+// the pass.
+export interface MissionEntry {
+  Slot: number;
+  /** MissionAction's name on the server, e.g. "DungeonFight". */
+  Action: string;
+  Title: string;
+  Hint: string;
+  Progress: number;
+  Target: number;
+  Done: boolean;
+  Claimed: boolean;
+  Fixed: boolean;
+  Xp: number;
+}
+
+export interface MissionDay {
+  DayKey: number;
+  Missions: MissionEntry[];
+  AllDone: boolean;
+  BonusClaimed: boolean;
+  BonusXp: number;
+  RerollsLeft: number;
+  XpEarnedToday: number;
+  /** Finished, unclaimed missions plus the bonus when it is ready - the bubble's badge. */
+  Claimable: number;
+  SecondsUntilNextDay: number;
+}
+
+export interface MissionClaim {
+  Outcome: 'Ok' | 'NothingToClaim' | 'NotFound';
+  XpGained: number;
+  Day: MissionDay;
+}
+
+export interface MissionReroll {
+  Outcome: 'Ok' | 'NoRerollsLeft' | 'NotRerollable' | 'NothingElseToOffer' | 'NotFound';
+  Day: MissionDay;
+}
+
+export function fetchMissions(): Promise<MissionDay> {
+  return authedGet<MissionDay>('/api/v1/missions');
+}
+
+/** Claims every finished mission of today, and the all-done bonus when it is ready. */
+export async function claimMissions(): Promise<MissionClaim> {
+  return (await authedPost<MissionClaim>('/api/v1/missions/claim', {}))!;
+}
+
+/** Swaps one unfinished rotating mission for another, with the day's free reroll. */
+export async function rerollMission(slot: number): Promise<MissionReroll> {
+  return (await authedPost<MissionReroll>('/api/v1/missions/reroll', { Slot: slot }))!;
 }
 
 export interface LeaderboardEntry {

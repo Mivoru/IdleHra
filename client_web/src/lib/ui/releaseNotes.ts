@@ -35,6 +35,23 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.95.0',
+    date: '2026-11-15',
+    headline: 'Daily missions.',
+    sections: [
+      {
+        title: 'Daily missions',
+        items: [
+          'Six missions every day: the dungeons, an expedition and the world boss, plus three that change daily - forge, breed, feast, trade, chat and more.',
+          'You only get missions for things you have already unlocked, so every one of them can be done.',
+          'The round button in the bottom-left corner opens them. The red number shows how many are ready to claim.',
+          'Each finished mission pays 30 Chronicle XP, and finishing all of them adds 20 more. The XP is saved for the Chronicle pass, which is coming next.',
+          "Don't like a mission? Swap one for free once a day.",
+        ],
+      },
+    ],
+  },
+  {
     version: '1.94.0',
     date: '2026-11-15',
     headline: 'A daily reward worth coming back for.',

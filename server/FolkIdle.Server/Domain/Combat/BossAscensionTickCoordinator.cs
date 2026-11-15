@@ -42,6 +42,12 @@ namespace FolkIdle.Server.Domain.Combat
                 currentPayload.AscensionStep = (byte)step;
                 currentPayload.AscensionRegion = (byte)region;
                 currentPayload.AscensionCharacterId = currentPayload.Slot1_CharacterId;
+
+                // The daily mission asks for the HIGHEST step open in that
+                // region: the next unbeaten one, or the last once all are beaten.
+                int highestOpen = Math.Min(BossAscensionRegistry.MaxStep,
+                    BossAscensionRegistry.HighestStepOf(currentPayload.BossAscensionPacked, region) + 1);
+                if (step >= highestOpen) FolkIdle.Server.Domain.Progression.MissionEvents.Record(currentPayload.PlayerId, FolkIdle.Server.Domain.Progression.MissionAction.BossAscension);
             }
 
             ctx.PlayerRegistry.EnqueueCommandResult(currentPayload.PlayerId, (byte)code);

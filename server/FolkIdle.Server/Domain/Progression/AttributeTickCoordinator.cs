@@ -56,6 +56,7 @@ namespace FolkIdle.Server.Domain.Progression
             else
             {
                 currentPayload.UnspentAttributePoints -= requested;
+                MissionEvents.Record(currentPayload.PlayerId, MissionAction.AttributePointSpent, requested);
                 switch (attributeId)
                 {
                     case 0: currentPayload.STR += requested; break;

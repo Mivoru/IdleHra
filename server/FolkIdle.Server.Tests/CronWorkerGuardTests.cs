@@ -65,6 +65,7 @@ namespace FolkIdle.Server.Tests
                 ["PendingGrantDrainEngine"] = "drains pending_grants - the retry half of the loot/gathering/offline-production outbox",
                 ["CosmeticGrantEngine"] = "pays level chests (task 54) - budgeted and coalesced, the try opens before the delay, and each player's grant has its own try around CreateScope",
                 ["StatSampler"] = "ten-minute samples of online players' lifetime counters (task 56) - the try opens before the delay and before CreateScope",
+                ["MissionProgressWorker"] = "drains MissionEvents into PlayerMissionCounters and prunes old days hourly - budgeted, the try opens before the delay and before CreateScope; a failed batch is dropped and counted",
                 ["FunnelRecorder"] = "drains the new-player funnel queue into player_funnel_events (task 39) - budgeted, and the try opens before the delay and before CreateScope",
             };
 

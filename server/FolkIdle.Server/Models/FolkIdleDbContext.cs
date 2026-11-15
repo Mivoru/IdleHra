@@ -64,6 +64,8 @@ namespace FolkIdle.Server.Models
         public DbSet<LootChestWeek> LootChestWeeks { get; set; }
         public DbSet<BuildPreset> BuildPresets { get; set; }
         public DbSet<DungeonProgress> DungeonProgress { get; set; }
+        public DbSet<PlayerMissionDay> PlayerMissionDays { get; set; }
+        public DbSet<PlayerMissionCounter> PlayerMissionCounters { get; set; }
         public DbSet<Expedition> Expeditions { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
@@ -519,6 +521,19 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<DungeonProgress>()
                 .HasKey(d => new { d.PlayerId, d.Kind });
+
+            // Daily missions (docs/design/CHRONICLE_PASS.md, step 2).
+            modelBuilder.Entity<PlayerMissionDay>(b =>
+            {
+                b.HasKey(d => new { d.PlayerId, d.DayKey });
+                b.Property(d => d.Actions).HasMaxLength(64);
+            });
+            modelBuilder.Entity<PlayerMissionCounter>(b =>
+            {
+                b.HasKey(c => new { c.PlayerId, c.DayKey, c.Action, c.Detail });
+                // The pruning delete walks by day.
+                b.HasIndex(c => c.DayKey);
+            });
 
             modelBuilder.Entity<Expedition>(b =>
             {

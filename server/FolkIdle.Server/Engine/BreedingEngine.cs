@@ -321,6 +321,7 @@ namespace FolkIdle.Server.Engine
                 // WORKED said nothing either - the roster simply had one more
                 // row in it the next time the screen was opened.
                 Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingSucceeded);
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.ChildBorn);
 
                 _playerRegistry.BirthNotificationQueue.Enqueue(new BirthNotification
                 {
@@ -577,6 +578,7 @@ namespace FolkIdle.Server.Engine
                 // WORKED said nothing either - the roster simply had one more
                 // row in it the next time the screen was opened.
                 Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingSucceeded);
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.ChildBorn);
 
                 _playerRegistry.BirthNotificationQueue.Enqueue(new BirthNotification
                 {

@@ -82,6 +82,7 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+                FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.GuildDonation);
             }
             catch (Exception ex)
             {
