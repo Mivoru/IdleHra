@@ -55,12 +55,21 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// <summary>Hours of income the weekly top three receive, by place.</summary>
         public static readonly IReadOnlyList<int> PlaceGoldHours = new[] { 3, 2, 1 };
 
+        // Modul: 45 DIAMONDS, NOT 60 (owner 2026-11-15: "the damage rewards
+        // look too high"). Measured that day: every account crossed 10k, 25k and
+        // 60k within its first one to four strikes (13k-28k a strike), so the
+        // first 30 diamonds were near-free, and Svarog's forge had just added
+        // about 15 a week (WorldBossForge). Milestones 45 + forge ~15 keep the
+        // boss at the Delve's 60-a-week yardstick instead of above it. The
+        // thresholds themselves wait for the first duel week's strikes - the
+        // duel has no 3x weak plate and the tree now prices the strike, so the
+        // per-strike damage they were sized from is about to change.
         public static readonly IReadOnlyList<WorldBossMilestone> Milestones = new[]
         {
             new WorldBossMilestone(0, 10_000, 15, 5, null, null, null),
-            new WorldBossMilestone(1, 25_000, 30, 10, null, null, null),
-            new WorldBossMilestone(2, 60_000, 60, 15, SvarogAvatar.Id, null, null),
-            new WorldBossMilestone(3, 150_000, 120, 15, SerpentAvatar.Id, SerpentBaneSlug, null),
+            new WorldBossMilestone(1, 25_000, 30, 5, null, null, null),
+            new WorldBossMilestone(2, 60_000, 60, 10, SvarogAvatar.Id, null, null),
+            new WorldBossMilestone(3, 150_000, 120, 10, SerpentAvatar.Id, SerpentBaneSlug, null),
             new WorldBossMilestone(4, 400_000, 180, 15, ChernobogAvatar.Id, ChainerSlug, null),
             new WorldBossMilestone(5, 1_000_000, 0, 0, null, null, Progression.PetRegistry.BlackSerpentId),
         };

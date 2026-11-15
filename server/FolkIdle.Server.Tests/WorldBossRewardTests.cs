@@ -16,10 +16,14 @@ namespace FolkIdle.Server.Tests
     public class WorldBossRewardTests
     {
         [Fact]
-        public void TheMilestonesPayExactlyTheDelvesWeeklyDiamondCeiling()
+        public void TheMilestonesAndAWeeksForgeFillsPayTheDelvesWeeklyDiamondCeiling()
         {
             // The boss must not quietly out-pay the game's calibrated diamond tap.
-            Assert.Equal(DelveRegistry.TapYardstickDiamondsPerWeek, WorldBossRewards.Milestones.Sum(m => m.Diamonds));
+            // Since Svarog's forge (2026-11-15) the milestones pay 45 and about
+            // three forge fills a week (WorldBossForge's sizing) pay the rest.
+            const int forgeFillsPerWeek = 3;
+            Assert.Equal(DelveRegistry.TapYardstickDiamondsPerWeek,
+                WorldBossRewards.Milestones.Sum(m => m.Diamonds) + forgeFillsPerWeek * WorldBossForge.DiamondsPerFill);
         }
 
         [Fact]

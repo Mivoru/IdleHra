@@ -86,6 +86,31 @@ something to learn:
 
 ## Open
 
+### 137. World boss milestone thresholds - measure the first duel week (due Wed 2026-11-18)
+
+**Owner 2026-11-15:** "the damage rewards look too high" - then "do what you
+think is best". Done that day: milestone diamonds 60 -> 45 (Svarog's forge pays
+about 15 a week on top, so the boss stays at the Delve's 60). Gold left alone:
+it is 2-9% of each account's income (gold_income_daily, Mail vs earned, 14 days).
+
+**Open: the thresholds** (10k / 25k / 60k / 150k / 400k / 1M). Measured
+2026-11-15 on the wheel: 13k (Tomda), 16k ((pro)boss), 28k (Mivoru) a strike,
+so 10k-60k fell within one to four strikes - near-free. From Monday 2026-11-16
+the duel (no 3x weak plate, M 1.0-2.0) and the tree-priced strike
+(TreeStrikeFromUtc) both change the per-strike damage, so measure, then set.
+
+Method, Wednesday after the reveal:
+```sql
+select "PlayerId", "TotalInflictedDamage", "RegistrationStrikes" + "LaterPlayed" as strikes,
+       "TotalInflictedDamage" / greatest(1, "RegistrationStrikes" + "LaterPlayed") as per_strike
+from player_world_boss_attempts;
+```
+Target (recommendation): the 400k-equivalent top milestone needs all seven
+strikes played well by the strongest account; the first milestone stays one
+strike for anyone. Scale the five gold/diamond thresholds by the same factor;
+leave the 1M pet at 2.5x the top milestone. Pin the new numbers in
+`WorldBossRewardTests` and `wikiData.ts` (wiki.test.ts compares them).
+
 In the roadmap's order (section 1). Do them top to bottom unless the owner
 says otherwise.
 
