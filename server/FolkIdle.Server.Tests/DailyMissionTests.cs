@@ -192,55 +192,81 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task TheRerollSwapsOneMission_OnceADay()
+        public async Task RotatingMissionsHaveTwoFreeSwaps_AndAnOrdinaryFixedOneNone()
         {
             long playerId = await SeedPlayerAsync();
             var day = await ViewAsync(playerId, Veteran);
             var rotating = day.Missions.First(m => !m.Fixed);
+            var expedition = day.Missions.Single(m => m.Action == nameof(MissionAction.ExpeditionSent));
+            Assert.True(rotating.Swappable);
+            Assert.False(expedition.Swappable);
 
-            // A finished mission cannot be swapped.
-            await RecordAsync(playerId, MissionAction.ExpeditionSent);
-            var finished = (await ViewAsync(playerId, Veteran)).Missions.Single(m => m.Action == nameof(MissionAction.ExpeditionSent));
+            // A possible fixed mission cannot be swapped away for an easier one.
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var (outcome, _) = await MissionEngine.RerollAsync(db, playerId, finished.Slot, Facts(Veteran), Noon);
+                var (outcome, _) = await MissionEngine.RerollAsync(db, playerId, expedition.Slot, Facts(Veteran), Noon);
                 Assert.Equal(MissionEngine.RerollOutcome.NotRerollable, outcome);
+            }
+
+            for (int i = 0; i < MissionRegistry.FreeRerollsPerDay; i++)
+            {
+                await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+                var (outcome, view) = await MissionEngine.RerollAsync(db, playerId, rotating.Slot, Facts(Veteran), Noon);
+                Assert.Equal(MissionEngine.RerollOutcome.Ok, outcome);
+                Assert.Equal(MissionRegistry.MissionsPerDay, view!.Missions.Select(m => m.Action).Distinct().Count());
             }
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 var (outcome, view) = await MissionEngine.RerollAsync(db, playerId, rotating.Slot, Facts(Veteran), Noon);
-                Assert.Equal(MissionEngine.RerollOutcome.Ok, outcome);
-                var swapped = view!.Missions[rotating.Slot];
-                Assert.NotEqual(rotating.Action, swapped.Action);
-                Assert.Equal(MissionRegistry.MissionsPerDay, view.Missions.Select(m => m.Action).Distinct().Count());
-                Assert.Equal(0, view.RerollsLeft);
-            }
-
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var (outcome, _) = await MissionEngine.RerollAsync(db, playerId, rotating.Slot, Facts(Veteran), Noon);
                 Assert.Equal(MissionEngine.RerollOutcome.NoRerollsLeft, outcome);
+                Assert.Equal(0, view!.RerollsLeft);
+                Assert.All(view.Missions.Where(m => !m.Fixed), m => Assert.False(m.Swappable));
             }
 
-            // The swap is stored, not recomputed.
+            // The swaps are stored, not recomputed.
             var reread = await ViewAsync(playerId, Veteran);
             Assert.NotEqual(rotating.Action, reread.Missions[rotating.Slot].Action);
         }
 
-        /// <summary>The world boss died after the day was drawn: its mission can be swapped away.</summary>
         [Fact]
-        public async Task AFixedMissionThatBecameImpossibleCanBeSwapped()
+        public async Task AFinishedMissionCannotBeSwapped()
+        {
+            long playerId = await SeedPlayerAsync();
+            var day = await ViewAsync(playerId, Veteran);
+            var rotating = day.Missions.First(m => !m.Fixed);
+            await RecordAsync(playerId, Enum.Parse<MissionAction>(rotating.Action), rotating.Target);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var (outcome, _) = await MissionEngine.RerollAsync(db, playerId, rotating.Slot, Facts(Veteran), Noon);
+            Assert.Equal(MissionEngine.RerollOutcome.NotRerollable, outcome);
+        }
+
+        /// <summary>The world boss died after the day was drawn: its mission can be replaced, free.</summary>
+        [Fact]
+        public async Task ADeadWorldBossMissionIsReplacedWithoutUsingAFreeSwap()
         {
             long playerId = await SeedPlayerAsync();
             var day = await ViewAsync(playerId, Veteran);
             var boss = day.Missions.Single(m => m.Action == nameof(MissionAction.WorldBossStrike));
+            Assert.False(boss.Swappable);
 
+            var dead = Veteran with { WorldBossActive = false };
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var (outcome, view) = await MissionEngine.RerollAsync(db, playerId, boss.Slot, Facts(Veteran with { WorldBossActive = false }), Noon);
+            var (outcome, view) = await MissionEngine.RerollAsync(db, playerId, boss.Slot, Facts(dead), Noon);
             Assert.Equal(MissionEngine.RerollOutcome.Ok, outcome);
             Assert.True(MissionRegistry.TryGet(Enum.Parse<MissionAction>(view!.Missions[boss.Slot].Action), out var def));
             Assert.False(def.IsFixed);
+            Assert.Equal(MissionRegistry.FreeRerollsPerDay, view.RerollsLeft);
+        }
+
+        /// <summary>The dungeons can be replaced on the missions' launch day only.</summary>
+        [Fact]
+        public void TheDungeonMissionIsReplaceableOnLaunchDayOnly()
+        {
+            Assert.True(MissionRegistry.FixedMissionImpossible(MissionAction.DungeonFight, MissionRegistry.MissionsLaunchDayKey, true));
+            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.DungeonFight, MissionRegistry.MissionsLaunchDayKey + 1, true));
+            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.ExpeditionSent, MissionRegistry.MissionsLaunchDayKey, false));
+            Assert.True(MissionRegistry.FixedMissionImpossible(MissionAction.WorldBossStrike, 30_000, false));
         }
 
         [Fact]

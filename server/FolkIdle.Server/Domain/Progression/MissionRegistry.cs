@@ -81,8 +81,27 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>Chronicle XP for finishing every mission of the day.</summary>
         public const int XpAllDoneBonus = 20;
 
-        /// <summary>Free rerolls of one rotating mission per day.</summary>
-        public const int FreeRerollsPerDay = 1;
+        /// <summary>
+        /// Free swaps of a ROTATING mission per day (owner, 2026-11-15: "one or
+        /// two a day, so players cannot swap forever down to the easiest").
+        /// </summary>
+        public const int FreeRerollsPerDay = 2;
+
+        /// <summary>The day the missions shipped (2026-11-15): acts earlier that day were never counted.</summary>
+        public const int MissionsLaunchDayKey = 20772;
+
+        /// <summary>
+        /// A FIXED mission may be replaced only when it cannot be finished
+        /// (owner, 2026-11-15): the world boss is not up this week any more, or
+        /// the dungeons on the missions' launch day. Such a replacement does
+        /// not use a free swap.
+        /// </summary>
+        public static bool FixedMissionImpossible(MissionAction action, int dayKey, bool worldBossActive) => action switch
+        {
+            MissionAction.WorldBossStrike => !worldBossActive,
+            MissionAction.DungeonFight => dayKey == MissionsLaunchDayKey,
+            _ => false,
+        };
 
         // Modul: FORGE_OPEN_LEVEL and MARKET_OPEN_LEVEL in client_web
         // unlocks.ts. The client greys those screens below these levels, so a

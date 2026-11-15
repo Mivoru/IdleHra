@@ -1353,6 +1353,8 @@ export interface MissionEntry {
   Done: boolean;
   Claimed: boolean;
   Fixed: boolean;
+  /** The server allows a swap now: a free swap (rotating), or a replacement of a fixed mission that cannot be done. */
+  Swappable: boolean;
   Xp: number;
 }
 

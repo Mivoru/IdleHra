@@ -103,7 +103,7 @@
 {:else}
   <p class="dim small">
     {doneCount} of {view.Missions.length} done &middot; new missions in {hoursLeft(view.SecondsUntilNextDay)}.
-    Each pays {view.Missions[0]?.Xp ?? 30} Chronicle XP.
+    Each pays {view.Missions[0]?.Xp ?? 30} Chronicle XP &middot; {view.RerollsLeft} free swaps left.
   </p>
   <ol class="list" data-testid="missions-list">
     {#each view.Missions as m (m.Slot)}
@@ -120,8 +120,10 @@
           {#if !m.Done && MISSION_SCREEN[m.Action]}
             <button class="small-btn" onclick={() => go(m.Action)}>Go</button>
           {/if}
-          {#if !m.Done && view.RerollsLeft > 0}
-            <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy} title="Swap for another mission (free, once a day)" data-testid="missions-reroll">Swap</button>
+          {#if m.Swappable}
+            <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy}
+              title={m.Fixed ? 'This one cannot be done today - replace it (does not use a swap)' : `Swap for another mission (${view.RerollsLeft} free swaps left today)`}
+              data-testid="missions-reroll">{m.Fixed ? 'Replace' : 'Swap'}</button>
           {/if}
         </div>
       </li>
