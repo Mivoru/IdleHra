@@ -24,7 +24,12 @@
   const day = createQuery(() => ({
     queryKey: queryKeys.missions,
     queryFn: fetchMissions,
-    // While the tab is open an act on another device shows up within seconds.
+    // Modul: FRESH ON EVERY OPEN (owner, 2026-11-15: "opening five wardrobe
+    // chests did not register"). It had - the server counted all eleven - but
+    // the app-wide 30 s staleTime let the tab show the cached 0/1 it had
+    // fetched before the chests were opened. While open it refetches often.
+    staleTime: 0,
+    refetchOnMount: 'always' as const,
     refetchInterval: 10_000,
   }));
 

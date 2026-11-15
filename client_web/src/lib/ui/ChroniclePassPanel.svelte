@@ -23,7 +23,15 @@
   import Money from './Money.svelte';
 
   const client = useQueryClient();
-  const pass = createQuery(() => ({ queryKey: queryKeys.chronicle, queryFn: fetchChronicle, refetchInterval: 30_000 }));
+  // Fresh on every open, like the missions tab: a cached pass can show a level
+  // the missions have already moved past.
+  const pass = createQuery(() => ({
+    queryKey: queryKeys.chronicle,
+    queryFn: fetchChronicle,
+    staleTime: 0,
+    refetchOnMount: 'always' as const,
+    refetchInterval: 15_000,
+  }));
 
   let busy = $state(false);
   let got = $state<ChronicleClaim | null>(null);

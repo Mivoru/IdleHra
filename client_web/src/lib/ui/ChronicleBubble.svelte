@@ -6,8 +6,10 @@
   // missions are waiting, on the pass otherwise.
   //
   // The badge is the server's two Claimable counts added up - pass levels
-  // reached and unclaimed, and finished missions - polled once a minute, so
+  // reached and unclaimed, and finished missions - polled every 20 s, so
   // the client never decides what is done. The ring shows the season level.
+  // Every 20 s (was 60): a finished mission waiting a minute for its badge
+  // read as "it did not count" (owner, 2026-11-15).
   import { createQuery } from '@tanstack/svelte-query';
   import { fetchChronicle, fetchMissions, queryKeys } from '../net/rest';
   import { playerState } from '../stores/game';
@@ -28,13 +30,13 @@
     queryKey: queryKeys.missions,
     queryFn: fetchMissions,
     enabled: visible,
-    refetchInterval: 60_000,
+    refetchInterval: 20_000,
   }));
   const pass = createQuery(() => ({
     queryKey: queryKeys.chronicle,
     queryFn: fetchChronicle,
     enabled: visible,
-    refetchInterval: 60_000,
+    refetchInterval: 20_000,
   }));
 
   // A failed poll counts as nothing waiting rather than showing a stale count:
