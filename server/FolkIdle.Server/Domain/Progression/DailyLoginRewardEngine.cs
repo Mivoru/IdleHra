@@ -150,7 +150,7 @@ namespace FolkIdle.Server.Domain.Progression
             if (player == null) return new ClaimResult(ClaimOutcome.PlayerNotFound);
             if (!CanClaim(player.LoginRewardClaimDay, today))
             {
-                await tx.RollbackAsync();
+                await tx.SafeRollbackAsync();
                 return new ClaimResult(ClaimOutcome.AlreadyClaimed, Day: player.LoginStreakDays, DiamondBalance: player.PremiumDiamonds);
             }
 
