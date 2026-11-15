@@ -64,6 +64,19 @@ namespace FolkIdle.Server.Network
         /// together with FlagCrit.
         /// </summary>
         public const byte FlagDoubleStrike = 1 << 4;
+        /// <summary>
+        /// One second's share of a Lacerate bleed pool, on a KindPlayerHit.
+        /// Not a swing: no weapon moved, so the client draws it as a bleed
+        /// rather than a hit and keeps it out of the typical-hit median.
+        /// </summary>
+        /// <remarks>
+        /// Modul: a FLAG on a hit, not a new EventKind, the same way thorns
+        /// travels. It is damage the monster took from the player; an older
+        /// client that does not know the bit still shows a correct number.
+        /// Before this, the bleed tick moved CurrentMonsterHp and published
+        /// nothing, so a skill players bought was invisible on screen.
+        /// </remarks>
+        public const byte FlagBleed = 1 << 5;
 
         public long PlayerId;
 

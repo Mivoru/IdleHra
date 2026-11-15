@@ -48,6 +48,25 @@ export interface DamageEvent {
 
   /** The skill that fired on this hit (ui/skillProcs.ts SKILL_PROC), 0 for none. */
   proc: number;
+
+  /**
+   * Where the damage came from. 'hit' is a swing; 'bleed' is one second of a
+   * Lacerate pool (FlagBleed); 'thorns' is a monster's blow reflected back
+   * (FlagThorns). Each draws differently in FloatingDamage.svelte.
+   */
+  source: DamageSource;
+
+  /** A Chiming Steel burn was folded into this swing (FlagBurn). */
+  isBurn: boolean;
+}
+
+export type DamageSource = 'hit' | 'bleed' | 'thorns';
+
+export interface DamageExtras {
+  isDoubleCrit?: boolean;
+  proc?: number;
+  source?: DamageSource;
+  isBurn?: boolean;
 }
 
 /** How long a number stays on screen. Matches the CSS animation duration. */
@@ -73,8 +92,9 @@ export class DamageFeed {
    * `amount` is whole hit points and already final - post-armour, post-crit,
    * burn folded in. Nothing here recomputes or second-guesses it.
    */
-  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number, isDoubleCrit = false, proc = 0): DamageEvent | null {
+  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number, extras: DamageExtras = {}): DamageEvent | null {
     if (!Number.isFinite(amount) || amount <= 0) return null;
+    const { isDoubleCrit = false, proc = 0, source = 'hit', isBurn = false } = extras;
 
     const event: DamageEvent = {
       id: ++sequence,
@@ -85,9 +105,14 @@ export class DamageFeed {
       isDoubleCrit: isCrit && isDoubleCrit,
       weaponKind,
       proc,
+      source,
+      isBurn: source === 'hit' && isBurn,
     };
     this.events = [...this.events, event].slice(-MAX_LIVE_DAMAGE_TEXTS);
-    this.record(amount);
+    // Modul: only a swing is a sample of "your usual hit". A bleed share is a
+    // fraction of one crit and lands every second; recorded, it would pull
+    // the median down until every ordinary swing rendered as 'big'.
+    if (source === 'hit') this.record(amount);
     return event;
   }
 

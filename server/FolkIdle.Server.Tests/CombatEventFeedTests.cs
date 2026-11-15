@@ -219,5 +219,27 @@ namespace FolkIdle.Server.Tests
 
             CombatEventFeed.Clear();
         }
+
+        // Modul: the Lacerate bleed used to move CurrentMonsterHp once a second
+        // and publish nothing, so on screen a bought skill did not exist. Each
+        // share is a KindPlayerHit carrying FlagBleed, in whole hit points.
+        [Fact]
+        public void ABleedTickIsReported_FlaggedAsABleedNotASwing()
+        {
+            var payload = FreshFighter(91);
+            payload.BleedSecondsLeft = 3;
+            payload.BleedMilliPool = 3_000L;
+
+            List<ResponseCombatEventPacket> events = RunFight(ref payload, seconds: 2);
+
+            var bleeds = events.Where(e => (e.Flags & ResponseCombatEventPacket.FlagBleed) != 0).ToList();
+            Assert.NotEmpty(bleeds);
+            Assert.All(bleeds, b =>
+            {
+                Assert.Equal(ResponseCombatEventPacket.KindPlayerHit, b.EventKind);
+                Assert.Equal(1, b.Amount);
+                Assert.Equal(0, b.Flags & ResponseCombatEventPacket.FlagCrit);
+            });
+        }
     }
 }
