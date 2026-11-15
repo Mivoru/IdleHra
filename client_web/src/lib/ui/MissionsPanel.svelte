@@ -120,7 +120,7 @@
           {#if !m.Done && MISSION_SCREEN[m.Action]}
             <button class="small-btn" onclick={() => go(m.Action)}>Go</button>
           {/if}
-          {#if !m.Done && !m.Fixed && view.RerollsLeft > 0}
+          {#if !m.Done && view.RerollsLeft > 0}
             <button class="small-btn" onclick={() => reroll(m.Slot)} disabled={busy} title="Swap for another mission (free, once a day)" data-testid="missions-reroll">Swap</button>
           {/if}
         </div>

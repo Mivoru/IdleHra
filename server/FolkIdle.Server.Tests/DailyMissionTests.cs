@@ -192,16 +192,18 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task TheRerollSwapsOneRotatingMission_OnceADay()
+        public async Task TheRerollSwapsOneMission_OnceADay()
         {
             long playerId = await SeedPlayerAsync();
             var day = await ViewAsync(playerId, Veteran);
             var rotating = day.Missions.First(m => !m.Fixed);
-            var fixedOne = day.Missions.First(m => m.Fixed);
 
+            // A finished mission cannot be swapped.
+            await RecordAsync(playerId, MissionAction.ExpeditionSent);
+            var finished = (await ViewAsync(playerId, Veteran)).Missions.Single(m => m.Action == nameof(MissionAction.ExpeditionSent));
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var (outcome, _) = await MissionEngine.RerollAsync(db, playerId, fixedOne.Slot, Facts(Veteran), Noon);
+                var (outcome, _) = await MissionEngine.RerollAsync(db, playerId, finished.Slot, Facts(Veteran), Noon);
                 Assert.Equal(MissionEngine.RerollOutcome.NotRerollable, outcome);
             }
 
@@ -224,6 +226,21 @@ namespace FolkIdle.Server.Tests
             // The swap is stored, not recomputed.
             var reread = await ViewAsync(playerId, Veteran);
             Assert.NotEqual(rotating.Action, reread.Missions[rotating.Slot].Action);
+        }
+
+        /// <summary>The world boss died after the day was drawn: its mission can be swapped away.</summary>
+        [Fact]
+        public async Task AFixedMissionThatBecameImpossibleCanBeSwapped()
+        {
+            long playerId = await SeedPlayerAsync();
+            var day = await ViewAsync(playerId, Veteran);
+            var boss = day.Missions.Single(m => m.Action == nameof(MissionAction.WorldBossStrike));
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var (outcome, view) = await MissionEngine.RerollAsync(db, playerId, boss.Slot, Facts(Veteran with { WorldBossActive = false }), Noon);
+            Assert.Equal(MissionEngine.RerollOutcome.Ok, outcome);
+            Assert.True(MissionRegistry.TryGet(Enum.Parse<MissionAction>(view!.Missions[boss.Slot].Action), out var def));
+            Assert.False(def.IsFixed);
         }
 
         [Fact]

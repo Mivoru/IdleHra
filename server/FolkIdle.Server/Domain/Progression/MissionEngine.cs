@@ -275,9 +275,18 @@ namespace FolkIdle.Server.Domain.Progression
         }
 
         /// <summary>
-        /// Swaps one rotating mission that is not yet finished for another the
-        /// player can do, using the day's free reroll.
+        /// Swaps one unfinished mission - fixed or rotating - for a rotating one
+        /// the player can do, using the day's free reroll.
         /// </summary>
+        /// <remarks>
+        /// Modul: FIXED MISSIONS CAN BE SWAPPED TOO (owner, 2026-11-15: "what if
+        /// I already fought every dungeon today and have no tickets, or cannot
+        /// strike the world boss again?"). Acts done before the day was drawn
+        /// still count - the counters are per day - so on an ordinary day a
+        /// fixed mission is always finishable. Two cases are not: the missions'
+        /// own deploy day (acts before it were never counted), and a world boss
+        /// that dies after the day was drawn. The free swap is the way out.
+        /// </remarks>
         public static async Task<(RerollOutcome Outcome, DayView? View)> RerollAsync(FolkIdleDbContext db, long playerId, int slot, Func<Task<MissionFacts?>> facts, DateTime utcNow)
         {
             int dayKey = DayKeyOf(utcNow);
@@ -298,7 +307,6 @@ namespace FolkIdle.Server.Domain.Progression
                 if (day.RerollsUsed >= MissionRegistry.FreeRerollsPerDay) refusal = RerollOutcome.NoRerollsLeft;
                 else if (slot < 0 || slot >= actions.Length
                     || !MissionRegistry.TryGet(actions[slot], out var def)
-                    || def.IsFixed
                     || progress[slot] >= def.Target
                     || (day.ClaimedMask & (1 << slot)) != 0)
                     refusal = RerollOutcome.NotRerollable;
