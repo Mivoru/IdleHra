@@ -132,6 +132,10 @@ export const OVERLAYS = {
     open: async (page) => {
       const practice = page.getByTestId('duel-practice').first();
       if ((await practice.count()) === 0) return false;
+      // The serpent's intro opens once the board answers, over this button.
+      const serpent = page.getByTestId('serpent-intro').getByRole('button', { name: 'Face it' });
+      await serpent.waitFor({ timeout: 2500 }).catch(() => {});
+      if (await serpent.isVisible().catch(() => false)) await serpent.click().catch(() => {});
       await practice.click();
       const begin = page.getByTestId('duel-begin');
       if (!(await begin.waitFor({ timeout: 10000 }).then(() => true).catch(() => false))) return false;
@@ -510,6 +514,14 @@ export async function go(page, label) {
   const later = page.locator('[role="status"].toast').getByRole('button', { name: 'Later' }).first();
   if (await later.isVisible().catch(() => false)) {
     await later.click().catch(() => {});
+    await page.waitForTimeout(200);
+  }
+
+  // The Black Serpent's intro (2026-11-15) opens once per encounter on the
+  // World Boss screen after the 25% line - closed the way a player closes it.
+  const serpent = page.getByTestId('serpent-intro').getByRole('button', { name: 'Face it' });
+  if (await serpent.isVisible().catch(() => false)) {
+    await serpent.click().catch(() => {});
     await page.waitForTimeout(200);
   }
 
