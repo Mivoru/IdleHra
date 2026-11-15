@@ -7,6 +7,8 @@ The whole game is one web app at https://folkidle.cz/. A guest can start playing
 ## Pages
 
 - [Play FolkIdle](https://folkidle.cz/): the game itself, in the browser
+- [About FolkIdle](https://folkidle.cz/about.html): what the game is - regions, races, crafts, village, family line, FAQ
+- [O hře (česky)](https://folkidle.cz/o-hre.html): the same page in Czech
 - [Android app](https://folkidle.cz/download/folkidle.apk): the same game as an installable APK
 - [Privacy policy](https://folkidle.cz/privacy.html): what the game stores and why
 - [Delete your account](https://folkidle.cz/delete-account.html): how to remove an account and its data

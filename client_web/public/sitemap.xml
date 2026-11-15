@@ -1,5 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://folkidle.cz/</loc></url>
-  <url><loc>https://folkidle.cz/privacy.html</loc></url>
+<!-- Modul: about.html and o-hre.html are hreflang twins, so each entry names
+     both (Google reads hreflang from a sitemap as well as from the page).
+     Bump lastmod when a page's text changes; it is what makes a crawler
+     come back sooner. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://folkidle.cz/</loc>
+    <lastmod>2026-11-15</lastmod>
+  </url>
+  <url>
+    <loc>https://folkidle.cz/about.html</loc>
+    <lastmod>2026-11-15</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://folkidle.cz/about.html" />
+    <xhtml:link rel="alternate" hreflang="cs" href="https://folkidle.cz/o-hre.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://folkidle.cz/about.html" />
+  </url>
+  <url>
+    <loc>https://folkidle.cz/o-hre.html</loc>
+    <lastmod>2026-11-15</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://folkidle.cz/about.html" />
+    <xhtml:link rel="alternate" hreflang="cs" href="https://folkidle.cz/o-hre.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://folkidle.cz/about.html" />
+  </url>
+  <url>
+    <loc>https://folkidle.cz/privacy.html</loc>
+  </url>
 </urlset>

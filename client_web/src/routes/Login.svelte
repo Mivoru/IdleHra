@@ -281,6 +281,14 @@
   {#if offerApp}
     <a class="applink" href={APP_DOWNLOAD_PATH} download>Get the Android app</a>
   {/if}
+
+  <!-- Modul: THE ONE LINK FROM THE GAME TO ITS DESCRIPTION, 2026-11-15. A search
+       engine finds and weighs about.html by the links that point at it, and
+       this screen is what / renders. Browser only: inside the APK it would
+       navigate the WebView out of the game with no way back. -->
+  {#if !isNativePlatform()}
+    <a class="applink" href="/about.html">About the game</a>
+  {/if}
 </div>
 </main>
 
