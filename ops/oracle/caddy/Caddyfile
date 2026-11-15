@@ -109,7 +109,7 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	# simply never appears on a response. Diagnosed by curl -I after a reload
 	# that reported success.
 	@immutable path /assets/* /sprites/*
-	@html path / /index.html /boot.js
+	@html path / /index.html /boot.js /about.html /o-hre.html /sitemap.xml
 
 	# Modul: AT THE SITE LEVEL, beside the security headers that demonstrably
 	# work - not inside the static `handle`. Placed there they were accepted,

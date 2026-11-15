@@ -1,0 +1,292 @@
+<!doctype html>
+<!--
+  Modul: THE ENGLISH TWIN OF o-hre.html - read the comment there first.
+  Same facts, same sections, same CSS (copied, not shared: a static page with
+  one external stylesheet is one more request for two short pages). Change
+  both pages together; they are hreflang alternates of each other.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FolkIdle – a free Slavic folklore idle RPG in your browser</title>
+    <meta
+      name="description"
+      content="FolkIdle is a free idle RPG rooted in Slavic folklore. Fight through five regions, gather, build a village and raise a family line of heroes. It keeps playing while you are away - in the browser and on Android."
+    />
+    <link rel="canonical" href="https://folkidle.cz/about.html" />
+    <link rel="alternate" hreflang="cs" href="https://folkidle.cz/o-hre.html" />
+    <link rel="alternate" hreflang="en" href="https://folkidle.cz/about.html" />
+    <link rel="alternate" hreflang="x-default" href="https://folkidle.cz/about.html" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+    <meta name="theme-color" content="#100d0a" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://folkidle.cz/about.html" />
+    <meta property="og:site_name" content="FolkIdle" />
+    <meta property="og:title" content="FolkIdle – a Slavic folklore idle RPG" />
+    <meta
+      property="og:description"
+      content="Fight, gather, build a village and raise a family line of heroes in a game rooted in Slavic folklore. It keeps playing while you are away."
+    />
+    <meta property="og:image" content="https://folkidle.cz/loading/landscape-1280.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "FolkIdle",
+        "url": "https://folkidle.cz/",
+        "image": "https://folkidle.cz/loading/landscape-1280.jpg",
+        "description": "A free idle RPG rooted in Slavic folklore: five regions, six races, a village, a family line of heroes, and progress that keeps running offline.",
+        "genre": ["Idle game", "Incremental game", "RPG"],
+        "gamePlatform": ["Web browser", "Android"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "inLanguage": ["en"],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #100d0a;
+        --panel: #191309;
+        --text: #ece0cc;
+        --dim: #a2907a;
+        --accent: #c9a227;
+        --border: #4a3a26;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #e8dcc0;
+          --panel: #f3ead4;
+          --text: #2e2317;
+          --dim: #5f5140;
+          --accent: #8a6a1f;
+          --border: #c4ab7f;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 17px/1.65 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      header.hero {
+        position: relative;
+        min-height: 22rem;
+        display: flex;
+        align-items: flex-end;
+        background: #100d0a url('/loading/landscape-1280.jpg') center / cover no-repeat;
+      }
+      header.hero::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(16, 13, 10, 0.1), rgba(16, 13, 10, 0.92));
+      }
+      .hero-inner {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 50rem;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        color: #ece0cc;
+      }
+      h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 0.5rem; }
+      .lead { font-size: 1.15rem; margin: 0 0 1.25rem; max-width: 38rem; }
+      .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.4rem;
+        border-radius: 0.5rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid #c9a227;
+      }
+      .btn.primary { background: #c9a227; color: #1a1208; }
+      .btn.ghost { color: #ece0cc; background: rgba(0, 0, 0, 0.35); }
+      nav.lang { position: absolute; top: 1rem; right: 1rem; z-index: 1; }
+      nav.lang a { color: #ece0cc; font-size: 0.9rem; }
+      main { max-width: 50rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+      h2 { color: var(--accent); margin: 2.5rem 0 0.75rem; font-size: 1.5rem; }
+      h3 { margin: 1.25rem 0 0.25rem; font-size: 1.1rem; }
+      p, li { max-width: 42rem; }
+      a { color: var(--accent); }
+      .dim { color: var(--dim); }
+      figure.scene { margin: 1.25rem 0; }
+      figure.scene img {
+        width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        border: 1px solid var(--border);
+        display: block;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+        gap: 0.75rem;
+        padding: 0;
+        list-style: none;
+      }
+      .grid li {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem;
+        text-align: center;
+        font-size: 0.95rem;
+      }
+      .grid img { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; display: block; margin-bottom: 0.35rem; }
+      .grid strong { display: block; }
+      dl.faq dt { font-weight: 700; margin-top: 1.1rem; }
+      dl.faq dd { margin: 0.25rem 0 0; color: var(--dim); }
+      footer { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem; font-size: 0.9rem; }
+      footer a { margin-right: 1rem; }
+      @media (max-width: 30rem) {
+        h1 { font-size: 1.75rem; }
+        /* The landscape art carries the logo in its centre, right where the
+           heading sits on a narrow screen; the portrait cut puts it higher. */
+        header.hero { min-height: 40rem; background-image: url('/loading/portrait-720.jpg'); background-position: center top; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="lang"><a href="/o-hre.html" hreflang="cs" lang="cs">Česky</a></nav>
+      <div class="hero-inner">
+        <h1>FolkIdle – a Slavic folklore idle RPG</h1>
+        <p class="lead">
+          A free game for the browser and Android, set in the world of Slavic
+          legend. Raise a family line of heroes, send them to fight across five
+          regions, gather materials and build a village. The game keeps
+          playing after you close it.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="/">Play free in your browser</a>
+          <a class="btn ghost" href="/download/folkidle.apk">Get the Android app</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <p>
+        Start right away as a guest, with no sign-up. Create an account when
+        you want your progress saved across devices.
+      </p>
+
+      <h2>What FolkIdle is</h2>
+      <p>
+        FolkIdle is an <strong>idle RPG</strong> (also called an incremental
+        game). Your characters fight, chop, mine and fish on their own. You
+        decide who does what, what they wear and what you invest in. When you
+        close the page, the server works out what your characters would have
+        done in the meantime. When you return, you get a summary of the loot
+        and experience.
+      </p>
+      <figure class="scene">
+        <img src="/sprites/Backgrounds/scene_combat.webp" alt="A combat scene in FolkIdle" loading="lazy" />
+      </figure>
+
+      <h2>Five regions and their bosses</h2>
+      <p>
+        The world has five regions, each with four regular monsters and a
+        boss. Beating a boss opens the next region, its gear and a new playable
+        race.
+      </p>
+      <ul class="grid">
+        <li><img src="/sprites/Locations/01/Monsters/Alpha%20Wolf.webp" alt="Alpha Wolf" width="256" height="256" loading="lazy" /><strong>Sunlit Plains</strong>boss: Alpha Wolf</li>
+        <li><img src="/sprites/Locations/02/Monsters/Shadow%20Lynx.webp" alt="Shadow Lynx" width="256" height="256" loading="lazy" /><strong>Whispering Woods</strong>boss: Shadow Lynx</li>
+        <li><img src="/sprites/Locations/03/Monsters/Magma%20Wyrm.webp" alt="Magma Wyrm" width="256" height="256" loading="lazy" /><strong>Scorched Wasteland</strong>boss: Magma Wyrm</li>
+        <li><img src="/sprites/Locations/04/Monsters/Frost%20Titan.webp" alt="Frost Titan" width="256" height="256" loading="lazy" /><strong>Frozen Peaks</strong>boss: Frost Titan</li>
+        <li><img src="/sprites/Locations/05/Monsters/Malakor.webp" alt="Malakor" width="256" height="256" loading="lazy" /><strong>Shadow Citadel</strong>boss: Malakor</li>
+      </ul>
+
+      <h2>Six races from Slavic legend</h2>
+      <p>
+        You start as a Human. Each boss you beat unlocks another race: the
+        Fairy (vila), the Draugr, the Leshy, the Vodyanoy (vodník) and the Bies.
+        Every race has its own aptitudes, and mastering a race adds more.
+      </p>
+      <ul>
+        <li><strong>Human</strong> – more gold from kills, more experience and backpack space.</li>
+        <li><strong>Fairy</strong> – dodge, attack speed and critical hits.</li>
+        <li><strong>Draugr</strong> – more health and armour and lifesteal, at the cost of a slower swing.</li>
+        <li><strong>Leshy</strong> – a bigger mining yield.</li>
+        <li><strong>Vodyanoy</strong> – faster healing between fights, resistance to critical hits and longer offline progress.</li>
+        <li><strong>Bies</strong> – a bigger yield from woodcutting, fishing and herbs.</li>
+      </ul>
+      <p>
+        Characters of any two races may marry, and the child is born as one of
+        its parents' races. A strong line can carry its aptitudes into every
+        race you have unlocked.
+      </p>
+
+      <h2>Family, ageing and rebirth</h2>
+      <p>
+        Characters age, marry and have children who inherit their parents'
+        strengths. Up to three characters work at once, each at a different
+        kind of work: one fighter, one woodcutter, one miner. A rebirth starts
+        a life over, but the line keeps permanent bonuses.
+      </p>
+
+      <h2>Crafts, the village and gear</h2>
+      <figure class="scene">
+        <img src="/sprites/Backgrounds/scene_gather.webp" alt="Gathering in FolkIdle" loading="lazy" />
+      </figure>
+      <h3>Four gathering crafts</h3>
+      <p>
+        Woodcutting, mining, fishing and herbalism, each with its own mastery.
+        Fish stock the larder, which heals a character automatically in a
+        fight. Herbs go into potions.
+      </p>
+      <h3>The village</h3>
+      <p>
+        Wood and ore build the village. The Town Hall earns gold, the
+        Lumberjack and the Mine produce materials even while you are offline,
+        and the Warehouse keeps them until you return. The Inn brings new
+        villagers.
+      </p>
+      <h3>Gear</h3>
+      <p>
+        Eleven equipment slots including the axe, pickaxe and rod, fourteen
+        rarity tiers, random affixes you can reroll, fusion, armour sets with
+        set bonuses, and pets. Most of a character's power is gear, not level.
+      </p>
+
+      <h2>Together with other players</h2>
+      <p>
+        Guilds with roles and shared buffs, the world boss Chernobog that the
+        whole server fights together, leaderboards, a market, chat and mail.
+        Plus expeditions, dungeons, daily missions and a free seasonal
+        Chronicle with fifty levels of rewards.
+      </p>
+
+      <h2>FAQ</h2>
+      <dl class="faq">
+        <dt>Is FolkIdle free?</dt>
+        <dd>Yes. The game is free in the browser and on Android.</dd>
+        <dt>Do I need to install anything?</dt>
+        <dd>No. Any modern browser on a computer or phone works. There is also an Android app.</dd>
+        <dt>Does the game keep going when I am offline?</dt>
+        <dd>Yes. Your characters keep working, and you get a summary of what they earned when you return.</dd>
+        <dt>Do I need an account?</dt>
+        <dd>No. You can start as a guest. An account keeps your progress across devices.</dd>
+      </dl>
+
+      <p class="cta" style="margin-top: 2rem">
+        <a class="btn primary" href="/">Play FolkIdle</a>
+      </p>
+
+      <footer class="dim">
+        <a href="/">Play</a>
+        <a href="/o-hre.html" hreflang="cs" lang="cs">Česky</a>
+        <a href="/privacy.html">Privacy policy</a>
+        <a href="/delete-account.html">Delete your account</a>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<!--
+  Modul: A PAGE A SEARCH ENGINE CAN READ, 2026-11-15.
+
+  The game itself is an SPA: a crawler that fetches / sees the loading screen
+  and one visually hidden <h1>, so folkidle.cz had almost no words to rank on.
+  This page and its English twin (about.html) carry the text. They are static
+  files in public/ for the same reason privacy.html is: Caddy's try_files
+  serves a real file as itself before the SPA fallback runs.
+
+  EVERY CLAIM HERE IS TRUE OF THE GAME TODAY - checked against Wiki.svelte,
+  races.ts and locations.ts, not written from memory. When a region, race or
+  system changes, change BOTH pages in the same commit: they are linked as
+  hreflang alternates and a search engine compares them.
+
+  Plain CSS, no script: the site CSP (script-src 'self') refuses inline JS,
+  and a page meant to be read needs none. The JSON-LD block is a data block,
+  which CSP does not execute.
+-->
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FolkIdle – slovanská idle RPG hra v prohlížeči zdarma</title>
+    <meta
+      name="description"
+      content="FolkIdle je bezplatná idle RPG hra ze slovanského folklóru. Bojuj v pěti krajích, sbírej suroviny, stav vesnici a vychovej rod hrdinů. Hraje dál, i když jsi pryč – v prohlížeči i na Androidu."
+    />
+    <link rel="canonical" href="https://folkidle.cz/o-hre.html" />
+    <link rel="alternate" hreflang="cs" href="https://folkidle.cz/o-hre.html" />
+    <link rel="alternate" hreflang="en" href="https://folkidle.cz/about.html" />
+    <link rel="alternate" hreflang="x-default" href="https://folkidle.cz/about.html" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+    <meta name="theme-color" content="#100d0a" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+    <meta property="og:url" content="https://folkidle.cz/o-hre.html" />
+    <meta property="og:site_name" content="FolkIdle" />
+    <meta property="og:title" content="FolkIdle – slovanská idle RPG hra" />
+    <meta
+      property="og:description"
+      content="Bojuj, sbírej, stav vesnici a vychovej rod hrdinů ve hře ze slovanského folklóru. Hraje dál, i když jsi pryč."
+    />
+    <meta property="og:image" content="https://folkidle.cz/loading/landscape-1280.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "FolkIdle",
+        "url": "https://folkidle.cz/",
+        "image": "https://folkidle.cz/loading/landscape-1280.jpg",
+        "description": "Bezplatná idle RPG hra ze slovanského folklóru: pět krajů, šest ras, vesnice, rod hrdinů a hra, která běží i offline.",
+        "genre": ["Idle hra", "Inkrementální hra", "RPG"],
+        "gamePlatform": ["Webový prohlížeč", "Android"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "inLanguage": ["en"],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CZK" }
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #100d0a;
+        --panel: #191309;
+        --text: #ece0cc;
+        --dim: #a2907a;
+        --accent: #c9a227;
+        --border: #4a3a26;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #e8dcc0;
+          --panel: #f3ead4;
+          --text: #2e2317;
+          --dim: #5f5140;
+          --accent: #8a6a1f;
+          --border: #c4ab7f;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 17px/1.65 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      header.hero {
+        position: relative;
+        min-height: 22rem;
+        display: flex;
+        align-items: flex-end;
+        background: #100d0a url('/loading/landscape-1280.jpg') center / cover no-repeat;
+      }
+      header.hero::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(16, 13, 10, 0.1), rgba(16, 13, 10, 0.92));
+      }
+      .hero-inner {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 50rem;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        color: #ece0cc;
+      }
+      h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 0.5rem; }
+      .lead { font-size: 1.15rem; margin: 0 0 1.25rem; max-width: 38rem; }
+      .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.4rem;
+        border-radius: 0.5rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid #c9a227;
+      }
+      .btn.primary { background: #c9a227; color: #1a1208; }
+      .btn.ghost { color: #ece0cc; background: rgba(0, 0, 0, 0.35); }
+      nav.lang { position: absolute; top: 1rem; right: 1rem; z-index: 1; }
+      nav.lang a { color: #ece0cc; font-size: 0.9rem; }
+      main { max-width: 50rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+      h2 { color: var(--accent); margin: 2.5rem 0 0.75rem; font-size: 1.5rem; }
+      h3 { margin: 1.25rem 0 0.25rem; font-size: 1.1rem; }
+      p, li { max-width: 42rem; }
+      a { color: var(--accent); }
+      .dim { color: var(--dim); }
+      figure.scene { margin: 1.25rem 0; }
+      figure.scene img {
+        width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        border: 1px solid var(--border);
+        display: block;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+        gap: 0.75rem;
+        padding: 0;
+        list-style: none;
+      }
+      .grid li {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem;
+        text-align: center;
+        font-size: 0.95rem;
+      }
+      .grid img { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; display: block; margin-bottom: 0.35rem; }
+      .grid strong { display: block; }
+      dl.faq dt { font-weight: 700; margin-top: 1.1rem; }
+      dl.faq dd { margin: 0.25rem 0 0; color: var(--dim); }
+      footer { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem; font-size: 0.9rem; }
+      footer a { margin-right: 1rem; }
+      @media (max-width: 30rem) {
+        h1 { font-size: 1.75rem; }
+        /* The landscape art carries the logo in its centre, right where the
+           heading sits on a narrow screen; the portrait cut puts it higher. */
+        header.hero { min-height: 40rem; background-image: url('/loading/portrait-720.jpg'); background-position: center top; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="lang"><a href="/about.html" hreflang="en" lang="en">English</a></nav>
+      <div class="hero-inner">
+        <h1>FolkIdle – slovanská idle RPG hra</h1>
+        <p class="lead">
+          Bezplatná hra do prohlížeče i na Android, ze světa slovanských pověstí.
+          Vychovej rod hrdinů, pošli je bojovat do pěti krajů, sbírej suroviny
+          a postav vesnici. Hra běží dál, i když ji zavřeš.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="/">Hrát zdarma v prohlížeči</a>
+          <a class="btn ghost" href="/download/folkidle.apk">Stáhnout pro Android</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <p>
+        Hra je v angličtině. Hrát můžeš hned jako host, bez registrace. Účet si
+        založ, až budeš chtít mít postup uložený napříč zařízeními.
+      </p>
+
+      <h2>Co je FolkIdle</h2>
+      <p>
+        FolkIdle je <strong>idle RPG</strong> (také „inkrementální hra“). Postavy
+        bojují, kácí, těží a rybaří samy. Ty rozhoduješ, kdo co dělá, co si
+        oblékne a do čeho investuješ. Když stránku zavřeš, server dopočítá, co
+        by tvé postavy mezitím udělaly. Po návratu uvidíš souhrn kořisti
+        a zkušeností.
+      </p>
+      <figure class="scene">
+        <img src="/sprites/Backgrounds/scene_combat.webp" alt="Bojová scéna ve hře FolkIdle" loading="lazy" />
+      </figure>
+
+      <h2>Pět krajů a jejich bossové</h2>
+      <p>
+        Svět tvoří pět krajů, v každém čtyři běžné příšery a jeden boss. Porážka
+        bosse otevře další kraj, jeho vybavení a novou hratelnou rasu.
+      </p>
+      <ul class="grid">
+        <li><img src="/sprites/Locations/01/Monsters/Alpha%20Wolf.webp" alt="Alfa vlk" width="256" height="256" loading="lazy" /><strong>Sluneční pláně</strong>boss Alfa vlk</li>
+        <li><img src="/sprites/Locations/02/Monsters/Shadow%20Lynx.webp" alt="Stínový rys" width="256" height="256" loading="lazy" /><strong>Šeptající hvozd</strong>boss Stínový rys</li>
+        <li><img src="/sprites/Locations/03/Monsters/Magma%20Wyrm.webp" alt="Magmový drak" width="256" height="256" loading="lazy" /><strong>Spálená pustina</strong>boss Magmový drak</li>
+        <li><img src="/sprites/Locations/04/Monsters/Frost%20Titan.webp" alt="Mrazivý titán" width="256" height="256" loading="lazy" /><strong>Zamrzlé štíty</strong>boss Mrazivý titán</li>
+        <li><img src="/sprites/Locations/05/Monsters/Malakor.webp" alt="Malakor" width="256" height="256" loading="lazy" /><strong>Stínová citadela</strong>boss Malakor</li>
+      </ul>
+      <p class="dim">Ve hře se kraje jmenují anglicky: Sunlit Plains, Whispering Woods, Scorched Wasteland, Frozen Peaks a Shadow Citadel.</p>
+
+      <h2>Šest ras ze slovanských pověstí</h2>
+      <p>
+        Začínáš za člověka. Každý poražený boss odemkne další rasu: vílu,
+        draugra, lešího, vodníka a běsa. Každá rasa má jiné vlohy a s rostoucím
+        mistrovstvím rasy přibývají další.
+      </p>
+      <ul>
+        <li><strong>Člověk</strong> – víc zlata z kořisti, víc zkušeností a místa v batohu.</li>
+        <li><strong>Víla</strong> – uhýbání, rychlost útoku a kritické zásahy.</li>
+        <li><strong>Draugr</strong> – víc zdraví a brnění a krádež života, za cenu pomalejšího útoku.</li>
+        <li><strong>Leší</strong> – vyšší výnos z těžby rudy.</li>
+        <li><strong>Vodník</strong> – rychlejší léčení mezi boji, odolnost proti kritickým zásahům a delší offline postup.</li>
+        <li><strong>Běs</strong> – vyšší výnos z kácení, rybaření a bylin.</li>
+      </ul>
+      <p>
+        Postavy různých ras se mohou brát a dítě se narodí jako rasa jednoho
+        z rodičů. Silný rod tak může své vlohy přenést do všech ras, které máš
+        odemčené.
+      </p>
+
+      <h2>Rod, stárnutí a znovuzrození</h2>
+      <p>
+        Postavy stárnou, žení se a mají děti, které dědí schopnosti rodičů.
+        Najednou pracují až tři postavy, každá na jiné práci: jeden bojovník,
+        jeden dřevorubec, jeden horník. Znovuzrození (rebirth) začne život
+        znovu, ale rod si ponechá trvalé bonusy.
+      </p>
+
+      <h2>Řemesla, vesnice a vybavení</h2>
+      <figure class="scene">
+        <img src="/sprites/Backgrounds/scene_gather.webp" alt="Sběr surovin ve hře FolkIdle" loading="lazy" />
+      </figure>
+      <h3>Čtyři sběrná řemesla</h3>
+      <p>
+        Dřevorubectví, hornictví, rybaření a bylinkářství. Každé má vlastní
+        mistrovství. Ryby plní spíž, ze které se postava v boji automaticky
+        léčí. Z bylin se vaří lektvary.
+      </p>
+      <h3>Vesnice</h3>
+      <p>
+        Ze dřeva a rudy stavíš budovy. Radnice vydělává zlato, pila a důl
+        vyrábějí suroviny i offline a sklad je drží, dokud se nevrátíš.
+        Hostinec přivádí nové obyvatele.
+      </p>
+      <h3>Vybavení</h3>
+      <p>
+        Jedenáct slotů včetně sekery, krumpáče a prutu, čtrnáct úrovní vzácnosti,
+        náhodné vlastnosti (afixy) s možností přehazování, fúze, sady se
+        setovými bonusy a mazlíčci. Většinu síly postavy tvoří vybavení, ne
+        úroveň.
+      </p>
+
+      <h2>Společně s ostatními</h2>
+      <p>
+        Družiny (guildy) s rolemi a společnými bonusy, světový boss Černobog,
+        na kterém se podílí celý server, žebříčky, tržiště, chat a pošta. Dále
+        dobrodružné výpravy, žaláře, každodenní úkoly a bezplatná sezónní
+        kronika s padesáti úrovněmi odměn.
+      </p>
+
+      <h2>Časté otázky</h2>
+      <dl class="faq">
+        <dt>Je FolkIdle zdarma?</dt>
+        <dd>Ano. Hra je zdarma v prohlížeči i na Androidu.</dd>
+        <dt>Musím si něco instalovat?</dt>
+        <dd>Ne. Stačí moderní prohlížeč na počítači nebo telefonu. Pro Android je k dispozici i aplikace.</dd>
+        <dt>Běží hra, když nejsem online?</dt>
+        <dd>Ano. Postavy pracují dál a po návratu dostaneš souhrn toho, co získaly.</dd>
+        <dt>Potřebuji účet?</dt>
+        <dd>Ne. Můžeš začít jako host. Účet slouží k uložení postupu napříč zařízeními.</dd>
+        <dt>V jakém jazyce hra je?</dt>
+        <dd>V angličtině. Svět, rasy a bossové vycházejí ze slovanských pověstí.</dd>
+      </dl>
+
+      <p class="cta" style="margin-top: 2rem">
+        <a class="btn primary" href="/">Hrát FolkIdle</a>
+      </p>
+
+      <footer class="dim">
+        <a href="/">Hrát</a>
+        <a href="/about.html" hreflang="en" lang="en">English</a>
+        <a href="/privacy.html">Ochrana soukromí</a>
+        <a href="/delete-account.html">Smazání účtu</a>
+      </footer>
+    </main>
+  </body>
+</html>
