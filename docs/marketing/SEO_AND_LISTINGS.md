@@ -14,6 +14,7 @@ engines, and the steps only the owner can take because they need an account.
 | `client_web/public/sitemap.xml` | Lists both pages with their `hreflang` pair and `lastmod`. Bump `lastmod` when the text changes. |
 | `client_web/public/robots.txt` | Allows all except `/api/` and `/gamedata/`. |
 | `client_web/public/llms.txt` | The same map for AI crawlers. |
+| `client_web/public/seznam-wmt-*.txt` | Seznam Webmaster ownership proof (2026-11-15). Keep it: removing it unverifies the site. |
 | `ops/oracle/caddy/Caddyfile` | `/download/*` sends `X-Robots-Tag: noindex` (the APK is not a page). |
 | `Login.svelte` | "About the game" link, browser only - the one internal link to `about.html`. |
 
