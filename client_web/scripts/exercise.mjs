@@ -341,6 +341,34 @@ async function eventIntroStep() {
   }
 }
 
+// The login week (2026-11-15). The fixture can claim once per UTC day, so this
+// must pass on every run: when today is open the window MUST be up, and the
+// claim MUST close the day on the server; when it was claimed already (an
+// earlier run today), the server must say so and no window may be up.
+async function dailyLoginStep() {
+  const before = await apiGet('/api/v1/login-bonus/state');
+  if (!before) {
+    record('the login week answers', false, 'no state');
+    return;
+  }
+  const claimBtn = page.getByTestId('daily-login-claim');
+  const shown = await claimBtn.waitFor({ timeout: 6000 }).then(() => true).catch(() => false);
+  if (!before.ClaimableToday) {
+    record('a claimed day does not open the daily window again', !shown, `day ${before.Day} already claimed`);
+    return;
+  }
+  record('an open day opens the daily window by itself', shown, `day ${before.Day}`);
+  if (!shown) return;
+  await claimBtn.click();
+  const got = await page.getByTestId('daily-login-got').innerText({ timeout: 6000 }).catch(() => '');
+  const after = await apiGet('/api/v1/login-bonus/state');
+  record('claiming closes the day on the server and lists what came',
+    after?.ClaimableToday === false && after?.Day === before.Day && /received/i.test(got),
+    `day ${before.Day} -> claimable ${after?.ClaimableToday}; ${got.replace(/\s+/g, ' ').slice(0, 60)}`);
+  await page.getByTestId('daily-login-done').click().catch(() => {});
+  await page.waitForTimeout(300);
+}
+
 // The big-chest prompt: the fixture holds thousands of pieces, so it MUST
 // offer to clear some, count what the chosen regions x rarity would take, and
 // close on "Keep everything" without selling (the fixture's chest is the
@@ -366,6 +394,7 @@ async function bigChestPromptStep() {
   const shown = await dismissOfflineSummary();
   await eventIntroStep();
   await bigChestPromptStep();
+  await dailyLoginStep();
   const stillBlocked = await page.locator('.backdrop, .modal-scrim').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }
@@ -7348,6 +7377,22 @@ if (want('new-player')) {
     record('the third step is the fight, now that it can be won', third !== null && /Fight|Combat/i.test(third.text), third ? third.text.slice(0, 70) : '');
     await fresh.waitForTimeout(600);
     record('the guided layer lets go once both are done', (await guided()) === null);
+
+    // Modul: THE LOGIN WEEK MEETS A NEW PLAYER (2026-11-15) - after the guided
+    // minute, never over it. Claiming day 1 must actually pay (the window lists
+    // what came) and close, or every step below sits behind its scrim.
+    {
+      const claimBtn = fresh.getByTestId('daily-login-claim');
+      const shown = await claimBtn.waitFor({ timeout: 8000 }).then(() => true).catch(() => false);
+      record('a new account is offered its first daily reward after the guided minute', shown, shown ? '' : 'no window');
+      if (shown) {
+        await claimBtn.click();
+        const got = await fresh.getByTestId('daily-login-got').innerText({ timeout: 6000 }).catch(() => '');
+        record('claiming day 1 pays gold and says so', /received/i.test(got) && /\d/.test(got), got.replace(/\s+/g, ' ').slice(0, 80));
+        await fresh.getByTestId('daily-login-done').click().catch(() => {});
+        await fresh.waitForTimeout(300);
+      }
+    }
 
     // Modul: A NEW PLAYER CAN STRIKE THE WORLD BOSS (task 25). This used to run
     // BEFORE the larder was stocked, to pin that the old empty-larder rule

@@ -719,19 +719,30 @@ export const WORLD_BOSS_SANDBAG_SHARE_PCT = 25;
 export const SCALED_GOLD_FLOOR = 20_000;
 
 /**
- * DailyLoginRewardEngine.GoldRewardMatrices - three weekly rotations, chosen by
- * the UTC week number, so everybody on the server is on the same one.
+ * DailyLoginRewardEngine.Week, in order (2026-11-15). Gold is minutes of the
+ * player's own earned income; chests are a loot chest tier or a wardrobe
+ * chest rarity. wiki.test.ts compares this to the server's table row by row.
  */
-/** DailyLoginRewardEngine.MaxWeekMultiplier: week 1 pays the table, week 2 twice it, week 3 on three times. */
-export const DAILY_LOGIN_MAX_WEEK_MULTIPLIER = 3;
-export const DAILY_LOGIN_MATRICES: readonly (readonly number[])[] = [
-  [500, 1000, 1500, 2500, 4000, 6000, 10000],
-  [4000, 3000, 2500, 2500, 3500, 4000, 6000],
-  [1000, 2000, 6000, 2000, 2500, 4000, 8000],
+export interface LoginWeekRow {
+  day: number;
+  goldMinutes: number;
+  diamonds: number;
+  lootChest: string;
+  wardrobeChest: string;
+  ticketsPerGate: number;
+}
+export const DAILY_LOGIN_WEEK: readonly LoginWeekRow[] = [
+  { day: 1, goldMinutes: 60, diamonds: 0, lootChest: '', wardrobeChest: '', ticketsPerGate: 0 },
+  { day: 2, goldMinutes: 30, diamonds: 0, lootChest: '', wardrobeChest: '', ticketsPerGate: 1 },
+  { day: 3, goldMinutes: 120, diamonds: 20, lootChest: '', wardrobeChest: '', ticketsPerGate: 0 },
+  { day: 4, goldMinutes: 30, diamonds: 0, lootChest: 'Gold', wardrobeChest: '', ticketsPerGate: 0 },
+  { day: 5, goldMinutes: 120, diamonds: 0, lootChest: '', wardrobeChest: '', ticketsPerGate: 0 },
+  { day: 6, goldMinutes: 30, diamonds: 0, lootChest: '', wardrobeChest: 'Epic', ticketsPerGate: 0 },
+  { day: 7, goldMinutes: 210, diamonds: 100, lootChest: 'Ancient', wardrobeChest: '', ticketsPerGate: 0 },
 ];
 
-/** DailyLoginRewardEngine.PremiumDiamondsOnDay7Completion. */
-export const DAILY_LOGIN_DAY7_DIAMONDS = 100;
+/** The day-7 diamonds, quoted in the Diamonds section. */
+export const DAILY_LOGIN_DAY7_DIAMONDS = DAILY_LOGIN_WEEK[6].diamonds;
 
 /** AchievementMilestones. Four achievements; three of them tier I-IV. */
 export const ACHIEVEMENTS: readonly {

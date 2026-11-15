@@ -9,12 +9,14 @@
 <script lang="ts">
   import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { formatNumber, numberTitle } from '../lib/ui/format';
-  import { createQuery } from '@tanstack/svelte-query';
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import LoginWeekGrid from '../lib/ui/LoginWeekGrid.svelte';
   import { playerState } from '../lib/stores/game';
   import { screenRequest } from '../lib/stores/navigation';
   import {
     queryKeys,
     fetchLoginBonus,
+    claimLoginBonus,
     fetchRaceMastery,
     fetchStatistics,
     fetchRecords,
@@ -62,6 +64,19 @@
   });
 
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
+  const queryClient = useQueryClient();
+  let claimingLogin = $state(false);
+  async function claimToday() {
+    if (claimingLogin) return;
+    claimingLogin = true;
+    try {
+      await claimLoginBonus();
+    } finally {
+      claimingLogin = false;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.loginBonus });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.lootChests });
+    }
+  }
   const raceMastery = createQuery(() => ({ queryKey: queryKeys.raceMastery, queryFn: fetchRaceMastery }));
   // What each race's mastery pays, written by the server (RaceBonusRegistry):
   // the bar alone said how far a race had come and never what it was FOR.
@@ -179,36 +194,21 @@
   <section class="panel">
     <h2>Daily login</h2>
     {#if loginBonus.data}
-      <!-- Modul: the week used to be seven identical tiles with today's
-           outlined. A player on day four saw days one to three looking exactly
-           like days five to seven and reasonably concluded their earlier
-           rewards were still waiting to be opened. Nothing is opened here -
-           signing in credits the day by itself - so each tile says which of
-           the three things it is. -->
+      <!-- Modul: the same seven tiles as the daily window (LoginWeekGrid), so
+           the two can never disagree. Claimed by hand since 2026-11-15; a
+           player who pressed "Later" on the window claims here. -->
       <p class="dim small">
-        Day {loginBonus.data.CurrentStreakDay} of 7.
-        {loginBonus.data.CreditedToday
-          ? "Today is credited - rewards arrive on sign-in, there is nothing to claim."
-          : 'Today is not credited yet.'}
+        {loginBonus.data.ClaimableToday
+          ? `Day ${loginBonus.data.Day} of 7 is waiting.`
+          : `Day ${loginBonus.data.Day} of 7 claimed - the next day opens at midnight UTC.`}
+        A missed day pauses the week; it never starts over.
       </p>
-      <ol class="week">
-        {#each loginBonus.data.WeeklyGoldSchedule as gold, index}
-          {@const day = index + 1}
-          {@const isToday = day === loginBonus.data.CurrentStreakDay}
-          {@const collected = day < loginBonus.data.CurrentStreakDay
-            || (isToday && loginBonus.data.CreditedToday)}
-          <li class:current={isToday} class:collected class:upcoming={!collected && !isToday}>
-            <span class="dim tiny">Day {day}</span>
-            <strong><Money amount={gold} /></strong>
-            <span class="daystate tiny">
-              {collected ? 'collected' : isToday ? 'today' : 'upcoming'}
-            </span>
-          </li>
-        {/each}
-      </ol>
-      {#if loginBonus.data.Day7DiamondBonus > 0}
-        <p class="dim tiny">
-          Day 7 also grants <Money amount={loginBonus.data.Day7DiamondBonus} kind="diamond" />.
+      <LoginWeekGrid state={loginBonus.data} />
+      {#if loginBonus.data.ClaimableToday}
+        <p>
+          <button class="primary" onclick={claimToday} disabled={claimingLogin} data-testid="progress-login-claim">
+            {claimingLogin ? 'Claiming...' : `Claim day ${loginBonus.data.Day}`}
+          </button>
         </p>
       {/if}
     {:else if loginBonus.isError}
@@ -302,21 +302,6 @@
     white-space: nowrap;
   }
 
-  .week li.collected {
-    opacity: 0.55;
-  }
-
-  .week li.upcoming {
-    opacity: 0.8;
-  }
-
-  .daystate {
-    display: block;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    opacity: 0.7;
-  }
-
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
@@ -345,40 +330,6 @@
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.7rem;
-  }
-
-  /* Modul: the week WRAPS. Seven fixed columns cannot be narrower than their
-     content ("10 000g" plus a state word), so in a panel sized by the page's
-     `minmax(20rem, 1fr)` grid the last tiles overflowed the panel and drew on
-     top of whatever sat to the right - Statistics, in the reported case, whose
-     numbers then read as a single garbled line of golds.
-     auto-fit lets the row break instead. A wrapped week is still a week; a
-     week painted over the neighbouring panel is not readable at all. */
-  .week {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
-    gap: 0.25rem;
-    text-align: center;
-  }
-
-  .week li {
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0.3rem 0.15rem;
-    font-size: 0.7rem;
-  }
-
-  .week li.current {
-    border-color: var(--good);
-    background: rgba(123, 201, 111, 0.1);
-  }
-
-  .week strong {
-    display: block;
-    font-size: 0.72rem;
   }
 
   .mastery {

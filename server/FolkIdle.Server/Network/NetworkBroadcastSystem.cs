@@ -2088,15 +2088,9 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            // Modul: UI audit follow-up. DailyLoginRewardEngine
-            // already grants a real, server-authoritative streak
-            // reward on every login/register, but the result was
-            // discarded (awaited, never returned to the client) -
-            // the player had no way to see their streak or today's
-            // reward. Read-only snapshot, mirrors HandleMasterySnapshot.
-            if (requestPath == "/api/v1/login-bonus/state" && context.Request.HttpMethod == "GET")
+            // The login week - see NetworkBroadcastSystem.LoginWeek.cs.
+            if (await TryHandleLoginWeekAsync(context, requestPath))
             {
-                await HandleLoginBonusState(context);
                 return;
             }
 
@@ -2805,14 +2799,6 @@ namespace FolkIdle.Server.Network
         {
             public int PlayerLevel { get; set; }
             public System.Collections.Generic.List<CraftingRecipeResponse> Recipes { get; set; } = new();
-        }
-
-        private sealed class LoginBonusStateResponse
-        {
-            public int CurrentStreakDay { get; set; }
-            public bool CreditedToday { get; set; }
-            public long[] WeeklyGoldSchedule { get; set; } = Array.Empty<long>();
-            public int Day7DiamondBonus { get; set; }
         }
 
         private sealed class PlayerStatisticsResponse
@@ -10068,82 +10054,6 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
-        // Modul: UI audit follow-up. DailyLoginRewardEngine.TryGrantLoginRewardAsync
-        // already runs on every /api/v1/auth/login and /api/v1/auth/register
-        // call - this only reads back the state it already persisted
-        // (PlayerRecord.LastLoginTimestamp/LoginStreakDays), plus previews
-        // the current week's reward schedule via the same GetGoldReward
-        // table the grant itself used, so the client can show "day 3 of 7,
-        // here's what the rest of the week pays" without duplicating the
-        // reward matrices.
-        private async Task HandleLoginBonusState(HttpListenerContext context)
-        {
-            try
-            {
-                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
-                if (playerId <= 0)
-                {
-                    context.Response.StatusCode = 401;
-                    context.Response.Close();
-                    return;
-                }
-
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
-                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
-
-                var player = await db.PlayerRecords
-                    .AsNoTracking()
-                    .Where(p => p.Id == playerId)
-                    .Select(p => new { p.LastLoginTimestamp, p.LoginStreakDays, p.LoginCyclesCompleted })
-                    .SingleOrDefaultAsync();
-
-                await transaction.CommitAsync();
-
-                if (player == null)
-                {
-                    context.Response.StatusCode = 404;
-                    context.Response.Close();
-                    return;
-                }
-
-                long nowEpoch = GameClock.UtcNowOffset.ToUnixTimeSeconds();
-                long todayDateKey = nowEpoch / 86400L;
-                long lastLoginDateKey = player.LastLoginTimestamp / 86400L;
-                bool creditedToday = player.LastLoginTimestamp > 0 && lastLoginDateKey == todayDateKey;
-
-                long[] schedule = new long[7];
-                for (int day = 1; day <= 7; day++)
-                {
-                    // The rate of the cycle in progress. A preview read after day 7 was
-                    // credited already shows next week's rate, which is the cycle the
-                    // remaining days belong to.
-                    schedule[day - 1] = DailyLoginRewardEngine.GetGoldReward(todayDateKey, day, player.LoginCyclesCompleted);
-                }
-
-                var response = new LoginBonusStateResponse
-                {
-                    CurrentStreakDay = player.LoginStreakDays,
-                    CreditedToday = creditedToday,
-                    WeeklyGoldSchedule = schedule,
-                    Day7DiamondBonus = DailyLoginRewardEngine.PremiumDiamondsOnDay7Completion
-                };
-
-                context.Response.StatusCode = 200;
-                context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Login bonus state error: {ex}");
-                context.Response.StatusCode = 500;
-            }
-
-            context.Response.Close();
-        }
-
         // Modul: UI audit follow-up. Player Statistics - see this route's
         // registration comment. Read-only aggregate over data every field
         // already persisted for another system's own purposes; nothing new
@@ -11911,15 +11821,11 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                // Modul: daily login reward - server-authoritative, keyed
-                // off PlayerRecord.LastLoginTimestamp, so a replayed login
-                // request on the same UTC day is a genuine no-op rather
-                // than a repeat grant (see DailyLoginRewardEngine). A
-                // failed grant is logged internally and never blocks login
-                // - awaited inline rather than fired-and-forgotten only
-                // because this handler is already on the async HTTP path,
-                // not the 10 Hz tick.
-                await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, accountId);
+                // Modul: a sign-in stamp only. The login week is claimed by
+                // hand from its window since 2026-11-15, because a refresh
+                // token renews most sessions and this handler never ran for
+                // them (see DailyLoginRewardEngine). Never blocks the login.
+                await DailyLoginRewardEngine.NoteSignInAsync(authOptions, accountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, accountId, sessionNonce);
@@ -12241,7 +12147,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, result.AccountId);
+                await DailyLoginRewardEngine.NoteSignInAsync(authOptions, result.AccountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, result.AccountId, sessionNonce);

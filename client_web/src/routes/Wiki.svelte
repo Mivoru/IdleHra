@@ -111,7 +111,6 @@
     WORLD_BOSS_KILL_GOLD_HOURS,
     WORLD_BOSS_SANDBAG_SHARE_PCT,
     SCALED_GOLD_FLOOR,
-    DAILY_LOGIN_MAX_WEEK_MULTIPLIER,
     WORLD_BOSS_ATTEMPTS,
     DEEP_STAKE_PCT,
     DEEP_RECORD_DIAMONDS,
@@ -124,7 +123,7 @@
     DEEP_MAX_LANTERNS,
     DEEP_TITLE_FLOORS,
     WORLD_BOSS_DAMAGE_FLOOR,
-    DAILY_LOGIN_MATRICES,
+    DAILY_LOGIN_WEEK,
     DAILY_LOGIN_DAY7_DIAMONDS,
     ACHIEVEMENTS,
     WIKI_SEARCH_INDEX,
@@ -1941,38 +1940,38 @@
 
           <h3 id="daily">The daily bonus</h3>
           <p class="dim small">
-            Paid <strong>on sign-in</strong>, not claimed — there is no button. The
-            streak runs over seven days and then starts again; miss a day and it
-            resets to day 1. Completing day 7 pays
-            {DAILY_LOGIN_DAY7_DIAMONDS} diamonds on top of the gold.
+            A seven-day week of rewards, <strong>claimed by hand</strong>: the window opens at the first session of
+            each day, and the same week sits on the Progress screen if you closed it with "Later". After day 7 the
+            week starts again. <strong>Miss a day and nothing is lost</strong> - you carry on from the day you
+            reached.
           </p>
           <p class="dim small">
-            A "day" is the <strong>UTC day</strong>, so everybody on earth crosses
-            the boundary at the same second — midnight UTC. Signing in at 23:00 and
-            again at 00:00 is two consecutive days; signing in twice in one UTC day
-            pays once.
+            A "day" is the <strong>UTC day</strong>, so everybody crosses the boundary at the same second - midnight
+            UTC. One claim per UTC day.
           </p>
           <p class="dim small">
-            Three gold schedules rotate weekly, so the week decides which of these
-            you are on. Your <strong>first</strong> seven-day cycle pays the table, your second pays it
-            twice, and every cycle from the third on pays it {DAILY_LOGIN_MAX_WEEK_MULTIPLIER} times. Cycles
-            count over the account's whole life, so a missed day never sends you back to the first.
+            Gold is paid in <strong>minutes of your own income</strong> (what you earned over the last week, per hour,
+            never below {formatNumber(SCALED_GOLD_FLOOR)}), so it is worth the same at every level. A ticket day adds a
+            ticket to every dungeon gate.
           </p>
           <div class="scroll">
             <table>
               <thead>
-                <tr>
-                  <th>Week</th>
-                  {#each [1, 2, 3, 4, 5, 6, 7] as day (day)}<th class="num">Day {day}</th>{/each}
-                </tr>
+                <tr><th>Day</th><th class="num">Gold</th><th class="num">Diamonds</th><th>Also</th></tr>
               </thead>
               <tbody>
-                {#each DAILY_LOGIN_MATRICES as matrix, index (index)}
+                {#each DAILY_LOGIN_WEEK as row (row.day)}
                   <tr>
-                    <td>{['A', 'B', 'C'][index]}</td>
-                    {#each matrix as gold, day (day)}
-                      <td class="num" title={numberTitle(gold)}>{formatNumber(gold)}</td>
-                    {/each}
+                    <td>Day {row.day}</td>
+                    <td class="num">{row.goldMinutes > 0 ? `${row.goldMinutes} min` : '-'}</td>
+                    <td class="num">{row.diamonds > 0 ? row.diamonds : '-'}</td>
+                    <td>
+                      {[
+                        row.lootChest ? `${row.lootChest} loot chest` : '',
+                        row.wardrobeChest ? `${row.wardrobeChest} wardrobe chest` : '',
+                        row.ticketsPerGate > 0 ? `+${row.ticketsPerGate} ticket, every dungeon` : '',
+                      ].filter(Boolean).join(', ') || '-'}
+                    </td>
                   </tr>
                 {/each}
               </tbody>

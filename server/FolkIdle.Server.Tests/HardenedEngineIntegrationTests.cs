@@ -7846,49 +7846,6 @@ namespace FolkIdle.Server.Tests
             }
         }
 
-        // Modul: Comprehensive Game System Audit, Part 6/8. The rotating
-        // login-reward matrix must switch deterministically on the UTC
-        // week boundary, cycle through all matrices, and every matrix must
-        // carry the identical weekly total so rotation never changes
-        // earning power.
-        [Fact]
-        public void Test_DailyLoginRewardEngine_MatrixRotatesWeeklyWithConstantWeeklyTotal()
-        {
-            const long baseDateKey = 20000L;
-            long weekAlignedKey = (baseDateKey / 7L) * 7L;
-
-            int weekAIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey);
-            int weekBIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + 7L);
-            int weekCIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + 14L);
-            int weekDIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + 21L);
-
-            Assert.NotEqual(weekAIndex, weekBIndex);
-            Assert.NotEqual(weekBIndex, weekCIndex);
-            Assert.NotEqual(weekCIndex, weekAIndex);
-            Assert.Equal(weekAIndex, weekDIndex);
-
-            for (int dayOffset = 0; dayOffset < 7; dayOffset++)
-            {
-                Assert.Equal(
-                    DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey),
-                    DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + dayOffset));
-            }
-
-            long weekATotal = 0L;
-            long weekBTotal = 0L;
-            long weekCTotal = 0L;
-            for (int day = 1; day <= 7; day++)
-            {
-                weekATotal += DailyLoginRewardEngine.GetGoldReward(weekAlignedKey, day);
-                weekBTotal += DailyLoginRewardEngine.GetGoldReward(weekAlignedKey + 7L, day);
-                weekCTotal += DailyLoginRewardEngine.GetGoldReward(weekAlignedKey + 14L, day);
-            }
-
-            Assert.Equal(25500L, weekATotal);
-            Assert.Equal(weekATotal, weekBTotal);
-            Assert.Equal(weekATotal, weekCTotal);
-        }
-
         // Modul: Advanced Economy Refactoring, Part 1/4. Materials are ONE
         // unified CommodityRecords pool - gathering (tick loop), village
         // passive production (checkpoint flush), and every consumer

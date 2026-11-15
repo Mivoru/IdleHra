@@ -1283,15 +1283,57 @@ export function fetchAchievements(): Promise<AchievementEntry[]> {
   return authedGet<AchievementEntry[]>('/api/v1/achievements/snapshot');
 }
 
+// Modul: THE LOGIN WEEK (owner, 2026-11-15). Claimed by hand from a window at
+// the first session of the day; a missed day pauses the week instead of
+// resetting it. Every figure is the server's - gold is minutes of the
+// player's own income, so the client never computes a reward.
+export interface LoginWeekDay {
+  Day: number;
+  /** Today's gold figure for this day, already scaled to the player's income; 0 = no gold. */
+  Gold: number;
+  GoldMinutes: number;
+  Diamonds: number;
+  /** "Bronze" | "Silver" | "Gold" | "Ancient", or "" for none. */
+  LootChest: string;
+  /** "Common" | "Rare" | "Epic" | "Legendary", or "" for none. */
+  WardrobeChest: string;
+  TicketsPerGate: number;
+}
+
 export interface LoginBonusState {
-  CurrentStreakDay: number;
-  CreditedToday: boolean;
-  WeeklyGoldSchedule: number[];
-  Day7DiamondBonus: number;
+  ClaimableToday: boolean;
+  /** The day today's claim pays - or, once claimed, the day just paid. */
+  Day: number;
+  LastClaimedDay: number;
+  WeeksCompleted: number;
+  SecondsUntilNextDay: number;
+  Days: LoginWeekDay[];
+}
+
+export interface LoginBonusClaim {
+  Outcome: 'Ok' | 'AlreadyClaimed' | 'PlayerNotFound';
+  Day: number;
+  Gold: number;
+  Diamonds: number;
+  LootChest: string;
+  WardrobeChest: string;
+  TicketsGranted: number;
 }
 
 export function fetchLoginBonus(): Promise<LoginBonusState> {
   return authedGet<LoginBonusState>('/api/v1/login-bonus/state');
+}
+
+/** Claims today's day. A day already claimed (409) answers as AlreadyClaimed rather than throwing. */
+export async function claimLoginBonus(): Promise<LoginBonusClaim> {
+  try {
+    return (await authedPost<LoginBonusClaim>('/api/v1/login-bonus/claim', {}))!;
+  } catch (error) {
+    if (error instanceof AuthError && error.status === 409) {
+      return { Outcome: 'AlreadyClaimed', Day: 0, Gold: 0, Diamonds: 0, LootChest: '', WardrobeChest: '', TicketsGranted: 0 };
+    }
+    throw error;
+  }
 }
 
 export interface LeaderboardEntry {

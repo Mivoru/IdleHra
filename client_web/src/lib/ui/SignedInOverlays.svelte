@@ -10,6 +10,7 @@
   import QuestSpotlight from './QuestSpotlight.svelte';
   import WhatsNew from './WhatsNew.svelte';
   import EventIntro from './EventIntro.svelte';
+  import DailyLoginWindow from './DailyLoginWindow.svelte';
   import BigChestPrompt from './BigChestPrompt.svelte';
   import OfflineSummary from './OfflineSummary.svelte';
   import LootReveal from './LootReveal.svelte';
@@ -43,6 +44,10 @@
 
 <!-- The seasonal event explains itself once, after What's new closes. -->
 <EventIntro />
+
+<!-- The login week, once a day. BEFORE the big-chest prompt in DOM order, so
+     that prompt (rare, and blocking) paints on top and is closed first. -->
+<DailyLoginWindow />
 
 <!-- A chest big enough to slow the game offers to clear part of itself. -->
 <BigChestPrompt />

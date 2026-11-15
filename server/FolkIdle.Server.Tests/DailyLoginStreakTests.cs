@@ -1,7 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -10,20 +13,13 @@ using Xunit.Abstractions;
 namespace FolkIdle.Server.Tests
 {
     /// <summary>
-    /// Whether the daily login streak can actually be climbed.
+    /// The login week, claimed by hand (owner, 2026-11-15).
     ///
-    /// Every account in the live database sits at LoginStreakDays = 1,
-    /// including one played across several weeks. That is consistent with
-    /// legitimate resets - a missed day sets it back to 1, and that account
-    /// was quarantined for most of a month - but it is also exactly what a
-    /// streak that never advances would look like, and this one pays real
-    /// premium currency on day 7. Evidence is not proof, so the ambiguity is
-    /// settled here by driving the engine across simulated day boundaries
-    /// instead of by reading it.
-    ///
-    /// The clock is injected (see the internal overload of
-    /// TryGrantLoginRewardAsync); without that the only way to observe day 2
-    /// was to wait until tomorrow.
+    /// Every reward is read back from the database - gold row, diamond column,
+    /// chest rows, dungeon tickets - rather than trusted from the result,
+    /// because this project's worst defects were all an output side that was
+    /// never wired. The clock is an argument to ClaimAsync, so a week is
+    /// driven in a loop instead of waited for.
     /// </summary>
     [Collection("Postgres collection")]
     public class DailyLoginStreakTests
@@ -39,17 +35,7 @@ namespace FolkIdle.Server.Tests
 
         private const long SecondsPerDay = 86400L;
 
-        /// <summary>
-        /// A UTC midnight whose date key is a multiple of seven, so a full
-        /// seven-day streak sits inside a single rotating gold matrix rather
-        /// than straddling two of them.
-        /// </summary>
-        private static long WeekAlignedMidnightEpoch()
-        {
-            long someKey = DailyLoginRewardEngine.ToDateKey(
-                new DateTimeOffset(2026, 3, 1, 12, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds());
-            return (someKey - (someKey % 7L)) * SecondsPerDay;
-        }
+        private static readonly DateTime Monday = new DateTime(2026, 3, 2, 9, 0, 0, DateTimeKind.Utc);
 
         private async Task<(Guid AccountId, long PlayerId)> SeedAccountAsync()
         {
@@ -69,7 +55,13 @@ namespace FolkIdle.Server.Tests
             return (player.PlayerGuid, player.Id);
         }
 
-        private async Task<(int StreakDays, long Gold, int Diamonds)> ReadStateAsync(long playerId)
+        private async Task<DailyLoginRewardEngine.ClaimResult> ClaimAsync(long playerId, DateTime at)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            return await DailyLoginRewardEngine.ClaimAsync(db, playerId, at);
+        }
+
+        private async Task<(int Day, long Gold, int Diamonds, int Weeks)> ReadStateAsync(long playerId)
         {
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
             var player = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == playerId);
@@ -77,16 +69,14 @@ namespace FolkIdle.Server.Tests
                 .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
                 .Select(c => c.Quantity)
                 .SingleOrDefaultAsync();
-            return (player.LoginStreakDays, gold, player.PremiumDiamonds);
+            return (player.LoginStreakDays, gold, player.PremiumDiamonds, player.LoginCyclesCompleted);
         }
 
         /// <summary>
-        /// The date-key rule itself, asserted rather than assumed: a day is
-        /// the UTC day number, and the boundary is midnight UTC to the
-        /// second. This is the assertion that would fail if anyone ever
-        /// keyed the streak on the server's local calendar, which is the
-        /// classic way a streak becomes unwinnable for entire timezones
-        /// while looking correct to whoever is sitting in UTC.
+        /// A day is the UTC day number, and the boundary is midnight UTC to the
+        /// second - the assertion that fails if anyone keys the week on the
+        /// server's local calendar, which makes a streak unwinnable for whole
+        /// timezones while looking right to whoever sits in UTC.
         /// </summary>
         [Fact]
         public void TheDateKeyIsTheUtcDayAndTurnsOverAtUtcMidnight()
@@ -95,220 +85,205 @@ namespace FolkIdle.Server.Tests
             long midnightEpoch = midnight.ToUnixTimeSeconds();
             long dayKey = DailyLoginRewardEngine.ToDateKey(midnightEpoch);
 
-            // Every second of that UTC day, sampled hourly, is the same day.
             for (int hour = 0; hour < 24; hour++)
             {
                 Assert.Equal(dayKey, DailyLoginRewardEngine.ToDateKey(midnightEpoch + (hour * 3600L)));
             }
 
-            // The last second of the day is still that day; the next one is not.
             Assert.Equal(dayKey, DailyLoginRewardEngine.ToDateKey(midnightEpoch + SecondsPerDay - 1L));
             Assert.Equal(dayKey + 1L, DailyLoginRewardEngine.ToDateKey(midnightEpoch + SecondsPerDay));
 
-            // And the boundary is UTC, not this machine's zone: the same
-            // instant expressed in a non-zero offset lands on the same key,
-            // even where that offset puts it on a different local calendar
-            // date. 2026-03-01T23:30Z is already the 2nd in UTC+2.
             long sameInstantElsewhere =
                 new DateTimeOffset(2026, 3, 2, 1, 30, 0, TimeSpan.FromHours(2)).ToUnixTimeSeconds();
-            Assert.Equal(midnightEpoch + (23L * 3600L) + 1800L, sameInstantElsewhere);
             Assert.Equal(dayKey, DailyLoginRewardEngine.ToDateKey(sameInstantElsewhere));
         }
 
-        /// <summary>
-        /// The core question: 1 -> 2 -> 3 across consecutive UTC days, with
-        /// the gold actually landing in the commodity row each time. This
-        /// project's worst defects have all been an output side that was
-        /// never wired, so the balance is read back from the database rather
-        /// than trusted from the result struct.
-        /// </summary>
         [Fact]
-        public async Task StreakAdvancesOnConsecutiveDaysAndTheGoldIsReallyCredited()
+        public void TheWeekHasSevenDaysAndDaySevenIsTheBest()
         {
-            var (accountId, playerId) = await SeedAccountAsync();
-            long midnight = WeekAlignedMidnightEpoch();
-            long expectedGold = 0L;
-
-            for (int day = 1; day <= 3; day++)
+            Assert.Equal(DailyLoginRewardEngine.DaysInWeek, DailyLoginRewardEngine.Week.Count);
+            for (int i = 0; i < DailyLoginRewardEngine.Week.Count; i++)
             {
-                long now = midnight + ((day - 1) * SecondsPerDay) + (9L * 3600L);
-                var result = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                    _fixture.RetryingOptions, accountId, now);
-
-                Assert.True(result.Granted, $"day {day} granted nothing");
-                Assert.Equal(day, result.StreakDay);
-                expectedGold += result.GoldGranted;
-
-                var state = await ReadStateAsync(playerId);
-                Assert.Equal(day, state.StreakDays);
-                Assert.Equal(expectedGold, state.Gold);
-                _output.WriteLine($"day {day}: streak {state.StreakDays}, +{result.GoldGranted} gold, {state.Gold} total");
+                Assert.Equal(i + 1, DailyLoginRewardEngine.Week[i].Day);
             }
+
+            var seventh = DailyLoginRewardEngine.RewardFor(7);
+            Assert.Equal(DailyLoginRewardEngine.Week.Max(d => d.Diamonds), seventh.Diamonds);
+            Assert.Equal(DailyLoginRewardEngine.Week.Max(d => d.GoldMinutes), seventh.GoldMinutes);
+            Assert.Equal(LootChestTier.Ancient, seventh.LootChest);
+        }
+
+        [Theory]
+        [InlineData(0, 1)]
+        [InlineData(1, 2)]
+        [InlineData(6, 7)]
+        [InlineData(7, 1)]
+        public void TheNextDayFollowsTheLastClaimedAndWrapsAfterSeven(int last, int next)
+        {
+            Assert.Equal(next, DailyLoginRewardEngine.NextDay(last));
         }
 
         /// <summary>
-        /// One skipped day is the whole reset rule, and the boundary case
-        /// that matters is the near miss: a login 48 hours after the last
-        /// one is two keys later, so it starts again at 1 even though the
-        /// player only missed a single calendar day.
+        /// Gold is minutes of the player's own earned income. Measured on
+        /// production 2026-11-15: ~10M gold an hour, against a flat old reward
+        /// of at most 30k - so the claim must actually read the ledger.
         /// </summary>
         [Fact]
-        public async Task ASkippedDayResetsTheStreakToOne()
+        public async Task GoldIsMinutesOfTheIncomeTheLedgerRecords()
         {
-            var (accountId, playerId) = await SeedAccountAsync();
-            long midnight = WeekAlignedMidnightEpoch();
+            var (_, playerId) = await SeedAccountAsync();
+            const long hourly = 10_000_000L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.GoldIncomeDaily.Add(new GoldIncomeDaily
+                {
+                    PlayerId = playerId,
+                    Day = DateOnly.FromDateTime(Monday).AddDays(-1),
+                    Source = (short)GoldIncomeSource.Combat,
+                    Amount = hourly * 24L * GoldRewardScale.WindowDays,
+                });
+                await db.SaveChangesAsync();
+            }
 
-            var first = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + (10L * 3600L));
-            Assert.Equal(1, first.StreakDay);
+            var result = await ClaimAsync(playerId, Monday);
 
-            var second = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + SecondsPerDay + (10L * 3600L));
-            Assert.Equal(2, second.StreakDay);
-
-            // Now miss a day entirely.
-            var afterGap = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + (3L * SecondsPerDay) + (10L * 3600L));
-
-            Assert.True(afterGap.Granted);
-            Assert.Equal(1, afterGap.StreakDay);
-            Assert.Equal(0, afterGap.PremiumDiamondsGranted);
-
-            var state = await ReadStateAsync(playerId);
-            Assert.Equal(1, state.StreakDays);
+            Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.Ok, result.Outcome);
+            Assert.Equal(1, result.Day);
+            Assert.Equal(GoldRewardScale.ForMinutes(hourly, DailyLoginRewardEngine.RewardFor(1).GoldMinutes), result.Gold);
+            Assert.Equal(result.Gold, (await ReadStateAsync(playerId)).Gold);
+            _output.WriteLine($"day 1 at {hourly:N0}/h pays {result.Gold:N0} gold");
         }
 
-        /// <summary>
-        /// Day 7 pays 100 diamonds, once. This is the only part of the
-        /// feature that spends real premium currency, so it is asserted from
-        /// both ends: nothing before day 7, exactly one payment on it, and
-        /// the eighth day starting a fresh streak without paying again.
-        /// </summary>
         [Fact]
-        public async Task TheSeventhConsecutiveDayPaysTheDiamondsExactlyOnce()
+        public async Task AWholeWeekPaysEveryDaysRewardIntoTheDatabase()
         {
-            var (accountId, playerId) = await SeedAccountAsync();
-            long midnight = WeekAlignedMidnightEpoch();
-            long weeklyGold = 0L;
+            var (_, playerId) = await SeedAccountAsync();
+            long gold = 0;
+            int diamonds = 0;
 
             for (int day = 1; day <= 7; day++)
             {
-                var result = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                    _fixture.RetryingOptions, accountId, midnight + ((day - 1) * SecondsPerDay) + (8L * 3600L));
+                var result = await ClaimAsync(playerId, Monday.AddDays(day - 1));
+                Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.Ok, result.Outcome);
+                Assert.Equal(day, result.Day);
+                gold += result.Gold;
+                diamonds += result.Diamonds;
 
-                Assert.True(result.Granted);
-                Assert.Equal(day, result.StreakDay);
-                weeklyGold += result.GoldGranted;
-
-                int expectedDiamonds = day == 7 ? DailyLoginRewardEngine.PremiumDiamondsOnDay7Completion : 0;
-                Assert.Equal(expectedDiamonds, result.PremiumDiamondsGranted);
+                var state = await ReadStateAsync(playerId);
+                Assert.Equal(day, state.Day);
+                Assert.Equal(gold, state.Gold);
+                Assert.Equal(diamonds, state.Diamonds);
             }
 
-            var afterWeek = await ReadStateAsync(playerId);
-            Assert.Equal(7, afterWeek.StreakDays);
-            Assert.Equal(DailyLoginRewardEngine.PremiumDiamondsOnDay7Completion, afterWeek.Diamonds);
+            Assert.Equal(DailyLoginRewardEngine.Week.Sum(d => d.Diamonds), diamonds);
+            Assert.Equal(1, (await ReadStateAsync(playerId)).Weeks);
 
-            // A week-aligned streak sits inside one rotating matrix, and every
-            // matrix is worth the same 25,500 gold - rotation changes the
-            // shape of the week, never its earning power.
-            Assert.Equal(25_500L, weeklyGold);
-            _output.WriteLine($"seven days paid {weeklyGold} gold and {afterWeek.Diamonds} diamonds");
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var lootChests = await db.LootChests.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync();
+            Assert.Equal(
+                DailyLoginRewardEngine.Week.Where(d => d.LootChest != null).Select(d => (byte)d.LootChest!.Value).OrderBy(t => t),
+                lootChests.Select(c => c.Tier).OrderBy(t => t));
+            Assert.All(lootChests, c => Assert.Equal((byte)LootChestSource.LoginReward, c.Source));
 
-            // The eighth consecutive day wraps to a new streak and must not
-            // pay the day-7 bonus a second time.
-            var dayEight = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + (7L * SecondsPerDay) + (8L * 3600L));
+            int wardrobeChests = await db.CosmeticItems.AsNoTracking()
+                .CountAsync(c => c.PlayerId == playerId && c.Source == (byte)CosmeticSource.LoginReward);
+            Assert.Equal(DailyLoginRewardEngine.Week.Count(d => d.WardrobeChestRarity > 0), wardrobeChests);
+        }
 
-            Assert.True(dayEight.Granted);
-            Assert.Equal(1, dayEight.StreakDay);
-            Assert.Equal(0, dayEight.PremiumDiamondsGranted);
+        [Fact]
+        public async Task TheDayAfterDaySevenIsDayOneAgain()
+        {
+            var (_, playerId) = await SeedAccountAsync();
+            for (int day = 1; day <= 7; day++)
+            {
+                await ClaimAsync(playerId, Monday.AddDays(day - 1));
+            }
 
-            var afterWrap = await ReadStateAsync(playerId);
-            Assert.Equal(DailyLoginRewardEngine.PremiumDiamondsOnDay7Completion, afterWrap.Diamonds);
+            var eighth = await ClaimAsync(playerId, Monday.AddDays(7));
+            Assert.Equal(1, eighth.Day);
+        }
+
+        [Fact]
+        public async Task ASecondClaimOnTheSameUtcDayPaysNothing()
+        {
+            var (_, playerId) = await SeedAccountAsync();
+            var first = await ClaimAsync(playerId, Monday);
+            var before = await ReadStateAsync(playerId);
+
+            var second = await ClaimAsync(playerId, Monday.AddHours(14));
+
+            Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.Ok, first.Outcome);
+            Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.AlreadyClaimed, second.Outcome);
+            Assert.Equal(before, await ReadStateAsync(playerId));
         }
 
         /// <summary>
-        /// Signing in twice on one UTC day pays once. The web client
-        /// re-authenticates on every page load and on remembered-device
-        /// auto-relogin, so this is the ordinary case, not an attack - but it
-        /// is also the replay defence, since the grant is keyed on stored
-        /// server state and not on anything the client sends.
+        /// Owner, 2026-11-15: a missed day PAUSES the week. Three days away
+        /// after claiming day 2 resumes at day 3, not at day 1.
         /// </summary>
         [Fact]
-        public async Task TwoSignInsOnTheSameUtcDayPayExactlyOnce()
+        public async Task MissedDaysPauseTheWeekInsteadOfResettingIt()
         {
-            var (accountId, playerId) = await SeedAccountAsync();
-            long midnight = WeekAlignedMidnightEpoch();
+            var (_, playerId) = await SeedAccountAsync();
+            await ClaimAsync(playerId, Monday);
+            await ClaimAsync(playerId, Monday.AddDays(1));
 
-            var first = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + 60L);
-            Assert.True(first.Granted);
+            var afterGap = await ClaimAsync(playerId, Monday.AddDays(5));
 
-            var afterFirst = await ReadStateAsync(playerId);
+            Assert.Equal(3, afterGap.Day);
+        }
 
-            // Nearly a full day later - but the same UTC day, so nothing.
-            var second = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + SecondsPerDay - 60L);
+        [Fact]
+        public async Task MidnightUtcOpensTheNextDayEvenMinutesLater()
+        {
+            var (_, playerId) = await SeedAccountAsync();
+            var lateNight = new DateTime(2026, 3, 2, 23, 59, 0, DateTimeKind.Utc);
 
-            Assert.False(second.Granted);
-            Assert.Equal(0L, second.GoldGranted);
-            Assert.Equal(0, second.PremiumDiamondsGranted);
+            var first = await ClaimAsync(playerId, lateNight);
+            var second = await ClaimAsync(playerId, lateNight.AddMinutes(2));
 
-            var afterSecond = await ReadStateAsync(playerId);
-            Assert.Equal(afterFirst.StreakDays, afterSecond.StreakDays);
-            Assert.Equal(afterFirst.Gold, afterSecond.Gold);
-            Assert.Equal(afterFirst.Diamonds, afterSecond.Diamonds);
+            Assert.Equal(1, first.Day);
+            Assert.Equal(2, second.Day);
+        }
+
+        [Fact]
+        public async Task DayTwoAddsATicketToEveryDungeonGate()
+        {
+            var (_, playerId) = await SeedAccountAsync();
+            await ClaimAsync(playerId, Monday);
+
+            var result = await ClaimAsync(playerId, Monday.AddDays(1));
+
+            Assert.Equal(2, result.Day);
+            Assert.Equal(DungeonBoss.All.Count(), result.TicketsGranted);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var gates = await db.DungeonProgress.AsNoTracking().Where(d => d.PlayerId == playerId).ToListAsync();
+            Assert.Equal(DungeonBoss.All.Count(), gates.Count);
+            // The day's top-up fills a gate to the cap; the claim's ticket sits above it.
+            Assert.All(gates, g => Assert.Equal(DungeonEngine.TicketCap + 1, g.Tickets));
         }
 
         /// <summary>
-        /// The sharpest form of the boundary rule, driven through the whole
-        /// transaction: 23:59:00 and 00:01:00 are two minutes apart and are
-        /// two different days, so the streak advances. The mirror case in
-        /// TwoSignInsOnTheSameUtcDayPayExactlyOnce is nearly twenty-four
-        /// hours apart and is one day, so it does not. Elapsed time is not
-        /// the rule; the UTC calendar boundary is.
+        /// A password sign-in only stamps the account as active (guild
+        /// succession reads it). It pays nothing - and it does not use up the
+        /// day's claim either.
         /// </summary>
         [Fact]
-        public async Task CrossingMidnightUtcAdvancesTheStreakEvenTwoMinutesApart()
+        public async Task SigningInPaysNothingAndLeavesTheClaimOpen()
         {
             var (accountId, playerId) = await SeedAccountAsync();
-            long midnight = WeekAlignedMidnightEpoch();
+            long now = new DateTimeOffset(Monday).ToUnixTimeSeconds();
 
-            var lateNight = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + SecondsPerDay - 60L);
-            Assert.True(lateNight.Granted);
-            Assert.Equal(1, lateNight.StreakDay);
-
-            var justAfterMidnight = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, midnight + SecondsPerDay + 60L);
-
-            Assert.True(justAfterMidnight.Granted);
-            Assert.Equal(2, justAfterMidnight.StreakDay);
+            await DailyLoginRewardEngine.NoteSignInAsync(_fixture.RetryingOptions, accountId, now);
 
             var state = await ReadStateAsync(playerId);
-            Assert.Equal(2, state.StreakDays);
-        }
+            Assert.Equal((0, 0L, 0, 0), state);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(now, await db.PlayerRecords.Where(p => p.Id == playerId).Select(p => p.LastLoginTimestamp).SingleAsync());
+            }
 
-        /// <summary>
-        /// A brand new account is day 1, not day 0 and not a skipped day -
-        /// LastLoginTimestamp of 0 is "never seen", which is a distinct case
-        /// from a stale timestamp and would otherwise be read as an enormous
-        /// gap from 1970.
-        /// </summary>
-        [Fact]
-        public async Task AFirstEverSignInStartsAtDayOne()
-        {
-            var (accountId, playerId) = await SeedAccountAsync();
-
-            var before = await ReadStateAsync(playerId);
-            Assert.Equal(0, before.StreakDays);
-
-            var result = await DailyLoginRewardEngine.TryGrantLoginRewardAsync(
-                _fixture.RetryingOptions, accountId, WeekAlignedMidnightEpoch() + (12L * 3600L));
-
-            Assert.True(result.Granted);
-            Assert.Equal(1, result.StreakDay);
-            Assert.True(result.GoldGranted > 0L);
+            Assert.Equal(DailyLoginRewardEngine.ClaimOutcome.Ok, (await ClaimAsync(playerId, Monday)).Outcome);
         }
     }
 }

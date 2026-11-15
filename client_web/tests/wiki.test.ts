@@ -31,7 +31,7 @@ import {
   WORLD_BOSS_SANDBAG_SHARE_PCT,
   WORLD_BOSS_PLACE_GOLD_HOURS,
   SCALED_GOLD_FLOOR,
-  DAILY_LOGIN_MAX_WEEK_MULTIPLIER,
+  DAILY_LOGIN_WEEK,
   WORLD_BOSS_ATTEMPTS,
   DEEP_STAKE_PCT,
   DEEP_RECORD_DIAMONDS,
@@ -408,10 +408,22 @@ describe('the tables the wiki restates still match the server', () => {
     expect(SCALED_GOLD_FLOOR).toBe(
       Number(read(serverRoot, 'Engine', 'GoldRewardScale.cs').match(/FloorGold = ([\d_]+);/)![1].replace(/_/g, '')),
     );
-    expect(DAILY_LOGIN_MAX_WEEK_MULTIPLIER).toBe(num(daily, /MaxWeekMultiplier = (\d+)/, 'login week multiplier'));
-    expect(DAILY_LOGIN_DAY7_DIAMONDS).toBe(
-      num(daily, /PremiumDiamondsOnDay7Completion = (\d+)/, 'day 7 diamonds'),
-    );
+    // The login week, row by row, as DailyLoginRewardEngine.Week writes it.
+    const rarityName = (expr: string) =>
+      ({ '0': '', 'CosmeticRegistry.Common': 'Common', 'CosmeticRegistry.Rare': 'Rare', 'CosmeticRegistry.Epic': 'Epic', 'CosmeticRegistry.Legendary': 'Legendary' })[expr] ?? `?${expr}`;
+    const week = [...daily.matchAll(
+      /new LoginDayReward\((\d+), GoldMinutes: (\d+), Diamonds: (\d+), LootChest: (null|LootChestTier\.\w+), WardrobeChestRarity: ([\w.]+), TicketsPerGate: (\d+)\)/g,
+    )].map((m) => ({
+      day: Number(m[1]),
+      goldMinutes: Number(m[2]),
+      diamonds: Number(m[3]),
+      lootChest: m[4] === 'null' ? '' : m[4].replace('LootChestTier.', ''),
+      wardrobeChest: rarityName(m[5]),
+      ticketsPerGate: Number(m[6]),
+    }));
+    expect(week.length).toBe(7);
+    expect([...DAILY_LOGIN_WEEK]).toEqual(week);
+    expect(DAILY_LOGIN_DAY7_DIAMONDS).toBe(week[6].diamonds);
   });
 
   it('economy: the Deep - stake, toll, door floor, lanterns and title floors', () => {
