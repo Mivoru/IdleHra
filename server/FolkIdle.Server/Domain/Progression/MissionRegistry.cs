@@ -93,15 +93,15 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>
         /// A FIXED mission may be replaced only when it cannot be finished
         /// (owner, 2026-11-15): the world boss is not up this week any more, or
-        /// the dungeons on the missions' launch day. Such a replacement does
-        /// not use a free swap.
+        /// - on the missions' launch day only - any fixed mission, because the
+        /// fights and strikes done that morning, before the counters existed,
+        /// were never counted (the owner had struck the world boss and fought
+        /// every gate before the deploy). Such a replacement does not use a
+        /// free swap.
         /// </summary>
-        public static bool FixedMissionImpossible(MissionAction action, int dayKey, bool worldBossActive) => action switch
-        {
-            MissionAction.WorldBossStrike => !worldBossActive,
-            MissionAction.DungeonFight => dayKey == MissionsLaunchDayKey,
-            _ => false,
-        };
+        public static bool FixedMissionImpossible(MissionAction action, int dayKey, bool worldBossActive)
+            => dayKey == MissionsLaunchDayKey
+               || (action == MissionAction.WorldBossStrike && !worldBossActive);
 
         // Modul: FORGE_OPEN_LEVEL and MARKET_OPEN_LEVEL in client_web
         // unlocks.ts. The client greys those screens below these levels, so a

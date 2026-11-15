@@ -53,7 +53,13 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 bool deepEnabled = _serviceProvider.GetService<DelveDeepSettings>()?.Enabled ?? false;
-                bool worldBossActive = _worldBossEngine?.IsEventActive ?? false;
+                // Modul: STRIKEABLE, NOT JUST ACTIVE. A felled boss keeps EventState
+                // 1 until Sunday's close pays the week, so IsEventActive alone
+                // offered - and refused to replace - a strike mission for a boss
+                // that was already dead (owner, 2026-11-15).
+                bool worldBossActive = _worldBossEngine != null
+                    && _worldBossEngine.IsEventActive
+                    && _worldBossEngine.DefeatedAtEpoch == 0;
                 var utcNow = GameClock.UtcNow;
                 Func<Task<MissionFacts?>> facts = () => MissionEngine.LoadFactsAsync(db, playerId, deepEnabled, worldBossActive);
 

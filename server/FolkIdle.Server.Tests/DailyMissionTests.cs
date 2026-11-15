@@ -259,14 +259,19 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(MissionRegistry.FreeRerollsPerDay, view.RerollsLeft);
         }
 
-        /// <summary>The dungeons can be replaced on the missions' launch day only.</summary>
+        /// <summary>On the launch day every fixed mission can be replaced; after it, only a dead world boss.</summary>
         [Fact]
-        public void TheDungeonMissionIsReplaceableOnLaunchDayOnly()
+        public void FixedMissionsAreReplaceableOnLaunchDay_ThenOnlyADeadWorldBoss()
         {
-            Assert.True(MissionRegistry.FixedMissionImpossible(MissionAction.DungeonFight, MissionRegistry.MissionsLaunchDayKey, true));
-            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.DungeonFight, MissionRegistry.MissionsLaunchDayKey + 1, true));
-            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.ExpeditionSent, MissionRegistry.MissionsLaunchDayKey, false));
-            Assert.True(MissionRegistry.FixedMissionImpossible(MissionAction.WorldBossStrike, 30_000, false));
+            int launch = MissionRegistry.MissionsLaunchDayKey;
+            foreach (var a in new[] { MissionAction.DungeonFight, MissionAction.ExpeditionSent, MissionAction.WorldBossStrike })
+            {
+                Assert.True(MissionRegistry.FixedMissionImpossible(a, launch, true), a.ToString());
+            }
+            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.DungeonFight, launch + 1, true));
+            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.ExpeditionSent, launch + 1, false));
+            Assert.False(MissionRegistry.FixedMissionImpossible(MissionAction.WorldBossStrike, launch + 1, true));
+            Assert.True(MissionRegistry.FixedMissionImpossible(MissionAction.WorldBossStrike, launch + 1, false));
         }
 
         [Fact]
