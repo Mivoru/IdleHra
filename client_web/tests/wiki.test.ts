@@ -23,6 +23,10 @@ import {
   WORLD_BOSS_HP_FACTOR_MAX,
   WORLD_BOSS_REGISTRATION_LEVEL,
   WORLD_BOSS_MILESTONES,
+  DUEL_MOVES,
+  DUEL_BASE,
+  DUEL_BUILD_ANSWERS,
+  DUEL_OMENS,
   WORLD_BOSS_KILL_GOLD_HOURS,
   WORLD_BOSS_SANDBAG_SHARE_PCT,
   WORLD_BOSS_PLACE_GOLD_HOURS,
@@ -339,6 +343,39 @@ describe('the tables the wiki restates still match the server', () => {
     expect(thresholds).toEqual([[1, 1], [4, 2], [7, 3]]);
     expect(text).toContain('levels 1, 4 and 7');
     expect(text).not.toMatch(/nothing above level 1/i);
+  });
+  it('events: the duel answer table is the server\'s own, arm by arm', () => {
+    const rules = read(serverRoot, 'Domain', 'Combat', 'WorldBossStrike', 'BossDuelRules.cs');
+    const moves = [...rules.matchAll(/new DuelMoveDef\(DuelMove\.(\w+), "([^"]+)", "[^"]*", (true|false)\)/g)].map((m) => ({
+      move: m[1],
+      name: m[2],
+      serpentOnly: m[3] === 'true',
+    }));
+    expect(moves.length).toBe(8);
+    expect([...DUEL_MOVES]).toEqual(moves);
+    const base = [...rules.matchAll(/\(DuelMove\.(\w+), DuelOption\.(\w+)\) => DuelVerdict\.(\w+)/g)].map((m) => ({
+      move: m[1],
+      answer: m[2],
+      verdict: m[3],
+    }));
+    expect(base.length).toBe(16);
+    expect([...DUEL_BASE]).toEqual(base);
+    const builds = [...rules.matchAll(/\(DuelStance\.(\w+), DuelMove\.(\w+), DuelOption\.(\w+)\) => DuelVerdict\.(\w+)/g)].map((m) => ({
+      build: m[1],
+      move: m[2],
+      answer: m[3],
+      verdict: m[4],
+    }));
+    expect(builds.length).toBe(9);
+    expect([...DUEL_BUILD_ANSWERS]).toEqual(builds);
+    const omens = [...rules.matchAll(/new DuelOmen\((\d+), "([^"]+)", "[^"]*", DuelMove\.(\w+), DuelOption\.(\w+)\)/g)].map((m) => ({
+      day: Number(m[1]),
+      name: m[2],
+      move: m[3],
+      answer: m[4],
+    }));
+    expect(omens.length).toBe(7);
+    expect([...DUEL_OMENS]).toEqual(omens);
   });
   it('events: the world boss and the day-7 diamond bonus', () => {
     const boss = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
