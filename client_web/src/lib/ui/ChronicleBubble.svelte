@@ -14,9 +14,15 @@
   import { onboardingDismissed } from '../stores/tutorial';
   import { guidedStage } from '../stores/guided';
   import { chronicleView } from './missions';
+  import { chatDockOpen } from '../stores/chatDock';
 
   // Not during the guided first minute: that has one thing to point at.
-  const visible = $derived($playerState !== null && guidedStage($playerState, $onboardingDismissed) === null);
+  // Not while chat is open either (owner, 2026-11-15: "the bubble overlaps the
+  // chat"): on a phone the chat window covers the whole screen and the bubble,
+  // drawn after it at the same z-index, sat on its message box.
+  const visible = $derived(
+    $playerState !== null && !$chatDockOpen && guidedStage($playerState, $onboardingDismissed) === null,
+  );
 
   const day = createQuery(() => ({
     queryKey: queryKeys.missions,
