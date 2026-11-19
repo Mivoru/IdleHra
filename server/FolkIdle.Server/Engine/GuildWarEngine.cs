@@ -644,8 +644,8 @@ namespace FolkIdle.Server.Engine
                     {
                         float critMult = Random.Shared.NextDouble() <= (statsA.CritChancePct / 100.0f) ? Math.Max(1.0f, 1.5f - (statsB.CritMitigationPct / 100f)) : 1.0f;
                         long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in statsA, 0, 0);
-                        int rawDamage = (int)(effectiveMilliAttack * critMult);
-                        int netDamage = Math.Max(1000, rawDamage - (statsB.FlatPhysicalArmor * 1000));
+                        long rawDamage = (long)(effectiveMilliAttack * (double)critMult);
+                        long netDamage = Math.Max(1000L, rawDamage - (statsB.FlatPhysicalArmor * 1000L));
                         hpB -= netDamage;
                     }
 
@@ -657,8 +657,8 @@ namespace FolkIdle.Server.Engine
                     {
                         float critMult = Random.Shared.NextDouble() <= (statsB.CritChancePct / 100.0f) ? Math.Max(1.0f, 1.5f - (statsA.CritMitigationPct / 100f)) : 1.0f;
                         long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in statsB, 0, 0);
-                        int rawDamage = (int)(effectiveMilliAttack * critMult);
-                        int netDamage = Math.Max(1000, rawDamage - (statsA.FlatPhysicalArmor * 1000));
+                        long rawDamage = (long)(effectiveMilliAttack * (double)critMult);
+                        long netDamage = Math.Max(1000L, rawDamage - (statsA.FlatPhysicalArmor * 1000L));
                         hpA -= netDamage;
                     }
                 }

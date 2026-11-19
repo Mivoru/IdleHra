@@ -859,27 +859,29 @@ namespace FolkIdle.Server.Domain.Combat
             /// <summary>Landed damage of one connecting swing, burn included.</summary>
             private static double Landed(in TickStatePayload payload, in CombatStats stats, in MonsterDefinition monster, long rawMilliAttack, float critMult)
             {
-                int raw = (int)(rawMilliAttack * critMult);
-                int net = (int)CombatDamageModel.Mitigate(
+                // Modul: long, as the live swing is since 2026-11-19 - an int of milli-HP
+                // capped (and the war multipliers wrapped) past 2.1M hit points.
+                long raw = (long)(rawMilliAttack * (double)critMult);
+                long net = CombatDamageModel.Mitigate(
                     raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
                 // Crushing Blow, as the live swing rolls it: a share of hits doubled.
                 var war = WarTreeRegistry.Resolve(in payload);
                 double crushing = war.CrushingChanceWith(AffixFamilies.Totals(in payload));
-                if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
+                if (crushing > 0) net = (long)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
                 int knowYourPrey = SimulationEngine.KnowYourPreyTenthsPct(in payload, in monster);
-                if (knowYourPrey > 0) net += (int)((long)net * knowYourPrey / 1000L);
+                if (knowYourPrey > 0) net += (net * knowYourPrey / 1000L);
                 int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, monster.RegionTier);
-                if (mastery > 0) net += (int)((long)net * mastery / 1000L);
+                if (mastery > 0) net += (net * mastery / 1000L);
                 int bossbane = SimulationEngine.BossbaneTenthsPctFor(in payload, in monster);
-                if (bossbane > 0) net += (int)((long)net * bossbane / 1000L);
+                if (bossbane > 0) net += (net * bossbane / 1000L);
                 if (war.RegionBossDamageTenthsPct > 0 && SimulationEngine.IsRegionBossId(monster.Id))
-                    net += (int)((long)net * war.RegionBossDamageTenthsPct / 1000L);
-                net = (int)(net * SimulationEngine.LiveCodexDamageMultiplier(in payload));
+                    net += (net * war.RegionBossDamageTenthsPct / 1000L);
+                net = (long)(net * (double)SimulationEngine.LiveCodexDamageMultiplier(in payload));
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {
-                    net = (int)(net * (1f + (stats.SetFireDamageMultiplierPct / 100f)));
+                    net = (long)(net * (1.0 + (stats.SetFireDamageMultiplierPct / 100.0)));
                 }
-                int burn = stats.SetBurnApplicationActive ? (int)(net * SimulationEngine.BurnDamageFraction) : 0;
+                long burn = stats.SetBurnApplicationActive ? (long)(net * (double)SimulationEngine.BurnDamageFraction) : 0;
                 return net + burn;
             }
 
