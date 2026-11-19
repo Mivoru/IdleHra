@@ -35,6 +35,28 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.97.1',
+    date: '2026-11-19',
+    sections: [
+      {
+        title: 'Fixes',
+        items: [
+          'The daily reward window: amounts no longer spill out of their tiles on a phone.',
+          'Very strong characters: a hit bigger than about two million no longer stops counting - every point lands, and the Combat estimates show again for the strongest heroes.',
+          'Saved builds read clearly in the light theme.',
+          'The "Do this next" hint no longer hides under the Chronicle badge on a computer.',
+          "The World Boss's Sunday titles are readable in the light theme.",
+          'A locked gathering spot names the boss that opens it.',
+          'Monster and item pictures show initials instead of a broken image while the game reconnects.',
+        ],
+      },
+      {
+        title: 'Chat',
+        items: ['News now announces drops from Ancient up. Relic drops no longer fill the channel.'],
+      },
+    ],
+  },
+  {
     version: '1.97.0',
     date: '2026-11-15',
     headline: 'A new Wardrobe: painted frames and threads.',
