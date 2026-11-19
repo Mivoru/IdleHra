@@ -23,6 +23,8 @@
   import { invalidateOwnedItems } from '../net/queryClient';
 
   const client = useQueryClient();
+  /** LootChestEngine.OpenAsync's cap per request. */
+  const PER_REQUEST = 10;
   const shelf = createQuery(() => ({ queryKey: queryKeys.lootChests, queryFn: fetchLootChests }));
 
   let stageTier = $state(0);
@@ -47,18 +49,30 @@
       }
     })();
     try {
-      const [res] = await Promise.all([openLootChests(tier, count), shakes]);
-      if (res.Result !== 'Ok') {
+      // Modul: OPEN ALL (2026-11-19). Nav pays a chest for every new depth, so
+      // a shelf can hold dozens; five at a time was a chore. The server opens
+      // at most PER_REQUEST a call, so "all" is calls in a row, stopping at the
+      // first that finds nothing - every chest opened is already granted, and
+      // the ones not reached stay on the shelf.
+      const first = Math.min(count, PER_REQUEST);
+      const [res] = await Promise.all([openLootChests(tier, first), shakes]);
+      let last = res;
+      const all = res.Result === 'Ok' ? [...res.Opened] : [];
+      for (let left = count - first; left > 0 && last.Result === 'Ok'; left -= PER_REQUEST) {
+        last = await openLootChests(tier, Math.min(left, PER_REQUEST));
+        if (last.Result === 'Ok') all.push(...last.Opened);
+      }
+      if (all.length === 0) {
         error = 'There was no chest of that kind left to open.';
         stageTier = 0;
       } else {
-        results = res.Opened;
+        results = all;
         opened = true;
         // The lid's sound by the chest's tier (1 Common ... 4 Legendary). Loot
         // chests opened in silence until 2026-10-31.
         play(tier >= 4 ? 'chestOpenLegendary' : tier === 3 ? 'chestOpenEpic' : 'chestOpenRare');
       }
-      client.setQueryData(queryKeys.lootChests, (old: typeof shelf.data) => (old ? { ...old, Chests: res.Chests } : old));
+      client.setQueryData(queryKeys.lootChests, (old: typeof shelf.data) => (old ? { ...old, Chests: last.Chests } : old));
       invalidateOwnedItems(client);
     } catch {
       error = 'The chest would not open. Try again in a moment.';
@@ -71,6 +85,9 @@
     results = [];
   }
 
+  // The best pieces first; a big haul lists the top ones and counts the rest.
+  const PIECES_SHOWN = 8;
+  const pieces = $derived(results.filter((r) => r.Piece).sort((a, b) => b.Piece!.QualityTier - a.Piece!.QualityTier));
   const totalGold = $derived(results.reduce((a, r) => a + r.Gold, 0));
   const totalDiamonds = $derived(results.reduce((a, r) => a + r.Diamonds, 0));
   const tickets = $derived(results.map((r) => r.DungeonTicket ?? '').filter((t) => t !== ''));
@@ -100,6 +117,9 @@
             <button class="primary" disabled={stageTier > 0} onclick={() => open(chest.Tier, 1)} data-testid={`loot-chest-open-${chest.Tier}`}>Open</button>
             {#if chest.Count > 1}
               <button disabled={stageTier > 0} onclick={() => open(chest.Tier, Math.min(5, chest.Count))}>Open ×{Math.min(5, chest.Count)}</button>
+            {/if}
+            {#if chest.Count > 5}
+              <button disabled={stageTier > 0} onclick={() => open(chest.Tier, chest.Count)} data-testid={`loot-chest-open-all-${chest.Tier}`}>Open all ×{chest.Count}</button>
             {/if}
             <button class="link" onclick={() => (showOdds = showOdds === chest.Tier ? null : chest.Tier)}>Odds</button>
           </div>
@@ -140,12 +160,15 @@
               <span>{formatNumber(qty)} × {prettifyBaseId(item)}</span>
             </li>
           {/each}
-          {#each results.filter((r) => r.Piece) as r}
+          {#each pieces.slice(0, PIECES_SHOWN) as r}
             <li class="piece" data-kind="piece" style={`--line: ${rarityColor(r.Piece!.QualityTier)}`}>
               <ItemIcon baseItemId={r.Piece!.BaseItemId} name={prettifyBaseId(r.Piece!.BaseItemId)} qualityTier={r.Piece!.QualityTier} size="sm" />
               <span>{r.Piece!.RarityName} {prettifyBaseId(r.Piece!.BaseItemId)}</span>
             </li>
           {/each}
+          {#if pieces.length > PIECES_SHOWN}
+            <li class="dim" data-kind="more-pieces">and {pieces.length - PIECES_SHOWN} more pieces - all in your Village Chest</li>
+          {/if}
         </ul>
         <button class="primary" onclick={close} data-testid="loot-chest-collect">Collect</button>
       </div>
@@ -176,7 +199,7 @@
      from the words, so it is dropped here (and its padding with it). */
   .reveal h3 { padding-left: 0; }
   .reveal h3::before { display: none; }
-  .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 6px; justify-items: center; }
+  .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 6px; justify-items: center; max-height: 46dvh; overflow-y: auto; }
   .reveal li { display: inline-flex; align-items: center; gap: 8px; }
   .reveal .gold { color: var(--gold); font-weight: 600; }
   .reveal .diamonds { color: var(--diamond); font-weight: 600; }

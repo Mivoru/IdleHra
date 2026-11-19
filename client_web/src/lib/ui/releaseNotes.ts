@@ -35,6 +35,29 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.102.0',
+    date: '2026-11-19',
+    headline: 'Nav has its own music, and the chests open in cleaner light.',
+    sections: [
+      {
+        title: 'Music',
+        items: [
+          'Nav has its own theme, "Below the Roots": a slow dark loop of drones, gusli and distant voices. It plays while Nav is open and hands back to your music where it left off when you leave.',
+        ],
+      },
+      {
+        title: 'Chests',
+        items: [
+          'The shaft of light above a Wardrobe chest no longer stops on a hard line - it fades in from the dark.',
+          'The light of an opening chest is centred on the chest again and fades out before it reaches any edge; the Legendary burst no longer draws a grey box over the room; loot chests no longer wash out to white.',
+          'Opening five Wardrobe chests ends on "See all 5": every piece of the haul at once, tap one to show it.',
+          'Loot chests: "Open all" opens the whole stack in one go, and a big haul lists its best pieces first.',
+          'No more grey video boxes with a play button: a light or dust clip that has not started stays invisible instead.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.101.0',
     date: '2026-11-19',
     headline: 'The descent into Nav is a scene now.',

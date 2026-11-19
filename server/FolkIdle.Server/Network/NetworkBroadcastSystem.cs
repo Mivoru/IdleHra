@@ -9538,6 +9538,9 @@ namespace FolkIdle.Server.Network
         // element streams a track and seeks with byte ranges, and a server
         // that ignores Range makes Chromium refuse to seek or loop it cleanly.
         // Names are validated, never sanitized, exactly as the clips are.
+        /// <summary>The prefix of a screen theme in the music folder (served, not listed).</summary>
+        internal const string ScreenThemePrefix = "screen_";
+
         private static readonly System.Text.RegularExpressions.Regex MusicFileNamePattern =
             new(@"^[A-Za-z0-9_\-]+\.mp3$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
@@ -9551,6 +9554,10 @@ namespace FolkIdle.Server.Network
                     ? System.IO.Directory.GetFiles(MusicDirectory, "*.mp3")
                         .Select(f => System.IO.Path.GetFileName(f))
                         .Where(n => MusicFileNamePattern.IsMatch(n))
+                        // Modul: "screen_<name>.mp3" is a screen's own theme (Nav's,
+                        // 2026-11-19), played by the client while that screen is
+                        // open - never part of the everywhere cycle.
+                        .Where(n => !n.StartsWith(ScreenThemePrefix, StringComparison.Ordinal))
                         .OrderBy(n => n, StringComparer.Ordinal)
                         .ToList()
                     : new System.Collections.Generic.List<string>();

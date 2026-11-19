@@ -38,6 +38,20 @@
   let lastTaps = 0;
   let raf = 0;
 
+  // Modul: NO GREY PLAYER, EVER (owner, 2026-11-19). A video that has not
+  // started - still loading, autoplay refused on a phone in power saving,
+  // a codec the WebView lacks - draws Android's grey box with a play button.
+  // Each clip is invisible until its first `playing`, its poster is a
+  // transparent pixel instead of the browser's grey, and a refused or broken
+  // clip simply stays invisible: the canvas light carries the moment anyway.
+  const CLEAR_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  function revealOnPlay(e: Event) {
+    (e.currentTarget as HTMLVideoElement).classList.add('playing');
+  }
+  function hideClip(e: Event) {
+    (e.currentTarget as HTMLVideoElement).classList.remove('playing');
+  }
+
   const reduceMotion = () =>
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -82,7 +96,9 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // Soft gradients need no device pixels, and the canvas is 2.5x the stage:
+    // at 2x DPR a phone would be filling a 36 MB bitmap every frame.
+    const dpr = 1;
     const w = (canvas.width = canvas.clientWidth * dpr);
     const h = (canvas.height = canvas.clientHeight * dpr);
     const [cr, cg, cb] = RARITY_LIGHT[r];
@@ -111,12 +127,19 @@
       // Rays: radial gradients along thin wedges, slowly turning, fading in
       // over the burst and settling to a quiet glow behind the open chest.
       const strength = Math.min(1, t / BURST_MS) * (reduceMotion() ? 0.5 : 1);
-      const reach = Math.max(w, h) * (0.45 + 0.1 * r);
+      // Modul: THE LIGHT ENDS BEFORE THE CANVAS DOES (owner, 2026-11-19: "the
+      // light is cut off"). Reach was max(w, h) x 0.85 for a Legendary, so
+      // the wedges ran past the canvas edge still bright and stopped on a
+      // straight line. Now they fade out inside the nearest edge, and a CSS
+      // mask softens whatever is left.
+      const room = Math.min(cx, w - cx, cy, h - cy);
+      const reach = Math.max(1, room * (0.8 + 0.05 * r));
       for (let i = 0; i < rays; i++) {
         const a = (i / rays) * Math.PI * 2 + t / 6000;
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, reach);
-        g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.5 * strength})`);
-        g.addColorStop(0.35, `rgba(${cr},${cg},${cb},${0.22 * strength})`);
+        // Gentler than the first pass, which washed a small stage out to white.
+        g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.36 * strength})`);
+        g.addColorStop(0.3, `rgba(${cr},${cg},${cb},${0.15 * strength})`);
         g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -150,7 +173,7 @@
     <!-- Ambience: dust in a shaft of light, the owner's Veo loop (5 s, its end
          cross-faded into its start so the loop has no seam). Light only on
          black, drawn with `screen`, behind the chest. -->
-    <video class="dust" autoplay muted loop playsinline aria-hidden="true">
+    <video class="dust clip-video" autoplay muted loop playsinline disablepictureinpicture poster={CLEAR_POSTER} aria-hidden="true" onplaying={revealOnPlay} onerror={hideClip}>
       <source src="/fx/vault-dust.webm" type="video/webm" />
       <source src="/fx/vault-dust.mp4" type="video/mp4" />
     </video>
@@ -164,7 +187,7 @@
          pure black, drawn with `screen`, so black is see-through by itself and
          there is no keyed edge to shimmer. Only the Legendary/Ancient burst
          gets it; every other light on the stage is the canvas. -->
-    <video class="fx" autoplay muted playsinline aria-hidden="true" onended={(e) => ((e.currentTarget as HTMLVideoElement).style.opacity = '0')}>
+    <video class="fx clip-video" autoplay muted playsinline disablepictureinpicture poster={CLEAR_POSTER} aria-hidden="true" onplaying={revealOnPlay} onerror={hideClip} onended={(e) => ((e.currentTarget as HTMLVideoElement).style.opacity = '0')}>
       <source src="/fx/legendary-burst.webm" type="video/webm" />
       <source src="/fx/legendary-burst.mp4" type="video/mp4" />
     </video>
@@ -182,6 +205,11 @@
     display: grid;
     place-items: end center;
   }
+  /* Modul: NO EDGE ON THE SHAFT OF LIGHT (owner, 2026-11-19: "the light
+     from above is cut off on the Wardrobe chest"). The dust loop's box began
+     20% above the chest, so the beam from the ceiling stopped on a straight
+     line in mid-air, and its sides were the video's own edges. Masked on all
+     four sides now, it fades in from nothing. */
   .dust {
     position: absolute;
     inset: -20% -45% 0;
@@ -192,14 +220,28 @@
     pointer-events: none;
     mix-blend-mode: screen;
     opacity: 0.85;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%),
+      linear-gradient(to right, transparent 8%, #000 30%, #000 70%, transparent 92%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%),
+      linear-gradient(to right, transparent 8%, #000 30%, #000 70%, transparent 92%);
+    mask-composite: intersect;
   }
+  /* max-width: none - app.css caps every canvas at 100% of its box, which
+     held this one to the stage's width while its height grew: the light sat
+     off to the left and its wedges stopped on the canvas's edge (the 2026-10-30
+     "rays to the left" measurement was this cap, not the modal). */
   .light {
     position: absolute;
-    inset: -25%;
-    width: 150%;
-    height: 150%;
+    inset: -75%;
+    width: 250%;
+    height: 250%;
+    max-width: none;
+    max-height: none;
     pointer-events: none;
     z-index: 0;
+    -webkit-mask-image: radial-gradient(closest-side, #000 60%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 60%, transparent 100%);
   }
   .chest {
     position: relative;
@@ -229,6 +271,17 @@
     background: radial-gradient(closest-side, rgba(0, 0, 0, 0.45), transparent);
     z-index: -1;
   }
+  /* The Legendary burst clip's black is not quite black, so `screen` left a
+     grey rectangle the size of the video over the whole scene (seen
+     2026-11-19). Contrast crushes the near-black to black, and a radial mask
+     takes the box edge away. */
+  /* Hidden until it really plays (see revealOnPlay). */
+  .clip-video {
+    visibility: hidden;
+  }
+  .clip-video:global(.playing) {
+    visibility: visible;
+  }
   .fx {
     position: absolute;
     inset: -30% -40%;
@@ -238,6 +291,9 @@
     z-index: 3;
     pointer-events: none;
     mix-blend-mode: screen;
+    filter: contrast(1.35) brightness(0.9);
+    -webkit-mask-image: radial-gradient(closest-side, #000 45%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 45%, transparent 100%);
     transition: opacity 0.4s;
   }
   .flash {

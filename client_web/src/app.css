@@ -2115,3 +2115,15 @@ nav button.active {
   text-shadow: 0 0 6px rgb(74 163 223 / 0.8), 0 0 1px rgb(20 60 110 / 0.9);
 }
 
+
+/* Modul: NO GREY PLAYER ON A DECORATIVE CLIP (owner, 2026-11-19). Every
+   <video> in the game is an effect (chest light, dust, a dungeon gate) with
+   no controls; Chrome and the Android WebView still paint their own start
+   button over one that has not begun. Never for these. */
+video::-webkit-media-controls,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
