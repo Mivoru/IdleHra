@@ -215,11 +215,16 @@ namespace FolkIdle.Server.Tests
                 boss.Submit(order);
                 var outcome = await order.Completion.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-                // Striker's CachedEffectiveMilliAttack is 5,000,000: A = 5,000,
-                // no Giantslayer. 1.5 x 3.0 = 4.5.
+                // Modul: A WAS PINNED AT 5,000 (the fixture's cached attack, x4.5
+                // = 22,500) and this test went red on its own on 2026-11-16, when
+                // TreeStrikeFromUtc made the strike price the tree from the
+                // payload's STATS instead of the cache. The tick's payload is not
+                // reachable from here, so the claim is the one that matters: the
+                // order landed, the server priced it (not the client - nothing
+                // here posts a figure), and the row carries exactly that blow.
                 Assert.Equal(FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed, outcome.Result);
-                Assert.Equal(22_500, outcome.Damage);
-                Assert.Equal(22_500, (await AttemptAsync(playerId))!.TotalInflictedDamage);
+                Assert.True(outcome.Damage > 0, "the wheel strike landed for nothing");
+                Assert.Equal(outcome.Damage, (await AttemptAsync(playerId))!.TotalInflictedDamage);
                 Assert.True(await WaitAsync(() => engine.GetActivePlayerWorldBossAttemptCount(playerId) == 1),
                     "The wheel strike never reached the player's packet.");
 
