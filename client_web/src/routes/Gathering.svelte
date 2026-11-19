@@ -346,8 +346,11 @@
               {#if locked}
                 <!-- Modul: the previous region's boss opens these nodes
                      (server GatheringReach, 2026-11-14). "Fight here first"
-                     sent players into fights their larder could not hold. -->
-                <span class="dim tiny lock">Beat the boss before</span>
+                     sent players into fights their larder could not hold.
+                     It names that boss (id 90 + 5 x region, victories.ts'
+                     convention): "Beat the boss before" read as a sentence
+                     cut off mid-way (screenshot audit, 2026-11-19). -->
+                <span class="dim tiny lock">Beat {monsterName(registry, 90 + 5 * (nodeLocation(node.ActivityId) - 1))}</span>
               {:else}
                 <button
                   class="tiny-btn"

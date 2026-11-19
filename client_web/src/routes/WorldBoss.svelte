@@ -1,4 +1,7 @@
 <script lang="ts">
+  // One title chip everywhere: TitleChip darkens the server's hex on the light
+  // scheme, where Dazhbog's yellow on the pink panel was unreadable.
+  import TitleChip from '../lib/ui/TitleChip.svelte';
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { formatWhen, minuteClock } from '../lib/ui/when';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
@@ -817,7 +820,7 @@
           {#each board.Places as place (place.Place)}
             <li>
               <span class="rank">{place.Place}.</span>
-              <span class="title-chip" style={place.TitleColor ? `--chip: ${place.TitleColor}` : ''}>{place.Title}</span>
+              <TitleChip name={place.Title} color={place.TitleColor || null} />
               <span class="dim tiny">{goldHoursLabel(place.GoldHours)} of income{#if place.Holder} - worn by {place.Holder}{/if}</span>
             </li>
           {/each}
@@ -1214,14 +1217,6 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.4rem;
-  }
-
-  .title-chip {
-    border: 1px solid var(--chip, var(--border));
-    color: var(--chip, var(--text));
-    border-radius: 999px;
-    padding: 0 0.5rem;
-    font-weight: 600;
   }
 
   .eyebrow {

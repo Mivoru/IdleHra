@@ -320,8 +320,14 @@
      tree's bridges. Collapsed, it is a small pill in the bottom-left corner;
      the chat handle owns the right one. Expanded it returns to the centre,
      because then it is what the player is reading. */
+  /* Modul: CLEAR OF THE CHRONICLE BUBBLE (2026-11-19). The pass bubble
+     (ChronicleBubble, 2026-11-15) took the same bottom-left corner at 56px,
+     and on a desktop its "Lv 26" sat on the first words of this pill - the
+     screenshot audit read "IS NEXT You have points waiting". The pill starts
+     past the bubble's right edge instead; the phone rule below moves it to the
+     right corner anyway. */
   .coach.compact {
-    left: max(0.75rem, var(--sa-left, 0px));
+    left: calc(1rem + 56px + 0.6rem + var(--sa-left, 0px));
     transform: none;
     max-width: min(22rem, calc(100vw - 6rem));
     padding: 0.35rem 0.7rem;
