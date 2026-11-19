@@ -17,6 +17,14 @@ namespace FolkIdle.Server.Engine
     public enum NavResearchResult { Started, Finished, Unknown, Busy, NotEnoughGold, NothingToFinish, Maxed, NotOpen }
     public enum NavFrameResult { Bought, Unknown, Owned, NotEnoughSouls, NotReached }
 
+    /// <summary>Gold and diamonds a Nav write owes, added after its transaction (NavEngine.ApplyPayoutAsync).</summary>
+    public readonly record struct NavPayout(long Gold, int Diamonds)
+    {
+        public static NavPayout None => default;
+        public bool Any => Gold > 0 || Diamonds > 0;
+        public static NavPayout operator +(NavPayout a, NavPayout b) => new(a.Gold + b.Gold, a.Diamonds + b.Diamonds);
+    }
+
     /// <summary>
     /// The Descent into Nav's writes (NavRules holds the numbers, NavSimulator
     /// plays a run). REST like the dungeon and the expeditions: nothing here is
@@ -30,7 +38,7 @@ namespace FolkIdle.Server.Engine
             var row = await db.NavProgress.FirstOrDefaultAsync(n => n.PlayerId == playerId);
             if (row == null)
             {
-                row = new NavProgress { PlayerId = playerId, Charges = NavRules.ChargeCap, ChargeAnchorEpoch = nowEpoch };
+                row = new NavProgress { PlayerId = playerId, Charges = NavRules.ChargeCap, ChargeAnchorEpoch = nowEpoch, DepthRewardsVersion = 1 };
                 db.NavProgress.Add(row);
             }
             Settle(row, nowEpoch);
@@ -152,21 +160,27 @@ namespace FolkIdle.Server.Engine
             => Math.Min(60.0, NavRules.ResearchByKey("thrift")!.PerLevel * NavRules.Unpack(row.Research).GetValueOrDefault("thrift"));
 
         /// <summary>Spends a charge and plays a run with the given payload copy; writes the records it beat.</summary>
-        public static async Task<(NavDescendResult Result, NavRunResult? Run, List<string> Rewards)> DescendAsync(
+        public static async Task<(NavDescendResult Result, NavRunResult? Run, List<string> Rewards, NavPayout Payout)> DescendAsync(
             FolkIdleDbContext db, long playerId, TickStatePayload payload, int slot, int circle, long nowEpoch, DateTime utcNow, int seed,
             IReadOnlyList<NavRules.Spirit>? bench = null)
         {
             var rewards = new List<string>();
+            // Read before the lock, like the login week: slow-moving and not written here.
+            long hourlyIncome = await GoldRewardScale.HourlyIncomeAsync(db, playerId, utcNow);
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var row = await db.NavProgress.FromSqlRaw("SELECT * FROM nav_progress WHERE \"PlayerId\" = {0} FOR UPDATE", playerId).SingleOrDefaultAsync();
             if (row == null)
             {
-                row = new NavProgress { PlayerId = playerId, Charges = NavRules.ChargeCap, ChargeAnchorEpoch = nowEpoch };
+                row = new NavProgress { PlayerId = playerId, Charges = NavRules.ChargeCap, ChargeAnchorEpoch = nowEpoch, DepthRewardsVersion = 1 };
                 db.NavProgress.Add(row);
             }
             Settle(row, nowEpoch);
-            if (circle < 1 || circle > row.HighestCircle) { await tx.SafeRollbackAsync(); return (NavDescendResult.CircleLocked, null, rewards); }
-            if (row.Charges <= 0) { await tx.SafeRollbackAsync(); return (NavDescendResult.NoCharges, null, rewards); }
+            if (circle < 1 || circle > row.HighestCircle) { await tx.SafeRollbackAsync(); return (NavDescendResult.CircleLocked, null, rewards, NavPayout.None); }
+            if (row.Charges <= 0) { await tx.SafeRollbackAsync(); return (NavDescendResult.NoCharges, null, rewards, NavPayout.None); }
+
+            // A row from before the per-depth rewards pays its old depths first,
+            // so this run's record cannot pay them a second time.
+            var payout = await PayBacklogAsync(db, row, hourlyIncome, utcNow, rewards);
 
             int record = BestDepth(row, circle);
             var run = NavSimulator.Run(payload, slot, circle, BonusesOf(row, bench, nowEpoch), seed, record);
@@ -183,6 +197,7 @@ namespace FolkIdle.Server.Engine
                 best[circle.ToString()] = run.DeepestCleared;
                 row.BestDepths = NavRules.Pack(best);
                 rewards.Add($"New record: depth {run.DeepestCleared} of Circle {circle}");
+                payout += await PayDepthsAsync(db, row, circle, record + 1, run.DeepestCleared, hourlyIncome, utcNow, rewards);
             }
             // The guardian that stopped the run is met: its bane opens in the Workshop.
             int metBit = NavRules.GuardianBit(run.StoppedBy);
@@ -220,27 +235,124 @@ namespace FolkIdle.Server.Engine
                 }
             }
 
-            // First-time milestones: a loot chest of the top region each.
-            for (int i = 0; i < NavRules.MilestoneDepths.Length; i++)
-            {
-                int bit = NavRules.MilestoneBit(circle, i);
-                if (bit >= 63 || run.DeepestCleared < NavRules.MilestoneDepths[i] || (row.MilestoneMask & (1L << bit)) != 0) continue;
-                row.MilestoneMask |= 1L << bit;
-                var tier = i switch { 0 => LootChestTier.Silver, 1 => LootChestTier.Gold, _ => LootChestTier.Ancient };
-                LootChestEngine.Stage(db, playerId, tier, 5, LootChestSource.Nav, utcNow);
-                rewards.Add($"{tier} chest for depth {NavRules.MilestoneDepths[i]} of Circle {circle}");
-            }
-
             row.LastRunJson = JsonSerializer.Serialize(ViewOf(run, rewards));
             await db.SaveChangesAsync();
             await tx.CommitAsync();
+            await ApplyPayoutAsync(db, playerId, payout);
 
             // News, after the commit so a rolled-back run never reaches chat:
             // a new Veles beaten (a record that crosses a 25th depth) or a
             // Circle opened. Rare by construction - a few times a season.
             string? news = NavNews(PlayerNameResolver.GetCachedOrFallback(playerId), circle, record, run.DeepestCleared, circleOpened);
             if (news != null) Domain.Social.ChatEngine.EnqueueSystemAnnouncement(news);
-            return (NavDescendResult.Ran, run, rewards);
+            return (NavDescendResult.Ran, run, rewards, payout);
+        }
+
+        /// <summary>
+        /// Pays depths <paramref name="from"/>..<paramref name="to"/> of a Circle
+        /// (NavRules.DepthRewardFor): stages the chests and adds the tickets on
+        /// the locked row's transaction, and returns the gold and diamonds for
+        /// ApplyPayoutAsync to add after the commit. One summary line.
+        /// </summary>
+        public static async Task<NavPayout> PayDepthsAsync(FolkIdleDbContext db, NavProgress row, int circle, int from, int to,
+            long hourlyIncome, DateTime utcNow, List<string> lines, bool skipLegacyChests = false)
+        {
+            from = Math.Max(1, from);
+            if (to < from) return NavPayout.None;
+            int minutes = 0, diamonds = 0, ticketsPerGate = 0;
+            var chests = new Dictionary<LootChestTier, int>();
+            for (int depth = from; depth <= to; depth++)
+            {
+                var r = NavRules.DepthRewardFor(circle, depth);
+                minutes += r.GoldMinutes;
+                diamonds += r.Diamonds;
+                ticketsPerGate += r.TicketsPerGate;
+                if (skipLegacyChests && NavRules.LegacyChestPaid(row.MilestoneMask, circle, depth)) continue;
+                LootChestEngine.Stage(db, row.PlayerId, r.Chest, 5, LootChestSource.Nav, utcNow);
+                chests[r.Chest] = chests.GetValueOrDefault(r.Chest) + 1;
+            }
+
+            int tickets = 0;
+            if (ticketsPerGate > 0)
+            {
+                var gates = await DungeonEngine.LoadAsync(db, row.PlayerId, utcNow);
+                foreach (var gate in gates.Values)
+                {
+                    for (int i = 0; i < ticketsPerGate; i++)
+                    {
+                        if (DungeonEngine.AddBonusTicket(gate)) tickets++;
+                    }
+                }
+            }
+
+            long gold = GoldRewardScale.ForMinutes(hourlyIncome, minutes);
+            var parts = new List<string>();
+            foreach (var tier in new[] { LootChestTier.Ancient, LootChestTier.Gold, LootChestTier.Silver, LootChestTier.Bronze })
+            {
+                if (chests.TryGetValue(tier, out int n)) parts.Add($"{n} {tier} chest{(n == 1 ? "" : "s")}");
+            }
+            parts.Add($"{gold:N0} gold");
+            if (diamonds > 0) parts.Add($"{diamonds} diamonds");
+            if (tickets > 0) parts.Add($"{tickets} dungeon ticket{(tickets == 1 ? "" : "s")}");
+            string span = from == to ? $"Depth {from}" : $"Depths {from}-{to}";
+            lines.Add($"{span} of Circle {circle}: {string.Join(", ", parts)}");
+            return new NavPayout(gold, diamonds);
+        }
+
+        /// <summary>
+        /// The depths a row reached before every depth paid (owner, 2026-11-19):
+        /// paid once, on the locked row, minus the chests the first build's
+        /// 10/25/50 milestones already paid.
+        /// </summary>
+        public static async Task<NavPayout> PayBacklogAsync(FolkIdleDbContext db, NavProgress row, long hourlyIncome, DateTime utcNow, List<string> lines)
+        {
+            if (row.DepthRewardsVersion >= 1) return NavPayout.None;
+            row.DepthRewardsVersion = 1;
+            var payout = NavPayout.None;
+            foreach (var kv in NavRules.Unpack(row.BestDepths).OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            {
+                if (!int.TryParse(kv.Key, out int circle) || circle < 1 || kv.Value < 1) continue;
+                payout += await PayDepthsAsync(db, row, circle, 1, kv.Value, hourlyIncome, utcNow, lines, skipLegacyChests: true);
+            }
+            return payout;
+        }
+
+        /// <summary>
+        /// Gold and diamonds move in the database after the Nav transaction
+        /// commits - the commodity and player rows are the checkpoint's too, and
+        /// a serialisable read of them would fail the descent on a conflict. The
+        /// caller tells the live session (ReloadState, BillingSync).
+        /// </summary>
+        public static async Task ApplyPayoutAsync(FolkIdleDbContext db, long playerId, NavPayout payout)
+        {
+            if (payout.Gold > 0)
+            {
+                await CommodityLedger.AddAsync(db, playerId, "gold", payout.Gold);
+                await GoldLedger.RecordIncomeAsync(db, playerId, GoldIncomeSource.Nav, payout.Gold);
+                await db.SaveChangesAsync();
+            }
+            if (payout.Diamonds > 0)
+            {
+                await db.PlayerRecords.Where(p => p.Id == playerId)
+                    .ExecuteUpdateAsync(u => u.SetProperty(p => p.PremiumDiamonds, p => p.PremiumDiamonds + payout.Diamonds));
+            }
+        }
+
+        /// <summary>The GET's back-pay for a row from before the per-depth rewards, in its own transaction.</summary>
+        public static async Task<(List<string> Lines, NavPayout Payout)> SettleBacklogAsync(FolkIdleDbContext db, long playerId, DateTime utcNow)
+        {
+            var lines = new List<string>();
+            bool due = await db.NavProgress.AsNoTracking().AnyAsync(n => n.PlayerId == playerId && n.DepthRewardsVersion < 1);
+            if (!due) return (lines, NavPayout.None);
+            long hourlyIncome = await GoldRewardScale.HourlyIncomeAsync(db, playerId, utcNow);
+            await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var row = await db.NavProgress.FromSqlRaw("SELECT * FROM nav_progress WHERE \"PlayerId\" = {0} FOR UPDATE", playerId).SingleOrDefaultAsync();
+            if (row == null) { await tx.SafeRollbackAsync(); return (lines, NavPayout.None); }
+            var payout = await PayBacklogAsync(db, row, hourlyIncome, utcNow, lines);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+            await ApplyPayoutAsync(db, playerId, payout);
+            return (lines, payout);
         }
 
         /// <summary>The News line for a run, or null when it is not news.</summary>
@@ -457,7 +569,22 @@ namespace FolkIdle.Server.Engine
                 Open = open,
                 LockedReason = lockedReason,
                 Circle = row.HighestCircle,
-                Records = Enumerable.Range(1, row.HighestCircle).Select(c => new { Circle = c, Depth = BestDepth(row, c) }).ToArray(),
+                // Each Circle's record and what its next four new depths pay (NavRules.DepthRewardFor), so the
+                // screen never works the reward rhythm out for itself.
+                Records = Enumerable.Range(1, row.HighestCircle).Select(c =>
+                {
+                    int best = BestDepth(row, c);
+                    return new
+                    {
+                        Circle = c,
+                        Depth = best,
+                        Next = Enumerable.Range(best + 1, 4).Select(d =>
+                        {
+                            var reward = NavRules.DepthRewardFor(c, d);
+                            return new { Depth = d, Chest = reward.Chest.ToString(), reward.Diamonds, Tickets = reward.TicketsPerGate };
+                        }).ToArray(),
+                    };
+                }).ToArray(),
                 row.Souls,
                 row.SoulsLifetime,
                 row.Charges,

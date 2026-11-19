@@ -7253,6 +7253,15 @@ if (want('nav')) {
       keys.size === 11 && runKeysOk && aheadCount === 4 && loaded === 4,
       `roster ${keys.size}, run keys ok ${runKeysOk}, portraits ${loaded}/${aheadCount}`);
 
+    // Every depth pays once (2026-11-19): the next four depths say what their
+    // first clear pays, and the rhythm comes from the server (every 10th Ancient).
+    const rewardLines = await page.getByTestId('nav-depth-reward').allInnerTexts().catch(() => []);
+    const nextRewards = (after?.Records ?? []).find((r) => r.Circle === 1)?.Next ?? [];
+    const rhythmOk = nextRewards.length === 4 && nextRewards.every((n) => n.Chest === (n.Depth % 10 === 0 ? 'Ancient' : n.Depth % 5 === 0 ? 'Gold' : 'Bronze'));
+    record('Nav shows what each next depth pays the first time',
+      rewardLines.length === 4 && rewardLines.every((t) => /chest/.test(t)) && rhythmOk,
+      `lines ${rewardLines.length} [${rewardLines[0] ?? ''}], rhythm ok ${rhythmOk}`);
+
     // The second pass (2026-11-19). The guardian that stopped the run is met,
     // so its bane opens - and the "why it stopped" box sells it.
     const stopBane = (after?.Workshop ?? []).find((u) => u.Guardian && u.Guardian === after?.LastRun?.StoppedBy);

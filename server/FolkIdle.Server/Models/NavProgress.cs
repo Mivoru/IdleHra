@@ -29,8 +29,10 @@ namespace FolkIdle.Server.Models
         public long ResearchEndsEpoch { get; set; }
         public int Charges { get; set; } = Domain.Progression.NavRules.ChargeCap;
         public long ChargeAnchorEpoch { get; set; }
-        /// <summary>First-time milestone chests already paid (NavRules.MilestoneBit).</summary>
+        /// <summary>The first build's milestone chests already paid (NavRules.LegacyMilestoneBit). Read only by the back-pay now.</summary>
         public long MilestoneMask { get; set; }
+        /// <summary>1 once every depth reached before the per-depth rewards has been paid (NavEngine.PayBacklog).</summary>
+        public int DepthRewardsVersion { get; set; }
         public int RunsTotal { get; set; }
         /// <summary>The last run as the screen shows it (JSON), so a reload still shows it.</summary>
         public string LastRunJson { get; set; } = string.Empty;

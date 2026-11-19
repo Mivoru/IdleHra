@@ -19,6 +19,17 @@ do next.
 
 ---
 
+# 2026-11-19 evening - every depth of Nav pays
+
+Owner: a reward for every depth. First clear of a depth (per Circle): gold
+(10 min income x Circle) + Bronze chest; every 5th Gold; every 10th Ancient +
+10 diamonds x Circle + a ticket per dungeon gate; depth 50 +50 diamonds.
+Replaces the 10/25/50 milestones; old depths back-paid once
+(`NavProgress.DepthRewardsVersion`, migration `NavDepthRewards`). Measured
+against the gear the players already get (750-1,300 Legendary+ a week):
+under 5%. Numbers in `docs/design/NAV_DEPTH_PASS_2026_11_19.md` ("Every depth
+pays"). Workshop prices unchanged - the owner tunes after a week of real runs.
+
 # 2026-11-19 afternoon - Nav second pass: spirits, banes, the week, outward research
 
 **Read `docs/design/NAV_DEPTH_PASS_2026_11_19.md`.** Owner: fix every

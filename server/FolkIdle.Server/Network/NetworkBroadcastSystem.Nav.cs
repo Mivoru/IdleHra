@@ -37,6 +37,10 @@ namespace FolkIdle.Server.Network
                 {
                     // Last week's board pays first, in its own transaction.
                     var notices = await NavEngine.SettleWeekAsync(db, playerId, now, GameClock.UtcNow);
+                    // Depths reached before every depth paid: once, here or on the next descent.
+                    var (backlog, backPayout) = await NavEngine.SettleBacklogAsync(db, playerId, GameClock.UtcNow);
+                    notices.AddRange(backlog);
+                    await NotifyNavPayoutAsync(db, playerId, backPayout);
                     var row = await NavEngine.LoadAsync(db, playerId, now);
                     await db.SaveChangesAsync();
                     var snapshot = await NavSnapshotAsync(playerId);
@@ -83,7 +87,8 @@ namespace FolkIdle.Server.Network
                     if (!SlotHoldsCharacter(snapshot.Value.Payload, slot)) { await WriteJsonAsync(context, new { Result = NavDescendResult.NoCharacter.ToString() }); return true; }
 
                     var bench = await NavEngine.LoadBenchAsync(db, playerId);
-                    var (result, run, rewards) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next(), bench);
+                    var (result, run, rewards, payout) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next(), bench);
+                    await NotifyNavPayoutAsync(db, playerId, payout);
                     await WriteJsonAsync(context, new { Result = result.ToString(), Run = run == null ? null : NavEngine.ViewOf(run, rewards) });
                     return true;
                 }
@@ -182,6 +187,22 @@ namespace FolkIdle.Server.Network
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, byte> _devNavOpen = new();
 
         /// <summary>Open for this player right now; offline counts as closed (spending needs the live mask).</summary>
+        /// <summary>
+        /// Nav's depth rewards moved gold and diamonds in the database, off the
+        /// tick: the live wallet reloads and the diamond balance syncs, or the
+        /// next checkpoint would write the old balances back (the login week's rule).
+        /// </summary>
+        private async Task NotifyNavPayoutAsync(FolkIdleDbContext db, long playerId, NavPayout payout)
+        {
+            if (payout.Gold > 0)
+                CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+            if (payout.Diamonds > 0)
+            {
+                int balance = await db.PlayerRecords.Where(p => p.Id == playerId).Select(p => p.PremiumDiamonds).FirstAsync();
+                _playerSessionRegistry?.BillingSyncQueue.Enqueue(new BillingSyncNotification { PlayerId = playerId, PremiumDiamondsBalance = balance });
+            }
+        }
+
         private async Task<bool> NavOpenNowAsync(long playerId)
         {
             var snapshot = await NavSnapshotAsync(playerId);

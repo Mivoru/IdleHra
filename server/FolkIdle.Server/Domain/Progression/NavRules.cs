@@ -585,13 +585,55 @@ namespace FolkIdle.Server.Domain.Progression
         public static IEnumerable<CosmeticDefinition> FrameCosmetics()
             => Frames.Select(f => new CosmeticDefinition(f.Id, CosmeticKind.Frame, CosmeticRegistry.Legendary, f.Name, null, Bound: true));
 
-        // --- milestones --------------------------------------------------------
+        // --- depth rewards -----------------------------------------------------
 
-        /// <summary>First-time depths of a Circle that pay a loot chest.</summary>
-        public static readonly int[] MilestoneDepths = { 10, 25, 50 };
+        // Modul: EVERY DEPTH PAYS ONCE (owner, 2026-11-19). The first time a depth
+        // of a Circle is cleared it pays gold and a Bronze chest; every 5th a Gold
+        // chest, every 10th an Ancient chest, diamonds and a ticket for each
+        // dungeon gate, and the 50th (the next Circle) a further 50 diamonds.
+        // Paid on the RECORD, never per run - 39 descents a day would farm it.
+        //
+        // Measured on the 2026-11-19 backup: the three players take 750-1,300
+        // Legendary-or-better pieces a WEEK already (mostly boss drops away),
+        // and the 14-day simulation's fastest climb (Mivoru, ~97 new depths)
+        // turns into ~78 Bronze, ~10 Gold and ~10 Ancient chests - under 5% of
+        // the gear they get anyway (Bronze holds a piece half the time). The
+        // owner chose Bronze for the plain depths over Silver. Diamonds: ~210 in those two weeks (about
+        // one ordinary week of login + Delve + chests), then 10-30 a week once
+        // the climb slows. Gold: 10 minutes of income x Circle, small next to
+        // research (100M x 1.5^level). Tickets go through the bonus cap (8).
+        //
+        // It replaces the first build's 10/25/50 milestone chests; the back-pay
+        // (NavEngine.PayBacklogAsync) skips a chest those milestones already paid.
+        public const int DepthGoldMinutes = 10;
+        public const int DepthDiamondsPerCircle = 10;
+        public const int CircleOpenDiamonds = 50;
 
-        /// <summary>A bit per (circle, milestone): circle 1 uses bits 0-2, circle 2 bits 3-5 ... up to circle 21.</summary>
-        public static int MilestoneBit(int circle, int milestoneIndex) => ((circle - 1) * MilestoneDepths.Length) + milestoneIndex;
+        public sealed record DepthReward(Economy.LootChestTier Chest, int GoldMinutes, int Diamonds, int TicketsPerGate);
+
+        public static DepthReward DepthRewardFor(int circle, int depth)
+        {
+            int c = Math.Max(1, circle);
+            bool tenth = depth % 10 == 0;
+            var chest = tenth ? Economy.LootChestTier.Ancient : depth % 5 == 0 ? Economy.LootChestTier.Gold : Economy.LootChestTier.Bronze;
+            int diamonds = (tenth ? DepthDiamondsPerCircle * c : 0) + (depth == CircleOpensAt ? CircleOpenDiamonds : 0);
+            return new DepthReward(chest, DepthGoldMinutes * c, diamonds, tenth ? 1 : 0);
+        }
+
+        /// <summary>The first build's milestone depths: 10, 25 and 50 paid a Silver, Gold and Ancient chest.</summary>
+        public static readonly int[] LegacyMilestoneDepths = { 10, 25, 50 };
+
+        /// <summary>A bit per (circle, legacy milestone) in NavProgress.MilestoneMask; circle 1 bits 0-2, circle 2 bits 3-5 ...</summary>
+        public static int LegacyMilestoneBit(int circle, int milestoneIndex) => ((circle - 1) * LegacyMilestoneDepths.Length) + milestoneIndex;
+
+        /// <summary>True when the first build already paid a chest for this depth of this Circle.</summary>
+        public static bool LegacyChestPaid(long mask, int circle, int depth)
+        {
+            int i = Array.IndexOf(LegacyMilestoneDepths, depth);
+            if (i < 0) return false;
+            int bit = LegacyMilestoneBit(circle, i);
+            return bit < 63 && (mask & (1L << bit)) != 0;
+        }
 
         // --- packing ("key:value,key:value") -----------------------------------
 

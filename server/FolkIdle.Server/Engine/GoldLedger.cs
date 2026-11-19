@@ -63,6 +63,8 @@ namespace FolkIdle.Server.Engine
         Dungeon = 15,
         /// <summary>The Chronicle pass's gold levels - a reward, never part of the earned base.</summary>
         Chronicle = 16,
+        /// <summary>Nav's per-depth rewards (NavEngine.PayDepthsAsync) - a reward, never part of the earned base.</summary>
+        Nav = 17,
     }
 
     /// <summary>
