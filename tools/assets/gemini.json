@@ -1595,6 +1595,46 @@
       ],
       "prompt": "Inside the Descent into Nav, Circle 3, the Black River of Veles: a vast dark cavern descending toward a slow black underground river, colossal serpent-coiled roots, gold coins and amber glimmering in the dark water, deep amber firelight from below against cold blue shadow. Match the art style, palette and pixel-painting technique of the reference image exactly. A tall vertical shaft scene meant to scroll downward behind a game panel: the composition is even top to bottom with no single focal point, darker toward the edges, the centre calmer for a portrait and text laid over it. No people, no creatures, no text, no letters, no logos, no UI.",
       "note": "2026-11-19 Nav stage backgrounds, one per Circle (cycled), behind the descent replay."
+    },
+    {
+      "id": "banner_dungeon",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "A wide panoramic banner for 'the three dungeons' in a pagan Slavic-folklore idle RPG: three ancient gates side by side in a dark misty forest clearing at night: on the left a tall bone-and-skull arch with a cold teal glow (Koschei's Tower), in the middle a timber-braced mine mouth breathing orange firelight and gold (Zmey's Hoard), on the right a crooked gate of carved stakes topped with glowing skull lanterns, violet light, a hut on chicken legs barely visible beyond (Baba Yaga's Hut), a lone small warrior with a torch on the path before them. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-19 night: crop to a 1200x360 strip (10:3) for ScreenBanner, Nav-style screen headers."
+    },
+    {
+      "id": "banner_worldboss",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "A wide panoramic banner for 'the world boss' in a pagan Slavic-folklore idle RPG: a colossal dark god of Slavic folklore, Chernobog, a towering silhouette of black smoke and horns rising over a burning valley, his glowing red eyes over the horizon, tiny warriors with banners gathered on a ridge in the foreground facing him together, ember-red sky. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-19 night: crop to a 1200x360 strip (10:3) for ScreenBanner, Nav-style screen headers."
+    },
+    {
+      "id": "banner_delve",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "A wide panoramic banner for 'the Delve' in a pagan Slavic-folklore idle RPG: an old mine shaft descending into the mountain, wooden ladders and rope bridges over a deep crevasse, glowing ore veins in the rock, lanterns hanging along the way down, mist below, a lone small warrior with a pickaxe on a ledge. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-19 night: crop to a 1200x360 strip (10:3) for ScreenBanner, Nav-style screen headers."
+    },
+    {
+      "id": "banner_ascension",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "A wide panoramic banner for 'the Ascension of a boss' in a pagan Slavic-folklore idle RPG: a lone small warrior at the foot of a vast spiral stair of stone rising into a storm, ten great stone rings carved with pagan runes stacked along the stair, each glowing brighter as it climbs, at the summit the shadow of Malakor, a horned demon lord wreathed in violet lightning. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-19 night: crop to a 1200x360 strip (10:3) for ScreenBanner, Nav-style screen headers."
     }
   ]
 }

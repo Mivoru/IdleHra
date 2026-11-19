@@ -64,6 +64,8 @@ let manifest: Promise<void> | null = null;
 // the everywhere cycle or the Settings list.
 const SCREEN_THEMES: Readonly<Record<string, MusicTrack>> = {
   nav: { File: 'screen_nav.mp3', Title: 'Below the Roots (Nav)' },
+  dungeon: { File: 'screen_dungeon.mp3', Title: 'Three Gates (Dungeons)' },
+  worldboss: { File: 'screen_worldboss.mp3', Title: 'All Against the Dark God (World Boss)' },
 };
 let theme: MusicTrack | null = null;
 let resume: { track: MusicTrack; at: number } | null = null;

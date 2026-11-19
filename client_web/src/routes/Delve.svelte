@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   /*
     THE DELVE.
 
@@ -287,6 +288,7 @@
   </svg>
 {/snippet}
 
+<ScreenBanner art="banner_delve" line="Down the old shafts, where the ore still glows." />
 <div class="delve underground">
   <header class="intro">
     <h1>The Delve</h1>
