@@ -4954,6 +4954,26 @@ namespace FolkIdle.Server.Domain.Combat
         }
 
         /// <summary>A spawn's health, raised by an armed Ascension step's health modifier.</summary>
+        /// <summary>
+        /// A milli-HP blow as the whole hit points the feed and the records carry.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE PLAYER'S BLOW WAS AN INT OF MILLI-HP (fixed 2026-11-19). It
+        /// topped out at 2,147,483 whole hit points, and two of the three endgame
+        /// accounts on production had a BestHit of exactly that figure - the swing
+        /// had reached the ceiling. On the Ampere box a float-to-int cast
+        /// saturates, so extra damage did nothing past it; worse, the war
+        /// multipliers added after it (`netDamage += netDamage * pct`) wrapped the
+        /// int NEGATIVE, and `CurrentMonsterHp -= netDamage` then HEALED the
+        /// monster by up to two billion milli-HP. The blow is a long now; only
+        /// the wire's whole-hit-point int is clamped, here.
+        /// </remarks>
+        internal static int WholeHitPoints(long milliDamage)
+        {
+            long whole = milliDamage / 1000L;
+            return whole > int.MaxValue ? int.MaxValue : whole < 0 ? 0 : (int)whole;
+        }
+
         private static long SpawnHpFor(in TickStatePayload payload)
         {
             long hp = BossFirstClearRules.MaxHpFor(FightBossMask(in payload), payload.CurrentMonsterId, BossFirstClearRules.ReliefFor(in payload)) * 1000L;
@@ -6083,7 +6103,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // character hits. See EffectiveMilliAttackFor.
                 long effectiveMilliAttack = payload.CachedEffectiveMilliAttack;
 
-                int rawDamage = (int)(effectiveMilliAttack * critMult);
+                long rawDamage = (long)(effectiveMilliAttack * (double)critMult);
 
                 // Active Skill Tree: a successful RequestCastSkill sets this
                 // for exactly one attack resolution, then it is consumed
@@ -6091,7 +6111,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // StatsCalculator combat resolution" per the task.
                 if (payload.PendingSkillDamageMultiplier > 0f)
                 {
-                    rawDamage = (int)(rawDamage * payload.PendingSkillDamageMultiplier);
+                    rawDamage = (long)(rawDamage * (double)payload.PendingSkillDamageMultiplier);
                     payload.PendingSkillDamageMultiplier = 0f;
                 }
 
@@ -6123,7 +6143,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // call never passed and nothing else applied - so Might's
                 // second effect and every armor_pen_flat affix in the game
                 // were worth exactly nothing. See Mitigate's own note.
-                int netDamage = (int)CombatDamageModel.Mitigate(
+                long netDamage = CombatDamageModel.Mitigate(
                     rawDamage,
                     defenderArmor,
                     CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
@@ -6135,34 +6155,34 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     payload.WarHitCount++;
                     ruined = payload.WarHitCount % WarEffects.RuinEvery == 0;
-                    if (ruined) netDamage = (int)(netDamage * WarEffects.RuinMultiplier);
+                    if (ruined) netDamage = (long)(netDamage * (double)WarEffects.RuinMultiplier);
                 }
-                if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
+                if (firstStrike) netDamage += (netDamage * warHit.FirstStrikeTenthsPct / 1000L);
                 // Juggernaut: the stacks this monster carries add damage too.
                 if (warHit.SunderDamageTenthsPerStack > 0 && payload.SunderStacks > 0)
-                    netDamage += (int)((long)netDamage * Math.Min((int)payload.SunderStacks, WarEffects.SunderMaxStacks) * warHit.SunderDamageTenthsPerStack / 1000L);
+                    netDamage += (netDamage * Math.Min((int)payload.SunderStacks, WarEffects.SunderMaxStacks) * warHit.SunderDamageTenthsPerStack / 1000L);
                 // Executioner below 35% of the bar, judged on the health
                 // before this hit lands.
                 int knowYourPrey = KnowYourPreyTenthsPct(in payload, in activeMonster);
-                if (knowYourPrey > 0) netDamage += (int)((long)netDamage * knowYourPrey / 1000L);
+                if (knowYourPrey > 0) netDamage += (netDamage * knowYourPrey / 1000L);
                 // A2: step 10 cleared on this region's boss - +2% against its monsters.
                 int mastery = BossAscensionRegistry.MasteryTenthsPctFor(payload.BossAscensionPacked, activeMonster.RegionTier);
-                if (mastery > 0) netDamage += (int)((long)netDamage * mastery / 1000L);
+                if (mastery > 0) netDamage += (netDamage * mastery / 1000L);
                 // Boss-bane Philtre: against a region's boss only.
                 int bossbane = BossbaneTenthsPctFor(in payload, in activeMonster);
-                if (bossbane > 0) netDamage += (int)((long)netDamage * bossbane / 1000L);
+                if (bossbane > 0) netDamage += (netDamage * bossbane / 1000L);
                 // Giant's Bane (skill tree v3 step D): a region's boss only.
                 if (warHit.RegionBossDamageTenthsPct > 0 && IsRegionBossId(activeMonster.Id))
-                    netDamage += (int)((long)netDamage * warHit.RegionBossDamageTenthsPct / 1000L);
+                    netDamage += (netDamage * warHit.RegionBossDamageTenthsPct / 1000L);
                 if (warHit.ExecuteTenthsPct > 0
                     && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
-                    netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
+                    netDamage += (netDamage * warHit.ExecuteTenthsPct / 1000L);
                 // Echo: a crit repeats at half its damage. Folded into this
                 // hit, so it heals, kills and logs as one blow; an echo is
                 // never rolled again.
                 bool echoed = payload.LastHitWasCrit == 1 && warHit.EchoTenths > 0 && rng.NextDouble() < warHit.EchoChance;
-                if (echoed) netDamage += (int)(netDamage * WarEffects.EchoShare);
-                netDamage = (int)(netDamage * LiveCodexDamageMultiplier(in payload));
+                if (echoed) netDamage += (long)(netDamage * (double)WarEffects.EchoShare);
+                netDamage = (long)(netDamage * (double)LiveCodexDamageMultiplier(in payload));
 
                 // Modul: set bonuses made real. The Chiming Steel 4-piece
                 // grants FireDamageMultiplierPct, which reached CombatStats
@@ -6172,7 +6192,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // multiplier directly above it behaves.
                 if (combatStats.SetFireDamageMultiplierPct > 0f)
                 {
-                    netDamage = (int)(netDamage * (1f + (combatStats.SetFireDamageMultiplierPct / 100f)));
+                    netDamage = (long)(netDamage * (1.0 + (combatStats.SetFireDamageMultiplierPct / 100.0)));
                 }
 
                 // A2 Ward: a warded boss takes nothing; each quarter of its bar
@@ -6196,7 +6216,7 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.SunderStacks++;
                 if (warHit.BleedTenthsPct > 0 && payload.LastHitWasCrit == 1 && netDamage > 0)
                 {
-                    payload.BleedMilliPool += (long)netDamage * warHit.BleedTenthsPct / 1000L;
+                    payload.BleedMilliPool += netDamage * warHit.BleedTenthsPct / 1000L;
                     payload.BleedSecondsLeft = WarEffects.BleedSeconds;
                 }
 
@@ -6221,7 +6241,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // draw a health bar longer than the bar.
                 if (BloodthirstTenths(in payload) > 0 && netDamage > 0)
                 {
-                    long healed = (long)netDamage
+                    long healed = netDamage
                         * BloodthirstTenths(in payload) / 1000L;
                     if (healed > 0)
                     {
@@ -6241,10 +6261,10 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: hoisted out of the block below only so the combat
                 // event at the end of this swing can say the burn happened.
                 // The arithmetic is unchanged.
-                int burnDamageDealt = 0;
+                long burnDamageDealt = 0;
                 if (combatStats.SetBurnApplicationActive)
                 {
-                    int burnDamage = (int)(netDamage * BurnDamageFraction);
+                    long burnDamage = (long)(netDamage * (double)BurnDamageFraction);
                     if (burnDamage > 0)
                     {
                         payload.CurrentMonsterHp -= burnDamage;
@@ -6276,7 +6296,7 @@ namespace FolkIdle.Server.Domain.Combat
                 long lifestealHealed = 0;
                 if (combatStats.LifestealPct > 0)
                 {
-                    long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100f));
+                    long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100.0));
                     long lifestealCeiling = effectiveMaxHp / 100; // 1% of the bar per hit
                     if (lifestealAmount > lifestealCeiling) lifestealAmount = lifestealCeiling;
 
@@ -6300,13 +6320,13 @@ namespace FolkIdle.Server.Domain.Combat
                 // that split it would read as one.
                 // Task 51: the same whole-hit-point figure the feed reports,
                 // so the record and the log line can never disagree.
-                Domain.Progression.PersonalRecords.ObserveHit(ref payload, (int)((netDamage + burnDamageDealt) / 1000L));
+                Domain.Progression.PersonalRecords.ObserveHit(ref payload, WholeHitPoints(netDamage + burnDamageDealt));
 
                 CombatEventFeed.Publish(
                     payload.PlayerId,
                     payload.CurrentMonsterId,
                     Network.ResponseCombatEventPacket.KindPlayerHit,
-                    (int)((netDamage + burnDamageDealt) / 1000L),
+                    WholeHitPoints(netDamage + burnDamageDealt),
                     (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
                     (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
                          | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
