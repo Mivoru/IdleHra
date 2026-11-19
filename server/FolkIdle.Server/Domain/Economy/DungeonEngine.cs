@@ -30,7 +30,7 @@ namespace FolkIdle.Server.Domain.Economy
     /// Modul: XP AND GOLD ARE MINUTES OF THE CHAMPION'S OWN INCOME. A flat
     /// number is worth nothing at the top and everything at the bottom (the
     /// world boss lesson, GoldRewardScale). A won stage pays 20 + 8 x stage
-    /// minutes (28 at stage 1, 140 at stage 15) of the champion's best hunting
+    /// minutes (28 at stage 1, 140 at stage 15, 180 at stage 20) of the champion's best hunting
     /// XP an hour, or of the account's earned gold an hour; a lost run pays a
     /// quarter. The XP goes to the live payload through DungeonXpGrantQueue
     /// (the tick owns XP and the level-up loop); the gold is a ledger write
@@ -121,10 +121,10 @@ namespace FolkIdle.Server.Domain.Economy
         private static string MonsterName(int monsterId)
             => monsterId > 0 && monsterId <= ContentRegistry.Monsters.Length ? ContentRegistry.GetMonsterName(monsterId) : $"monster {monsterId}";
 
-        public static string BandOf(int stage) => stage <= 5 ? "Regions" : stage <= 10 ? "Ascension" : "Beyond";
+        public static string BandOf(int stage) => stage <= 5 ? "Regions" : stage <= 10 ? "Ascension" : stage <= DungeonSimulator.AbilityTopStage ? "Beyond" : "Legend";
 
-        /// <summary>The rarity floor of a won stage's piece: Rare, then Epic, then Legendary.</summary>
-        public static int RarityFloorFor(int stage) => stage <= 5 ? RarityTier.Rare : stage <= 10 ? RarityTier.Epic : RarityTier.Legendary;
+        /// <summary>The rarity floor of a won stage's piece: Rare, then Epic, then Legendary, then Mythic (16-20).</summary>
+        public static int RarityFloorFor(int stage) => stage <= 5 ? RarityTier.Rare : stage <= 10 ? RarityTier.Epic : stage <= 15 ? RarityTier.Legendary : RarityTier.Mythic;
 
         public static LootChestTier ChestFor(int stage) => stage switch
         {
@@ -134,7 +134,8 @@ namespace FolkIdle.Server.Domain.Economy
             _ => LootChestTier.Ancient,
         };
 
-        public static int FirstClearDiamonds(int stage) => stage <= 5 ? 5 : stage <= 10 ? 10 : 20;
+        /// <remarks>Modul: each band doubles the one before - 5, 10, 20, and 40 for the Legend band (16-20).</remarks>
+        public static int FirstClearDiamonds(int stage) => stage <= 5 ? 5 : stage <= 10 ? 10 : stage <= 15 ? 20 : 40;
 
         /// <summary>Minutes of the champion's own income a won XP or gold stage pays.</summary>
         public static int IncomeMinutes(int stage) => 20 + 8 * Math.Clamp(stage, 1, DungeonSimulator.StageCount);
@@ -152,7 +153,8 @@ namespace FolkIdle.Server.Domain.Economy
         }
 
         public static string RewardLine(DungeonKind kind, int stage) => BaseRewardLine(kind, stage)
-            + (stage == DungeonSimulator.StageCount ? $" And the title \"{DungeonBoss.For(kind).TitleName}\"." : string.Empty);
+            + (stage == DungeonSimulator.TitleStage ? $" And the title \"{DungeonBoss.For(kind).TitleName}\"." : string.Empty)
+            + (stage == DungeonSimulator.StageCount ? $" And the title \"{DungeonBoss.For(kind).LegendTitleName}\"." : string.Empty);
 
         private static string BaseRewardLine(DungeonKind kind, int stage) => kind switch
         {
@@ -277,13 +279,19 @@ namespace FolkIdle.Server.Domain.Economy
                     player.PremiumDiamonds += diamonds;
                 }
                 row.BestStage = Math.Max(row.BestStage, stage);
-                // The last stage pays a title. GrantAsync is idempotent and joins
-                // this transaction, so it is asked on every win there: a title
-                // added after someone's first clear still reaches them on the next.
-                if (stage == DungeonSimulator.StageCount)
+                // Stage 15 and the last stage each pay a title. GrantAsync is
+                // idempotent and joins this transaction, so it is asked on every
+                // win there: a title added after someone's first clear still
+                // reaches them on the next.
+                if (stage == DungeonSimulator.TitleStage)
                 {
                     var boss = DungeonBoss.For(kind);
                     if (await TitleEngine.GrantAsync(db, player.Id, boss.TitleSlug, utcNow)) title = boss.TitleName;
+                }
+                else if (stage == DungeonSimulator.StageCount)
+                {
+                    var boss = DungeonBoss.For(kind);
+                    if (await TitleEngine.GrantAsync(db, player.Id, boss.LegendTitleSlug, utcNow)) title = boss.LegendTitleName;
                 }
             }
 

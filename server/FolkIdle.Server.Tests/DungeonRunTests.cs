@@ -52,33 +52,66 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
             var now = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
-            const int last = DungeonSimulator.StageCount;
+            // Stage 15 pays the boss's title, the last stage (20) its second one.
+            var titled = new (int Stage, Func<DungeonBoss, string> Slug, Func<DungeonBoss, string> Name)[]
+            {
+                (DungeonSimulator.TitleStage, b => b.TitleSlug, b => b.TitleName),
+                (DungeonSimulator.StageCount, b => b.LegendTitleSlug, b => b.LegendTitleName),
+            };
             foreach (var kind in DungeonBoss.All)
+            foreach (var (stage, slugOf, nameOf) in titled)
             {
                 var boss = DungeonBoss.For(kind);
-                Assert.Equal(boss.TitleName, TitleRegistry.DisplayNameFor(boss.TitleSlug));
-                Assert.Contains(boss.TitleName, DungeonEngine.RewardLine(kind, last));
-                Assert.DoesNotContain(boss.TitleName, DungeonEngine.RewardLine(kind, last - 1));
+                Assert.Equal(nameOf(boss), TitleRegistry.DisplayNameFor(slugOf(boss)));
+                Assert.Contains($"\"{nameOf(boss)}\"", DungeonEngine.RewardLine(kind, stage));
+                Assert.DoesNotContain($"\"{nameOf(boss)}\"", DungeonEngine.RewardLine(kind, stage - 1));
 
                 await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
                 {
-                    var lost = await DungeonEngine.FinishLiveAsync(db, playerId, kind, last, false, default, now, new Random(1));
+                    var lost = await DungeonEngine.FinishLiveAsync(db, playerId, kind, stage, false, default, now, new Random(1));
                     Assert.Equal(string.Empty, lost.Reward?.Title ?? string.Empty);
                 }
                 await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
                 {
-                    var won = await DungeonEngine.FinishLiveAsync(db, playerId, kind, last, true, default, now, new Random(1));
-                    Assert.Equal(boss.TitleName, won.Reward!.Title);
+                    var won = await DungeonEngine.FinishLiveAsync(db, playerId, kind, stage, true, default, now, new Random(1));
+                    Assert.Equal(nameOf(boss), won.Reward!.Title);
                 }
                 await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
                 {
-                    var again = await DungeonEngine.FinishLiveAsync(db, playerId, kind, last, true, default, now, new Random(2));
+                    var again = await DungeonEngine.FinishLiveAsync(db, playerId, kind, stage, true, default, now, new Random(2));
                     Assert.Equal(string.Empty, again.Reward!.Title);
                 }
             }
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
             var slugs = await verify.PlayerTitles.AsNoTracking().Where(t => t.PlayerId == playerId).Select(t => t.TitleSlug).ToListAsync();
-            Assert.Equal(DungeonBoss.All.Select(k => DungeonBoss.For(k).TitleSlug).OrderBy(x => x), slugs.OrderBy(x => x));
+            var expected = DungeonBoss.All.SelectMany(k => new[] { DungeonBoss.For(k).TitleSlug, DungeonBoss.For(k).LegendTitleSlug });
+            Assert.Equal(expected.OrderBy(x => x), slugs.OrderBy(x => x));
+        }
+
+        /// <summary>
+        /// Stages 16-20 (2026-11-19) grow only in body: every ability holds its
+        /// stage-15 strength, and stages 1-15 are exactly what they were when
+        /// fifteen was the last - the ramps are anchored to AbilityTopStage.
+        /// </summary>
+        [Fact]
+        public void TheLegendBandKeepsTheAbilitiesOfStageFifteenAndOnlyGrowsTheBoss()
+        {
+            Assert.Equal(25, BabaYaga.MortarDodgePct(15), 3);
+            Assert.Equal(25, BabaYaga.MortarDodgePct(20), 3);
+            Assert.Equal(10, BabaYaga.HexEverySeconds(15), 3);
+            Assert.Equal(10, BabaYaga.HexEverySeconds(20), 3);
+            Assert.Equal(40, Zmey.HidePct(20), 3);
+            for (int stage = 16; stage <= DungeonSimulator.StageCount; stage++)
+            {
+                var (hpBefore, atkBefore, _) = DungeonSimulator.BossStrength(stage - 1);
+                var (hp, atk, _) = DungeonSimulator.BossStrength(stage);
+                Assert.InRange(atk / (double)atkBefore, 1.34, 1.36);
+                Assert.True(hp > hpBefore);
+            }
+            Assert.Equal("Legend", DungeonEngine.BandOf(16));
+            Assert.Equal("Beyond", DungeonEngine.BandOf(15));
+            Assert.Equal(40, DungeonEngine.FirstClearDiamonds(16));
+            Assert.Equal(RarityTier.Mythic, DungeonEngine.RarityFloorFor(20));
         }
 
         [Fact]

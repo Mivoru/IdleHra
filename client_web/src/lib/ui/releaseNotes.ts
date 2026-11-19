@@ -35,6 +35,29 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.103.0',
+    date: '2026-11-19',
+    headline: 'The dungeons go five stages deeper.',
+    sections: [
+      {
+        title: 'Dungeons',
+        items: [
+          'Every gate now has 20 stages. Stages 16 to 20 are the Legend band: the boss keeps the abilities it has at stage 15 and only grows stronger and tougher, about a third more each stage.',
+          'Stage 20 is meant for a fully built account: three characters in top gear, the best pets and potions. Clearing it without a single dodge takes a very long time of building; clean dodges bring it much closer.',
+          "Legend stages pay 40 diamonds the first time you clear them, the XP and gold gates pay up to 180 minutes of income, and Baba Yaga's Hut pays a Mythic piece or better with an Ancient chest.",
+          'Stage 20 pays a second title for each gate: "Deathless of the Deep", "Dragonbane of the Deep" and "Witch-bane of the Deep". The stage 15 titles stay where they are.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Loot chest names no longer stack one letter per line on a phone when the "Open all" button is shown.',
+          'A gate holding more tickets than its daily limit shows at most four dots, and the count stays on one line.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.102.0',
     date: '2026-11-19',
     headline: 'Nav has its own music, and the chests open in cleaner light.',

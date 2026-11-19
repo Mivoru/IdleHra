@@ -93,11 +93,12 @@ namespace FolkIdle.Server.Domain.Progression
             foreach (var t in NavRules.CircleTitles) list.Add(new TitleDefinition(t.Slug, t.Name, 0, t.Color));
             list.Add(new TitleDefinition(NavRules.WeeklyTitleSlug, "Deepest of the Week", 0, "#9ad0ff"));
 
-            // The three dungeons: the first clear of stage 15 (DungeonEngine.PayAsync).
+            // The three dungeons: the first clears of stage 15 and of stage 20 (DungeonEngine.PayAsync).
             foreach (var kind in Combat.DungeonBoss.All)
             {
                 var boss = Combat.DungeonBoss.For(kind);
                 list.Add(new TitleDefinition(boss.TitleSlug, boss.TitleName, 0, boss.TitleColor));
+                list.Add(new TitleDefinition(boss.LegendTitleSlug, boss.LegendTitleName, 0, boss.TitleColor));
             }
 
             // Task 87: one title per Boss Ascension step per boss - a rank the

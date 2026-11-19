@@ -56,8 +56,9 @@ namespace FolkIdle.Server.Domain.Combat
         public abstract string Fall { get; }
 
         /// <summary>
-        /// The title for the first clear of the last stage (StageCount), its slug
-        /// and the colour of its chip - the gate's own tone in the lobby.
+        /// The title for the first clear of stage 15 (TitleStage), its slug and
+        /// the colour of its chip - the gate's own tone in the lobby. Stage 20,
+        /// the last, pays a second one (LegendTitleSlug).
         /// </summary>
         /// <remarks>
         /// Modul: STAGE 15 PAYS A TITLE (CHESTS_DUNGEONS_DIAMONDS.md 2.6, names
@@ -65,7 +66,10 @@ namespace FolkIdle.Server.Domain.Combat
         /// boss and its title cannot drift apart; the slug is stored per player
         /// and never changes, the name may.
         /// </remarks>
-        public string TitleSlug => $"dungeon_{Kind.ToString().ToLowerInvariant()}_{DungeonSimulator.StageCount}";
+        public string TitleSlug => $"dungeon_{Kind.ToString().ToLowerInvariant()}_{DungeonSimulator.TitleStage}";
+        /// <summary>The last stage's title: the stage-15 name, of the Deep.</summary>
+        public string LegendTitleSlug => $"dungeon_{Kind.ToString().ToLowerInvariant()}_{DungeonSimulator.StageCount}";
+        public string LegendTitleName => $"{TitleName} of the Deep";
         public abstract string TitleName { get; }
         public abstract string TitleColor { get; }
         public abstract IReadOnlyList<DungeonAbilityView> AbilitiesAt(int stage);
@@ -85,8 +89,18 @@ namespace FolkIdle.Server.Domain.Combat
         public virtual void AfterEnemySwing(DungeonFightState f, double dealtToPlayer) { }
         public virtual bool CanEat(DungeonFightState f) => true;
 
+        /// <remarks>
+        /// Modul: THE ABILITIES TOP OUT AT STAGE 15 (owner, 2026-11-19: stages
+        /// 16-20 added). Every ramp is anchored to AbilityTopStage, not to
+        /// StageCount: anchored to the last stage, adding five stages would
+        /// have stretched each ramp and made stages 1-15 EASIER than the ones
+        /// players had cleared. Above 15 a boss only grows in body (BossStrength).
+        /// </remarks>
         internal static double Grow(int stage, int from, double start, double end)
-            => stage < from ? 0 : start + (end - start) * (stage - from) / Math.Max(1, DungeonSimulator.StageCount - from);
+            => stage < from ? 0 : start + (end - start) * (Top(stage) - from) / Math.Max(1, DungeonSimulator.AbilityTopStage - from);
+
+        /// <summary>The stage an ability ramp reads: the stage, held at AbilityTopStage.</summary>
+        internal static int Top(int stage) => Math.Min(stage, DungeonSimulator.AbilityTopStage);
 
         public static DungeonBoss For(DungeonKind kind) => kind switch
         {
@@ -111,12 +125,12 @@ namespace FolkIdle.Server.Domain.Combat
         public override string Fall => "Baba Yaga falls.";
 
         public static double MortarDodgePct(int stage) => Grow(stage, 1, 10, 25);
-        public static double HexEverySeconds(int stage) => stage < 4 ? 0 : 15 - 5.0 * (stage - 4) / (DungeonSimulator.StageCount - 4);
-        public static int HexHits(int stage) => stage < 4 ? 0 : (int)Math.Round(3 + 2.0 * (stage - 4) / (DungeonSimulator.StageCount - 4));
+        public static double HexEverySeconds(int stage) => stage < 4 ? 0 : 15 - 5.0 * (Top(stage) - 4) / (DungeonSimulator.AbilityTopStage - 4);
+        public static int HexHits(int stage) => stage < 4 ? 0 : (int)Math.Round(3 + 2.0 * (Top(stage) - 4) / (DungeonSimulator.AbilityTopStage - 4));
         public const double HexDamageCut = 0.4;
         public static double FencePct(int stage) => Grow(stage, 8, 15, 30);
-        public static double SweepEverySeconds(int stage) => stage < 11 ? 0 : 30 - 10.0 * (stage - 11) / (DungeonSimulator.StageCount - 11);
-        public static double SweepSeconds(int stage) => stage < 11 ? 0 : 6 + 4.0 * (stage - 11) / (DungeonSimulator.StageCount - 11);
+        public static double SweepEverySeconds(int stage) => stage < 11 ? 0 : 30 - 10.0 * (Top(stage) - 11) / (DungeonSimulator.AbilityTopStage - 11);
+        public static double SweepSeconds(int stage) => stage < 11 ? 0 : 6 + 4.0 * (Top(stage) - 11) / (DungeonSimulator.AbilityTopStage - 11);
 
         public override IReadOnlyList<DungeonAbilityView> AbilitiesAt(int stage) => new[]
         {
@@ -198,7 +212,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>The health he rises with: 15% at stage 1, 40% from stage 10.</summary>
         public static double RisePct(int stage) => Math.Min(40, 15 + 25.0 * (Math.Max(1, stage) - 1) / 9);
         public static int Rises(int stage) => stage >= 13 ? 2 : 1;
-        public static double WardEverySeconds(int stage) => stage < 4 ? 0 : 20 - 6.0 * (stage - 4) / (DungeonSimulator.StageCount - 4);
+        public static double WardEverySeconds(int stage) => stage < 4 ? 0 : 20 - 6.0 * (Top(stage) - 4) / (DungeonSimulator.AbilityTopStage - 4);
         public static double WardPct(int stage) => Grow(stage, 4, 5, 12);
         public static double DrainPct(int stage) => Grow(stage, 8, 10, 30);
         public static double NeedleCritBonusPct(int stage) => Grow(stage, 11, 25, 60);
@@ -280,7 +294,7 @@ namespace FolkIdle.Server.Domain.Combat
         public static int BreathEverySwings(int stage) => stage < 4 ? 0 : stage < 10 ? 6 : 5;
         public static double BreathPctPerSecond(int stage) => Grow(stage, 4, 3, 6);
         public const double BreathSeconds = 3;
-        public static double RegrowSeconds(int stage) => stage < 8 ? 0 : 20 - 10.0 * (stage - 8) / (DungeonSimulator.StageCount - 8);
+        public static double RegrowSeconds(int stage) => stage < 8 ? 0 : 20 - 10.0 * (Top(stage) - 8) / (DungeonSimulator.AbilityTopStage - 8);
         public static double HidePct(int stage) => Grow(stage, 11, 20, 40);
 
         public override IReadOnlyList<DungeonAbilityView> AbilitiesAt(int stage) => new[]
