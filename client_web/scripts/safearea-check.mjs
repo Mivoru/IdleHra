@@ -126,6 +126,11 @@ async function intrude(insets, tolerance, { bottomMode }) {
         const s = getComputedStyle(el);
         if (s.display === 'none' || s.visibility === 'hidden') return false;
         if (Number(s.opacity) === 0) return false;
+        // Modul: A CLOSED <details> SHOWS ONLY ITS SUMMARY (2026-11-19). Chromium
+        // hides the rest with content-visibility, which leaves the boxes a size
+        // and a place - so Nav's two disclosures at the foot of the page were
+        // reported under the gesture bar while drawn nowhere.
+        if (el.closest('details:not([open])') && !el.closest('summary')) return false;
         return true;
       };
 

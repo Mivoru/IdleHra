@@ -9,7 +9,14 @@ namespace FolkIdle.Server.Domain.Combat
     public readonly record struct NavDepthResult(int Depth, string Guardian, string Elite, double Seconds, bool Cleared, string Outcome, long Souls);
 
     /// <summary>A whole run: how deep, what it paid, and why it stopped.</summary>
-    public sealed record NavRunResult(int Circle, int StartDepth, int DeepestCleared, long Souls, string EndedBy, double Seconds, int RevivesUsed, IReadOnlyList<NavDepthResult> Depths);
+    public sealed record NavRunResult(int Circle, int StartDepth, int DeepestCleared, long Souls, string EndedBy, double Seconds, int RevivesUsed, IReadOnlyList<NavDepthResult> Depths)
+    {
+        /// <summary>The guardian that ended the run, empty if the run hit its limit.</summary>
+        public string StoppedBy { get; init; } = string.Empty;
+
+        /// <summary>What would move the record past it (NavRules.Hint).</summary>
+        public string Hint { get; init; } = string.Empty;
+    }
 
     /// <summary>What the Workshop and the research add inside Nav, already summed.</summary>
     public readonly record struct NavBonuses(double DamagePct, double HealthPct, double AttackSpeedPct, double CritDamagePct, double SoulsPct, int StartDepth, int Revives);
@@ -55,6 +62,8 @@ namespace FolkIdle.Server.Domain.Combat
             double seconds = 0;
             int deepest = start - 1;
             string endedBy = "limit";
+            string stoppedBy = string.Empty;
+            string hint = string.Empty;
 
             for (int depth = start; depth < start + NavRules.MaxDepthPerRun; depth++)
             {
@@ -120,8 +129,10 @@ namespace FolkIdle.Server.Domain.Combat
                     double spent = Math.Min(NavRules.SecondsPerGuardian, falls ? timeToDie : NavRules.SecondsPerGuardian);
                     seconds += spent;
                     endedBy = falls ? "fell" : "time";
+                    stoppedBy = who.Key;
+                    hint = NavRules.Hint(ability, falls);
                     depths.Add(new NavDepthResult(depth, who.Key, NavRules.EliteName(elite), Math.Round(spent, 1), false,
-                        falls ? "The guardian struck you down." : "The guardian outlasted the clock.", 0));
+                        falls ? $"{who.Name} struck you down." : $"{who.Name} outlasted the clock.", 0));
                     break;
                 }
 
@@ -132,7 +143,23 @@ namespace FolkIdle.Server.Domain.Combat
                 depths.Add(new NavDepthResult(depth, who.Key, NavRules.EliteName(elite), Math.Round(timeToKill, 1), true, string.Empty, paid));
             }
 
-            return new NavRunResult(circle, start, deepest, souls, endedBy, Math.Round(seconds, 1), revivesUsed, depths);
+            return new NavRunResult(circle, start, deepest, souls, endedBy, Math.Round(seconds, 1), revivesUsed, depths)
+            {
+                StoppedBy = stoppedBy,
+                Hint = hint,
+            };
+        }
+
+        /// <summary>
+        /// The depth a character should reach, before a charge is spent: the
+        /// median of five seeds, so one lucky elite roll does not set it.
+        /// </summary>
+        public static int ExpectedDepth(TickStatePayload payload, int slot, int circle, NavBonuses bonuses, int recordDepth)
+        {
+            var depths = new int[5];
+            for (int i = 0; i < depths.Length; i++) depths[i] = Run(payload, slot, circle, bonuses, 1000 + i, recordDepth).DeepestCleared;
+            Array.Sort(depths);
+            return depths[depths.Length / 2];
         }
 
         /// <summary>Malakor (115): the armour and dodge every guardian fights with.</summary>

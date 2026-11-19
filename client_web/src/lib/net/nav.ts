@@ -28,6 +28,10 @@ export interface NavRun {
   EndedBy: string;
   Seconds: number;
   RevivesUsed: number;
+  /** The guardian key that ended the run; empty when it hit its limit. */
+  StoppedBy: string;
+  /** What would move the record past that guardian (NavRules.Hint). */
+  Hint: string;
   Rewards: string[];
   Depths: NavDepth[];
 }
@@ -64,6 +68,12 @@ export function guardianArt(key: string): string {
   return `/nav/${key}.webp`;
 }
 
+export interface NavBoard {
+  Top: { Rank: number; Name: string; Circle: number; Depth: number; Me: boolean }[];
+  /** 0 until the account has a record. */
+  MyRank: number;
+}
+
 export interface NavState {
   /** False until Malakor falls; LockedReason says so. */
   Open: boolean;
@@ -95,7 +105,9 @@ export interface NavState {
   Research: NavResearchLine[];
   ResearchActive: string;
   ResearchLeftSeconds: number;
-  Roster: { Slot: number; Dps: number; MaxHp: number; Worn: number }[];
+  /** ExpectedDepth: where a descent of ExpectedCircle should end (median of five seeds). */
+  Roster: { Slot: number; Dps: number; MaxHp: number; Worn: number; ExpectedDepth: number; ExpectedCircle: number }[];
+  Board: NavBoard | null;
   LastRun: NavRun | null;
 }
 

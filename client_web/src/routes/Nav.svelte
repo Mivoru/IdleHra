@@ -19,6 +19,7 @@
   import Money from '../lib/ui/Money.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { play } from '../lib/ui/audio';
+  import { onDestroy } from 'svelte';
 
   const client = useQueryClient();
   const nav = createQuery(() => ({ queryKey: navKeys.state, queryFn: fetchNav, refetchInterval: 60_000 }));
@@ -49,6 +50,61 @@
   let lastRun = $state<NavRun | null>(null);
 
   const shownRun = $derived(lastRun ?? data?.LastRun ?? null);
+
+  // Modul: THE DESCENT IS PLAYED BACK, NOT JUST LISTED (2026-11-19). The
+  // server decides a run in one request; dropping the finished list on the
+  // screen made the mode's one moment - going down - a table. The depths are
+  // revealed one by one instead: the guardian, its clock filling towards 30
+  // seconds, the Souls adding up. The whole replay is held to about six
+  // seconds whatever the depth, can be skipped, and a player who asked for
+  // reduced motion gets the result at once. Nothing here decides anything:
+  // it is the server's list, shown at a pace.
+  let replayIndex = $state(-1);
+  let replayTimer: ReturnType<typeof setTimeout> | null = null;
+  const replaying = $derived(lastRun !== null && replayIndex >= 0 && replayIndex < lastRun.Depths.length);
+  const replayDepth = $derived(replaying && lastRun ? lastRun.Depths[replayIndex] : null);
+  const replaySouls = $derived(
+    replaying && lastRun ? lastRun.Depths.slice(0, replayIndex + 1).reduce((sum, d) => sum + d.Souls, 0) : 0,
+  );
+
+  function reducedMotion(): boolean {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function stopReplay() {
+    if (replayTimer) clearTimeout(replayTimer);
+    replayTimer = null;
+    replayIndex = -1;
+  }
+
+  function finishReplay(run: NavRun) {
+    stopReplay();
+    play(run.Rewards.some((line) => line.startsWith('New record')) ? 'navRecord' : 'navDescend');
+    for (const line of run.Rewards) pushLocalNotice(line, 'info');
+  }
+
+  function startReplay(run: NavRun) {
+    stopReplay();
+    if (run.Depths.length === 0 || reducedMotion()) {
+      finishReplay(run);
+      return;
+    }
+    play('navDescend');
+    const step = Math.max(160, Math.min(450, 6000 / run.Depths.length));
+    replayIndex = 0;
+    const next = () => {
+      if (replayIndex >= run.Depths.length - 1) {
+        // Hold the last guardian - the one that stopped the run - a beat longer.
+        replayTimer = setTimeout(() => finishReplay(run), 1100);
+        return;
+      }
+      replayIndex += 1;
+      replayTimer = setTimeout(next, step);
+    };
+    replayTimer = setTimeout(next, step);
+  }
+
+  onDestroy(stopReplay);
   const activeCircle = $derived(circle > 0 ? circle : (data?.Circle ?? 1));
   const record = $derived(data?.Records.find((r) => r.Circle === activeCircle)?.Depth ?? 0);
 
@@ -68,8 +124,7 @@
       const r = await navDescend(slot, activeCircle);
       if (r?.Result === 'Ran' && r.Run) {
         lastRun = r.Run;
-        play(r.Run.Rewards.some((line) => line.startsWith('New record')) ? 'navRecord' : 'navDescend');
-        for (const line of r.Run.Rewards) pushLocalNotice(line, 'info');
+        startReplay(r.Run);
       } else {
         pushLocalNotice(
           r?.Result === 'NoCharges' ? 'No descents left - one comes back every 20 minutes.'
@@ -111,10 +166,18 @@
     }
   }
 
-  function endedLine(run: NavRun): string {
-    if (run.EndedBy === 'fell') return 'A guardian struck you down.';
-    if (run.EndedBy === 'time') return 'A guardian outlasted the 30-second clock.';
+  function endedLine(state: NavState, run: NavRun): string {
+    const who = guardianByKey(state, run.StoppedBy)?.Name ?? 'A guardian';
+    if (run.EndedBy === 'fell') return `${who} struck you down at depth ${run.DeepestCleared + 1}.`;
+    if (run.EndedBy === 'time') return `${who} outlasted the ${state.SecondsPerGuardian}-second clock at depth ${run.DeepestCleared + 1}.`;
     return 'The run reached its limit.';
+  }
+
+  // Where each of the ten stands: depths n, n+10, n+20...
+  function depthsOf(state: NavState, g: NavGuardian): string {
+    if (g.Key === 'veles') return `every ${state.WardenEvery}th depth`;
+    const n = state.Guardians.indexOf(g) + 1;
+    return `depths ${n}, ${n + 10}, ${n + 20}...`;
   }
 </script>
 
@@ -146,7 +209,12 @@
         <div class="chips">
           {#each data.Roster as r (r.Slot)}
             <button class="chip" class:on={slot === r.Slot} onclick={() => (slot = r.Slot)} data-testid={`nav-slot-${r.Slot}`}>
-              {slotLabel(r.Slot)} <span class="dim tiny">{formatNumber(r.Dps)} dps</span>
+              {slotLabel(r.Slot)}
+              {#if data.Open && r.ExpectedDepth > 0}
+                <span class="dim tiny" title={`Expected to reach about depth ${r.ExpectedDepth} of Circle ${r.ExpectedCircle}`}>~depth {r.ExpectedDepth}</span>
+              {:else}
+                <span class="dim tiny">{formatNumber(r.Dps)} dps</span>
+              {/if}
             </button>
           {/each}
         </div>
@@ -166,14 +234,63 @@
       {#if !data.Open}
         <p class="locked" data-testid="nav-locked">{data.LockedReason}</p>
       {/if}
-      <button class="primary go" disabled={busy || data.Charges <= 0 || !data.Open} onclick={descend} data-testid="nav-descend">
-        {busy ? 'Descending...' : 'Descend'}
+      <button class="primary go" disabled={busy || replaying || data.Charges <= 0 || !data.Open} onclick={descend} data-testid="nav-descend">
+        {busy ? 'Descending...' : replaying ? 'Going down...' : 'Descend'}
       </button>
       <p class="dim small charges" data-testid="nav-charges">
         {data.Charges} of {data.ChargeCap} descents
         {#if data.Charges < data.ChargeCap} - next in {formatDuration(data.NextChargeInSeconds)}{/if}
       </p>
     </div>
+
+    {#if replaying && replayDepth && lastRun}
+      {@const g = guardianByKey(data, replayDepth.Guardian)}
+      <section class="stage" class:fail={!replayDepth.Cleared} class:warden={replayDepth.Guardian === 'veles'} data-testid="nav-replay" aria-live="polite">
+        {#key replayDepth.Depth}
+          <div class="stage-card">
+            <MonsterPortrait monsterId={0} name={g?.Name ?? 'Guardian'} src={guardianArt(replayDepth.Guardian)} size="lg" />
+            <div class="stage-text">
+              <span class="stage-depth">Depth {replayDepth.Depth}</span>
+              <strong>{g?.Name ?? ''}</strong>
+              {#if replayDepth.Elite}<span class="elite">{replayDepth.Elite}</span>{/if}
+              <span class="tiny ability">{g?.AbilityName ?? ''}</span>
+              <div class="clock" aria-hidden="true">
+                <span style={`--fill:${Math.min(100, (replayDepth.Seconds / data.SecondsPerGuardian) * 100)}%`}></span>
+              </div>
+              <span class="tiny">{replayDepth.Cleared ? `Down in ${replayDepth.Seconds}s` : replayDepth.Outcome}</span>
+            </div>
+          </div>
+        {/key}
+        <div class="stage-foot">
+          <span class="small">+{formatNumber(replaySouls)} Souls</span>
+          <button class="ghost" onclick={() => lastRun && finishReplay(lastRun)} data-testid="nav-skip">Skip</button>
+        </div>
+      </section>
+    {:else if shownRun}
+      {@const stopper = guardianByKey(data, shownRun.StoppedBy)}
+      <section class="run" data-testid="nav-run">
+        <h3>Last descent: depth {shownRun.DeepestCleared} <span class="dim small">+{formatNumber(shownRun.Souls)} Souls</span></h3>
+        <p class="dim small">{endedLine(data, shownRun)} {shownRun.RevivesUsed > 0 ? `Second breath used ${shownRun.RevivesUsed}x.` : ''}</p>
+        {#if stopper && shownRun.Hint}
+          <div class="why" data-testid="nav-hint">
+            <MonsterPortrait monsterId={0} name={stopper.Name} src={guardianArt(stopper.Key)} size="md" />
+            <p class="small"><span class="ability">{stopper.AbilityName}</span> {shownRun.Hint}</p>
+          </div>
+        {/if}
+        <ol class="depths">
+          {#each shownRun.Depths.slice(-8) as d (d.Depth)}
+            {@const g = guardianByKey(data, d.Guardian)}
+            <li class:fail={!d.Cleared} class:warden={d.Guardian === 'veles'}>
+              <MonsterPortrait monsterId={0} name={g?.Name ?? 'Guardian'} src={d.Guardian ? guardianArt(d.Guardian) : null} size="sm" />
+              <span class="dn">Depth {d.Depth} <span class="dim tiny">{g?.Name ?? ''}</span></span>
+              {#if d.Elite}<span class="elite">{d.Elite}</span>{/if}
+              <span class="dim tiny t">{d.Seconds}s</span>
+              <span class="tiny r">{d.Cleared ? `+${d.Souls}` : 'stopped'}</span>
+            </li>
+          {/each}
+        </ol>
+      </section>
+    {/if}
 
     <div class="souls">
       <span class="soul-count" data-testid="nav-souls">{formatNumber(data.Souls)}</span>
@@ -197,22 +314,20 @@
       </ul>
     </section>
 
-    {#if shownRun}
-      <section class="run" data-testid="nav-run">
-        <h3>Last descent: depth {shownRun.DeepestCleared} <span class="dim small">+{formatNumber(shownRun.Souls)} Souls</span></h3>
-        <p class="dim small">{endedLine(shownRun)} {shownRun.RevivesUsed > 0 ? `Second breath used ${shownRun.RevivesUsed}x.` : ''}</p>
-        <ol class="depths">
-          {#each shownRun.Depths.slice(-8) as d (d.Depth)}
-            {@const g = guardianByKey(data, d.Guardian)}
-            <li class:fail={!d.Cleared}>
-              <MonsterPortrait monsterId={0} name={g?.Name ?? 'Guardian'} src={d.Guardian ? guardianArt(d.Guardian) : null} size="sm" />
-              <span class="dn">Depth {d.Depth} <span class="dim tiny">{g?.Name ?? ''}</span></span>
-              {#if d.Elite}<span class="elite">{d.Elite}</span>{/if}
-              <span class="dim tiny t">{d.Seconds}s</span>
-              <span class="tiny r">{d.Cleared ? `+${d.Souls}` : 'stopped'}</span>
+    {#if data.Board && data.Board.Top.length > 0}
+      <section class="board" data-testid="nav-board">
+        <h3>Deepest in Nav</h3>
+        <ol class="board-list">
+          {#each data.Board.Top as b (b.Rank)}
+            <li class:me={b.Me}>
+              <span class="rank">{b.Rank}</span>
+              <span class="who">{b.Name}</span>
+              <span class="dim tiny">Circle {b.Circle}</span>
+              <strong class="small">depth {b.Depth}</strong>
             </li>
           {/each}
         </ol>
+        {#if data.Board.MyRank > 10}<p class="dim tiny">You are #{data.Board.MyRank}.</p>{/if}
       </section>
     {/if}
     </div>
@@ -265,6 +380,21 @@
     </section>
     </div>
 
+    <details class="rules bestiary" data-testid="nav-bestiary">
+      <summary>The guardians of Nav</summary>
+      <ul class="guardians">
+        {#each data.Guardians as g (g.Key)}
+          <li class:warden={g.Key === 'veles'}>
+            <MonsterPortrait monsterId={0} name={g.Name} src={guardianArt(g.Key)} size="md" />
+            <div class="g-text">
+              <span class="small"><strong>{g.Name}</strong> <span class="dim tiny">{depthsOf(data, g)}</span></span>
+              <span class="tiny"><span class="ability">{g.AbilityName}</span> <span class="dim">{g.AbilityText}</span></span>
+            </div>
+          </li>
+        {/each}
+      </ul>
+    </details>
+
     <details class="rules">
       <summary>How Nav works</summary>
       <ul class="small">
@@ -273,6 +403,7 @@
         <li>Every cleared depth pays Souls; deeper pays more. A run costs one descent, and one comes back every 20 minutes, offline too.</li>
         <li>Depth {data.CircleOpensAt} opens the next Circle: five times stronger guardians, three times the Souls. Depths 10, 25 and 50 of each Circle pay a chest the first time.</li>
         <li>Ten servants of Nav stand in turn, each with its own ability - one build will not beat them all. Veles, the Lord of Nav, waits every {data.WardenEvery}th depth: more health, harder blows, triple Souls.</li>
+        <li>The first Veles you beat earns the title "Veles' Guest"; opening Circles 2, 3 and 5 earns three more. News tells everyone when someone beats a Veles or opens a Circle.</li>
         <li>Some guardians are elite - Armoured (more health), Swift (attack faster), Brute (hit harder) or Frail (less health).</li>
         <li>The Workshop and the research only count in Nav. Nothing here changes the rest of the game.</li>
       </ul>
@@ -403,8 +534,151 @@
     border-bottom: 1px solid var(--line);
   }
 
+  .depths li.warden .dn {
+    color: var(--warn, #e0b050);
+  }
+
   .depths li.fail {
     color: var(--danger);
+  }
+
+  .stage {
+    margin-top: 0.8rem;
+    padding: 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent);
+  }
+
+  .stage.warden {
+    border-color: var(--warn, #e0b050);
+  }
+
+  .stage.fail {
+    border-color: var(--danger);
+  }
+
+  .stage-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.8rem;
+    align-items: center;
+    animation: rise 0.12s ease-out;
+  }
+
+  .stage-card :global(.portrait[data-size='lg']) {
+    width: 6.5rem;
+    height: 6.5rem;
+  }
+
+  .stage-text {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+    justify-items: start;
+  }
+
+  .stage-depth {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .clock {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .clock span {
+    display: block;
+    height: 100%;
+    width: var(--fill);
+    background: var(--accent);
+    animation: fill 0.14s ease-out;
+  }
+
+  .stage.fail .clock span {
+    background: var(--danger);
+  }
+
+  .stage-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+
+  @keyframes rise {
+    from {
+      transform: translateY(6px);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes fill {
+    from {
+      width: 0;
+    }
+  }
+
+  .why {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem;
+    align-items: center;
+    margin: 0.4rem 0;
+    padding: 0.4rem 0.5rem;
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+    border-radius: var(--radius);
+  }
+
+  .why p {
+    margin: 0;
+  }
+
+  .board {
+    margin-top: 0.8rem;
+  }
+
+  .board-list {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .board-list li {
+    display: grid;
+    grid-template-columns: 1.6rem minmax(0, 1fr) auto auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .board-list li.me {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-radius: var(--radius);
+  }
+
+  .rank {
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .who {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .guardians {

@@ -195,5 +195,46 @@ namespace FolkIdle.Server.Tests
             var run = NavSimulator.Run(Character(300_000_000), 0, 1, None, 7, 0);
             foreach (var d in run.Depths) Assert.Equal(NavRules.GuardianFor(d.Depth).Key, d.Guardian);
         }
+        [Fact]
+        public void ARunThatStopsNamesTheGuardianAndAHint()
+        {
+            var run = NavSimulator.Run(Character(300_000_000), 0, 1, None, 7, 0);
+            Assert.Equal(run.Depths[^1].Guardian, run.StoppedBy);
+            Assert.False(string.IsNullOrWhiteSpace(run.Hint));
+            Assert.Contains(NavRules.GuardianByKey(run.StoppedBy)!.Name, run.Depths[^1].Outcome);
+        }
+
+        [Fact]
+        public void EveryAbilityHasItsOwnHint()
+        {
+            var all = NavRules.Guardians.Append(NavRules.Warden).Select(g => NavRules.Hint(g.Ability, fell: false)).ToList();
+            Assert.Equal(all.Count, all.Distinct().Count());
+        }
+
+        [Fact]
+        public void NewsOnlyForANewVelesOrACircle()
+        {
+            Assert.Null(NavEngine.NavNews("A", 1, 10, 24, false));
+            Assert.Equal("A has beaten Veles at depth 25 of Nav (Circle 1).", NavEngine.NavNews("A", 1, 24, 30, false));
+            Assert.Null(NavEngine.NavNews("A", 1, 30, 40, false));
+            Assert.Equal("A has opened Circle 2 of Nav.", NavEngine.NavNews("A", 1, 40, 52, true));
+        }
+
+        [Fact]
+        public void NavTitlesAreRegistered()
+        {
+            Assert.NotNull(TitleRegistry.Find(NavRules.VelesTitleSlug));
+            foreach (var t in NavRules.CircleTitles) Assert.NotNull(TitleRegistry.Find(t.Slug));
+        }
+
+        [Fact]
+        public void TheExpectedDepthIsStable_AndCloseToARealRun()
+        {
+            var c = Character(300_000_000);
+            int a = NavSimulator.ExpectedDepth(c, 0, 1, None, 0);
+            Assert.Equal(a, NavSimulator.ExpectedDepth(c, 0, 1, None, 0));
+            int real = NavSimulator.Run(c, 0, 1, None, 7, 0).DeepestCleared;
+            Assert.InRange(real, a - 6, a + 6);
+        }
     }
 }

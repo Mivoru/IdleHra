@@ -53,6 +53,9 @@ export const SCREENS = [
   // Task 95: regrouped (Play, Hero, Make, Friends & Guilds, Game) and renamed
   // - Home not Map, Auto-Eat not Supplies, Friends not Community.
   'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve', 'Dungeon', 'Expeditions',
+  // The Descent into Nav (2026-11-19): in the menu only while the server runs
+  // FOLKIDLE_NAV=on - run-dev.ps1 does, and production does from its launch.
+  'Nav',
   'Character', 'Skill Tree', 'Rebirth', 'Wardrobe', 'Chest', 'Auto-Eat',
   'Village', 'Crafting', 'Forge', 'Bloodline', 'Codex',
   // Community, Guild and Market are menu entries of their own since task 95, as

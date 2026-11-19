@@ -7205,7 +7205,9 @@ if (want('nav')) {
     await panel.waitFor({ timeout: 10000 }).catch(() => {});
     const before = await apiGet('/api/v1/nav');
     await page.getByTestId('nav-descend').click().catch(() => {});
-    await page.getByTestId('nav-run').waitFor({ timeout: 10000 }).catch(() => {});
+    // The run is played back first (nav-replay), then listed (nav-run).
+    const replayed = await page.getByTestId('nav-replay').waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+    await page.getByTestId('nav-run').waitFor({ timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(800);
     const after = await apiGet('/api/v1/nav');
     const depthShown = (await page.getByTestId('nav-record').innerText().catch(() => '')).trim();
@@ -7215,6 +7217,13 @@ if (want('nav')) {
       after !== null && after.Charges === before.Charges - 1 && after.LastRun !== null
         && after.Souls === before.Souls + after.LastRun.Souls && (await page.getByTestId('nav-run').count()) > 0,
       after ? `souls ${before.Souls} -> ${after.Souls}, charges ${before.Charges} -> ${after.Charges}, deepest ${after.LastRun?.DeepestCleared}, record "${depthShown.split(/\s+/)[0]}"` : 'no answer');
+
+    // Why it stopped: the guardian that ended the run, by name, and the hint
+    // that says what would beat it - the reason to own a second build.
+    const hintText = (await page.getByTestId('nav-hint').innerText().catch(() => '')).trim();
+    record('a descent is played back, then says which guardian stopped it and what beats it',
+      replayed && after?.LastRun?.StoppedBy !== '' && hintText.length > 20 && hintText.includes(after?.LastRun?.Hint?.slice(0, 20) ?? '~'),
+      `replayed ${replayed}, stopped by ${after?.LastRun?.StoppedBy}, hint "${hintText.slice(0, 60)}"`);
 
     // Nav's own guardians (2026-11-19): every depth names one of the server's
     // roster, and the "below your record" list shows painted portraits that

@@ -106,10 +106,24 @@ namespace FolkIdle.Server.Engine
                 row.BestDepths = NavRules.Pack(best);
                 rewards.Add($"New record: depth {run.DeepestCleared} of Circle {circle}");
             }
+            bool circleOpened = false;
             if (run.DeepestCleared >= NavRules.CircleOpensAt && circle == row.HighestCircle)
             {
                 row.HighestCircle = circle + 1;
+                circleOpened = true;
                 rewards.Add($"Circle {circle + 1} opens");
+            }
+
+            // Titles: the first Veles, and the Circles that carry a name.
+            if (run.DeepestCleared >= NavRules.WardenEvery && await TitleEngine.GrantAsync(db, playerId, NavRules.VelesTitleSlug, utcNow))
+                rewards.Add("Title: Veles' Guest");
+            if (circleOpened)
+            {
+                foreach (var t in NavRules.CircleTitles)
+                {
+                    if (t.Circle == row.HighestCircle && await TitleEngine.GrantAsync(db, playerId, t.Slug, utcNow))
+                        rewards.Add($"Title: {t.Name}");
+                }
             }
 
             // First-time milestones: a loot chest of the top region each.
@@ -126,7 +140,22 @@ namespace FolkIdle.Server.Engine
             row.LastRunJson = JsonSerializer.Serialize(ViewOf(run, rewards));
             await db.SaveChangesAsync();
             await tx.CommitAsync();
+
+            // News, after the commit so a rolled-back run never reaches chat:
+            // a new Veles beaten (a record that crosses a 25th depth) or a
+            // Circle opened. Rare by construction - a few times a season.
+            string? news = NavNews(PlayerNameResolver.GetCachedOrFallback(playerId), circle, record, run.DeepestCleared, circleOpened);
+            if (news != null) Domain.Social.ChatEngine.EnqueueSystemAnnouncement(news);
             return (NavDescendResult.Ran, run, rewards);
+        }
+
+        /// <summary>The News line for a run, or null when it is not news.</summary>
+        public static string? NavNews(string name, int circle, int oldRecord, int newRecord, bool circleOpened)
+        {
+            if (circleOpened) return $"{name} has opened Circle {circle + 1} of Nav.";
+            int before = oldRecord / NavRules.WardenEvery, after = newRecord / NavRules.WardenEvery;
+            if (after > before) return $"{name} has beaten Veles at depth {after * NavRules.WardenEvery} of Nav (Circle {circle}).";
+            return null;
         }
 
         /// <summary>The run as the screen shows it: the last 40 depths are enough to read why it stopped.</summary>
@@ -139,6 +168,8 @@ namespace FolkIdle.Server.Engine
             run.EndedBy,
             run.Seconds,
             run.RevivesUsed,
+            run.StoppedBy,
+            run.Hint,
             Rewards = rewards,
             Depths = run.Depths.Skip(Math.Max(0, run.Depths.Count - 40)).ToArray(),
         };
@@ -218,7 +249,7 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>The screen's whole state.</summary>
-        public static object View(NavProgress row, long nowEpoch, IReadOnlyList<object> roster, bool open = true, string lockedReason = "")
+        public static object View(NavProgress row, long nowEpoch, IReadOnlyList<object> roster, bool open = true, string lockedReason = "", object? board = null)
         {
             var w = NavRules.Unpack(row.Workshop);
             var r = NavRules.Unpack(row.Research);
@@ -269,6 +300,7 @@ namespace FolkIdle.Server.Engine
                 row.ResearchActive,
                 ResearchLeftSeconds = string.IsNullOrEmpty(row.ResearchActive) ? 0 : Math.Max(0, row.ResearchEndsEpoch - nowEpoch),
                 Roster = roster,
+                Board = board,
                 LastRun = lastRun,
             };
         }

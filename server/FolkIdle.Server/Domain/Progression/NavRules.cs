@@ -168,6 +168,40 @@ namespace FolkIdle.Server.Domain.Progression
             return Guardians[(d - 1) % Guardians.Length];
         }
 
+        /// <summary>
+        /// What to change when this guardian ended a run: one line the run
+        /// screen prints under "why it stopped", so a record that will not
+        /// move points at the build that would move it.
+        /// </summary>
+        public static string Hint(Ability ability, bool fell) => ability switch
+        {
+            Ability.Lifedrinker => fell ? "Upir heals as it hits you: more health or lifesteal outlasts it." : "Upir heals every blow: only fast damage outruns it.",
+            Ability.SecondHeart => "Strzyga rises once more: it needs 40% more damage than its depth.",
+            Ability.Nightmare => "Mora takes 40% of your health: health and armour (Barkskin, CON) win here.",
+            Ability.Elusive => "A quarter of your swings pass through the wisp: raw damage and attack speed.",
+            Ability.NoonHeat => fell ? "Lady Midday's blows keep growing: end the fight sooner or bring more health." : "Lady Midday's heat grows every blow: more damage ends it before it peaks.",
+            Ability.Mirror => "Navka costs you health per hit: fewer, harder hits and lifesteal pay it back.",
+            Ability.IronHide => "Psoglav's hide stops plain hits: crit chance gets through in full.",
+            Ability.Hex => "Kikimora's hex stops crits: plain damage beats her - crit gear adds nothing here.",
+            Ability.Drowning => "The Drowned One cuts your healing: armour and health instead of lifesteal.",
+            Ability.GraveChill => "The Black Hound slows your swings: attack speed (Quick roots) answers the chill.",
+            Ability.Warden => fell ? "Veles hits hard: Barkskin and Second breath carry you through his depth." : "Veles has almost twice the health: Rootstrength and Grave luck break the wall.",
+            _ => fell ? "More health or armour keeps you standing." : "More damage clears it inside the clock.",
+        };
+
+        // --- titles and news -----------------------------------------------------
+
+        /// <summary>Title for the first Veles a character beats (depth 25 of any Circle).</summary>
+        public const string VelesTitleSlug = "nav_veles";
+
+        /// <summary>Titles for opening a Circle: (circle opened, slug, name, colour).</summary>
+        public static readonly (int Circle, string Slug, string Name, string Color)[] CircleTitles =
+        {
+            (2, "nav_circle2", "Walker of Nav", "#5fb8a8"),
+            (3, "nav_circle3", "Root-King", "#7f9fe0"),
+            (5, "nav_circle5", "Lord of the Underworld", "#c084fc"),
+        };
+
         public static Guardian? GuardianByKey(string key)
             => key == Warden.Key ? Warden : Guardians.FirstOrDefault(g => g.Key == key);
 
