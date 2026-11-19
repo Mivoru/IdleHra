@@ -107,15 +107,16 @@ Fixed in #438: see section 0. Open, ranked by how often a player meets it:
    paragraph of rules. Recommendation: every screen opens with its ONE action
    and its one number; the rules fold into an "How it works" disclosure (World
    Boss already does this at the bottom - use the same pattern at the top).
-3. **Desktop wastes two thirds of the width on single-panel screens**
-   (Expeditions, Mail, the locked Dungeon): one 1/3-width card on a 1366 px
-   page. Give them the two-column grid the Bloodline and Market screens use.
-4. **Quiet text is too quiet on dark at 1366 px.** `dim tiny` (about 11 px,
-   brown-grey on dark brown) carries real information - monster XP, chest
-   odds, codex progress. Raise the floor to 12 px and the contrast to 4.5:1.
-5. **Monster art comes from the server, so a dropped connection shows broken
+3. **Desktop single-panel screens are deliberately narrow** (Expeditions 44rem,
+   Mail 46rem - a readable line length), so most of a 1366 px page is the
+   background painting. Not a defect; a second column (what the trip brings
+   back, the chest odds) would use the space if a screen ever needs it.
+4. *Checked and fine:* quiet text (`.dim`) measures 5.1-6.0:1 against the
+   panels in both schemes, above the 4.5:1 floor - it only looked faint in
+   downscaled contact sheets.
+5. **Monster art comes from the server, so a dropped connection showed broken
    image icons** across the Combat list (seen while the server restarted).
-   Hide an image that fails to load and keep the card.
+   Fixed: MonsterPortrait and ItemIcon fall back to the initials.
 6. **A locked screen is an empty page.** The Dungeon before Shadow Lynx is one
    card on a blurred background. Show what is behind the lock (the three gates,
    their rewards) - a locked screen is an advert for the goal.
@@ -171,7 +172,7 @@ the canon and gives the art a new palette (cold blue-green, roots, bone).
 ### 4.2 Souls and the Nav Workshop (always a next purchase)
 
 - Every depth pays **Souls**: `ceil(1 + depth^1.3 / 4)` per depth cleared
-  (depth 15: 7, depth 38: 29). A run to depth 38 pays about 540, to depth 15 about 80.
+  (depth 15: 10, depth 38: 30). A run to depth 38 pays about 540, to depth 15 about 80.
 - Souls buy **Workshop upgrades with no top level**. Each costs
   `base x 1.12^level` and adds a flat amount, so cost grows geometrically and
   effect linearly - the exact shape that never runs out:
@@ -236,6 +237,22 @@ screen, exercise checks. Medium-large; about the size of Expeditions.
    `BossAscensionRegistry`, but the Descent does the same job better.
 3. **Make the Codex visible as a second number** on Home ("Codex x17.5") - it
    is most of every player's damage and no screen says so.
+
+## 5b. Built behind a flag (#440)
+
+The Descent into Nav exists as code, OFF in production (`FOLKIDLE_NAV=on`
+opens it; `run-dev.ps1` sets it locally). Calibrated on the local restore of
+the 2026-11-18 backup with the server's own numbers, Workshop at zero:
+
+| Account | ChampionPower DPS | Depth reached (5 runs) |
+|---|---|---|
+| Mivoru | 1.43M | 40, 37, 40, 36, 40 |
+| (pro)boss | 159k | 15, 15, 11, 15, 15 |
+| Tomda | 139k | 13, 11, 13, 13, 13 |
+
+Souls per run: Mivoru ~600, (pro)boss ~83, Tomda ~64. Thirteen Rootstrength
+levels (+39% damage, 300 Souls - one evening for Tomda) took Tomda from 13 to
+17. The spread holds after upgrades because Workshop costs grow geometrically.
 
 ## 6. Questions for the owner
 
