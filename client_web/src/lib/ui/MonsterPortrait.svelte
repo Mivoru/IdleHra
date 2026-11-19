@@ -27,6 +27,12 @@
 
   const url = $derived(src ?? monsterIcon(monsterId));
 
+  // Modul: THE ART COMES FROM THE GAME SERVER, so a dropped connection (a
+  // restart, a deploy) drew the browser's broken-image icon in every card of
+  // the Combat list (screenshot audit, 2026-11-19). A picture that fails to
+  // load falls back to the initials; a new url (another monster) tries again.
+  let failedUrl = $state<string | null>(null);
+
   // The last monster of each five-strong region group.
   const isBoss = $derived(
     monsterId >= FIRST_CANONICAL_MONSTER_ID &&
@@ -41,8 +47,8 @@
   class:unknown
   title={isBoss ? `${name} (boss)` : name}
 >
-  {#if url}
-    <img src={url} alt="" loading="lazy" decoding="async" />
+  {#if url && failedUrl !== url}
+    <img src={url} alt="" loading="lazy" decoding="async" onerror={() => (failedUrl = url)} />
   {:else}
     <span class="fallback" aria-hidden="true">{initialsFor(name)}</span>
   {/if}

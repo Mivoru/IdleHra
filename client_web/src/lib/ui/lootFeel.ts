@@ -22,7 +22,7 @@ export const REVEAL_VISIBLE_MS = 1500;
 
 export type LootClip = 'lootRare' | 'lootLegendary' | 'lootRelic';
 
-/** Relic is tier 9 - the same floor the server's News announcement uses. */
+/** Relic is tier 9 - the floor of the Relic loot sound (News starts at Ancient, tier 10, since 2026-11-19). */
 export const RELIC_TIER = 9;
 
 /** The loot clip for a quality tier, or null below Rare. */

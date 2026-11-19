@@ -2039,8 +2039,8 @@ namespace FolkIdle.Server.Engine
             // Epic-and-above results since it shipped and drops - the far more
             // common way a player meets a rare item - said nothing at all.
             //
-            // Relic and above (owner, 2026-10-31; Mythic was the floor from
-            // 2026-10-02 until it flooded News), so it stays rare enough to
+            // Ancient and above (owner, 2026-11-19; Relic from 2026-10-31,
+            // Mythic from 2026-10-02 until each flooded News), so it stays rare enough to
             // mean something. Enqueued
             // rather than sent: the queue is bounded and drained by the chat
             // dispatch worker, so an unlucky flood drops announcements instead
@@ -2079,7 +2079,7 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
-        /// Relic (tier 9 of 14) and above. Named after the tier rather than a
+        /// Ancient (tier 10 of 14) and above. Named after the tier rather than a
         /// bare number so the threshold reads as the decision it is.
         /// </summary>
         /// <remarks>
@@ -2087,8 +2087,12 @@ namespace FolkIdle.Server.Engine
         /// since 2026-10-02, and with the loot chests and the Ascension chests
         /// paying Mythic pieces it filled the News channel; the owner asked for
         /// Mythic to be skipped and only the tiers above it written.
+        ///
+        /// Modul: AND RELIC LEFT IT TOO (owner, 2026-11-19): "only Ancient and up
+        /// in News, no more Relic". Endgame accounts now drop Relic pieces
+        /// routinely, so the channel was a Relic list again.
         /// </remarks>
-        public const int AnnounceableRarityTier = RarityTier.Relic;
+        public const int AnnounceableRarityTier = RarityTier.Ancient;
 
         // Modul: Loot Event Feed. Enqueue only - the actual socket write is
         // NetworkBroadcastSystem's job (it owns the connections; this engine
