@@ -23,9 +23,9 @@ namespace FolkIdle.Server.Domain.Progression
     /// INSIDE Nav and nowhere else, so building the mode does not re-open the
     /// balance of regions 1-5, the dungeon or the world boss.
     ///
-    /// Modul: OFF UNLESS FOLKIDLE_NAV=on. Souls and the gold research are
-    /// economy decisions the owner has not taken yet; production stays closed
-    /// until they are.
+    /// Modul: OFF UNLESS FOLKIDLE_NAV=on. The owner approved Souls and the gold
+    /// research on 2026-11-19 and production runs with the flag on (ops/oracle
+    /// .env); the flag stays so the mode can be closed again without a deploy.
     /// </remarks>
     public static class NavRules
     {
