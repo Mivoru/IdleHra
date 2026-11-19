@@ -91,6 +91,7 @@ namespace FolkIdle.Server.Domain.Progression
             // The Descent into Nav (NavEngine.DescendAsync, 2026-11-19).
             list.Add(new TitleDefinition(NavRules.VelesTitleSlug, "Veles' Guest", 0, "#d4a64a"));
             foreach (var t in NavRules.CircleTitles) list.Add(new TitleDefinition(t.Slug, t.Name, 0, t.Color));
+            list.Add(new TitleDefinition(NavRules.WeeklyTitleSlug, "Deepest of the Week", 0, "#9ad0ff"));
 
             // The three dungeons: the first clear of stage 15 (DungeonEngine.PayAsync).
             foreach (var kind in Combat.DungeonBoss.All)

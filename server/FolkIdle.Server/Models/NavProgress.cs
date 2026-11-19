@@ -34,5 +34,21 @@ namespace FolkIdle.Server.Models
         public int RunsTotal { get; set; }
         /// <summary>The last run as the screen shows it (JSON), so a reload still shows it.</summary>
         public string LastRunJson { get; set; } = string.Empty;
+
+        /// <summary>One bit per guardian (NavRules.GuardianBit) that has ended one of this account's runs - it unlocks that guardian's bane.</summary>
+        public int GuardiansMet { get; set; }
+
+        /// <summary>The week (NavRules.WeekOf) the Week* columns describe, and the deepest Circle and depth reached in it.</summary>
+        public int WeekId { get; set; }
+        public int WeekCircle { get; set; }
+        public int WeekDepth { get; set; }
+
+        /// <summary>The week before WeekId, kept when the week rolls so the weekly board can still be paid out.</summary>
+        public int PrevWeekId { get; set; }
+        public int PrevWeekCircle { get; set; }
+        public int PrevWeekDepth { get; set; }
+
+        /// <summary>The last week whose board reward this account has been settled for (paid or not placed).</summary>
+        public int WeekRewardSettledId { get; set; }
     }
 }

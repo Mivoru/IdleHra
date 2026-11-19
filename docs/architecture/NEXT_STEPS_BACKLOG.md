@@ -19,6 +19,37 @@ do next.
 
 ---
 
+# 2026-11-19 afternoon - Nav second pass: spirits, banes, the week, outward research
+
+**Read `docs/design/NAV_DEPTH_PASS_2026_11_19.md`.** Owner: fix every
+weakness of the first Nav, build the spirits after all, and decide - with
+measurements - whether Nav should reach combat XP / gold / drops.
+
+- **Spirits of Nav:** best 3 (6 with Ancestors' call) adults outside the
+  slots; aptitude points above 20 add damage/health/speed/Souls.
+  `NavEngine.LoadBenchAsync` (SlotIndex outside 0-2, AgePhase >= 1, not in
+  escrow).
+- **Banes:** ten Workshop entries with `Guardian`, locked until that guardian
+  stops a run (`nav_progress.GuardiansMet` bit). 150 Souls base, 15 levels,
+  -4%/level, 75% clamp after Root-craft.
+- **Weekly omen** (one guardian x1.5 rule, x2 Souls) and **weekly board**
+  (`Week*`/`PrevWeek*` columns, paid on the next GET by
+  `NavEngine.SettleWeekAsync`: Ancient/Gold/Silver chest if 2+ descended,
+  title "Deepest of the Week").
+- **Research: nine lines.** Outward ones (Veles' bounty gold, Memory of the
+  dead XP, Mokosh's thread luck) open with Circles 2/3, 10 levels per Circle;
+  read by the tick from `NavBlessingsCache` (player id -> levels, loaded at
+  start-up, like `GuildBonusesCache`). Gold is a factor in
+  `CombatGoldReward.FactorsFor` (`Nav`), XP in `LiveKillXpMultiplierPct`,
+  luck in `LiveCombatStats`.
+- **Frames of Nav** (4, bound, Souls, `CosmeticSource.Nav`), art in
+  `client/Assets/Images/SpritesWeb/Frames/frame_nav_*.webp` (Gemini
+  `pframe_nav_*`, keyed and normalised to the Wardrobe frames' hole).
+- Migration `NavDepthPass` (8 additive int columns on `nav_progress`).
+- Measured: 14 simulated days per account on the restore (doc above).
+
+---
+
 # 2026-11-19 night - Design audit, the int damage ceiling, the Descent into Nav
 
 **Read `docs/design/AUDIT_AND_ENDGAME_2026_11_19.md`.** Owner brief: fix the
@@ -56,10 +87,9 @@ progression, propose an endless endgame (The Tower-like).
     Mivoru 40 / (pro)boss 15 / Tomda 13; with guardians Mivoru 35, (pro)boss
     10-11, Tomda 9-16 - mostly Malakor's armour on every depth, see the
     Modul note above `NavRules.WardenEvery`.
-  - **Not done, owner said not now:** spirits of Nav (retired ancestors as a
-    Nav damage bonus). The owner suspects breeding only looks fast because
-    (pro)boss used an old hole with Tomda; measure breeding pace before
-    giving breeding a new goal.
+  - Spirits of Nav were first postponed (owner suspected breeding only looks
+    fast), then asked for the same afternoon - built in the second pass
+    above.
 - #444 the Chronicle level is a header chip on a phone (owner approved); a
   desktop keeps the floating bubble.
 

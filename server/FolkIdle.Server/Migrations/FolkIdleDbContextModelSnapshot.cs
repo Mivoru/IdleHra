@@ -1659,6 +1659,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("Charges")
                         .HasColumnType("integer");
 
+                    b.Property<int>("GuardiansMet")
+                        .HasColumnType("integer");
+
                     b.Property<int>("HighestCircle")
                         .HasColumnType("integer");
 
@@ -1668,6 +1671,15 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<long>("MilestoneMask")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("PrevWeekCircle")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PrevWeekDepth")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PrevWeekId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Research")
                         .IsRequired()
@@ -1690,6 +1702,18 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<long>("SoulsLifetime")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("WeekCircle")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WeekDepth")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WeekId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WeekRewardSettledId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Workshop")
                         .IsRequired()

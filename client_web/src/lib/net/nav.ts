@@ -45,6 +45,10 @@ export interface NavWorkshopUpgrade {
   Maxed: boolean;
   Cost: number;
   Total: number;
+  /** For a bane: the guardian key it answers. Empty for the plain upgrades. */
+  Guardian: string;
+  /** A bane whose guardian has not yet stopped one of your runs. */
+  Locked: boolean;
 }
 
 export interface NavResearchLine {
@@ -54,6 +58,32 @@ export interface NavResearchLine {
   Level: number;
   Gold: number;
   Seconds: number;
+  /** The top level with the Circles open now: 0 = no top, -1 = not open yet. */
+  Cap: number;
+  Open: boolean;
+  OpensAtCircle: number;
+  /** Counts in the rest of the game (combat gold, XP, loot luck), not only in Nav. */
+  Outward: boolean;
+  Maxed: boolean;
+}
+
+export interface NavSpirit {
+  Name: string;
+  Strength: number;
+  Skill: number;
+  Endurance: number;
+  Fortune: number;
+  Total: number;
+}
+
+export interface NavFrame {
+  Id: string;
+  Name: string;
+  Price: number;
+  Circle: number;
+  Depth: number;
+  Reached: boolean;
+  Owned: boolean;
 }
 
 export interface NavGuardian {
@@ -76,6 +106,13 @@ export interface NavBoard {
   MyRank: number;
 }
 
+export interface NavWeekBoard {
+  Top: { Rank: number; Name: string; Circle: number; Depth: number; Me: boolean }[];
+  EndsInSeconds: number;
+  /** The top three are paid only when at least this many descended that week. */
+  MinRunners: number;
+}
+
 export interface NavState {
   /** False until Malakor falls; LockedReason says so. */
   Open: boolean;
@@ -86,6 +123,8 @@ export interface NavState {
   SoulsLifetime: number;
   Charges: number;
   ChargeCap: number;
+  /** Seconds one charge takes to come back (Swift return shortens it). */
+  ChargeSeconds: number;
   NextChargeInSeconds: number;
   RunsTotal: number;
   SecondsPerGuardian: number;
@@ -111,6 +150,26 @@ export interface NavState {
   Roster: { Slot: number; Dps: number; MaxHp: number; Worn: number; ExpectedDepth: number; ExpectedCircle: number }[];
   Board: NavBoard | null;
   LastRun: NavRun | null;
+  /** What the outward research adds everywhere, percent. */
+  Blessings: { GoldPct: number; XpPct: number; LuckPct: number };
+  Spirits: {
+    Count: number;
+    SpiritFloor: number;
+    Walking: NavSpirit[];
+    BenchAdults: number;
+    DamagePct: number;
+    HealthPct: number;
+    SpeedPct: number;
+    SoulsPct: number;
+  };
+  /** The week's restless guardian: its rule AbilityPct% as strong, its depths SoulsFactor x Souls. */
+  Omen: { Key: string; Name: string; AbilityPct: number; SoulsFactor: number; EndsInSeconds: number };
+  /** This week's best. */
+  Week: { Circle: number; Depth: number };
+  WeekBoard: NavWeekBoard | null;
+  Frames: NavFrame[];
+  /** Lines to show once: last week's board reward. */
+  Notices: string[];
 }
 
 export function fetchNav(): Promise<NavState> {
@@ -138,4 +197,8 @@ export function navBuy(key: string, levels: number): Promise<{ Result: string; L
 
 export function navResearch(key: string): Promise<{ Result: string; Gold: number } | null> {
   return authedPost('/api/v1/nav/research', { Key: key });
+}
+
+export function navBuyFrame(id: string): Promise<{ Result: string } | null> {
+  return authedPost('/api/v1/nav/frame', { Id: id });
 }

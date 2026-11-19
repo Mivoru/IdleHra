@@ -76,6 +76,12 @@ export const FRAME_DRAWINGS: Readonly<Record<string, FrameDrawing>> = {
   frame_thread_golden: { style: 'crown', color: '#d4a017', accent: '#fff1a8', glow: true, art: 'Frames/frame_thread_golden.webp' },
   frame_thread_mokosh: { style: 'crown', color: '#b9c3d6', accent: '#ffffff', glow: true, art: 'Frames/frame_thread_mokosh.webp' },
 
+  // The Nav frames (2026-11-19), bought with Souls. Ids are NavRules.Frames on the server.
+  frame_nav_roots: { style: 'rope', color: '#3f6f62', accent: '#a8e0cf', art: 'Frames/frame_nav_roots.webp' },
+  frame_nav_bone: { style: 'studs', color: '#d9d2c0', accent: '#7fe0d0', art: 'Frames/frame_nav_bone.webp' },
+  frame_nav_veles: { style: 'crown', color: '#5a4630', accent: '#e0b050', glow: true, art: 'Frames/frame_nav_veles.webp' },
+  frame_nav_crown: { style: 'crown', color: '#1f2a3a', accent: '#8fd8ff', glow: true, art: 'Frames/frame_nav_crown.webp' },
+
   // The Chronicle seasons' level-40 frames (2026-11-15) - bound. Ids are
   // ChronicleRegistry's FrameId per season; tests/cosmetics.test.ts reads them.
   // Veles: bull horns of gold over a ring of marsh bronze.

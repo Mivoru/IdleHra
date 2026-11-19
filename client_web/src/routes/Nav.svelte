@@ -10,7 +10,8 @@
   // record); the rules sit in a disclosure at the foot - the screenshot audit
   // of the same day found screens that open on a paragraph of rules.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { navKeys, fetchNav, navDescend, navBuy, navResearch, guardianArt, type NavRun, type NavGuardian, type NavState } from '../lib/net/nav';
+  import { navKeys, fetchNav, navDescend, navBuy, navResearch, navBuyFrame, guardianArt, type NavRun, type NavGuardian, type NavState } from '../lib/net/nav';
+  import CosmeticFrame from '../lib/ui/CosmeticFrame.svelte';
   import { formatNumber } from '../lib/ui/format';
   import { formatDuration } from '../lib/net/commands';
   import { pushLocalNotice } from '../lib/stores/game';
@@ -27,6 +28,36 @@
   const data = $derived(nav.data ?? null);
   // The menu dot follows what this screen shows (navCharges.ts).
   $effect(() => noteNavView(nav.data));
+
+  // Last week's board reward arrives once, on the read that paid it.
+  const shownNotices = new Set<string>();
+  $effect(() => {
+    for (const line of nav.data?.Notices ?? []) {
+      if (shownNotices.has(line)) continue;
+      shownNotices.add(line);
+      pushLocalNotice(line, 'info');
+      play('navRecord');
+    }
+  });
+
+  let boardTab = $state<'week' | 'all'>('week');
+  const plainUpgrades = $derived(data ? data.Workshop.filter((u) => !u.Guardian) : []);
+  const banes = $derived(data ? data.Workshop.filter((u) => u.Guardian && !u.Locked) : []);
+  const lockedBanes = $derived(data ? data.Workshop.filter((u) => u.Guardian && u.Locked) : []);
+  const blessed = $derived(data ? data.Blessings.GoldPct + data.Blessings.XpPct + data.Blessings.LuckPct > 0 : false);
+
+  function baneOf(state: NavState, guardianKey: string) {
+    return state.Workshop.find((u) => u.Guardian === guardianKey);
+  }
+
+  // "The Vampire" opens a sentence; in the middle of one it is "the Vampire".
+  function inSentence(subject: string): string {
+    return subject.startsWith('The ') ? `the ${subject.slice(4)}` : subject;
+  }
+
+  function minutes(seconds: number): string {
+    return `${Math.round(seconds / 60)} minutes`;
+  }
 
   // Who stands at a depth: the server sends the order, this only indexes it
   // (NavRules.GuardianFor - the warden every WardenEvery-th depth, else the
@@ -130,7 +161,7 @@
         startReplay(r.Run);
       } else {
         pushLocalNotice(
-          r?.Result === 'NoCharges' ? 'No descents left - one comes back every 20 minutes.'
+          r?.Result === 'NoCharges' ? `No descents left - one comes back every ${minutes(data?.ChargeSeconds ?? 1200)}.`
             : r?.Result === 'Offline' ? 'Your character must be in the game to descend.'
               : r?.Result === 'NoCharacter' ? 'Nobody stands in that slot.'
                 : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.'
@@ -149,7 +180,13 @@
     busy = true;
     try {
       const r = await navBuy(key, levels);
-      if (r?.Result !== 'Bought') pushLocalNotice(r?.Result === 'Maxed' ? 'That upgrade is at its top.' : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.' : 'Not enough Souls.', 'error');
+      if (r?.Result !== 'Bought')
+        pushLocalNotice(
+          r?.Result === 'Maxed' ? 'That upgrade is at its top.'
+            : r?.Result === 'Locked' ? (data?.Open ? 'That guardian has not stopped you yet.' : 'Nav opens when you beat Malakor.')
+              : 'Not enough Souls.',
+          'error',
+        );
     } finally {
       busy = false;
       await refresh();
@@ -162,11 +199,36 @@
     try {
       const r = await navResearch(key);
       if (r?.Result === 'Started') pushLocalNotice('The Volkhv begins the research.', 'info');
-      else pushLocalNotice(r?.Result === 'Busy' ? 'The Volkhv is already researching.' : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.' : 'Not enough gold.', 'error');
+      else
+        pushLocalNotice(
+          r?.Result === 'Busy' ? 'The Volkhv is already researching.'
+            : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.'
+              : r?.Result === 'NotOpen' ? 'Open a deeper Circle first.'
+                : r?.Result === 'Maxed' ? 'That line is at its top for now - a deeper Circle raises it.'
+                  : 'Not enough gold.',
+          'error',
+        );
     } finally {
       busy = false;
       await refresh();
     }
+  }
+
+  async function buyFrame(id: string) {
+    if (busy) return;
+    busy = true;
+    try {
+      const r = await navBuyFrame(id);
+      if (r?.Result === 'Bought') pushLocalNotice('The frame is yours - wear it from the Wardrobe.', 'info');
+      else pushLocalNotice(r?.Result === 'Owned' ? 'You already own that frame.' : r?.Result === 'NotReached' ? 'Go deeper first.' : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.' : 'Not enough Souls.', 'error');
+    } finally {
+      busy = false;
+      await refresh();
+    }
+  }
+
+  function frameNeed(f: { Circle: number; Depth: number }): string {
+    return f.Circle > 1 ? `depth ${f.Depth} of Circle ${f.Circle}` : `depth ${f.Depth}`;
   }
 
   function endedLine(state: NavState, run: NavRun): string {
@@ -244,6 +306,17 @@
         {data.Charges} of {data.ChargeCap} descents
         {#if data.Charges < data.ChargeCap} - next in {formatDuration(data.NextChargeInSeconds)}{/if}
       </p>
+      {#if data.Omen}
+        {@const og = guardianByKey(data, data.Omen.Key)}
+        <div class="omen" data-testid="nav-omen">
+          <MonsterPortrait monsterId={0} name={data.Omen.Name} src={guardianArt(data.Omen.Key)} size="sm" />
+          <p class="small">
+            <strong>This week {inSentence(og?.Subject ?? data.Omen.Name)} is restless:</strong>
+            <span class="ability">{og?.AbilityName}</span> {data.Omen.AbilityPct}% as strong, its depths pay {data.Omen.SoulsFactor}x Souls.
+            <span class="dim tiny">Changes in {formatDuration(data.Omen.EndsInSeconds)}.</span>
+          </p>
+        </div>
+      {/if}
     </div>
 
     {#if replaying && replayDepth && lastRun}
@@ -275,9 +348,20 @@
         <h3>Last descent: depth {shownRun.DeepestCleared} <span class="dim small">+{formatNumber(shownRun.Souls)} Souls</span></h3>
         <p class="dim small">{endedLine(data, shownRun)} {shownRun.RevivesUsed > 0 ? `Second breath used ${shownRun.RevivesUsed}x.` : ''}</p>
         {#if stopper && shownRun.Hint}
+          {@const bane = baneOf(data, stopper.Key)}
           <div class="why" data-testid="nav-hint">
             <MonsterPortrait monsterId={0} name={stopper.Name} src={guardianArt(stopper.Key)} size="md" />
-            <p class="small"><span class="ability">{stopper.AbilityName}</span> {shownRun.Hint}</p>
+            <div class="why-text">
+              <p class="small"><span class="ability">{stopper.AbilityName}</span> {shownRun.Hint}</p>
+              {#if bane && !bane.Locked}
+                <div class="why-buy">
+                  <span class="tiny">Bane: <strong>{bane.Name}</strong> <span class="dim">lv {bane.Level} / {bane.MaxLevel} - its rule {Math.round(bane.Total)}% weaker</span></span>
+                  <button disabled={busy || !data.Open || bane.Maxed || data.Souls < bane.Cost} onclick={() => buy(bane.Key, 1)} data-testid="nav-hint-bane">
+                    {bane.Maxed ? 'Top' : `+1 - ${formatNumber(bane.Cost)}`}
+                  </button>
+                </div>
+              {/if}
+            </div>
           </div>
         {/if}
         <ol class="depths">
@@ -300,6 +384,32 @@
       <span class="dim small">Souls to spend</span>
     </div>
 
+    <section class="spirits" data-testid="nav-spirits">
+      <h3>Spirits of Nav</h3>
+      <p class="dim small">
+        Your {data.Spirits.Count} best adults outside the three slots walk beside every descent. Each aptitude point above {data.Spirits.SpiritFloor} adds: Strength damage, Endurance health, Skill speed, Fortune Souls.
+      </p>
+      {#if data.Spirits.Walking.length === 0}
+        <p class="small">No adults rest on your bench yet - breed, and let the grown children rest.</p>
+      {:else}
+        <ul class="spirit-list">
+          {#each data.Spirits.Walking as sp, i (i)}
+            <li>
+              <span class="who small">{sp.Name}</span>
+              <span class="apt tiny" title="Strength / Skill / Endurance / Fortune">{sp.Strength} / {sp.Skill} / {sp.Endurance} / {sp.Fortune}</span>
+            </li>
+          {/each}
+        </ul>
+        {#if data.Spirits.DamagePct + data.Spirits.HealthPct + data.Spirits.SpeedPct + data.Spirits.SoulsPct === 0}
+          <p class="dim tiny" data-testid="nav-spirit-sum">None of them is above {data.Spirits.SpiritFloor} in anything yet - stronger children make stronger spirits.</p>
+        {:else}
+          <p class="small spirit-sum" data-testid="nav-spirit-sum">
+            +{data.Spirits.DamagePct}% damage, +{data.Spirits.HealthPct}% health, +{data.Spirits.SpeedPct}% speed, +{data.Spirits.SoulsPct}% Souls
+          </p>
+        {/if}
+      {/if}
+    </section>
+
     <section class="ahead" data-testid="nav-ahead">
       <h3>Below your record</h3>
       <ul class="guardians">
@@ -317,9 +427,33 @@
       </ul>
     </section>
 
-    {#if data.Board && data.Board.Top.length > 0}
-      <section class="board" data-testid="nav-board">
+    <section class="board" data-testid="nav-board">
+      <div class="board-head">
         <h3>Deepest in Nav</h3>
+        <div class="tabs" role="tablist">
+          <button role="tab" class="chip" class:on={boardTab === 'week'} aria-selected={boardTab === 'week'} onclick={() => (boardTab = 'week')} data-testid="nav-board-week">This week</button>
+          <button role="tab" class="chip" class:on={boardTab === 'all'} aria-selected={boardTab === 'all'} onclick={() => (boardTab = 'all')} data-testid="nav-board-all">All time</button>
+        </div>
+      </div>
+      {#if boardTab === 'week'}
+        {#if data.WeekBoard && data.WeekBoard.Top.length > 0}
+          <ol class="board-list" data-testid="nav-week-list">
+            {#each data.WeekBoard.Top as b (b.Rank)}
+              <li class:me={b.Me}>
+                <span class="rank">{b.Rank}</span>
+                <span class="who">{b.Name}</span>
+                <span class="dim tiny">Circle {b.Circle}</span>
+                <strong class="small">depth {b.Depth}</strong>
+              </li>
+            {/each}
+          </ol>
+        {:else}
+          <p class="small">Nobody has descended this week yet.</p>
+        {/if}
+        <p class="dim tiny">
+          On Monday the top three win a chest - Ancient, Gold, Silver - if at least {data.WeekBoard?.MinRunners ?? 2} descended. Ends in {formatDuration(data.WeekBoard?.EndsInSeconds ?? 0)}.
+        </p>
+      {:else if data.Board && data.Board.Top.length > 0}
         <ol class="board-list">
           {#each data.Board.Top as b (b.Rank)}
             <li class:me={b.Me}>
@@ -331,8 +465,29 @@
           {/each}
         </ol>
         {#if data.Board.MyRank > 10}<p class="dim tiny">You are #{data.Board.MyRank}.</p>{/if}
-      </section>
-    {/if}
+      {:else}
+        <p class="small">No records yet.</p>
+      {/if}
+    </section>
+    <section class="frames" data-testid="nav-frames">
+      <h3>Frames of Nav</h3>
+      <p class="dim small">Souls for something to wear - each frame shows where you have been.</p>
+      <ul class="frame-list">
+        {#each data.Frames as f (f.Id)}
+          <li class:owned={f.Owned}>
+            <span class="frame-preview"><CosmeticFrame frameId={f.Id} /></span>
+            <span class="small f-name">{f.Name}</span>
+            {#if f.Owned}
+              <span class="dim tiny">Owned</span>
+            {:else if !f.Reached}
+              <span class="dim tiny">Reach {frameNeed(f)}</span>
+            {:else}
+              <button disabled={busy || !data.Open || data.Souls < f.Price} onclick={() => buyFrame(f.Id)} data-testid={`nav-frame-${f.Id}`}>{formatNumber(f.Price)} Souls</button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
     </div>
 
     <div class="col">
@@ -340,7 +495,7 @@
       <h3>Nav Workshop</h3>
       <p class="dim small">Souls buy strength that only counts down here - prices climb 12% a level and never stop.</p>
       <ul class="upgrades">
-        {#each data.Workshop as u (u.Key)}
+        {#each plainUpgrades as u (u.Key)}
           <li data-testid={`nav-up-${u.Key}`}>
             <div class="u-text">
               <strong>{u.Name}</strong> <span class="dim tiny">lv {u.Level}{u.MaxLevel ? ` / ${u.MaxLevel}` : ''}</span>
@@ -355,11 +510,51 @@
           </li>
         {/each}
       </ul>
+
+      <h4 class="sub">Banes</h4>
+      <p class="dim small">Each wears down one guardian's rule, 4% a level. A bane opens when its guardian first stops you.</p>
+      <ul class="upgrades banes" data-testid="nav-banes">
+        {#each banes as u (u.Key)}
+          {@const g = guardianByKey(data, u.Guardian)}
+          <li data-testid={`nav-up-${u.Key}`}>
+            <MonsterPortrait monsterId={0} name={g?.Name ?? ''} src={guardianArt(u.Guardian)} size="sm" />
+            <div class="u-text">
+              <strong>{u.Name}</strong> <span class="dim tiny">lv {u.Level} / {u.MaxLevel}</span>
+              <span class="dim tiny">{g?.AbilityName} {Math.round(u.Total)}% weaker</span>
+            </div>
+            <div class="u-buy">
+              <button disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)}>
+                {u.Maxed ? 'Top' : `+1 - ${formatNumber(u.Cost)}`}
+              </button>
+              <button class="ghost" disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 100)} title="As many levels as your Souls buy">Max</button>
+            </div>
+          </li>
+        {/each}
+      </ul>
+      {#if lockedBanes.length > 0}
+        <details class="locked-banes" data-testid="nav-banes-locked">
+          <summary class="small">{lockedBanes.length} banes still locked</summary>
+          <ul class="locked-list">
+            {#each lockedBanes as u (u.Key)}
+              {@const g = guardianByKey(data, u.Guardian)}
+              <li data-testid={`nav-up-${u.Key}`}>
+                <MonsterPortrait monsterId={0} name={g?.Name ?? ''} src={guardianArt(u.Guardian)} size="sm" />
+                <span class="tiny"><strong>{u.Name}</strong> <span class="dim">- opens when {inSentence(g?.Subject ?? 'its guardian')} stops you.</span></span>
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
     </section>
 
     <section class="research">
       <h3>The Volkhv's research</h3>
-      <p class="dim small">Gold and time for lasting knowledge of the deep. One line at a time.</p>
+      <p class="dim small">Gold and time for lasting knowledge of the deep. One line at a time. The lines marked "everywhere" count in the whole game, and reach higher with every Circle.</p>
+      {#if blessed}
+        <p class="small blessings" data-testid="nav-blessings">
+          Nav gives everywhere: +{data.Blessings.GoldPct}% combat gold, +{data.Blessings.XpPct}% combat XP, +{data.Blessings.LuckPct}% loot luck
+        </p>
+      {/if}
       {#if data.ResearchActive}
         <p class="small" data-testid="nav-research-active">
           Researching <strong>{data.Research.find((l) => l.Key === data.ResearchActive)?.Name}</strong> - {formatDuration(data.ResearchLeftSeconds)} left
@@ -367,20 +562,29 @@
       {/if}
       <ul class="upgrades">
         {#each data.Research as l (l.Key)}
-          <li>
+          <li class:closed={!l.Open}>
             <div class="u-text">
-              <strong>{l.Name}</strong> <span class="dim tiny">lv {l.Level}</span>
-              <span class="dim tiny">{l.Effect} - {formatDuration(l.Seconds)}</span>
+              <strong>{l.Name}</strong>
+              {#if l.Outward}<span class="everywhere tiny">everywhere</span>{/if}
+              <span class="dim tiny">lv {l.Level}{l.Cap > 0 ? ` / ${l.Cap}` : ''}</span>
+              <span class="dim tiny">{l.Effect}{l.Open && !l.Maxed ? ` - ${formatDuration(l.Seconds)}` : ''}</span>
             </div>
             <div class="u-buy">
-              <button disabled={busy || !data.Open || data.ResearchActive !== ''} onclick={() => research(l.Key)} data-testid={`nav-research-${l.Key}`}>
-                <Money amount={l.Gold} />
-              </button>
+              {#if !l.Open}
+                <span class="dim tiny">Opens with Circle {l.OpensAtCircle}</span>
+              {:else if l.Maxed}
+                <span class="dim tiny">Top for now</span>
+              {:else}
+                <button disabled={busy || !data.Open || data.ResearchActive !== ''} onclick={() => research(l.Key)} data-testid={`nav-research-${l.Key}`}>
+                  <Money amount={l.Gold} />
+                </button>
+              {/if}
             </div>
           </li>
         {/each}
       </ul>
     </section>
+
     </div>
 
     <details class="rules bestiary" data-testid="nav-bestiary">
@@ -403,12 +607,16 @@
       <ul class="small">
         <li>Each depth has one guardian. Kill it within {data.SecondsPerGuardian} seconds or the descent ends; fall and it ends too.</li>
         <li>Guardians grow 10% stronger every depth, so every tenth more damage is about one depth more - forever.</li>
-        <li>Every cleared depth pays Souls; deeper pays more. A run costs one descent, and one comes back every 20 minutes, offline too.</li>
+        <li>Every cleared depth pays Souls; deeper pays more. A run costs one descent, and one comes back every {minutes(data.ChargeSeconds)}, offline too.</li>
         <li>Depth {data.CircleOpensAt} opens the next Circle: five times stronger guardians, three times the Souls. Depths 10, 25 and 50 of each Circle pay a chest the first time.</li>
         <li>Ten servants of Nav stand in turn, each with its own ability - one build will not beat them all. Veles, the Lord of Nav, waits every {data.WardenEvery}th depth: more health, harder blows, triple Souls.</li>
         <li>The first Veles you beat earns the title "Veles' Guest"; opening Circles 2, 3 and 5 earns three more. News tells everyone when someone beats a Veles or opens a Circle.</li>
         <li>Some guardians are elite - Armoured (more health), Swift (attack faster), Brute (hit harder) or Frail (less health).</li>
-        <li>The Workshop and the research only count in Nav. Nothing here changes the rest of the game.</li>
+        <li>Each week one guardian is restless: its rule is half again as strong and its depths pay double Souls.</li>
+        <li>When a guardian first stops you, its bane opens in the Workshop - each level takes 4% off its rule.</li>
+        <li>Your best adults outside the three slots walk with you as spirits. Breed better ones, and they push deeper.</li>
+        <li>The Workshop counts only in Nav. Three research lines - Veles' bounty, Memory of the dead and Mokosh's thread - open with Circles 2 and 3 and count in the whole game.</li>
+        <li>"Deepest this week" starts over every Monday; the top three win a chest when at least two descended.</li>
       </ul>
     </details>
   {/if}
@@ -766,6 +974,187 @@
     min-height: 44px;
     display: flex;
     align-items: center;
+  }
+
+  .omen {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+  }
+
+  .omen p,
+  .why-text p {
+    margin: 0;
+  }
+
+  .why-text {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .why-buy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+  }
+
+  .why-buy button {
+    min-height: 44px;
+  }
+
+  .spirits h3,
+  .frames h3,
+  .ahead h3 {
+    margin: 0 0 0.25rem;
+  }
+
+  .spirit-list {
+    list-style: none;
+    margin: 0.3rem 0;
+    padding: 0;
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .spirit-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.2rem 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .apt {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .spirit-sum {
+    margin: 0.3rem 0 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .board-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .board-head h3 {
+    margin: 0;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .sub {
+    margin: 0.9rem 0 0.2rem;
+  }
+
+  .banes .u-text {
+    flex: 1 1 9rem;
+  }
+
+  .u-buy {
+    margin-left: auto;
+  }
+
+  .u-buy button {
+    white-space: nowrap;
+  }
+
+  .locked-banes summary {
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .locked-list {
+    list-style: none;
+    margin: 0.2rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .locked-list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.8;
+  }
+
+  .research li.closed .u-text strong {
+    opacity: 0.75;
+  }
+
+  .everywhere {
+    display: inline-block;
+    width: fit-content;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  .blessings {
+    margin: 0.2rem 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .frame-list {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .frame-list li {
+    display: grid;
+    justify-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.3rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+
+  .frame-list li.owned {
+    border-color: var(--accent);
+  }
+
+  .frame-list button {
+    min-height: 44px;
+  }
+
+  .frame-preview {
+    position: relative;
+    display: block;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    background: var(--bg-raised);
+  }
+
+  .f-name {
+    font-weight: 600;
   }
 
   @media (min-width: 60rem) {

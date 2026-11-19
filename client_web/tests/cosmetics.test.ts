@@ -87,7 +87,10 @@ describe('task 54 cosmetics mirrors', () => {
     // Plus the thread-only frames of the Wardrobe shop (2026-11-15).
     const threadFrames = [...read('Domain', 'Progression', 'WardrobeThreads.cs').matchAll(/"(frame_thread_[a-z0-9_]+)"/g)].map((m) => m[1]);
     expect(threadFrames).toHaveLength(4);
-    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument, ...chronicle, ...threadFrames].sort());
+    // Plus the Nav frames bought with Souls (2026-11-19).
+    const navFrames = [...read('Domain', 'Progression', 'NavRules.cs').matchAll(/"(frame_nav_[a-z0-9_]+)"/g)].map((m) => m[1]);
+    expect(navFrames).toHaveLength(4);
+    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument, ...chronicle, ...threadFrames, ...navFrames].sort());
   });
 
   it('has a portrait for every avatar', () => {

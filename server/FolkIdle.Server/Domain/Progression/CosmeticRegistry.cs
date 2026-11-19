@@ -35,6 +35,8 @@ namespace FolkIdle.Server.Domain.Progression
         Chronicle = 11,
         /// <summary>Bought with wardrobe threads (2026-11-15).</summary>
         Threads = 12,
+        /// <summary>Bought with Souls in Nav (2026-11-19).</summary>
+        Nav = 13,
     }
 
     /// <param name="Art">For an avatar, the monster whose portrait it is (the
@@ -156,6 +158,8 @@ namespace FolkIdle.Server.Domain.Progression
             list.AddRange(ChronicleRegistry.Cosmetics());
             // The thread-only frames (2026-11-15) - bound, bought in the Wardrobe shop.
             list.AddRange(WardrobeThreads.Cosmetics());
+            // The Nav frames (2026-11-19) - bound, bought with Souls.
+            list.AddRange(NavRules.FrameCosmetics());
             // Chernobog's milestone avatars (owner, 2026-10-13) - bound, Legendary.
             foreach (var avatar in Combat.WorldBossStrike.WorldBossRewards.Avatars)
             {

@@ -35,6 +35,24 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.99.0',
+    date: '2026-11-19',
+    headline: 'Nav goes deeper: spirits, banes, a weekly omen and rewards that reach the rest of the game.',
+    sections: [
+      {
+        title: 'Nav',
+        items: [
+          'Spirits of Nav: your best adults outside the three slots walk beside every descent. Each aptitude point above 20 adds damage (Strength), health (Endurance), speed (Skill) or Souls (Fortune) - breeding past 50 has a reason again.',
+          'Banes: when a guardian first stops you, its bane opens in the Workshop - Garlic wreath against the Vampire, Wormwood against the Pale Maiden and eight more. Each level takes 4% off that guardian’s rule, and the "why it stopped" box sells it.',
+          'Each week one guardian is restless: its rule is half again as strong, and its depths pay double Souls.',
+          'The Volkhv knows six new lines: more descents waiting, descents coming back sooner, more spirits - and from Circle 2 and 3 three that count everywhere: combat gold, combat XP and loot luck.',
+          '"Deepest this week" starts over every Monday; the top three win an Ancient, Gold or Silver chest, and the first win a title.',
+          'Four frames of Nav to buy with Souls - Roots of Nav, Bone Lantern, Veles’ Horns and the Crown of the Underworld - each behind a place in Nav.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.98.1',
     date: '2026-11-19',
     sections: [
