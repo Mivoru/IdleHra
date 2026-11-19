@@ -75,6 +75,9 @@
   // svelte-ignore state_referenced_locally
   let size = $state(batch);
   let wornIds = $state<string[]>([]);
+  // A batch can be read one by one (Next) or all at once (owner, 2026-11-19:
+  // "opening several chests wants checking" - five Nexts to see a haul).
+  let showAll = $state(false);
   const opened = $derived<OpenedCosmetic | null>(results[cursor] ?? null);
   let finalShakeDone = $state(false);
   const worn = $derived(opened !== null && wornIds.includes(opened.DefinitionId + ':' + cursor));
@@ -195,6 +198,7 @@
     finalShakeDone = false;
     wornIds = [];
     failed = '';
+    showAll = false;
   }
 
   function wear(): void {
@@ -311,6 +315,26 @@
         {/if}
         {#if size > 1}
           <span class="batch-count" data-testid="chest-batch-count">{cursor + 1} of {batchDone ? results.length : size}</span>
+          {#if batchDone && results.length > 1}
+            <button class="see-all" onclick={() => (showAll = !showAll)} data-testid="chest-see-all">{showAll ? 'Hide the haul' : `See all ${results.length}`}</button>
+          {/if}
+          {#if showAll}
+            <ul class="haul" data-testid="chest-haul">
+              {#each results as r, i (i)}
+                <li class={rarityClass(r.Rarity)} class:current={i === cursor}>
+                  <button onclick={() => (cursor = i)} aria-label={`${r.Name}, ${rarityNames[r.Rarity] ?? ''}`}>
+                    {#if r.Kind === COSMETIC_KIND.Avatar}
+                      <Avatar avatarId={r.DefinitionId} frameId={null} size="sm" />
+                    {:else}
+                      <Avatar avatarId={equippedAvatarId} frameId={r.DefinitionId} {raceId} {female} size="sm" />
+                    {/if}
+                    <span class="haul-name">{r.Name}</span>
+                    {#if r.Duplicate}<span class="haul-dupe">+{r.Threads ?? 0} threads</span>{/if}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         {/if}
         <div class="actions">
           {#if !opened.Duplicate}
@@ -646,6 +670,57 @@
   .kind {
     font-size: 0.8rem;
     color: rgb(243 236 224 / 0.75);
+  }
+
+  .see-all {
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    background: rgb(255 255 255 / 0.06);
+    color: #fff;
+    font-size: 0.8rem;
+  }
+
+  .haul {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+    gap: 6px;
+    width: 100%;
+    max-height: 32dvh;
+    overflow-y: auto;
+  }
+
+  .haul button {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    width: 100%;
+    min-height: 44px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    border: 1px solid var(--c);
+    background: color-mix(in srgb, var(--c) 14%, rgb(0 0 0 / 0.5));
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .haul li.current button {
+    box-shadow: 0 0 0 2px var(--c), 0 0 12px color-mix(in srgb, var(--c) 60%, transparent);
+  }
+
+  .haul-name {
+    font-size: 0.7rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .haul-dupe {
+    font-size: 0.65rem;
+    color: rgb(243 236 224 / 0.7);
   }
 
   .batch-count {

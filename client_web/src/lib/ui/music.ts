@@ -16,6 +16,7 @@ import { writable, get } from 'svelte/store';
 import { HTTP_BASE } from '../net/config';
 import { muted, pageActive } from './audio';
 import { readPref, writePref } from '../net/prefs';
+import { currentScreen } from '../stores/navigation';
 import { DEFAULT_MUSIC_VOLUME, nextInPlaylist, playlistFor, type MusicMode, type MusicTrack } from './musicPlaylist';
 
 export { DEFAULT_MUSIC_VOLUME, type MusicMode, type MusicTrack };
@@ -56,6 +57,38 @@ let element: HTMLAudioElement | null = null;
 let started = false;
 let manifest: Promise<void> | null = null;
 
+// Modul: A SCREEN CAN HAVE ITS OWN THEME (owner, 2026-11-19: Nav music). While
+// that screen is open its loop replaces the cycle; leaving resumes the cycle's
+// track where it was. The file sits in the music folder as screen_<key>.mp3,
+// which the server serves but leaves out of /audio/music, so it never joins
+// the everywhere cycle or the Settings list.
+const SCREEN_THEMES: Readonly<Record<string, MusicTrack>> = {
+  nav: { File: 'screen_nav.mp3', Title: 'Below the Roots (Nav)' },
+};
+let theme: MusicTrack | null = null;
+let resume: { track: MusicTrack; at: number } | null = null;
+let fadeRaf = 0;
+
+function themeFor(screen: string): MusicTrack | null {
+  return SCREEN_THEMES[screen] ?? null;
+}
+
+/** Eases the element's volume to `to` over `ms`, then runs `then`. */
+function fade(to: number, ms: number, then?: () => void): void {
+  if (!element) return;
+  cancelAnimationFrame(fadeRaf);
+  const el = element;
+  const from = el.volume;
+  const start = performance.now();
+  const step = (now: number) => {
+    const k = Math.min(1, (now - start) / ms);
+    el.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+    if (k < 1) fadeRaf = requestAnimationFrame(step);
+    else then?.();
+  };
+  fadeRaf = requestAnimationFrame(step);
+}
+
 function effectiveVolume(): number {
   return get(muted) ? 0 : get(musicVolume);
 }
@@ -86,8 +119,9 @@ function playTrack(track: MusicTrack | null): void {
   }
   element.src = `${HTTP_BASE}/audio/music/${encodeURIComponent(track.File)}`;
   element.volume = effectiveVolume();
-  // "One" repeats itself natively; the cycle advances on `ended`.
-  element.loop = get(musicMode) === 'one';
+  // "One" repeats itself natively; the cycle advances on `ended`. A screen
+  // theme always loops.
+  element.loop = theme !== null || get(musicMode) === 'one';
   void element.play().catch(() => {
     // Autoplay refused (no gesture yet): the next gesture calls startMusic.
     started = false;
@@ -113,8 +147,43 @@ export async function startMusic(): Promise<void> {
     started = false;
     return;
   }
-  playTrack(nextInPlaylist(currentPlaylist(), null));
+  theme = themeFor(get(currentScreen));
+  playTrack(theme ?? nextInPlaylist(currentPlaylist(), null));
 }
+
+// Entering a themed screen swaps to its loop; leaving puts the cycle back.
+currentScreen.subscribe((screen) => {
+  const next = themeFor(screen);
+  if (next?.File === theme?.File) return;
+  if (!element || !started) {
+    theme = next;
+    return;
+  }
+  const el = element;
+  fade(0, 350, () => {
+    if (next) {
+      if (!theme) {
+        const playing = get(nowPlaying);
+        resume = playing ? { track: playing, at: el.currentTime } : null;
+      }
+      theme = next;
+      playTrack(next);
+    } else {
+      theme = null;
+      const back = resume;
+      resume = null;
+      if (back && currentPlaylist().some((t) => t.File === back.track.File)) {
+        playTrack(back.track);
+        // Seeking before the new source's metadata is in is ignored.
+        el.addEventListener('loadedmetadata', () => (el.currentTime = back.at), { once: true });
+      } else {
+        playTrack(nextInPlaylist(currentPlaylist(), null));
+      }
+    }
+    el.volume = 0;
+    fade(effectiveVolume(), 900);
+  });
+});
 
 /** Signing out stops the music; the next session starts it again. */
 export function stopMusic(): void {
@@ -130,6 +199,9 @@ export function stopMusic(): void {
 export function playNow(file: string): void {
   const track = get(musicTracks).find((t) => t.File === file) ?? null;
   if (!track) return;
+  // A track picked by hand wins over the screen's theme until the next screen.
+  theme = null;
+  resume = null;
   started = true;
   if (!element) void startMusic().then(() => playTrack(track));
   else playTrack(track);
@@ -152,6 +224,7 @@ function reconcile(): void {
   if (!element || !started) return;
   const playlist = currentPlaylist();
   const current = get(nowPlaying)?.File ?? null;
+  if (theme) return; // the screen's loop keeps playing; the cycle resumes on leaving
   element.loop = get(musicMode) === 'one';
   if (!playlist.some((t) => t.File === current)) playTrack(playlist[0] ?? null);
 }
