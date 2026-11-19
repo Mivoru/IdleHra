@@ -244,6 +244,11 @@ namespace FolkIdle.Server.Engine
                 row.RunsTotal,
                 NavRules.SecondsPerGuardian,
                 NavRules.CircleOpensAt,
+                NavRules.WardenEvery,
+                // Who stands below, in order, so the screen can show the next
+                // guardians and what each one does before a charge is spent.
+                Guardians = NavRules.Guardians.Append(NavRules.Warden)
+                    .Select(g => new { g.Key, g.Name, g.AbilityName, g.AbilityText }).ToArray(),
                 Bonuses = bonuses,
                 Workshop = NavRules.Workshop.Select(u =>
                 {

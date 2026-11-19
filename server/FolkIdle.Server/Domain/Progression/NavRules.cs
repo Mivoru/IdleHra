@@ -83,13 +83,104 @@ namespace FolkIdle.Server.Domain.Progression
         public static double GuardianAttack(int circle, int depth)
             => FirstGuardianAttack * Math.Pow(AttackGrowth, depth - 1) * Math.Pow(CircleStrength, Math.Max(0, circle - 1));
 
-        /// <summary>The canonical monster whose art and armour a depth's guardian borrows: the 25 cycle, region 5 first.</summary>
-        public static int GuardianTemplateId(int depth)
+        // --- who stands at each depth ------------------------------------------
+
+        /// <summary>What a guardian does besides hitting: one rule each, so a build that loses to one beats another.</summary>
+        public enum Ability : byte
         {
-            // Malakor's region first (111-115), then back up through the others.
-            int[] order = { 111, 112, 113, 114, 115, 106, 107, 108, 109, 110, 101, 102, 103, 104, 105, 96, 97, 98, 99, 100, 91, 92, 93, 94, 95 };
-            return order[(Math.Max(1, depth) - 1) % order.Length];
+            None = 0,
+            /// <summary>Upir: heals 2% of its health with every blow it lands.</summary>
+            Lifedrinker = 1,
+            /// <summary>Strzyga: a second heart - rises once with 40% of its health.</summary>
+            SecondHeart = 2,
+            /// <summary>Mora: sits on your chest - you fight with 60% of your health.</summary>
+            Nightmare = 3,
+            /// <summary>Will-o'-wisp: a quarter of your swings pass through it, and heal nothing.</summary>
+            Elusive = 4,
+            /// <summary>Lady Midday: every blow 8% harder than the last.</summary>
+            NoonHeat = 5,
+            /// <summary>Navka: each of your hits costs you 3% of your own health.</summary>
+            Mirror = 6,
+            /// <summary>Psoglav: plain hits lose 40%; crits pass in full.</summary>
+            IronHide = 7,
+            /// <summary>Kikimora: no crit lands as a crit.</summary>
+            Hex = 8,
+            /// <summary>Drowned One: your healing is cut by 80%.</summary>
+            Drowning = 9,
+            /// <summary>Black Hound: your swings are 30% slower.</summary>
+            GraveChill = 10,
+            /// <summary>Veles: the warden of every 25th depth - more health and harder blows.</summary>
+            Warden = 11,
         }
+
+        /// <summary>A guardian of Nav: its own name and art, and one ability.</summary>
+        public sealed record Guardian(string Key, string Name, Ability Ability, string AbilityName, string AbilityText);
+
+        /// <summary>
+        /// The ten servants of Nav, in the order they stand: depth 1 meets the
+        /// first, depth 11 the first again, stronger.
+        /// </summary>
+        /// <remarks>
+        /// Modul: OWN CREATURES, NOT REGION MONSTERS AGAIN. The first build lent
+        /// each depth a region monster's art (Malakor at depth 5, 30, 55...), so
+        /// the endless mode showed the same 25 faces as the rest of the game.
+        /// The owner asked for Nav's own (2026-11-19). They stay out of
+        /// monsters.json on purpose: that file is the five regions' 25 (codex,
+        /// hunting, pets and drops all walk it), and a guardian is fought only
+        /// here. Names avoid what the game already uses - Koschei is a dungeon
+        /// boss, Vodnik a race.
+        ///
+        /// Modul: AN ABILITY PER GUARDIAN IS THE REASON TO OWN TWO BUILDS. Iron
+        /// hide rewards crit, Hex punishes it; Drowning punishes a lifesteal
+        /// tank, Noon heat a slow killer. A record stops where the build's weak
+        /// guardian stands, and a preset made for that guardian moves it.
+        /// </remarks>
+        public static readonly Guardian[] Guardians =
+        {
+            new("upir", "Upir", Ability.Lifedrinker, "Lifedrinker", "Heals 2% of its health with every blow it lands."),
+            new("strzyga", "Strzyga", Ability.SecondHeart, "Second heart", "Rises once more with 40% of its health."),
+            new("mora", "Mora", Ability.Nightmare, "Nightmare", "Sits on your chest: you fight with 60% of your health."),
+            new("wisp", "Will-o'-wisp", Ability.Elusive, "Elusive", "A quarter of your swings pass through it and heal nothing."),
+            new("poludnica", "Lady Midday", Ability.NoonHeat, "Noon heat", "Every blow lands 8% harder than the last."),
+            new("navka", "Navka", Ability.Mirror, "Mirror", "Each of your hits costs you 3% of your own health."),
+            new("psoglav", "Psoglav", Ability.IronHide, "Iron hide", "Plain hits lose 40%; crits pass in full."),
+            new("kikimora", "Kikimora", Ability.Hex, "Hex", "No crit lands as a crit."),
+            new("utopenec", "Drowned One", Ability.Drowning, "Drowning", "Your healing is cut by 80%."),
+            new("hound", "Black Hound", Ability.GraveChill, "Grave chill", "Your swings are 30% slower."),
+        };
+
+        /// <summary>The warden every <see cref="WardenEvery"/>th depth.</summary>
+        public static readonly Guardian Warden = new("veles", "Veles", Ability.Warden, "Lord of Nav", "Almost twice the health, blows 20% harder, triple Souls.");
+
+        // Modul: MEASURED 2026-11-19 on 15 synthetic characters x 20 seeds: the
+        // abilities cost 4-9 depths (~8%) against the first build's region
+        // monsters. Veles at x2.5 health cost 7-13 and parked every record at
+        // 24/49/74 - a wall ten depths thick - so he is x1.8 now.
+        public const int WardenEvery = 25;
+        public const double WardenHp = 1.8;
+        public const double WardenAttack = 1.2;
+        public const double WardenSouls = 3.0;
+
+        public static Guardian GuardianFor(int depth)
+        {
+            int d = Math.Max(1, depth);
+            if (d % WardenEvery == 0) return Warden;
+            return Guardians[(d - 1) % Guardians.Length];
+        }
+
+        public static Guardian? GuardianByKey(string key)
+            => key == Warden.Key ? Warden : Guardians.FirstOrDefault(g => g.Key == key);
+
+        /// <summary>The ability numbers the simulator reads, beside the text the screen shows.</summary>
+        public const double LifedrinkerPct = 2.0;
+        public const double SecondHeartPct = 40.0;
+        public const double NightmareHealthFactor = 0.6;
+        public const double ElusiveMissShare = 0.25;
+        public const double NoonHeatPerBlow = 0.08;
+        public const double MirrorPctOfHealth = 3.0;
+        public const double IronHidePlainFactor = 0.6;
+        public const double DrowningHealFactor = 0.2;
+        public const double GraveChillSpeedFactor = 0.7;
 
         // --- the elite modifiers ---------------------------------------------
 
@@ -136,7 +227,8 @@ namespace FolkIdle.Server.Domain.Progression
         public static long SoulsForDepth(int depth) => (long)Math.Ceiling(1.0 + Math.Pow(depth, 1.3) / 4.0);
 
         public static long SoulsForDepth(int circle, int depth, double soulBonusPct)
-            => (long)Math.Ceiling(SoulsForDepth(depth) * Math.Pow(CircleSouls, Math.Max(0, circle - 1)) * (1.0 + soulBonusPct / 100.0));
+            => (long)Math.Ceiling(SoulsForDepth(depth) * Math.Pow(CircleSouls, Math.Max(0, circle - 1)) * (1.0 + soulBonusPct / 100.0)
+                * (depth % WardenEvery == 0 ? WardenSouls : 1.0));
 
         // --- charges (runs) --------------------------------------------------
 

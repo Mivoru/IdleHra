@@ -10,7 +10,8 @@ export const navKeys = {
 
 export interface NavDepth {
   Depth: number;
-  GuardianId: number;
+  /** A NavRules guardian key; art lives at /nav/{key}.webp. */
+  Guardian: string;
   Elite: string;
   Seconds: number;
   Cleared: boolean;
@@ -51,6 +52,18 @@ export interface NavResearchLine {
   Seconds: number;
 }
 
+export interface NavGuardian {
+  Key: string;
+  Name: string;
+  AbilityName: string;
+  AbilityText: string;
+}
+
+/** A guardian's painted portrait (client_web/public/nav). */
+export function guardianArt(key: string): string {
+  return `/nav/${key}.webp`;
+}
+
 export interface NavState {
   /** False until Malakor falls; LockedReason says so. */
   Open: boolean;
@@ -65,6 +78,10 @@ export interface NavState {
   RunsTotal: number;
   SecondsPerGuardian: number;
   CircleOpensAt: number;
+  /** Every this-many depths stands the warden (the last entry of Guardians). */
+  WardenEvery: number;
+  /** The ten in order, then the warden. */
+  Guardians: NavGuardian[];
   Bonuses: {
     DamagePct: number;
     HealthPct: number;

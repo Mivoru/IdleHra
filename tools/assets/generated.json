@@ -5047,6 +5047,414 @@
       "estimatedUsd": 0.134,
       "seconds": 17,
       "at": "2026-11-19T01:36:17.281Z"
+    },
+    {
+      "id": "nav_guardian_upir",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "An upir, the blood-drinking revenant of Slavic folklore: a pale gaunt man in a rotting embroidered linen burial shirt, red-stained mouth with long thin fangs, flushed purple-red cheeks from fresh blood, wild matted dark hair, grave soil on his hands, a broken aspen stake still lodged in his shoulder. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_upir.jpg",
+      "bytes": 745906,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1654,
+        "totalTokenCount": 2097,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 11,
+      "at": "2026-11-19T06:03:57.025Z"
+    },
+    {
+      "id": "nav_guardian_strzyga",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A strzyga, the two-hearted demon woman of Slavic folklore: a gaunt pale woman with owl-like amber eyes and two rows of teeth, ragged grey shroud, tangled black hair, clawed hands, two faintly glowing hearts visible through her ribs, a barn owl perched behind her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_strzyga.jpg",
+      "bytes": 714602,
+      "usage": {
+        "promptTokenCount": 435,
+        "candidatesTokenCount": 1528,
+        "totalTokenCount": 1963,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 177
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-19T06:04:04.889Z"
+    },
+    {
+      "id": "nav_guardian_mora",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A mora, the nightmare spirit of Slavic folklore that sits on sleepers' chests: a thin shadowy woman made half of black smoke, long loose hair drifting like mist, pale moon-white face with hollow dark eyes, long spidery fingers reaching forward, wisps of smoke and moths around her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_mora.jpg",
+      "bytes": 670067,
+      "usage": {
+        "promptTokenCount": 435,
+        "candidatesTokenCount": 1510,
+        "totalTokenCount": 1945,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 177
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-19T06:04:13.177Z"
+    },
+    {
+      "id": "nav_guardian_wisp",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A will-o'-wisp, the bludicka of Slavic marsh folklore: a slender ghostly figure of cold pale-green light in the shape of a lantern-bearing maiden, translucent body trailing into marsh mist, a small floating flame in her hand, bog reeds and dark water around her, eerie and beautiful. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_wisp.jpg",
+      "bytes": 713741,
+      "usage": {
+        "promptTokenCount": 439,
+        "candidatesTokenCount": 1601,
+        "totalTokenCount": 2040,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 181
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-19T06:04:21.928Z"
+    },
+    {
+      "id": "nav_guardian_poludnica",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Poludnica, Lady Midday of Slavic folklore: a tall woman in a blinding white linen dress and white veil, a large curved harvest sickle in her hand, sun-bleached straw-blonde hair, a burning golden sun halo behind her head, cracked parched earth and wilted wheat at her feet, harsh noon heat shimmer. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_poludnica.jpg",
+      "bytes": 801426,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1508,
+        "totalTokenCount": 1951,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-11-19T06:04:31.569Z"
+    },
+    {
+      "id": "nav_guardian_navka",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A navka, a drowned maiden spirit of Slavic folklore: a beautiful pale girl with very long wet green-black hair crowned with water lilies and willow, a white wet shift, a hollow open back showing no organs, glassy silver eyes, holding up a round silver mirror that reflects cold light. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_navka.jpg",
+      "bytes": 647559,
+      "usage": {
+        "promptTokenCount": 434,
+        "candidatesTokenCount": 1468,
+        "totalTokenCount": 1902,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 176
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-19T06:04:39.228Z"
+    },
+    {
+      "id": "nav_guardian_psoglav",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A psoglav, the dog-headed iron giant of Slavic folklore: a hulking man with the head of a snarling black mastiff, a single glowing eye in the forehead, iron teeth, skin plated with dark iron scales like armour, a huge iron club, heavy fur and chains. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_psoglav.jpg",
+      "bytes": 749629,
+      "usage": {
+        "promptTokenCount": 435,
+        "candidatesTokenCount": 1530,
+        "totalTokenCount": 1965,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 177
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-19T06:04:47.427Z"
+    },
+    {
+      "id": "nav_guardian_kikimora",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "A kikimora, the spiteful hex spirit of Slavic folklore: a tiny thin hunched woman with a long beak-like nose, tangled hair full of feathers and spindle thread, chicken feet, holding a spindle and a tangled ball of black yarn crackling with a violet hex, small malicious grin. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_kikimora.jpg",
+      "bytes": 711620,
+      "usage": {
+        "promptTokenCount": 436,
+        "candidatesTokenCount": 1519,
+        "totalTokenCount": 1955,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 178
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-19T06:04:56.406Z"
+    },
+    {
+      "id": "nav_guardian_utopenec",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "An utopenec, the drowned water revenant of Slavic folklore: a bloated blue-grey drowned man with dripping waterweed hair, green coat tails dripping water, webbed fingers, a string of tiny porcelain lidded pots at his belt that hold drowned souls, cold dark water swirling up around him. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_utopenec.jpg",
+      "bytes": 818534,
+      "usage": {
+        "promptTokenCount": 436,
+        "candidatesTokenCount": 1772,
+        "totalTokenCount": 2208,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 178
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 11,
+      "at": "2026-11-19T06:05:07.393Z"
+    },
+    {
+      "id": "nav_guardian_hound",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "The Black Hound of Nav: an enormous gaunt black wolfhound, ribs showing through its pelt, frost and grave-rime on its fur, cold pale-blue fire for eyes, breath freezing in the air, a broken iron chain hanging from its collar. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_hound.jpg",
+      "bytes": 631716,
+      "usage": {
+        "promptTokenCount": 427,
+        "candidatesTokenCount": 1485,
+        "totalTokenCount": 1912,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 169
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-19T06:05:15.428Z"
+    },
+    {
+      "id": "nav_guardian_veles",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Veles, the horned Slavic god of the underworld, as the Lord of Nav: an immense figure with great curved bull horns, a long dark beard braided with gold rings, amber glowing eyes, a cloak of bear fur, a giant black serpent coiling around him, enthroned among the World Tree's roots, gold coins and bones at his feet. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_veles.jpg",
+      "bytes": 802157,
+      "usage": {
+        "promptTokenCount": 448,
+        "candidatesTokenCount": 1637,
+        "totalTokenCount": 2085,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 190
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-19T06:05:24.568Z"
+    },
+    {
+      "id": "nav_guardian_upir",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "An upir, the blood-drinking revenant of Slavic folklore: a pale gaunt man in a rotting embroidered linen burial shirt, red-stained mouth with long thin fangs, flushed purple-red cheeks from fresh blood, wild matted dark hair, grave soil on his hands, a broken aspen stake still lodged in his shoulder, bareheaded with no hat, no cap, no mitre, no crown. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/nav_guardian_upir.jpg",
+      "bytes": 697497,
+      "usage": {
+        "promptTokenCount": 459,
+        "candidatesTokenCount": 1522,
+        "totalTokenCount": 1981,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 201
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-19T06:05:59.838Z"
     }
   ]
 }

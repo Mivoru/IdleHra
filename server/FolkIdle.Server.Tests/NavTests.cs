@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
@@ -154,6 +155,45 @@ namespace FolkIdle.Server.Tests
             NavEngine.Settle(row, 200);
             Assert.Equal("souls:2", row.Research);
             Assert.Equal(string.Empty, row.ResearchActive);
+        }
+        [Fact]
+        public void TenGuardiansStandInTurn_AndVelesGuardsEveryTwentyFifthDepth()
+        {
+            Assert.Equal(10, NavRules.Guardians.Length);
+            Assert.Equal("upir", NavRules.GuardianFor(1).Key);
+            Assert.Equal("upir", NavRules.GuardianFor(11).Key);
+            Assert.Equal("hound", NavRules.GuardianFor(10).Key);
+            Assert.Equal("veles", NavRules.GuardianFor(25).Key);
+            Assert.Equal("veles", NavRules.GuardianFor(50).Key);
+            Assert.Equal("upir", NavRules.GuardianFor(51).Key);
+            // Every guardian has its own ability, and its key is unique.
+            Assert.Equal(11, NavRules.Guardians.Append(NavRules.Warden).Select(g => g.Ability).Distinct().Count());
+            Assert.Equal(11, NavRules.Guardians.Append(NavRules.Warden).Select(g => g.Key).Distinct().Count());
+            Assert.Same(NavRules.Warden, NavRules.GuardianByKey("veles"));
+        }
+
+        [Fact]
+        public void VelesPaysTripleSouls()
+        {
+            long plain = (long)Math.Ceiling((double)NavRules.SoulsForDepth(25));
+            Assert.Equal(plain * 3, NavRules.SoulsForDepth(1, 25, 0));
+        }
+
+        [Fact]
+        public void NoonHeatKillsSoonerThanTheSameBlowsWithoutIt()
+        {
+            double flat = NavSimulator.TimeToDieRamping(1000, 100, 0, 0);
+            Assert.Equal(10.0, flat, 6);
+            double hot = NavSimulator.TimeToDieRamping(1000, 100, 0, 0.04);
+            Assert.True(hot < flat, $"hot {hot} vs flat {flat}");
+            Assert.True(double.IsPositiveInfinity(NavSimulator.TimeToDieRamping(1000, 100, 150, 0)));
+        }
+
+        [Fact]
+        public void ARunNamesTheGuardianOfEveryDepth()
+        {
+            var run = NavSimulator.Run(Character(300_000_000), 0, 1, None, 7, 0);
+            foreach (var d in run.Depths) Assert.Equal(NavRules.GuardianFor(d.Depth).Key, d.Guardian);
         }
     }
 }

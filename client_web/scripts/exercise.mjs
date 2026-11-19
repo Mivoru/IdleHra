@@ -7216,6 +7216,20 @@ if (want('nav')) {
         && after.Souls === before.Souls + after.LastRun.Souls && (await page.getByTestId('nav-run').count()) > 0,
       after ? `souls ${before.Souls} -> ${after.Souls}, charges ${before.Charges} -> ${after.Charges}, deepest ${after.LastRun?.DeepestCleared}, record "${depthShown.split(/\s+/)[0]}"` : 'no answer');
 
+    // Nav's own guardians (2026-11-19): every depth names one of the server's
+    // roster, and the "below your record" list shows painted portraits that
+    // actually loaded - a missing webp would fall back to initials silently.
+    const keys = new Set((after?.Guardians ?? []).map((g) => g.Key));
+    const runKeysOk = (after?.LastRun?.Depths ?? []).length > 0 && after.LastRun.Depths.every((d) => keys.has(d.Guardian));
+    await page.getByTestId('nav-ahead').scrollIntoViewIfNeeded().catch(() => {});
+    await page.waitForTimeout(1200);
+    const aheadImgs = page.getByTestId('nav-ahead').locator('img');
+    const aheadCount = await aheadImgs.count();
+    const loaded = await aheadImgs.evaluateAll((imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length).catch(() => 0);
+    record('Nav shows its own guardians: run depths name the roster and the next four portraits load',
+      keys.size === 11 && runKeysOk && aheadCount === 4 && loaded === 4,
+      `roster ${keys.size}, run keys ok ${runKeysOk}, portraits ${loaded}/${aheadCount}`);
+
     const cheapest = (after?.Workshop ?? []).filter((u) => !u.Maxed && u.Cost <= after.Souls).sort((a, b) => a.Cost - b.Cost)[0];
     if (cheapest) {
       await page.getByTestId(`nav-up-${cheapest.Key}`).getByRole('button', { name: /^\+1/ }).click().catch(() => {});

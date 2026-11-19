@@ -10,26 +10,38 @@
   // record); the rules sit in a disclosure at the foot - the screenshot audit
   // of the same day found screens that open on a paragraph of rules.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { navKeys, fetchNav, navDescend, navBuy, navResearch, type NavRun } from '../lib/net/nav';
+  import { navKeys, fetchNav, navDescend, navBuy, navResearch, guardianArt, type NavRun, type NavGuardian, type NavState } from '../lib/net/nav';
   import { formatNumber } from '../lib/ui/format';
   import { formatDuration } from '../lib/net/commands';
   import { pushLocalNotice } from '../lib/stores/game';
-  import { monsterName, loadContent, type ContentRegistry } from '../lib/net/content';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import Money from '../lib/ui/Money.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
-  import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
 
   const client = useQueryClient();
   const nav = createQuery(() => ({ queryKey: navKeys.state, queryFn: fetchNav, refetchInterval: 60_000 }));
   const data = $derived(nav.data ?? null);
 
-  let registry = $state<ContentRegistry | null>(null);
-  onMount(async () => {
-    registry = await loadContent().catch(() => null);
-  });
+  // Who stands at a depth: the server sends the order, this only indexes it
+  // (NavRules.GuardianFor - the warden every WardenEvery-th depth, else the
+  // ten in turn).
+  function guardianAt(state: NavState, depth: number): NavGuardian | undefined {
+    const ten = state.Guardians.slice(0, -1);
+    if (ten.length === 0) return undefined;
+    if (state.WardenEvery > 0 && depth % state.WardenEvery === 0) return state.Guardians[state.Guardians.length - 1];
+    return ten[(Math.max(1, depth) - 1) % ten.length];
+  }
+
+  function guardianByKey(state: NavState, key: string): NavGuardian | undefined {
+    return state.Guardians.find((g) => g.Key === key);
+  }
+
+  // The next guardians below the record: what the next descent will meet.
+  const ahead = $derived(
+    data ? Array.from({ length: 4 }, (_, i) => record + 1 + i).map((depth) => ({ depth, g: guardianAt(data, depth) })) : [],
+  );
 
   let slot = $state(0);
   let circle = $state(0);
@@ -168,15 +180,33 @@
       <span class="dim small">Souls to spend</span>
     </div>
 
+    <section class="ahead" data-testid="nav-ahead">
+      <h3>Below your record</h3>
+      <ul class="guardians">
+        {#each ahead as a (a.depth)}
+          {#if a.g}
+            <li class:warden={a.g.Key === 'veles'}>
+              <MonsterPortrait monsterId={0} name={a.g.Name} src={guardianArt(a.g.Key)} size="md" />
+              <div class="g-text">
+                <span class="small"><strong>{a.g.Name}</strong> <span class="dim tiny">depth {a.depth}</span></span>
+                <span class="tiny"><span class="ability">{a.g.AbilityName}</span> <span class="dim">{a.g.AbilityText}</span></span>
+              </div>
+            </li>
+          {/if}
+        {/each}
+      </ul>
+    </section>
+
     {#if shownRun}
       <section class="run" data-testid="nav-run">
         <h3>Last descent: depth {shownRun.DeepestCleared} <span class="dim small">+{formatNumber(shownRun.Souls)} Souls</span></h3>
         <p class="dim small">{endedLine(shownRun)} {shownRun.RevivesUsed > 0 ? `Second breath used ${shownRun.RevivesUsed}x.` : ''}</p>
         <ol class="depths">
           {#each shownRun.Depths.slice(-8) as d (d.Depth)}
+            {@const g = guardianByKey(data, d.Guardian)}
             <li class:fail={!d.Cleared}>
-              <MonsterPortrait monsterId={d.GuardianId} name={monsterName(registry, d.GuardianId)} size="sm" />
-              <span class="dn">Depth {d.Depth}</span>
+              <MonsterPortrait monsterId={0} name={g?.Name ?? 'Guardian'} src={d.Guardian ? guardianArt(d.Guardian) : null} size="sm" />
+              <span class="dn">Depth {d.Depth} <span class="dim tiny">{g?.Name ?? ''}</span></span>
               {#if d.Elite}<span class="elite">{d.Elite}</span>{/if}
               <span class="dim tiny t">{d.Seconds}s</span>
               <span class="tiny r">{d.Cleared ? `+${d.Souls}` : 'stopped'}</span>
@@ -242,6 +272,7 @@
         <li>Guardians grow 10% stronger every depth, so every tenth more damage is about one depth more - forever.</li>
         <li>Every cleared depth pays Souls; deeper pays more. A run costs one descent, and one comes back every 20 minutes, offline too.</li>
         <li>Depth {data.CircleOpensAt} opens the next Circle: five times stronger guardians, three times the Souls. Depths 10, 25 and 50 of each Circle pay a chest the first time.</li>
+        <li>Ten servants of Nav stand in turn, each with its own ability - one build will not beat them all. Veles, the Lord of Nav, waits every {data.WardenEvery}th depth: more health, harder blows, triple Souls.</li>
         <li>Some guardians are elite - Armoured (more health), Swift (attack faster), Brute (hit harder) or Frail (less health).</li>
         <li>The Workshop and the research only count in Nav. Nothing here changes the rest of the game.</li>
       </ul>
@@ -374,6 +405,39 @@
 
   .depths li.fail {
     color: var(--danger);
+  }
+
+  .guardians {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .guardians li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .guardians li.warden {
+    border-color: var(--warn, #e0b050);
+  }
+
+  .g-text {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .ability {
+    font-weight: 600;
+    color: var(--accent);
   }
 
   .elite {
