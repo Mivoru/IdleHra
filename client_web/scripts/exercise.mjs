@@ -379,7 +379,9 @@ async function dailyMissionsStep() {
     record('the daily missions answer', false, 'no state');
     return;
   }
-  const bubble = page.getByTestId('chronicle-bubble');
+  // A desktop floats the bubble; a phone carries the same button in the
+  // header row (2026-11-19). Whichever this viewport shows.
+  const bubble = page.locator('[data-testid="chronicle-bubble"]:visible, [data-testid="chronicle-head"]:visible').first();
   const shown = await bubble.waitFor({ timeout: 8000 }).then(() => true).catch(() => false);
   record('the missions bubble is on screen', shown, `${before.Missions.length} missions, ${before.Claimable} to claim`);
   if (!shown) return;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ChronicleBubble from './lib/ui/ChronicleBubble.svelte';
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import ChatButton from './lib/ui/ChatButton.svelte';
   import ChatBubble from './lib/ui/ChatBubble.svelte';
@@ -968,7 +969,9 @@
          opens the same sheet as the More tab. On a desktop the same row
          carries the grouped dropdowns, the chat entry and Sign out. -->
     <header bind:this={headerEl}>
-      <strong class="brand">FolkIdle</strong>
+      <!-- On a phone the word gives way to the app's mark: the row also carries
+           the Chronicle chip since 2026-11-19 and was 66px too wide at 360px. -->
+      <strong class="brand"><img class="brand-mark" src="/icons/favicon-48.png" alt="" width="32" height="32" /><span class="brand-word">FolkIdle</span></strong>
 
       <nav aria-label="Main menu">
         {#each GROUPS as group}
@@ -1044,6 +1047,10 @@
         <span class="phase" data-phase={$connectionStatus.phase}>{phaseChip}</span>
       {/if}
       <button class="signout" onclick={signOut}>Sign out</button>
+
+      <!-- Phone only: the Chronicle level and its claim count, in the row
+           instead of floating over the content (owner, 2026-11-19). -->
+      <ChronicleBubble placement="header" />
 
       <!-- Phone only: the same sheet as the More tab, from the top of the
            screen for a player whose thumb is up there. -->
@@ -1480,6 +1487,16 @@
     }
   }
 
+  .brand-mark {
+    display: none;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+  }
+
   @media (max-width: 40rem) {
     /* Modul: ONE ROW ON A PHONE (task 95). It measured about 230px of an
        844px phone: the title, an event banner on its own row, the wallet,
@@ -1509,6 +1526,15 @@
 
     .wallet {
       flex-shrink: 0;
+    }
+
+    .brand-word {
+      display: none;
+    }
+
+    .brand-mark {
+      display: block;
+      border-radius: 8px;
     }
 
     /* Modul: THE EVENT CHIP HAS ITS OWN ROW ON A PHONE (owner, 2026-10-10).

@@ -18,6 +18,18 @@
   import { chronicleView } from './missions';
   import { chatDockOpen } from '../stores/chatDock';
 
+  // Modul: TWO PLACES, ONE COMPONENT (owner, 2026-11-19). On a phone three
+  // floating things - the chat bubble, this bubble and the coach - covered
+  // about 130 px of every screen, so a phone shows the Chronicle as a chip in
+  // the header row instead. A desktop keeps the floating bubble: its header
+  // has 50-60 px free at 1280-1366 px and none at 1024 (measured for the
+  // potion strip, Game.svelte), and nothing floats over its content there.
+  // Both instances read the same two queries, so TanStack polls once.
+  interface Props {
+    placement?: 'float' | 'header';
+  }
+  const { placement = 'float' }: Props = $props();
+
   // Not during the guided first minute: that has one thing to point at.
   // Not while chat is open either (owner, 2026-11-15: "the bubble overlaps the
   // chat"): on a phone the chat window covers the whole screen and the bubble,
@@ -53,11 +65,11 @@
 
 {#if visible && (day.data || pass.data)}
   <button
-    class="bubble"
+    class={placement === 'header' ? 'head' : 'bubble'}
     onclick={open}
     aria-label={claimable > 0 ? `Chronicle, ${claimable} to claim` : `Chronicle, level ${level}`}
     title="Chronicle and daily missions"
-    data-testid="chronicle-bubble"
+    data-testid={placement === 'header' ? 'chronicle-head' : 'chronicle-bubble'}
   >
     <span class="glyph" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="26" height="26">
@@ -67,7 +79,7 @@
     </span>
     <span class="progress" aria-hidden="true">Lv {level}</span>
     {#if claimable > 0}
-      <span class="badge" data-testid="chronicle-badge" aria-hidden="true">{claimable}</span>
+      <span class="badge" data-testid={placement === 'header' ? 'chronicle-head-badge' : 'chronicle-badge'} aria-hidden="true">{claimable}</span>
     {/if}
   </button>
 {/if}
@@ -142,28 +154,58 @@
     }
   }
 
-  /* Modul: ON A PHONE THE CHAT BUBBLE OWNS THE CORNER (ChatBubble.svelte: 3rem,
-     0.75rem from the left and from the tab bar), and this sat right on top of
-     it (owner, 2026-11-15, with a screenshot). Same column, same size, one
-     step up - the onboarding coach already starts to the right of that
-     column, so nothing else is covered. */
+  /* The header chip: a phone only (see the Props comment). */
+  .head {
+    display: none;
+  }
+
   @media (max-width: 40rem) {
     .bubble {
-      left: calc(0.75rem + var(--sa-left));
-      bottom: calc(0.75rem + 3rem + 0.6rem + var(--sa-bottom) + var(--tabbar-h));
-      width: 3rem;
-      height: 3rem;
-      min-width: 3rem;
-      min-height: 3rem;
+      display: none;
     }
 
-    .glyph :global(svg) {
-      width: 20px;
-      height: 20px;
+    /* The floating bubble's face, shrunk to the 44px touch floor: the
+       header row at 360px has no room for a wider pill (brand mark, purse,
+       this and the menu add up to 352px). */
+    .head {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      border-radius: 50%;
+      color: var(--bubble-ink);
+      background: radial-gradient(circle at 35% 30%, var(--bubble-hi), var(--bubble-lo));
+      border: 1.5px solid var(--bubble-rim);
     }
 
-    .progress {
-      font-size: 0.58rem;
+    .head .glyph {
+      line-height: 0;
+    }
+
+    .head .glyph :global(svg) {
+      width: 16px;
+      height: 16px;
+    }
+
+    .head .progress {
+      font-size: 0.55rem;
+    }
+
+    .head .badge {
+      top: -6px;
+      right: -6px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      font-size: 0.65rem;
+      border-width: 1.5px;
     }
   }
 
