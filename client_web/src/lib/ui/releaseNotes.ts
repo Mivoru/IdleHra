@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.100.0',
+    date: '2026-11-19',
+    headline: 'Every depth of Nav pays.',
+    sections: [
+      {
+        title: 'Nav',
+        items: [
+          'The first time you clear a depth it pays gold and a Bronze chest; every 5th depth a Gold chest; every 10th an Ancient chest, diamonds and a ticket for each dungeon. Opening the next Circle adds 50 diamonds, and deeper Circles pay more.',
+          'Depths you reached before today are paid on your next visit to Nav (less the chests the old depth 10, 25 and 50 rewards already gave).',
+          'Below your record, each of the next four depths says what its first clear pays.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.99.0',
     date: '2026-11-19',
     headline: 'Nav goes deeper: spirits, banes, a weekly omen and rewards that reach the rest of the game.',

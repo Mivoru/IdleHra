@@ -91,6 +91,39 @@ bane, research in a fixed order on a 24-hour clock.
 - The gap stays: ~30 effective depths (~x17 power) between Mivoru and the
   others, from their combat power, not from Nav.
 
+## Every depth pays (owner, later the same day)
+
+The owner asked for a reward for every depth: gold and a loot chest, Ancient
+chests deeper, and diamonds and dungeon tickets on round milestones.
+
+| First clear of a depth (per Circle) | Pays |
+|---|---|
+| any | 10 min of the player's gold income x Circle, a Bronze chest (the owner's pick over Silver) |
+| every 5th | a Gold chest instead |
+| every 10th | an Ancient chest, 10 diamonds x Circle, 1 ticket for each dungeon gate |
+| 50 (opens the next Circle) | 50 more diamonds |
+
+- Paid on the record (`BestDepths`), never per run: 39 descents a day would
+  farm a per-run reward. `NavRules.DepthRewardFor`, `NavEngine.PayDepthsAsync`.
+- It replaces the first build's 10/25/50 milestone chests. Depths reached
+  before it are back-paid once (`NavProgress.DepthRewardsVersion`, migration
+  `NavDepthRewards`), on the next GET or descent, less the chests those
+  milestones already paid (`MilestoneMask`).
+- Gold and diamonds move after the Nav transaction commits (the commodity and
+  player rows are the checkpoint's too); the route then sends ReloadState and
+  BillingSync. Gold income is ledgered as `GoldIncomeSource.Nav`.
+
+**Measured** on the 2026-11-19 backup (`notable_item_events`, the 7 days to
+the dump): the three players took 750 (Mivoru), ~1,300 (Tomda) and ~1,200
+((pro)boss) Legendary-or-better pieces a week, most of them boss guarantees
+won away. The 14-day simulation's fastest climb (Mivoru, ~97 new depths)
+becomes ~78 Bronze, ~10 Gold and ~10 Ancient chests - under 5% of the gear
+they get anyway. Diamonds: ~210 in those two weeks, about one ordinary week
+(login 120 + Delve 80 + chests 15), then 10-30 a week as the climb slows.
+Tickets: ~30 in two weeks against 84 from the daily top-up, and the bonus cap
+(8 a gate) holds. Ancient chests' own diamonds stay under the chest cap (15 a
+week).
+
 ## Not done
 
 - Weekly omen variants beyond "one guardian restless" (crit twice, no

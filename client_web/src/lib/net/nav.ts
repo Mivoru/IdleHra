@@ -113,12 +113,22 @@ export interface NavWeekBoard {
   MinRunners: number;
 }
 
+/** What a new depth pays the first time it is cleared. */
+export interface NavDepthReward {
+  Depth: number;
+  Chest: 'Bronze' | 'Gold' | 'Ancient' | string;
+  Diamonds: number;
+  /** Dungeon tickets for each gate. */
+  Tickets: number;
+}
+
 export interface NavState {
   /** False until Malakor falls; LockedReason says so. */
   Open: boolean;
   LockedReason: string;
   Circle: number;
-  Records: { Circle: number; Depth: number }[];
+  /** Each Circle's record and what its next four new depths pay (server NavRules.DepthRewardFor). */
+  Records: { Circle: number; Depth: number; Next?: NavDepthReward[] }[];
   Souls: number;
   SoulsLifetime: number;
   Charges: number;

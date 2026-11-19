@@ -1659,6 +1659,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("Charges")
                         .HasColumnType("integer");
 
+                    b.Property<int>("DepthRewardsVersion")
+                        .HasColumnType("integer");
+
                     b.Property<int>("GuardiansMet")
                         .HasColumnType("integer");
 

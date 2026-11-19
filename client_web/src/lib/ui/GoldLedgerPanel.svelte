@@ -58,6 +58,7 @@
     LootChest: 'Loot chests',
     Dungeon: 'The Gold dungeon',
     Chronicle: 'The Chronicle pass',
+    Nav: 'Nav depths',
   };
 
   type Window = 'Last7Days' | 'Last30Days' | 'SinceRecorded';

@@ -75,7 +75,13 @@
 
   // The next guardians below the record: what the next descent will meet.
   const ahead = $derived(
-    data ? Array.from({ length: 4 }, (_, i) => record + 1 + i).map((depth) => ({ depth, g: guardianAt(data, depth) })) : [],
+    data
+      ? Array.from({ length: 4 }, (_, i) => record + 1 + i).map((depth) => ({
+          depth,
+          g: guardianAt(data, depth),
+          reward: data.Records.find((r) => r.Circle === activeCircle)?.Next?.find((n) => n.Depth === depth),
+        }))
+      : [],
   );
 
   let slot = $state(0);
@@ -420,6 +426,11 @@
               <div class="g-text">
                 <span class="small"><strong>{a.g.Name}</strong> <span class="dim tiny">depth {a.depth}</span></span>
                 <span class="tiny"><span class="ability">{a.g.AbilityName}</span> <span class="dim">{a.g.AbilityText}</span></span>
+                {#if a.reward}
+                  <span class="tiny reward" data-testid="nav-depth-reward">
+                    First clear: <span class="chest-{a.reward.Chest.toLowerCase()}">{a.reward.Chest} chest</span>{#if a.reward.Diamonds > 0}, {a.reward.Diamonds} diamonds{/if}{#if a.reward.Tickets > 0}, a ticket for each dungeon{/if}
+                  </span>
+                {/if}
               </div>
             </li>
           {/if}
@@ -608,7 +619,7 @@
         <li>Each depth has one guardian. Kill it within {data.SecondsPerGuardian} seconds or the descent ends; fall and it ends too.</li>
         <li>Guardians grow 10% stronger every depth, so every tenth more damage is about one depth more - forever.</li>
         <li>Every cleared depth pays Souls; deeper pays more. A run costs one descent, and one comes back every {minutes(data.ChargeSeconds)}, offline too.</li>
-        <li>Depth {data.CircleOpensAt} opens the next Circle: five times stronger guardians, three times the Souls. Depths 10, 25 and 50 of each Circle pay a chest the first time.</li>
+        <li>Depth {data.CircleOpensAt} opens the next Circle: five times stronger guardians, three times the Souls. Every depth pays the first time you clear it: gold and a Bronze chest, every 5th a Gold chest, every 10th an Ancient chest with diamonds and a ticket for each dungeon. Deeper Circles pay more.</li>
         <li>Ten servants of Nav stand in turn, each with its own ability - one build will not beat them all. Veles, the Lord of Nav, waits every {data.WardenEvery}th depth: more health, harder blows, triple Souls.</li>
         <li>The first Veles you beat earns the title "Veles' Guest"; opening Circles 2, 3 and 5 earns three more. News tells everyone when someone beats a Veles or opens a Circle.</li>
         <li>Some guardians are elite - Armoured (more health), Swift (attack faster), Brute (hit harder) or Frail (less health).</li>
@@ -923,6 +934,20 @@
   .ability {
     font-weight: 600;
     color: var(--accent);
+  }
+
+  .reward {
+    color: var(--text-dim, inherit);
+  }
+
+  .chest-gold {
+    color: var(--warn, #e0b050);
+    font-weight: 600;
+  }
+
+  .chest-ancient {
+    color: var(--rarity-10, #e0553f);
+    font-weight: 600;
   }
 
   .elite {
