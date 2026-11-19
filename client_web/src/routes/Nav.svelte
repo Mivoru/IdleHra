@@ -19,6 +19,7 @@
   import Money from '../lib/ui/Money.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { onMount } from 'svelte';
+  import { play } from '../lib/ui/audio';
 
   const client = useQueryClient();
   const nav = createQuery(() => ({ queryKey: navKeys.state, queryFn: fetchNav, refetchInterval: 60_000 }));
@@ -54,6 +55,7 @@
       const r = await navDescend(slot, activeCircle);
       if (r?.Result === 'Ran' && r.Run) {
         lastRun = r.Run;
+        play(r.Run.Rewards.some((line) => line.startsWith('New record')) ? 'navRecord' : 'navDescend');
         for (const line of r.Run.Rewards) pushLocalNotice(line, 'info');
       } else {
         pushLocalNotice(

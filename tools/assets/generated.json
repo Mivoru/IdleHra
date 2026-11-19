@@ -4988,6 +4988,30 @@
       "estimatedUsd": 0.134,
       "seconds": 14,
       "at": "2026-11-15T16:21:42.288Z"
+    },
+    {
+      "id": "sfx_nav_descend",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "Descending into a deep dark underworld: a low hollow wind rushing downward, creaking roots, a distant deep gong, eerie and mysterious, fantasy game UI, short",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_nav_descend.mp3",
+      "bytes": 36405,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-19T01:34:24.858Z"
+    },
+    {
+      "id": "sfx_nav_record",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A new record reached in a dark underworld: a deep resonant bell strike followed by a rising ghostly choir shimmer, triumphant but eerie, fantasy game UI, short",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_nav_record.mp3",
+      "bytes": 33061,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-19T01:34:29.342Z"
     }
   ]
 }
