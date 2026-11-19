@@ -1,4 +1,12 @@
 <script lang="ts">
+  // Modul: PRICES COMPACT FROM 1,000 (owner, 2026-11-19: past 999 Souls the
+  // rows went ragged). "+1 - 1 400" and "+1 - 999" were buttons of different
+  // widths, so every Max button sat somewhere else; "1.4 k" keeps a price to
+  // four characters, the button has a fixed width and the exact figure is
+  // in the tooltip.
+  const PRICE_COMPACT_FROM = 999;
+  const price = (n: number) => formatNumber(n, PRICE_COMPACT_FROM);
+
   // Modul: THE DESCENT INTO NAV (2026-11-19, proposal in docs/design/
   // AUDIT_AND_ENDGAME_2026_11_19.md section 4). The one endless number: how
   // deep a character goes below the World Tree's roots before a guardian
@@ -12,7 +20,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { navKeys, fetchNav, navDescend, navBuy, navResearch, navBuyFrame, guardianArt, type NavRun, type NavGuardian, type NavState } from '../lib/net/nav';
   import CosmeticFrame from '../lib/ui/CosmeticFrame.svelte';
-  import { formatNumber } from '../lib/ui/format';
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { formatDuration } from '../lib/net/commands';
   import { pushLocalNotice } from '../lib/stores/game';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
@@ -311,8 +319,8 @@
               {#if bane && !bane.Locked}
                 <div class="why-buy">
                   <span class="tiny">Bane: <strong>{bane.Name}</strong> <span class="dim">lv {bane.Level} / {bane.MaxLevel} - its rule {Math.round(bane.Total)}% weaker</span></span>
-                  <button disabled={busy || !data.Open || bane.Maxed || data.Souls < bane.Cost} onclick={() => buy(bane.Key, 1)} data-testid="nav-hint-bane">
-                    {bane.Maxed ? 'Top' : `+1 - ${formatNumber(bane.Cost)}`}
+                  <button disabled={busy || !data.Open || bane.Maxed || data.Souls < bane.Cost} onclick={() => buy(bane.Key, 1)} class="price" title={numberTitle(bane.Cost, PRICE_COMPACT_FROM)} data-testid="nav-hint-bane">
+                    {bane.Maxed ? 'Top' : `+1 - ${price(bane.Cost)}`}
                   </button>
                 </div>
               {/if}
@@ -442,7 +450,7 @@
             {:else if !f.Reached}
               <span class="dim tiny">Reach {frameNeed(f)}</span>
             {:else}
-              <button disabled={busy || !data.Open || data.Souls < f.Price} onclick={() => buyFrame(f.Id)} data-testid={`nav-frame-${f.Id}`}>{formatNumber(f.Price)} Souls</button>
+              <button disabled={busy || !data.Open || data.Souls < f.Price} onclick={() => buyFrame(f.Id)} data-testid={`nav-frame-${f.Id}`}>{price(f.Price)} Souls</button>
             {/if}
           </li>
         {/each}
@@ -462,8 +470,8 @@
               <span class="dim tiny">{u.Effect}</span>
             </div>
             <div class="u-buy">
-              <button disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)}>
-                {u.Maxed ? 'Top' : `+1 - ${formatNumber(u.Cost)}`}
+              <button disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)} class="price" title={numberTitle(u.Cost, PRICE_COMPACT_FROM)}>
+                {u.Maxed ? 'Top' : `+1 - ${price(u.Cost)}`}
               </button>
               <button class="ghost" disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 100)} title="As many levels as your Souls buy">Max</button>
             </div>
@@ -483,8 +491,8 @@
               <span class="dim tiny">{g?.AbilityName} {Math.round(u.Total)}% weaker</span>
             </div>
             <div class="u-buy">
-              <button disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)}>
-                {u.Maxed ? 'Top' : `+1 - ${formatNumber(u.Cost)}`}
+              <button disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)} class="price" title={numberTitle(u.Cost, PRICE_COMPACT_FROM)}>
+                {u.Maxed ? 'Top' : `+1 - ${price(u.Cost)}`}
               </button>
               <button class="ghost" disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 100)} title="As many levels as your Souls buy">Max</button>
             </div>
@@ -976,6 +984,12 @@
 
   .u-buy button {
     white-space: nowrap;
+  }
+
+  .u-buy button.price,
+  .why-buy button.price {
+    min-width: 7.5rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .locked-banes summary {
