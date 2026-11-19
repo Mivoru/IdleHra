@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from './ScreenBanner.svelte';
   // Task 87: a boss's Ascension ladder, under its region on the Combat screen.
   // Ten steps, each the one below it plus one more modifier; clearing a step for
   // the first time pays a title (and at steps 5 and 10 a frame), a loot chest
@@ -44,6 +45,9 @@
 </script>
 
 <div class="ascension" data-testid="boss-ascension-{boss.Region}">
+  {#if boss.Region === 5}
+    <ScreenBanner art="banner_ascension" line="Ten rings up the stair. Malakor waits at the top." />
+  {/if}
   <p class="head">
     <strong>Boss Ascension</strong>
     <span class="dim tiny">

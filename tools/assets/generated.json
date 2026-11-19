@@ -5631,6 +5631,146 @@
       "estimatedUsd": 0.134,
       "seconds": 15,
       "at": "2026-11-19T14:38:43.775Z"
+    },
+    {
+      "id": "banner_dungeon",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A wide panoramic banner for 'the three dungeons' in a pagan Slavic-folklore idle RPG: three ancient gates side by side in a dark misty forest clearing at night: on the left a tall bone-and-skull arch with a cold teal glow (Koschei's Tower), in the middle a timber-braced mine mouth breathing orange firelight and gold (Zmey's Hoard), on the right a crooked gate of carved stakes topped with glowing skull lanterns, violet light, a hut on chicken legs barely visible beyond (Baba Yaga's Hut), a lone small warrior with a torch on the path before them. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/banner_dungeon.jpg",
+      "bytes": 742222,
+      "usage": {
+        "promptTokenCount": 457,
+        "candidatesTokenCount": 1359,
+        "totalTokenCount": 2052,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 199
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 236,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-19T22:40:48.228Z"
+    },
+    {
+      "id": "banner_worldboss",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A wide panoramic banner for 'the world boss' in a pagan Slavic-folklore idle RPG: a colossal dark god of Slavic folklore, Chernobog, a towering silhouette of black smoke and horns rising over a burning valley, his glowing red eyes over the horizon, tiny warriors with banners gathered on a ridge in the foreground facing him together, ember-red sky. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/banner_worldboss.jpg",
+      "bytes": 657400,
+      "usage": {
+        "promptTokenCount": 401,
+        "candidatesTokenCount": 1327,
+        "totalTokenCount": 1916,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 143
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 188,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-19T22:41:03.262Z"
+    },
+    {
+      "id": "banner_delve",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A wide panoramic banner for 'the Delve' in a pagan Slavic-folklore idle RPG: an old mine shaft descending into the mountain, wooden ladders and rope bridges over a deep crevasse, glowing ore veins in the rock, lanterns hanging along the way down, mist below, a lone small warrior with a pickaxe on a ledge. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/banner_delve.jpg",
+      "bytes": 772353,
+      "usage": {
+        "promptTokenCount": 397,
+        "candidatesTokenCount": 1349,
+        "totalTokenCount": 1995,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 139
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 249,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-19T22:41:18.424Z"
+    },
+    {
+      "id": "banner_ascension",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "prompt": "A wide panoramic banner for 'the Ascension of a boss' in a pagan Slavic-folklore idle RPG: a lone small warrior at the foot of a vast spiral stair of stone rising into a storm, ten great stone rings carved with pagan runes stacked along the stair, each glowing brighter as it climbs, at the summit the shadow of Malakor, a horned demon lord wreathed in violet lightning. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI. Painted fantasy game art, rich hand-painted textures, warm rim light, Slavic folklore setting, crisp clean edges, no text, no watermark, no border.",
+      "file": "tools/assets/staging/banner_ascension.jpg",
+      "bytes": 720241,
+      "usage": {
+        "promptTokenCount": 408,
+        "candidatesTokenCount": 1361,
+        "totalTokenCount": 2033,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 150
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "thoughtsTokenCount": 264,
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.134,
+      "seconds": 15,
+      "at": "2026-11-19T22:41:33.199Z"
     }
   ]
 }

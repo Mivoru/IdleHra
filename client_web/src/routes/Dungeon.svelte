@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { fetchDungeon, runDungeon, dungeonKeys, type DungeonRunAnswer, type DungeonInfo, type DungeonKind } from '../lib/net/dungeon';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
@@ -109,6 +110,7 @@
   {#if answer && runOf}
     <DungeonRun {answer} dungeon={runOf} stage={runStage} onclose={() => (answer = null)} />
   {:else}
+  <ScreenBanner art="banner_dungeon" line="Three gates, three old powers." />
   <section class="panel lobby" data-testid="dungeon">
     <header>
       <h2>Dungeons</h2>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   // One title chip everywhere: TitleChip darkens the server's hex on the light
   // scheme, where Dazhbog's yellow on the pink panel was unreadable.
   import TitleChip from '../lib/ui/TitleChip.svelte';
@@ -516,6 +517,7 @@
   </div>
 {/snippet}
 
+<ScreenBanner art="banner_worldboss" line="When the dark god rises, all fight." />
 <div class="wrap">
   <div class="col main-col">
     <section class="panel hero-panel" class:live={eventState === BossEventState.Active}>
