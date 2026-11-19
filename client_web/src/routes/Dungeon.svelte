@@ -162,7 +162,10 @@
               <span class="gate-pays">{g.pays}</span>
               <span class="gate-tickets" title="{d.Tickets} of {data.TicketCap} tickets" data-testid="dungeon-tickets-{d.Key.toLowerCase()}">
                 <img class="ticket-icon" src={TICKET_ICON[d.Key]} alt="" width="28" height="28" />
-                {#each Array(Math.max(data.TicketCap, d.Tickets)) as _, i (i)}<i class:full={i < d.Tickets}></i>{/each}
+                <!-- Modul: dots stop at the cap. Bonus tickets from chests and Nav can
+                     hold 10 against a cap of 4; ten dots pushed the count onto
+                     a second line (owner, 2026-11-19). The number says the rest. -->
+                {#each Array(data.TicketCap) as _, i (i)}<i class:full={i < d.Tickets}></i>{/each}
                 <b class="ticket-count">{d.Tickets}/{data.TicketCap}</b>
               </span>
             </button>
@@ -368,6 +371,7 @@
     padding: 0.25rem 0 0.45rem;
   }
   .gate-tickets i {
+    flex: none;
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -392,6 +396,7 @@
   }
   .ticket-count {
     margin-left: 4px;
+    white-space: nowrap;
     font-size: 0.68rem;
     line-height: 8px;
     color: #fff;
