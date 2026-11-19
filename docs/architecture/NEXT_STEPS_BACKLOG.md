@@ -19,6 +19,42 @@ do next.
 
 ---
 
+# 2026-11-19 night - Design audit, the int damage ceiling, the Descent into Nav
+
+**Read `docs/design/AUDIT_AND_ENDGAME_2026_11_19.md`.** Owner brief: fix the
+login popup overflow, audit every screen in both themes, measure power and
+progression, propose an endless endgame (The Tower-like).
+
+- #436 login week tiles no longer overflow at 360-390 px. #438 four audit
+  defects (build cards used `.slot`, the icon-socket class; coach pill under
+  the Chronicle bubble; World Boss title chips; "Beat the boss before").
+  #442 News from **Ancient** up (owner, was Relic) + server art falls back to
+  initials. #441 client 1.97.1.
+- **#437 the blow was an `int` of milli-HP.** BestHit 2,147,483 on two accounts
+  = the ceiling; war multipliers could wrap it negative (heal the monster);
+  `HuntingProjection.Landed` went negative and `/api/v1/combat/projection`
+  answered 500 for Mivoru. Now `long` (`SimulationEngine.WholeHitPoints`
+  clamps only the wire int). Also fixed `AShieldWheelOrder...`, red on main
+  since 2026-11-16 (`TreeStrikeFromUtc`).
+- **#440 the Descent into Nav**, OFF in production (`FOLKIDLE_NAV=on`; set in
+  `run-dev.ps1`). Owner decision pending (Souls + gold research). NavRules /
+  NavSimulator / NavEngine, table `nav_progress` (additive), `/api/v1/nav*`,
+  `Nav.svelte`, exercise section `nav`. Calibrated on a local restore of the
+  2026-11-18 backup: Mivoru depth 40, (pro)boss 15, Tomda 13.
+
+**Measuring production locally (how this audit did it):** restore
+`D:\FolkIdleBackups\dumps\<latest>.dump` into a throwaway `postgres:17-alpine`
+on port 5433 (the dev container is too old for the dump format), give the
+accounts you want the dev fixture's password hash, run the server against it
+with `REDIS_CONNECTION=localhost:6380` (a separate Redis - player ids collide
+with the dev box's cache) and read `/api/v1/character/stats` and
+`/api/v1/combat/projection` as them. Never point it at the real box.
+
+Open: owner questions in section 6 of the audit doc (Nav on?, numbers,
+spirits of Nav for breeding past 50, Chronicle level into the header).
+
+---
+
 # 2026-11-14/15 night - World boss duel; region-2 catch-22; branch cleanup
 
 **Read `docs/design/WORLD_BOSS_REWORK_2026_11_14.md`.** The owner asked for the
