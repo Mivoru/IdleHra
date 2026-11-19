@@ -7195,6 +7195,12 @@ if (want('nav')) {
       const lockText = (await page.getByTestId('nav-locked').innerText().catch(() => '')).trim();
       record('a closed Nav says what opens it and greys the Descend button',
         lockText.includes('Malakor') && (await page.getByTestId('nav-descend').isDisabled().catch(() => false)), lockText);
+      // Nor may it spend: the research costs gold for a bonus that only counts
+      // in Nav, so a closed Nav refuses it on the server, not just the button.
+      const refused = await apiPost('/api/v1/nav/research', { Key: 'souls' }).catch(() => null);
+      const still = await apiGet('/api/v1/nav').catch(() => null);
+      record('a closed Nav refuses the gold research', refused?.Result === 'Locked' && (still?.ResearchActive ?? '') === '',
+        `result ${refused?.Result}, active "${still?.ResearchActive}"`);
       await apiPostStatus('/api/v1/nav/dev/open', {}).catch(() => 0);
     }
     await apiPostStatus('/api/v1/nav/dev/hurry', {}).catch(() => 0);

@@ -91,6 +91,7 @@ namespace FolkIdle.Server.Network
                     }
                     catch (JsonException) { context.Response.StatusCode = 400; return true; }
 
+                    if (!await NavOpenNowAsync(playerId)) { await WriteJsonAsync(context, new { Result = "Locked", Level = 0 }); return true; }
                     var (result, level) = await NavEngine.BuyAsync(db, playerId, key, levels, now);
                     await WriteJsonAsync(context, new { Result = result.ToString(), Level = level });
                     return true;
@@ -106,6 +107,9 @@ namespace FolkIdle.Server.Network
                     }
                     catch (JsonException) { context.Response.StatusCode = 400; return true; }
 
+                    // Gold for a bonus that only counts in Nav: a player who cannot
+                    // descend yet must not be able to pour 50M into it.
+                    if (!await NavOpenNowAsync(playerId)) { await WriteJsonAsync(context, new { Result = "Locked", Gold = 0L }); return true; }
                     var (result, gold) = await NavEngine.ResearchAsync(db, playerId, key, now);
                     if (result == NavResearchResult.Started)
                     {
@@ -151,6 +155,13 @@ namespace FolkIdle.Server.Network
         // never written. The dev fixture has not beaten Malakor; exercise.mjs
         // opens it here, as it opens the dungeon (_devDungeonBossMask).
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, byte> _devNavOpen = new();
+
+        /// <summary>Open for this player right now; offline counts as closed (spending needs the live mask).</summary>
+        private async Task<bool> NavOpenNowAsync(long playerId)
+        {
+            var snapshot = await NavSnapshotAsync(playerId);
+            return snapshot != null && NavOpenFor(playerId, snapshot.Value.Payload.DefeatedRegionBossMask);
+        }
 
         private static bool NavOpenFor(long playerId, byte defeatedRegionBossMask)
             => NavRules.IsOpen(defeatedRegionBossMask) || (DevToolsEnabled() && _devNavOpen.ContainsKey(playerId));

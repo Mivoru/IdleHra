@@ -149,7 +149,7 @@
     busy = true;
     try {
       const r = await navBuy(key, levels);
-      if (r?.Result !== 'Bought') pushLocalNotice(r?.Result === 'Maxed' ? 'That upgrade is at its top.' : 'Not enough Souls.', 'error');
+      if (r?.Result !== 'Bought') pushLocalNotice(r?.Result === 'Maxed' ? 'That upgrade is at its top.' : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.' : 'Not enough Souls.', 'error');
     } finally {
       busy = false;
       await refresh();
@@ -162,7 +162,7 @@
     try {
       const r = await navResearch(key);
       if (r?.Result === 'Started') pushLocalNotice('The Volkhv begins the research.', 'info');
-      else pushLocalNotice(r?.Result === 'Busy' ? 'The Volkhv is already researching.' : 'Not enough gold.', 'error');
+      else pushLocalNotice(r?.Result === 'Busy' ? 'The Volkhv is already researching.' : r?.Result === 'Locked' ? 'Nav opens when you beat Malakor.' : 'Not enough gold.', 'error');
     } finally {
       busy = false;
       await refresh();
@@ -347,10 +347,10 @@
               <span class="dim tiny">{u.Effect}</span>
             </div>
             <div class="u-buy">
-              <button disabled={busy || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)}>
+              <button disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 1)}>
                 {u.Maxed ? 'Top' : `+1 - ${formatNumber(u.Cost)}`}
               </button>
-              <button class="ghost" disabled={busy || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 100)} title="As many levels as your Souls buy">Max</button>
+              <button class="ghost" disabled={busy || !data.Open || u.Maxed || data.Souls < u.Cost} onclick={() => buy(u.Key, 100)} title="As many levels as your Souls buy">Max</button>
             </div>
           </li>
         {/each}
@@ -373,7 +373,7 @@
               <span class="dim tiny">{l.Effect} - {formatDuration(l.Seconds)}</span>
             </div>
             <div class="u-buy">
-              <button disabled={busy || data.ResearchActive !== ''} onclick={() => research(l.Key)} data-testid={`nav-research-${l.Key}`}>
+              <button disabled={busy || !data.Open || data.ResearchActive !== ''} onclick={() => research(l.Key)} data-testid={`nav-research-${l.Key}`}>
                 <Money amount={l.Gold} />
               </button>
             </div>
