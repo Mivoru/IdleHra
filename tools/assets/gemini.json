@@ -866,6 +866,16 @@
       "prompt": "Baba Yaga, the ancient witch of Slavic folklore, flying in a great wooden mortar and steering with a pestle, a birch broom tucked behind her, a long hooked nose, iron teeth bared in a grin, wild grey hair under a ragged headscarf, a necklace of tiny skulls, misty violet forest light with glowing skull-lanterns behind her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of their lair fading to near-black at the edges so the figure reads clearly on a small screen. No text."
     },
     {
+      "id": "banner_nav",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_expeditions.webp"
+      ],
+      "prompt": "A wide panoramic banner for 'the Descent into Nav', the Slavic underworld below the World Tree, in a pagan Slavic-folklore idle RPG: a vast dark cavern seen from above, the enormous gnarled roots of the World Tree reaching down into blackness, a narrow stair of stone ledges spiralling down along the roots into a cold blue-green glow far below, faint ghostly lights and bones among the roots, a lone small warrior with a torch on the first ledge. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-19: crop to a 1200x360 strip (10:3) for ScreenBanner art banner_nav."
+    },
+    {
       "id": "banner_breeding",
       "model": "gemini-3-pro-image",
       "aspectRatio": "21:9",

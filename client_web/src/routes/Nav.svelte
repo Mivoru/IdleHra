@@ -16,6 +16,7 @@
   import { pushLocalNotice } from '../lib/stores/game';
   import { monsterName, loadContent, type ContentRegistry } from '../lib/net/content';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import ScreenBanner from '../lib/ui/ScreenBanner.svelte';
   import Money from '../lib/ui/Money.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { onMount } from 'svelte';
@@ -105,11 +106,13 @@
   }
 </script>
 
+<div class="nav-wrap">
+<ScreenBanner art="banner_nav" line="Below the roots, the dark goes on forever." />
 <section class="panel nav-screen" data-testid="nav">
   <header class="top">
     <div>
       <h2>The Descent into Nav</h2>
-      <p class="dim small">Below the World Tree's roots the dark goes on forever. How deep can you go?</p>
+      <p class="dim small">One guardian a depth, thirty seconds each. How deep can you go?</p>
     </div>
     {#if data}
       <div class="record" data-testid="nav-record">
@@ -245,11 +248,15 @@
     </details>
   {/if}
 </section>
+</div>
 
 <style>
-  .nav-screen {
+  .nav-wrap {
     max-width: 60rem;
     margin: 0 auto;
+  }
+
+  .nav-screen {
     display: grid;
     gap: 1rem;
   }
