@@ -179,10 +179,16 @@
 <style>
   .shelf h2 { margin: 0 0 8px; font-size: 1rem; }
   .tiers { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .tier { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; }
-  .tier img { width: 56px; height: 56px; object-fit: contain; }
-  .meta { display: flex; flex-direction: column; }
-  .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  /* Modul: a wrapping row, not a grid with an `auto` actions column. With
+     "Open all" the buttons claimed the whole width and squeezed the name
+     column to one letter, so "Bronze" and "Ancient" read downwards on a
+     phone (owner, 2026-11-19). The name keeps its width now and the buttons
+     drop under it when they do not fit. */
+  .tier { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .tier img { flex: none; width: 56px; height: 56px; object-fit: contain; }
+  .meta { flex: 1 0 5.5rem; display: flex; flex-direction: column; white-space: nowrap; }
+  .actions { flex: 1 1 auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .tier > .odds { flex-basis: 100%; }
   .actions button { min-height: 44px; }
   .odds { grid-column: 1 / -1; margin: 0; padding-left: 18px; }
   /* The vault the cosmetic chests open in, so a loot chest stands in a room
