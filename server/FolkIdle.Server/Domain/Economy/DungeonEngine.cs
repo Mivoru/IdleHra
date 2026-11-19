@@ -134,8 +134,12 @@ namespace FolkIdle.Server.Domain.Economy
             _ => LootChestTier.Ancient,
         };
 
-        /// <remarks>Modul: each band doubles the one before - 5, 10, 20, and 40 for the Legend band (16-20).</remarks>
-        public static int FirstClearDiamonds(int stage) => stage <= 5 ? 5 : stage <= 10 ? 10 : stage <= 15 ? 20 : 40;
+        /// <remarks>
+        /// Modul: 5, 10 and 20 for the first three bands; the Legend band (16-20)
+        /// climbs 40, 60, 80, 100, 120 a stage (owner, 2026-11-19: "isn't that
+        /// too few diamonds") - 400 a gate, 1,200 for all three.
+        /// </remarks>
+        public static int FirstClearDiamonds(int stage) => stage <= 5 ? 5 : stage <= 10 ? 10 : stage <= 15 ? 20 : 40 + 20 * (stage - 16);
 
         /// <summary>Minutes of the champion's own income a won XP or gold stage pays.</summary>
         public static int IncomeMinutes(int stage) => 20 + 8 * Math.Clamp(stage, 1, DungeonSimulator.StageCount);

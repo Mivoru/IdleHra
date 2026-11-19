@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.103.1',
+    date: '2026-11-19',
+    sections: [
+      {
+        title: 'Dungeons',
+        items: [
+          'The Legend stages pay more diamonds the first time you clear them, rising with each stage: 40 for stage 16, then 60, 80, 100 and 120 for stage 20. That is 400 diamonds for each gate.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.103.0',
     date: '2026-11-19',
     headline: 'The dungeons go five stages deeper.',
