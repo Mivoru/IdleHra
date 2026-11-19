@@ -35,6 +35,31 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.98.0',
+    date: '2026-11-19',
+    headline: 'The Descent into Nav: an endless ladder below the World Tree, open once you have beaten Malakor.',
+    sections: [
+      {
+        title: 'New: the Descent into Nav',
+        items: [
+          'One guardian a depth, thirty seconds each - how deep can you go? Guardians grow stronger every depth, so there is no bottom.',
+          "Ten servants of Nav stand in turn, each with its own ability: Upir drinks your blood back, Psoglav shrugs off plain hits, Kikimora's hex stops crits. One build will not beat them all.",
+          'Veles, the Lord of Nav, guards every 25th depth - and pays triple Souls.',
+          'Souls buy Workshop upgrades with no top level. They only count in Nav, so the rest of the game stays as it is.',
+          "The Volkhv's research turns gold and time into lasting knowledge of the deep.",
+          'Each character shows how deep it should get before you spend a descent, and every run is played back depth by depth.',
+          'When a guardian stops you, the screen says which one and what would beat it.',
+          "A board of the deepest players, four new titles - from Veles' Guest to Lord of the Underworld - and News when someone beats a Veles or opens a Circle.",
+          'One descent comes back every 20 minutes, offline too, up to twelve - the menu shows a dot when they are all waiting. Depth 50 opens the next Circle.',
+        ],
+      },
+      {
+        title: 'Interface',
+        items: ['On a phone the Chronicle level and its rewards sit in the header instead of floating over the screen.'],
+      },
+    ],
+  },
+  {
     version: '1.97.1',
     date: '2026-11-19',
     sections: [

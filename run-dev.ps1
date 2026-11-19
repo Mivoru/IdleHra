@@ -37,6 +37,10 @@ $env:FOLKIDLE_DELVE_DEEP = 'on'
 # the full wheel (practice, real strikes, auto-strike) so exercise.mjs can prove
 # skill reaches damage.
 $env:FOLKIDLE_BOSS_MINIGAME = 'duel'
+# The Descent into Nav (2026-11-19) ships OFF in production until the owner
+# decides on Souls and the gold research; the dev box runs it so the screen
+# and exercise.mjs can reach it.
+$env:FOLKIDLE_NAV = 'on'
 
 Write-Host 'Starting the game server on :8080...' -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(
@@ -47,6 +51,7 @@ Start-Process powershell -ArgumentList @(
   "`$env:FOLKIDLE_DEV_TOOLS='1'; " +
   "`$env:FOLKIDLE_DELVE_DEEP='on'; " +
   "`$env:FOLKIDLE_BOSS_MINIGAME='duel'; " +
+  "`$env:FOLKIDLE_NAV='on'; " +
   "dotnet run --project FolkIdle.Server/FolkIdle.Server.csproj"
 )
 

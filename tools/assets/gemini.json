@@ -866,6 +866,126 @@
       "prompt": "Baba Yaga, the ancient witch of Slavic folklore, flying in a great wooden mortar and steering with a pestle, a birch broom tucked behind her, a long hooked nose, iron teeth bared in a grin, wild grey hair under a ragged headscarf, a necklace of tiny skulls, misty violet forest light with glowing skull-lanterns behind her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of their lair fading to near-black at the edges so the figure reads clearly on a small screen. No text."
     },
     {
+      "id": "banner_nav",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "21:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_expeditions.webp"
+      ],
+      "prompt": "A wide panoramic banner for 'the Descent into Nav', the Slavic underworld below the World Tree, in a pagan Slavic-folklore idle RPG: a vast dark cavern seen from above, the enormous gnarled roots of the World Tree reaching down into blackness, a narrow stair of stone ledges spiralling down along the roots into a cold blue-green glow far below, faint ghostly lights and bones among the roots, a lone small warrior with a torch on the first ledge. Pagan only, no Christian symbols. Match the art style, palette and pixel-painting technique of the reference image exactly. No text, no letters, no logos, no UI.",
+      "note": "2026-11-19: crop to a 1200x360 strip (10:3) for ScreenBanner art banner_nav."
+    },
+    {
+      "id": "nav_guardian_upir",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "An upir, the blood-drinking revenant of Slavic folklore: a pale gaunt man in a rotting embroidered linen burial shirt, red-stained mouth with long thin fangs, flushed purple-red cheeks from fresh blood, wild matted dark hair, grave soil on his hands, a broken aspen stake still lodged in his shoulder, bareheaded with no hat, no cap, no mitre, no crown. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/upir.webp."
+    },
+    {
+      "id": "nav_guardian_strzyga",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "A strzyga, the two-hearted demon woman of Slavic folklore: a gaunt pale woman with owl-like amber eyes and two rows of teeth, ragged grey shroud, tangled black hair, clawed hands, two faintly glowing hearts visible through her ribs, a barn owl perched behind her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/strzyga.webp."
+    },
+    {
+      "id": "nav_guardian_mora",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "A mora, the nightmare spirit of Slavic folklore that sits on sleepers' chests: a thin shadowy woman made half of black smoke, long loose hair drifting like mist, pale moon-white face with hollow dark eyes, long spidery fingers reaching forward, wisps of smoke and moths around her. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/mora.webp."
+    },
+    {
+      "id": "nav_guardian_wisp",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "A will-o'-wisp, the bludicka of Slavic marsh folklore: a slender ghostly figure of cold pale-green light in the shape of a lantern-bearing maiden, translucent body trailing into marsh mist, a small floating flame in her hand, bog reeds and dark water around her, eerie and beautiful. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/wisp.webp."
+    },
+    {
+      "id": "nav_guardian_poludnica",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "Poludnica, Lady Midday of Slavic folklore: a tall woman in a blinding white linen dress and white veil, a large curved harvest sickle in her hand, sun-bleached straw-blonde hair, a burning golden sun halo behind her head, cracked parched earth and wilted wheat at her feet, harsh noon heat shimmer. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/poludnica.webp."
+    },
+    {
+      "id": "nav_guardian_navka",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "A navka, a drowned maiden spirit of Slavic folklore: a beautiful pale girl with very long wet green-black hair crowned with water lilies and willow, a white wet shift, a hollow open back showing no organs, glassy silver eyes, holding up a round silver mirror that reflects cold light. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/navka.webp."
+    },
+    {
+      "id": "nav_guardian_psoglav",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "A psoglav, the dog-headed iron giant of Slavic folklore: a hulking man with the head of a snarling black mastiff, a single glowing eye in the forehead, iron teeth, skin plated with dark iron scales like armour, a huge iron club, heavy fur and chains. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/psoglav.webp."
+    },
+    {
+      "id": "nav_guardian_kikimora",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "A kikimora, the spiteful hex spirit of Slavic folklore: a tiny thin hunched woman with a long beak-like nose, tangled hair full of feathers and spindle thread, chicken feet, holding a spindle and a tangled ball of black yarn crackling with a violet hex, small malicious grin. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/kikimora.webp."
+    },
+    {
+      "id": "nav_guardian_utopenec",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "An utopenec, the drowned water revenant of Slavic folklore: a bloated blue-grey drowned man with dripping waterweed hair, green coat tails dripping water, webbed fingers, a string of tiny porcelain lidded pots at his belt that hold drowned souls, cold dark water swirling up around him. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/utopenec.webp."
+    },
+    {
+      "id": "nav_guardian_hound",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "The Black Hound of Nav: an enormous gaunt black wolfhound, ribs showing through its pelt, frost and grave-rime on its fur, cold pale-blue fire for eyes, breath freezing in the air, a broken iron chain hanging from its collar. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/hound.webp."
+    },
+    {
+      "id": "nav_guardian_veles",
+      "model": "gemini-3.1-flash-image",
+      "aspectRatio": "1:1",
+      "references": [
+        "client_web/public/dungeon/boss-koschei.webp"
+      ],
+      "prompt": "Veles, the horned Slavic god of the underworld, as the Lord of Nav: an immense figure with great curved bull horns, a long dark beard braided with gold rings, amber glowing eyes, a cloak of bear fur, a giant black serpent coiling around him, enthroned among the World Tree's roots, gold coins and bones at his feet. Portrait framed from the waist up, facing the viewer slightly turned, menacing and memorable, dramatic rim light, the background a dark blurred vignette of the cold blue-green underworld of Nav among giant roots, fading to near-black at the edges so the figure reads clearly on a small screen. Pagan Slavic folklore only, no Christian symbols. No text. Match the art style, palette and painting technique of the reference image.",
+      "note": "2026-11-19: Nav guardian art, 512x512 webp into client_web/public/nav/veles.webp."
+    },
+    {
       "id": "banner_breeding",
       "model": "gemini-3-pro-image",
       "aspectRatio": "21:9",

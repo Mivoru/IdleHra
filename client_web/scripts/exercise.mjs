@@ -7179,6 +7179,97 @@ await go('Ancestors');
 }
 
 }
+if (want('nav')) {
+// --- The Descent into Nav (2026-11-19) ---------------------------------------
+// Only where the server has it on (FOLKIDLE_NAV=on): the routes answer 404
+// otherwise and the menu hides the entry, which is itself checked. A descent
+// must PAY - Souls up, a record - and a Workshop purchase must move a level;
+// the dev tool refills the charges afterwards so the next run starts equal.
+{
+  const navState = await apiGet('/api/v1/nav').catch(() => null);
+  if (navState === null) {
+    const entry = await page.locator('header button[data-label="Nav"]').count();
+    record('Nav is off on this server and its menu entry is hidden', entry === 0, `entries ${entry}`);
+  } else {
+    // The fixture has not beaten Malakor: the screen must say what opens Nav.
+    if (navState.Open === false) {
+      await go('Nav');
+      const lockText = (await page.getByTestId('nav-locked').innerText().catch(() => '')).trim();
+      record('a closed Nav says what opens it and greys the Descend button',
+        lockText.includes('Malakor') && (await page.getByTestId('nav-descend').isDisabled().catch(() => false)), lockText);
+      // Nor may it spend: the research costs gold for a bonus that only counts
+      // in Nav, so a closed Nav refuses it on the server, not just the button.
+      const refused = await apiPost('/api/v1/nav/research', { Key: 'souls' }).catch(() => null);
+      const still = await apiGet('/api/v1/nav').catch(() => null);
+      record('a closed Nav refuses the gold research', refused?.Result === 'Locked' && (still?.ResearchActive ?? '') === '',
+        `result ${refused?.Result}, active "${still?.ResearchActive}"`);
+      await apiPostStatus('/api/v1/nav/dev/open', {}).catch(() => 0);
+    }
+    await apiPostStatus('/api/v1/nav/dev/hurry', {}).catch(() => 0);
+    await go('Nav');
+    await page.reload({ waitUntil: 'networkidle' });
+    await go('Nav');
+    const panel = page.getByTestId('nav');
+    await panel.waitFor({ timeout: 10000 }).catch(() => {});
+    const before = await apiGet('/api/v1/nav');
+    // dev/hurry filled the descents: the menu entry wears the "full" dot.
+    const fullDot = await page.getByTestId('nav-charges-full').count();
+    record('full descents put a dot on the Nav menu entry', before?.Charges === before?.ChargeCap && fullDot > 0, `charges ${before?.Charges}/${before?.ChargeCap}, dots ${fullDot}`);
+    await page.getByTestId('nav-descend').click().catch(() => {});
+    // The run is played back first (nav-replay), then listed (nav-run).
+    const replayed = await page.getByTestId('nav-replay').waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+    await page.getByTestId('nav-run').waitFor({ timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const after = await apiGet('/api/v1/nav');
+    const depthShown = (await page.getByTestId('nav-record').innerText().catch(() => '')).trim();
+    // The fixture may clear no depth at all (it is level 40); the run must still
+    // be spent, recorded and shown, and pay exactly what it cleared.
+    record('a descent spends a charge, is recorded and pays the Souls of what it cleared',
+      after !== null && after.Charges === before.Charges - 1 && after.LastRun !== null
+        && after.Souls === before.Souls + after.LastRun.Souls && (await page.getByTestId('nav-run').count()) > 0,
+      after ? `souls ${before.Souls} -> ${after.Souls}, charges ${before.Charges} -> ${after.Charges}, deepest ${after.LastRun?.DeepestCleared}, record "${depthShown.split(/\s+/)[0]}"` : 'no answer');
+
+    const dotAfter = await page.getByTestId('nav-charges-full').count();
+    record('spending a descent takes the dot away', dotAfter === 0, `dots ${dotAfter}`);
+
+    // Why it stopped: the guardian that ended the run, by name, and the hint
+    // that says what would beat it - the reason to own a second build.
+    const hintText = (await page.getByTestId('nav-hint').innerText().catch(() => '')).trim();
+    record('a descent is played back, then says which guardian stopped it and what beats it',
+      replayed && after?.LastRun?.StoppedBy !== '' && hintText.length > 20 && hintText.includes(after?.LastRun?.Hint?.slice(0, 20) ?? '~'),
+      `replayed ${replayed}, stopped by ${after?.LastRun?.StoppedBy}, hint "${hintText.slice(0, 60)}"`);
+
+    // Nav's own guardians (2026-11-19): every depth names one of the server's
+    // roster, and the "below your record" list shows painted portraits that
+    // actually loaded - a missing webp would fall back to initials silently.
+    const keys = new Set((after?.Guardians ?? []).map((g) => g.Key));
+    const runKeysOk = (after?.LastRun?.Depths ?? []).length > 0 && after.LastRun.Depths.every((d) => keys.has(d.Guardian));
+    await page.getByTestId('nav-ahead').scrollIntoViewIfNeeded().catch(() => {});
+    await page.waitForTimeout(1200);
+    const aheadImgs = page.getByTestId('nav-ahead').locator('img');
+    const aheadCount = await aheadImgs.count();
+    const loaded = await aheadImgs.evaluateAll((imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length).catch(() => 0);
+    record('Nav shows its own guardians: run depths name the roster and the next four portraits load',
+      keys.size === 11 && runKeysOk && aheadCount === 4 && loaded === 4,
+      `roster ${keys.size}, run keys ok ${runKeysOk}, portraits ${loaded}/${aheadCount}`);
+
+    const cheapest = (after?.Workshop ?? []).filter((u) => !u.Maxed && u.Cost <= after.Souls).sort((a, b) => a.Cost - b.Cost)[0];
+    if (cheapest) {
+      await page.getByTestId(`nav-up-${cheapest.Key}`).getByRole('button', { name: /^\+1/ }).click().catch(() => {});
+      await page.waitForTimeout(1200);
+      const bought = await apiGet('/api/v1/nav');
+      const level = bought?.Workshop.find((u) => u.Key === cheapest.Key)?.Level ?? -1;
+      record('a Workshop upgrade bought with Souls moves its level and takes its price',
+        level === cheapest.Level + 1 && bought.Souls === after.Souls - cheapest.Cost,
+        `${cheapest.Key} ${cheapest.Level} -> ${level}, souls ${after.Souls} -> ${bought?.Souls}`);
+    } else {
+      record('a Workshop upgrade (skipped: nothing affordable)', true);
+    }
+    await apiPostStatus('/api/v1/nav/dev/hurry', {}).catch(() => 0);
+  }
+}
+
+}
 if (want('new-player')) {
 // --- onboarding, on an account that has never played -------------------------
 //

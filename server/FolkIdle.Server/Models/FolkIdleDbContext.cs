@@ -69,6 +69,7 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerChronicleSeason> PlayerChronicleSeasons { get; set; }
         public DbSet<PlayerWardrobe> PlayerWardrobes { get; set; }
         public DbSet<Expedition> Expeditions { get; set; }
+        public DbSet<NavProgress> NavProgress { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
         public DbSet<PlayerChroniclePass> PlayerChroniclePasses { get; set; }
@@ -539,6 +540,17 @@ namespace FolkIdle.Server.Models
                 b.HasKey(c => new { c.PlayerId, c.DayKey, c.Action, c.Detail });
                 // The pruning delete walks by day.
                 b.HasIndex(c => c.DayKey);
+            });
+
+            modelBuilder.Entity<NavProgress>(b =>
+            {
+                b.ToTable("nav_progress");
+                b.HasKey(n => n.PlayerId);
+                b.Property(n => n.PlayerId).ValueGeneratedNever();
+                b.Property(n => n.BestDepths).HasMaxLength(512);
+                b.Property(n => n.Workshop).HasMaxLength(512);
+                b.Property(n => n.Research).HasMaxLength(256);
+                b.Property(n => n.ResearchActive).HasMaxLength(32);
             });
 
             modelBuilder.Entity<Expedition>(b =>

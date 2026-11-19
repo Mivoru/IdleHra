@@ -25,6 +25,8 @@ namespace FolkIdle.Server.Engine
         Refine = 13,
         /// <summary>An expedition slot bought with gold (ExpeditionEngine.BuySlotAsync, 2026-11-13).</summary>
         Expedition = 14,
+        /// <summary>The Volkhv's research in Nav (NavEngine.ResearchAsync) - the sink that grows with income.</summary>
+        NavResearch = 15,
     }
 
     /// <summary>Where a credit of gold came from (task 79, phase 2). Stored as a short - append only.</summary>

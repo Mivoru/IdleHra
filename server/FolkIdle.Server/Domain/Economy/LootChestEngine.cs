@@ -26,6 +26,8 @@ namespace FolkIdle.Server.Domain.Economy
         LoginReward = 6,
         // The Chronicle pass (2026-11-15): track chests and the overflow chest.
         Chronicle = 7,
+        // The Descent into Nav (2026-11-19): a Circle's first-time depth milestones.
+        Nav = 8,
     }
 
     /// <summary>

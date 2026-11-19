@@ -8,7 +8,9 @@
   import { hotkeyTab, MAIN_TABS } from './lib/ui/tabs';
   import { connectionChip } from './lib/ui/connectionMessage';
   import { refreshUnopenedChests, unopenedChests } from './lib/stores/cosmeticChests';
+  import { navAvailable } from './lib/net/nav';
   import { dungeonTicketsFull, refreshDungeonTickets } from './lib/stores/dungeonTickets';
+  import { navChargesFull, refreshNavCharges } from './lib/stores/navCharges';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import Toasts from './lib/ui/Toasts.svelte';
   import AchievementToast from './lib/ui/AchievementToast.svelte';
@@ -106,6 +108,9 @@
         // Owner, 2026-11-14: an activity, found next to the other ones - it
         // was a fourth tab under Bloodline, where nobody looked for it.
         { key: 'expeditions', label: 'Expeditions' },
+        // The Descent into Nav (2026-11-19): hidden unless the server runs
+        // with FOLKIDLE_NAV=on - see navEnabled below.
+        { key: 'nav', label: 'Nav' },
       ],
     },
     {
@@ -191,7 +196,25 @@
   // it comes off this list.
   const MENU_HIDDEN_ALWAYS: ReadonlySet<string> = new Set(['store']);
   // The dungeons were admin-only while they were rebuilt; open to all since 2026-10-31.
-  const MENU_HIDDEN = MENU_HIDDEN_ALWAYS;
+  // Modul: NAV IS SHOWN ONLY WHERE THE SERVER HAS IT ON. Its routes answer 404
+  // without FOLKIDLE_NAV=on (production, until the owner decides on Souls and
+  // the gold research), and an entry that opens "Nav is closed" is the Store
+  // problem above again. One GET at sign-in decides. (Production has it on
+  // from its launch; the flag stays as the off switch.)
+  let navEnabled = $state(false);
+  $effect(() => {
+    if (!token) return;
+    void navAvailable().then((on) => (navEnabled = on));
+  });
+  // Full descents stop refilling; see navCharges.ts. Every ten minutes, and
+  // only where the server has Nav at all.
+  $effect(() => {
+    if (!token || !navEnabled) return;
+    refreshNavCharges();
+    const timer = setInterval(refreshNavCharges, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  });
+  const MENU_HIDDEN: ReadonlySet<string> = $derived(navEnabled ? MENU_HIDDEN_ALWAYS : new Set([...MENU_HIDDEN_ALWAYS, 'nav']));
 
   // Modul: SCREENS REACHED THROUGH A TAB, not a menu entry (task 59). Each
   // keeps its own key, so everything that names a screen - the tutorial's
@@ -345,6 +368,7 @@
     rebirth: () => import('./routes/Rebirth.svelte'),
     inheritance: () => import('./routes/Inheritance.svelte'),
     expeditions: () => import('./routes/Expeditions.svelte'),
+    nav: () => import('./routes/Nav.svelte'),
     delve: () => import('./routes/Delve.svelte'),
     dungeon: () => import('./routes/Dungeon.svelte'),
     store: () => import('./routes/Store.svelte'),
@@ -889,6 +913,7 @@
     if (key === 'character') return characterWants;
     if (key === 'skills') return skillsWant;
     if (key === 'dungeon') return $dungeonTicketsFull;
+    if (key === 'nav') return $navChargesFull;
     return false;
   }
 
@@ -940,7 +965,7 @@
         class:tile={inSheet}
         disabled={locked !== null}
         aria-current={entryKeyOf(screen) === item.key ? 'page' : undefined}
-        title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : item.key === 'dungeon' && $dungeonTicketsFull ? 'A gate is full of tickets - new ones are lost until you spend one' : undefined}
+        title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : item.key === 'dungeon' && $dungeonTicketsFull ? 'A gate is full of tickets - new ones are lost until you spend one' : item.key === 'nav' && $navChargesFull ? 'Every descent is waiting - new ones are lost until you spend one' : undefined}
         data-nav={item.key}
         data-label={item.label}
         data-locked={locked ?? undefined}
@@ -957,6 +982,7 @@
         {#if item.key === 'character' && characterWants}<span class="navdot" aria-hidden="true"></span>{/if}
         {#if item.key === 'skills' && skillsWant}<span class="navdot" aria-hidden="true"></span>{/if}
         {#if item.key === 'dungeon' && $dungeonTicketsFull}<span class="navdot" aria-hidden="true" data-testid="nav-dungeon-full"></span>{/if}
+        {#if item.key === 'nav' && $navChargesFull}<span class="navdot" aria-hidden="true" data-testid="nav-charges-full"></span>{/if}
       </button>
     {/snippet}
 

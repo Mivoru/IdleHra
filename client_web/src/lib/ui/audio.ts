@@ -120,6 +120,11 @@ export const CLIPS = {
   worldBossRoar: 'worldboss_roar.wav',
   worldBossHammer: 'worldboss_hammer.wav',
   worldBossHiss: 'worldboss_serpent_hiss.wav',
+
+  // The Descent into Nav (2026-11-19): ElevenLabs SFX, loudness matched to the
+  // world boss clips. Played by Nav.svelte only.
+  navDescend: 'nav_descend.wav',
+  navRecord: 'nav_record.wav',
 } as const;
 
 export type ClipName = keyof typeof CLIPS;

@@ -2472,6 +2472,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // The Descent into Nav - see NetworkBroadcastSystem.Nav.cs (404 unless FOLKIDLE_NAV=on).
+            if (await TryHandleNavAsync(context, requestPath))
+            {
+                return;
+            }
+
             // The skill tree screen's definition, draft preview and commit -
             // see NetworkBroadcastSystem.SkillTree.cs.
             if (await TryHandleSkillTreeAsync(context, requestPath))
