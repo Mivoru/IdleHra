@@ -110,7 +110,7 @@ namespace FolkIdle.Server.Tests
             }
             Assert.Equal("Legend", DungeonEngine.BandOf(16));
             Assert.Equal("Beyond", DungeonEngine.BandOf(15));
-            Assert.Equal(40, DungeonEngine.FirstClearDiamonds(16));
+            Assert.Equal(new[] { 20, 40, 60, 80, 100, 120 }, Enumerable.Range(15, 6).Select(DungeonEngine.FirstClearDiamonds));
             Assert.Equal(RarityTier.Mythic, DungeonEngine.RarityFloorFor(20));
         }
 

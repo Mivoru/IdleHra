@@ -707,8 +707,8 @@ Result with 20 stages: endgame L140 clears 18-19 without a dodge, L150 clears
 all fifteen with them) has stage 16 as the next step.
 
 Rewards continue the curve: income minutes 20 + 8 x stage (180 at stage 20),
-first clear 40 diamonds (bands 5 / 10 / 20 / 40, 600 diamonds for all fifteen
-new clears), Baba Yaga's piece floor Mythic, Ancient chest, band name
+first clear 40 / 60 / 80 / 100 / 120 diamonds for stages 16-20 (owner, same
+day; 400 a gate, 1,200 for all fifteen new clears), Baba Yaga's piece floor Mythic, Ancient chest, band name
 "Legend". The stage-15 titles stay (slugs `dungeon_*_15` are stored per
 player); stage 20 pays a second, "<title> of the Deep" (`dungeon_*_20`).
 
