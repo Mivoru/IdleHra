@@ -7177,6 +7177,62 @@ await go('Ancestors');
 }
 
 }
+if (want('nav')) {
+// --- The Descent into Nav (2026-11-19) ---------------------------------------
+// Only where the server has it on (FOLKIDLE_NAV=on): the routes answer 404
+// otherwise and the menu hides the entry, which is itself checked. A descent
+// must PAY - Souls up, a record - and a Workshop purchase must move a level;
+// the dev tool refills the charges afterwards so the next run starts equal.
+{
+  const navState = await apiGet('/api/v1/nav').catch(() => null);
+  if (navState === null) {
+    const entry = await page.locator('header button[data-label="Nav"]').count();
+    record('Nav is off on this server and its menu entry is hidden', entry === 0, `entries ${entry}`);
+  } else {
+    // The fixture has not beaten Malakor: the screen must say what opens Nav.
+    if (navState.Open === false) {
+      await go('Nav');
+      const lockText = (await page.getByTestId('nav-locked').innerText().catch(() => '')).trim();
+      record('a closed Nav says what opens it and greys the Descend button',
+        lockText.includes('Malakor') && (await page.getByTestId('nav-descend').isDisabled().catch(() => false)), lockText);
+      await apiPostStatus('/api/v1/nav/dev/open', {}).catch(() => 0);
+    }
+    await apiPostStatus('/api/v1/nav/dev/hurry', {}).catch(() => 0);
+    await go('Nav');
+    await page.reload({ waitUntil: 'networkidle' });
+    await go('Nav');
+    const panel = page.getByTestId('nav');
+    await panel.waitFor({ timeout: 10000 }).catch(() => {});
+    const before = await apiGet('/api/v1/nav');
+    await page.getByTestId('nav-descend').click().catch(() => {});
+    await page.getByTestId('nav-run').waitFor({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const after = await apiGet('/api/v1/nav');
+    const depthShown = (await page.getByTestId('nav-record').innerText().catch(() => '')).trim();
+    // The fixture may clear no depth at all (it is level 40); the run must still
+    // be spent, recorded and shown, and pay exactly what it cleared.
+    record('a descent spends a charge, is recorded and pays the Souls of what it cleared',
+      after !== null && after.Charges === before.Charges - 1 && after.LastRun !== null
+        && after.Souls === before.Souls + after.LastRun.Souls && (await page.getByTestId('nav-run').count()) > 0,
+      after ? `souls ${before.Souls} -> ${after.Souls}, charges ${before.Charges} -> ${after.Charges}, deepest ${after.LastRun?.DeepestCleared}, record "${depthShown.split(/\s+/)[0]}"` : 'no answer');
+
+    const cheapest = (after?.Workshop ?? []).filter((u) => !u.Maxed && u.Cost <= after.Souls).sort((a, b) => a.Cost - b.Cost)[0];
+    if (cheapest) {
+      await page.getByTestId(`nav-up-${cheapest.Key}`).getByRole('button', { name: /^\+1/ }).click().catch(() => {});
+      await page.waitForTimeout(1200);
+      const bought = await apiGet('/api/v1/nav');
+      const level = bought?.Workshop.find((u) => u.Key === cheapest.Key)?.Level ?? -1;
+      record('a Workshop upgrade bought with Souls moves its level and takes its price',
+        level === cheapest.Level + 1 && bought.Souls === after.Souls - cheapest.Cost,
+        `${cheapest.Key} ${cheapest.Level} -> ${level}, souls ${after.Souls} -> ${bought?.Souls}`);
+    } else {
+      record('a Workshop upgrade (skipped: nothing affordable)', true);
+    }
+    await apiPostStatus('/api/v1/nav/dev/hurry', {}).catch(() => 0);
+  }
+}
+
+}
 if (want('new-player')) {
 // --- onboarding, on an account that has never played -------------------------
 //

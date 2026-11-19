@@ -7,6 +7,7 @@
   import { hotkeyTab, MAIN_TABS } from './lib/ui/tabs';
   import { connectionChip } from './lib/ui/connectionMessage';
   import { refreshUnopenedChests, unopenedChests } from './lib/stores/cosmeticChests';
+  import { navAvailable } from './lib/net/nav';
   import { dungeonTicketsFull, refreshDungeonTickets } from './lib/stores/dungeonTickets';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import Toasts from './lib/ui/Toasts.svelte';
@@ -105,6 +106,9 @@
         // Owner, 2026-11-14: an activity, found next to the other ones - it
         // was a fourth tab under Bloodline, where nobody looked for it.
         { key: 'expeditions', label: 'Expeditions' },
+        // The Descent into Nav (2026-11-19): hidden unless the server runs
+        // with FOLKIDLE_NAV=on - see navEnabled below.
+        { key: 'nav', label: 'Nav' },
       ],
     },
     {
@@ -190,7 +194,16 @@
   // it comes off this list.
   const MENU_HIDDEN_ALWAYS: ReadonlySet<string> = new Set(['store']);
   // The dungeons were admin-only while they were rebuilt; open to all since 2026-10-31.
-  const MENU_HIDDEN = MENU_HIDDEN_ALWAYS;
+  // Modul: NAV IS SHOWN ONLY WHERE THE SERVER HAS IT ON. Its routes answer 404
+  // without FOLKIDLE_NAV=on (production, until the owner decides on Souls and
+  // the gold research), and an entry that opens "Nav is closed" is the Store
+  // problem above again. One GET at sign-in decides.
+  let navEnabled = $state(false);
+  $effect(() => {
+    if (!token) return;
+    void navAvailable().then((on) => (navEnabled = on));
+  });
+  const MENU_HIDDEN: ReadonlySet<string> = $derived(navEnabled ? MENU_HIDDEN_ALWAYS : new Set([...MENU_HIDDEN_ALWAYS, 'nav']));
 
   // Modul: SCREENS REACHED THROUGH A TAB, not a menu entry (task 59). Each
   // keeps its own key, so everything that names a screen - the tutorial's
@@ -344,6 +357,7 @@
     rebirth: () => import('./routes/Rebirth.svelte'),
     inheritance: () => import('./routes/Inheritance.svelte'),
     expeditions: () => import('./routes/Expeditions.svelte'),
+    nav: () => import('./routes/Nav.svelte'),
     delve: () => import('./routes/Delve.svelte'),
     dungeon: () => import('./routes/Dungeon.svelte'),
     store: () => import('./routes/Store.svelte'),

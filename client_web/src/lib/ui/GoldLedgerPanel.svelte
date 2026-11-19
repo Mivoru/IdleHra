@@ -38,6 +38,7 @@
     Respec: 'Skill tree respecs',
     Refine: 'Affix refines',
     Expedition: 'Expedition slots and provisions',
+    NavResearch: "The Volkhv's research (Nav)",
   };
 
   const INCOME_LABELS: Record<string, string> = {

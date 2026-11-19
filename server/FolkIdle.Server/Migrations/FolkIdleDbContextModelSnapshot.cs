@@ -1643,6 +1643,64 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("monster_codex_entries");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.NavProgress", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("BestDepths")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<long>("ChargeAnchorEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Charges")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HighestCircle")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastRunJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("MilestoneMask")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Research")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ResearchActive")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<long>("ResearchEndsEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("RunsTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Souls")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SoulsLifetime")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Workshop")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("PlayerId");
+
+                    b.ToTable("nav_progress", (string)null);
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.NotableItemEvent", b =>
                 {
                     b.Property<long>("Id")
