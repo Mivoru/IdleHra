@@ -170,6 +170,10 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(11, NavRules.Guardians.Append(NavRules.Warden).Select(g => g.Ability).Distinct().Count());
             Assert.Equal(11, NavRules.Guardians.Append(NavRules.Warden).Select(g => g.Key).Distinct().Count());
             Assert.Same(NavRules.Warden, NavRules.GuardianByKey("veles"));
+            // English names (owner): a sentence reads "The Vampire ...", "Lady Midday ...".
+            Assert.Equal("The Vampire", NavRules.GuardianFor(1).Subject);
+            Assert.Equal("Lady Midday", NavRules.GuardianFor(5).Subject);
+            Assert.Equal("Veles", NavRules.GuardianFor(25).Subject);
         }
 
         [Fact]
@@ -202,6 +206,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(run.Depths[^1].Guardian, run.StoppedBy);
             Assert.False(string.IsNullOrWhiteSpace(run.Hint));
             Assert.Contains(NavRules.GuardianByKey(run.StoppedBy)!.Name, run.Depths[^1].Outcome);
+            Assert.StartsWith(NavRules.GuardianByKey(run.StoppedBy)!.Subject, run.Depths[^1].Outcome);
         }
 
         [Fact]

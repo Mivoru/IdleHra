@@ -279,7 +279,7 @@ namespace FolkIdle.Server.Engine
                 // Who stands below, in order, so the screen can show the next
                 // guardians and what each one does before a charge is spent.
                 Guardians = NavRules.Guardians.Append(NavRules.Warden)
-                    .Select(g => new { g.Key, g.Name, g.AbilityName, g.AbilityText }).ToArray(),
+                    .Select(g => new { g.Key, g.Name, g.Subject, g.AbilityName, g.AbilityText }).ToArray(),
                 Bonuses = bonuses,
                 Workshop = NavRules.Workshop.Select(u =>
                 {

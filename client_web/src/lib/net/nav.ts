@@ -59,6 +59,8 @@ export interface NavResearchLine {
 export interface NavGuardian {
   Key: string;
   Name: string;
+  /** The name at the start of a sentence: "The Vampire", "Lady Midday". */
+  Subject: string;
   AbilityName: string;
   AbilityText: string;
 }

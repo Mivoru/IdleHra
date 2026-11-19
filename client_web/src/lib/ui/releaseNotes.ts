@@ -35,6 +35,16 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.98.1',
+    date: '2026-11-19',
+    sections: [
+      {
+        title: 'Nav',
+        items: ["The guardians of Nav go by English names: the Vampire, the Two-Hearted Hag, the Nightmare, the Pale Maiden, the Dog-Headed Giant and the Spindle Hag."],
+      },
+    ],
+  },
+  {
     version: '1.98.0',
     date: '2026-11-19',
     headline: 'The Descent into Nav: an endless ladder below the World Tree, open once you have beaten Malakor.',
@@ -43,7 +53,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         title: 'New: the Descent into Nav',
         items: [
           'One guardian a depth, thirty seconds each - how deep can you go? Guardians grow stronger every depth, so there is no bottom.',
-          "Ten servants of Nav stand in turn, each with its own ability: Upir drinks your blood back, Psoglav shrugs off plain hits, Kikimora's hex stops crits. One build will not beat them all.",
+          "Ten servants of Nav stand in turn, each with its own ability: the Vampire drinks your blood back, the Dog-Headed Giant shrugs off plain hits, the Spindle Hag's hex stops crits. One build will not beat them all.",
           'Veles, the Lord of Nav, guards every 25th depth - and pays triple Souls.',
           'Souls buy Workshop upgrades with no top level. They only count in Nav, so the rest of the game stays as it is.',
           "The Volkhv's research turns gold and time into lasting knowledge of the deep.",
