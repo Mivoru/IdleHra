@@ -31,7 +31,7 @@ namespace FolkIdle.Server.Tests
         {
             int malakor = RaceUnlockRegistry.GetRegionBossMonsterId(5);
             byte cleared = BossFirstClearRules.MarkDefeated(0, malakor);
-            var top = BossAscensionRegistry.ModifiersFor(5, BossAscensionRegistry.MaxStep);
+            var top = BossAscensionRegistry.DungeonAnchor(); // the pre-2026-11-19 A10, not today's endgame one
             long expected = (long)(BossAscensionRules.ScaleBossAttack(BossFirstClearRules.AttackPowerFor(cleared, malakor), in top) * DungeonSimulator.AscensionBandScale);
             var (_, attack, enrage) = DungeonSimulator.BossStrength(10);
             Assert.InRange(attack, expected - 2, expected + 2);

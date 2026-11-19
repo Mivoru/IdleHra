@@ -120,7 +120,8 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             // Stage 10's target: Malakor at A10, scaled by the measured band scale.
-            var top = BossAscensionRegistry.ModifiersFor(5, BossAscensionRegistry.MaxStep);
+            // The pre-retune A10 body (BossAscensionRegistry.DungeonAnchor): the dungeon's scale was measured on it.
+            var top = BossAscensionRegistry.DungeonAnchor();
             double scale = CalibrationScale > 0 ? CalibrationScale : AscensionBandScale;
             double topAttack = BossAscensionRules.ScaleBossAttack(attack, in top) * scale;
             double topHp = BossAscensionRules.ScaleBossHp(hp, in top) * Math.Pow(scale, 0.68);

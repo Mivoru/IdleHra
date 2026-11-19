@@ -338,6 +338,17 @@ per region behind, no heal. Unpaid = hungry, kills pay half XP and gold.
 
 ### 112. Re-measure Malakor's Ascension after power changes (after phase 3, roadmap 3.5)
 
+**Retuned 2026-11-19 for the endgame** (EndgameProfileHarness, prod dump
+03:17Z): under A10's own rules the owner beats x106, an endgame account x820
+(L140) / x1,647 (L150) / x3,836 (L160) against an A10 of x152 - the ladder had
+become midgame. Owner's split: regions and bosses are early/midgame, the world
+boss, dungeon and Nav are endgame. A0-A5 unchanged; A6-A10 geometric from A5
+(x58.6) to x1,500 (x1.91 a step). Measured after: owner clears A6, the L150
+endgame account A10 (53 s). The dungeon's body is pinned to the old A10
+(`BossAscensionRegistry.DungeonAnchor`) - it was derived from A10 and would
+otherwise have become ten times harder (owner 12-13 -> 9). Re-run
+EndgameProfileHarness, not only AscensionCalibrationHarness, after power changes.
+
 **Re-measured 2026-11-13** (prod dump 17:52Z restored locally, harness on
 player 8, level 109, 4 rebirths; after the aptitude milestones, Boons and the
 per-slot bloodline fix): headroom r5 = x38 real, x112 maxed. Malakor: the

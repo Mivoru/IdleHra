@@ -108,6 +108,11 @@ namespace FolkIdle.Server.Tests
                 Assert.InRange(atk / (double)atkBefore, 1.34, 1.36);
                 Assert.True(hp > hpBefore);
             }
+            // The dungeon's body is the pre-retune Malakor A10 (x152), not today's
+            // endgame A10 (x1,500): the retune must not move a single stage.
+            var anchor = BossAscensionRegistry.DungeonAnchor();
+            Assert.InRange(1 + anchor.AttackPct / 100.0, 151, 153);
+            Assert.True(BossAscensionRegistry.ModifiersFor(5, 10).AttackPct > 5 * anchor.AttackPct);
             Assert.Equal("Legend", DungeonEngine.BandOf(16));
             Assert.Equal("Beyond", DungeonEngine.BandOf(15));
             Assert.Equal(new[] { 20, 40, 60, 80, 100, 120 }, Enumerable.Range(15, 6).Select(DungeonEngine.FirstClearDiamonds));
