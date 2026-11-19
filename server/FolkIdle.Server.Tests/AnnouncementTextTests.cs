@@ -65,17 +65,18 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
-        /// Owner decision 2026-10-31: a drop is world news from Relic up -
-        /// Mythic (the floor since 2026-10-02) spammed the News channel. The
+        /// Owner decisions: a drop is world news from Ancient up (2026-11-19) -
+        /// Mythic (2026-10-02) and then Relic (2026-10-31) each spammed the News
+        /// channel as players got stronger. The
         /// threshold is read by NAME from the server's own rarity list, so this
         /// fails if the ladder is reordered under it.
         /// </summary>
         [Fact]
-        public void ADropIsAnnouncedFromRelicAndAbove()
+        public void ADropIsAnnouncedFromAncientAndAbove()
         {
-            Assert.Equal("Relic", RarityTier.GetName(CombatLootEngine.AnnounceableRarityTier));
-            Assert.Equal(RarityTier.Relic, CombatLootEngine.AnnounceableRarityTier);
-            Assert.True(RarityTier.Mythic < CombatLootEngine.AnnounceableRarityTier);
+            Assert.Equal("Ancient", RarityTier.GetName(CombatLootEngine.AnnounceableRarityTier));
+            Assert.Equal(RarityTier.Ancient, CombatLootEngine.AnnounceableRarityTier);
+            Assert.True(RarityTier.Relic < CombatLootEngine.AnnounceableRarityTier);
         }
     }
 }
