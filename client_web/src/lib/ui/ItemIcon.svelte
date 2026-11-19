@@ -36,6 +36,9 @@
   const { baseItemId, name, qualityTier = 0, size = 'md', quantity }: Props = $props();
 
   const url = $derived(itemIcon(baseItemId));
+  // As MonsterPortrait: art served by the game server falls back to the
+  // initials when it cannot load, rather than a broken-image icon.
+  let failedUrl = $state<string | null>(null);
   const color = $derived(rarityColor(qualityTier));
   const glow = $derived(shouldGlow(qualityTier));
   const regionTier = $derived(
@@ -53,10 +56,10 @@
 </script>
 
 <span class="icon" data-size={size} style="--rarity: {color}" class:glow {title}>
-  {#if url}
+  {#if url && failedUrl !== url}
     <!-- Lazy because an inventory can render fifty of these at once, and
          decoding them all synchronously stalls the first paint. -->
-    <img src={url} alt="" loading="lazy" decoding="async" />
+    <img src={url} alt="" loading="lazy" decoding="async" onerror={() => (failedUrl = url)} />
   {:else}
     <span class="fallback" aria-hidden="true">{initialsFor(name)}</span>
   {/if}
