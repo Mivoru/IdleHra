@@ -52,6 +52,7 @@ export const RELEASE_NOTES: readonly Release[] = [
           'The light of an opening chest is centred on the chest again and fades out before it reaches any edge; the Legendary burst no longer draws a grey box over the room; loot chests no longer wash out to white.',
           'Opening five Wardrobe chests ends on "See all 5": every piece of the haul at once, tap one to show it.',
           'Loot chests: "Open all" opens the whole stack in one go, and a big haul lists its best pieces first.',
+          'No more grey video boxes with a play button: a light or dust clip that has not started stays invisible instead.',
         ],
       },
     ],

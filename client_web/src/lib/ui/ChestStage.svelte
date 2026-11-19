@@ -38,6 +38,20 @@
   let lastTaps = 0;
   let raf = 0;
 
+  // Modul: NO GREY PLAYER, EVER (owner, 2026-11-19). A video that has not
+  // started - still loading, autoplay refused on a phone in power saving,
+  // a codec the WebView lacks - draws Android's grey box with a play button.
+  // Each clip is invisible until its first `playing`, its poster is a
+  // transparent pixel instead of the browser's grey, and a refused or broken
+  // clip simply stays invisible: the canvas light carries the moment anyway.
+  const CLEAR_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  function revealOnPlay(e: Event) {
+    (e.currentTarget as HTMLVideoElement).classList.add('playing');
+  }
+  function hideClip(e: Event) {
+    (e.currentTarget as HTMLVideoElement).classList.remove('playing');
+  }
+
   const reduceMotion = () =>
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -159,7 +173,7 @@
     <!-- Ambience: dust in a shaft of light, the owner's Veo loop (5 s, its end
          cross-faded into its start so the loop has no seam). Light only on
          black, drawn with `screen`, behind the chest. -->
-    <video class="dust" autoplay muted loop playsinline aria-hidden="true">
+    <video class="dust clip-video" autoplay muted loop playsinline disablepictureinpicture poster={CLEAR_POSTER} aria-hidden="true" onplaying={revealOnPlay} onerror={hideClip}>
       <source src="/fx/vault-dust.webm" type="video/webm" />
       <source src="/fx/vault-dust.mp4" type="video/mp4" />
     </video>
@@ -173,7 +187,7 @@
          pure black, drawn with `screen`, so black is see-through by itself and
          there is no keyed edge to shimmer. Only the Legendary/Ancient burst
          gets it; every other light on the stage is the canvas. -->
-    <video class="fx" autoplay muted playsinline aria-hidden="true" onended={(e) => ((e.currentTarget as HTMLVideoElement).style.opacity = '0')}>
+    <video class="fx clip-video" autoplay muted playsinline disablepictureinpicture poster={CLEAR_POSTER} aria-hidden="true" onplaying={revealOnPlay} onerror={hideClip} onended={(e) => ((e.currentTarget as HTMLVideoElement).style.opacity = '0')}>
       <source src="/fx/legendary-burst.webm" type="video/webm" />
       <source src="/fx/legendary-burst.mp4" type="video/mp4" />
     </video>
@@ -261,6 +275,13 @@
      grey rectangle the size of the video over the whole scene (seen
      2026-11-19). Contrast crushes the near-black to black, and a radial mask
      takes the box edge away. */
+  /* Hidden until it really plays (see revealOnPlay). */
+  .clip-video {
+    visibility: hidden;
+  }
+  .clip-video:global(.playing) {
+    visibility: visible;
+  }
   .fx {
     position: absolute;
     inset: -30% -40%;
