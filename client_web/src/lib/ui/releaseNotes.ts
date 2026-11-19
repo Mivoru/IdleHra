@@ -50,8 +50,12 @@ export const RELEASE_NOTES: readonly Release[] = [
           'Each character shows how deep it should get before you spend a descent, and every run is played back depth by depth.',
           'When a guardian stops you, the screen says which one and what would beat it.',
           "A board of the deepest players, four new titles - from Veles' Guest to Lord of the Underworld - and News when someone beats a Veles or opens a Circle.",
-          'One descent comes back every 20 minutes, offline too, up to twelve. Depth 50 opens the next Circle.',
+          'One descent comes back every 20 minutes, offline too, up to twelve - the menu shows a dot when they are all waiting. Depth 50 opens the next Circle.',
         ],
+      },
+      {
+        title: 'Interface',
+        items: ['On a phone the Chronicle level and its rewards sit in the header instead of floating over the screen.'],
       },
     ],
   },

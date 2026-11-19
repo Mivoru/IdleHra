@@ -7204,6 +7204,9 @@ if (want('nav')) {
     const panel = page.getByTestId('nav');
     await panel.waitFor({ timeout: 10000 }).catch(() => {});
     const before = await apiGet('/api/v1/nav');
+    // dev/hurry filled the descents: the menu entry wears the "full" dot.
+    const fullDot = await page.getByTestId('nav-charges-full').count();
+    record('full descents put a dot on the Nav menu entry', before?.Charges === before?.ChargeCap && fullDot > 0, `charges ${before?.Charges}/${before?.ChargeCap}, dots ${fullDot}`);
     await page.getByTestId('nav-descend').click().catch(() => {});
     // The run is played back first (nav-replay), then listed (nav-run).
     const replayed = await page.getByTestId('nav-replay').waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
@@ -7217,6 +7220,9 @@ if (want('nav')) {
       after !== null && after.Charges === before.Charges - 1 && after.LastRun !== null
         && after.Souls === before.Souls + after.LastRun.Souls && (await page.getByTestId('nav-run').count()) > 0,
       after ? `souls ${before.Souls} -> ${after.Souls}, charges ${before.Charges} -> ${after.Charges}, deepest ${after.LastRun?.DeepestCleared}, record "${depthShown.split(/\s+/)[0]}"` : 'no answer');
+
+    const dotAfter = await page.getByTestId('nav-charges-full').count();
+    record('spending a descent takes the dot away', dotAfter === 0, `dots ${dotAfter}`);
 
     // Why it stopped: the guardian that ended the run, by name, and the hint
     // that says what would beat it - the reason to own a second build.

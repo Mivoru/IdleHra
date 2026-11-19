@@ -36,11 +36,32 @@ progression, propose an endless endgame (The Tower-like).
   answered 500 for Mivoru. Now `long` (`SimulationEngine.WholeHitPoints`
   clamps only the wire int). Also fixed `AShieldWheelOrder...`, red on main
   since 2026-11-16 (`TreeStrikeFromUtc`).
-- **#440 the Descent into Nav**, OFF in production (`FOLKIDLE_NAV=on`; set in
-  `run-dev.ps1`). Owner decision pending (Souls + gold research). NavRules /
+- **#440 the Descent into Nav. Owner APPROVED 2026-11-19** (Souls, the gold
+  research, the numbers; tune after a week of real runs) and asked for it to
+  go public only when polished. Production runs `FOLKIDLE_NAV=on`
+  (`ops/oracle/.env`); the flag stays as the off switch. NavRules /
   NavSimulator / NavEngine, table `nav_progress` (additive), `/api/v1/nav*`,
-  `Nav.svelte`, exercise section `nav`. Calibrated on a local restore of the
-  2026-11-18 backup: Mivoru depth 40, (pro)boss 15, Tomda 13.
+  `Nav.svelte`, exercise section `nav` (27 checks).
+  - **Own guardians** (owner): ten servants of Nav with one ability each
+    (Upir, Strzyga, Mora, Will-o'-wisp, Lady Midday, Navka, Psoglav, Kikimora,
+    Drowned One, Black Hound) and Veles every 25th depth (x1.8 health, x1.2
+    blows, triple Souls). NOT in `monsters.json` (the regions' 25); all fight
+    with Malakor's armour. Art: `client_web/public/nav/*.webp` (Gemini,
+    `tools/assets/gemini.json` ids `nav_guardian_*`).
+  - Polish: depth-by-depth playback, "stopped by X" + a hint per ability,
+    expected depth per character (median of five seeds), "Deepest in Nav"
+    board, titles (Veles' Guest; Circles 2/3/5), News on a new Veles or
+    Circle, a menu dot when all 12 descents wait, bestiary, wiki.
+  - Calibrated on a local restore of the 2026-11-18 backup: first build
+    Mivoru 40 / (pro)boss 15 / Tomda 13; with guardians Mivoru 35, (pro)boss
+    10-11, Tomda 9-16 - mostly Malakor's armour on every depth, see the
+    Modul note above `NavRules.WardenEvery`.
+  - **Not done, owner said not now:** spirits of Nav (retired ancestors as a
+    Nav damage bonus). The owner suspects breeding only looks fast because
+    (pro)boss used an old hole with Tomda; measure breeding pace before
+    giving breeding a new goal.
+- #444 the Chronicle level is a header chip on a phone (owner approved); a
+  desktop keeps the floating bubble.
 
 **Measuring production locally (how this audit did it):** restore
 `D:\FolkIdleBackups\dumps\<latest>.dump` into a throwaway `postgres:17-alpine`
@@ -50,8 +71,8 @@ with `REDIS_CONNECTION=localhost:6380` (a separate Redis - player ids collide
 with the dev box's cache) and read `/api/v1/character/stats` and
 `/api/v1/combat/projection` as them. Never point it at the real box.
 
-Open: owner questions in section 6 of the audit doc (Nav on?, numbers,
-spirits of Nav for breeding past 50, Chronicle level into the header).
+Owner answered section 6 of the audit doc on 2026-11-19: Nav on, numbers
+kept, Chronicle into the header; spirits of Nav postponed.
 
 ---
 

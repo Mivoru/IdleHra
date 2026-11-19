@@ -264,3 +264,21 @@ levels (+39% damage, 300 Souls - one evening for Tomda) took Tomda from 13 to
    week of real runs.
 3. **Spirits of Nav** (section 4.5) as the answer to "breeding is finished"?
 4. **Phone layout:** move the Chronicle level into the header (section 2.1)?
+
+### Answers (owner, 2026-11-19)
+
+1. Yes - Nav goes live, but only once it is finished and polished.
+2. Keep the numbers; tune after a week of real runs.
+3. Not now. The owner suspects breeding only looks fast because (pro)boss
+   used an old hole together with Tomda; once one account has a
+   50/50/50/50 line, the next one is quick. Measure breeding pace on clean
+   accounts before giving breeding a new goal.
+4. Yes (#444): a header chip on a phone; a desktop keeps the bubble.
+
+The owner also asked for Nav's own monsters. What was built before launch
+(all in #440): ten guardians with one ability each plus Veles every 25th
+depth, a depth-by-depth playback, "stopped by" with a hint per ability, the
+expected depth per character, a board, four titles, News, a menu dot for
+full descents. Calibration with the guardians, on the same restore as
+section 4.4: Mivoru 35, (pro)boss 10-11, Tomda 9-16 (see the Modul note on
+`NavRules.WardenEvery`).

@@ -20,10 +20,13 @@
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { play } from '../lib/ui/audio';
   import { onDestroy } from 'svelte';
+  import { noteNavView } from '../lib/stores/navCharges';
 
   const client = useQueryClient();
   const nav = createQuery(() => ({ queryKey: navKeys.state, queryFn: fetchNav, refetchInterval: 60_000 }));
   const data = $derived(nav.data ?? null);
+  // The menu dot follows what this screen shows (navCharges.ts).
+  $effect(() => noteNavView(nav.data));
 
   // Who stands at a depth: the server sends the order, this only indexes it
   // (NavRules.GuardianFor - the warden every WardenEvery-th depth, else the
@@ -210,7 +213,7 @@
           {#each data.Roster as r (r.Slot)}
             <button class="chip" class:on={slot === r.Slot} onclick={() => (slot = r.Slot)} data-testid={`nav-slot-${r.Slot}`}>
               {slotLabel(r.Slot)}
-              {#if data.Open && r.ExpectedDepth > 0}
+              {#if data.Open}
                 <span class="dim tiny" title={`Expected to reach about depth ${r.ExpectedDepth} of Circle ${r.ExpectedCircle}`}>~depth {r.ExpectedDepth}</span>
               {:else}
                 <span class="dim tiny">{formatNumber(r.Dps)} dps</span>
@@ -245,7 +248,7 @@
 
     {#if replaying && replayDepth && lastRun}
       {@const g = guardianByKey(data, replayDepth.Guardian)}
-      <section class="stage" class:fail={!replayDepth.Cleared} class:warden={replayDepth.Guardian === 'veles'} data-testid="nav-replay" aria-live="polite">
+      <section class="stage" class:fail={!replayDepth.Cleared} class:warden={replayDepth.Guardian === 'veles'} data-testid="nav-replay">
         {#key replayDepth.Depth}
           <div class="stage-card">
             <MonsterPortrait monsterId={0} name={g?.Name ?? 'Guardian'} src={guardianArt(replayDepth.Guardian)} size="lg" />

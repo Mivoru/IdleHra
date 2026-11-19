@@ -89,7 +89,7 @@ namespace FolkIdle.Server.Domain.Progression
         public enum Ability : byte
         {
             None = 0,
-            /// <summary>Upir: heals 2% of its health with every blow it lands.</summary>
+            /// <summary>Upir: heals 1.5% of its health with every blow it lands.</summary>
             Lifedrinker = 1,
             /// <summary>Strzyga: a second heart - rises once with 40% of its health.</summary>
             SecondHeart = 2,
@@ -99,7 +99,7 @@ namespace FolkIdle.Server.Domain.Progression
             Elusive = 4,
             /// <summary>Lady Midday: every blow 8% harder than the last.</summary>
             NoonHeat = 5,
-            /// <summary>Navka: each of your hits costs you 3% of your own health.</summary>
+            /// <summary>Navka: each of your hits costs you 2% of your own health.</summary>
             Mirror = 6,
             /// <summary>Psoglav: plain hits lose 40%; crits pass in full.</summary>
             IronHide = 7,
@@ -107,7 +107,7 @@ namespace FolkIdle.Server.Domain.Progression
             Hex = 8,
             /// <summary>Drowned One: your healing is cut by 80%.</summary>
             Drowning = 9,
-            /// <summary>Black Hound: your swings are 30% slower.</summary>
+            /// <summary>Black Hound: your swings are 25% slower.</summary>
             GraveChill = 10,
             /// <summary>Veles: the warden of every 25th depth - more health and harder blows.</summary>
             Warden = 11,
@@ -137,16 +137,16 @@ namespace FolkIdle.Server.Domain.Progression
         /// </remarks>
         public static readonly Guardian[] Guardians =
         {
-            new("upir", "Upir", Ability.Lifedrinker, "Lifedrinker", "Heals 2% of its health with every blow it lands."),
+            new("upir", "Upir", Ability.Lifedrinker, "Lifedrinker", "Heals 1.5% of its health with every blow it lands."),
             new("strzyga", "Strzyga", Ability.SecondHeart, "Second heart", "Rises once more with 40% of its health."),
             new("mora", "Mora", Ability.Nightmare, "Nightmare", "Sits on your chest: you fight with 60% of your health."),
             new("wisp", "Will-o'-wisp", Ability.Elusive, "Elusive", "A quarter of your swings pass through it and heal nothing."),
             new("poludnica", "Lady Midday", Ability.NoonHeat, "Noon heat", "Every blow lands 8% harder than the last."),
-            new("navka", "Navka", Ability.Mirror, "Mirror", "Each of your hits costs you 3% of your own health."),
+            new("navka", "Navka", Ability.Mirror, "Mirror", "Each of your hits costs you 2% of your own health."),
             new("psoglav", "Psoglav", Ability.IronHide, "Iron hide", "Plain hits lose 40%; crits pass in full."),
             new("kikimora", "Kikimora", Ability.Hex, "Hex", "No crit lands as a crit."),
             new("utopenec", "Drowned One", Ability.Drowning, "Drowning", "Your healing is cut by 80%."),
-            new("hound", "Black Hound", Ability.GraveChill, "Grave chill", "Your swings are 30% slower."),
+            new("hound", "Black Hound", Ability.GraveChill, "Grave chill", "Your swings are 25% slower."),
         };
 
         /// <summary>The warden every <see cref="WardenEvery"/>th depth.</summary>
@@ -156,6 +156,14 @@ namespace FolkIdle.Server.Domain.Progression
         // abilities cost 4-9 depths (~8%) against the first build's region
         // monsters. Veles at x2.5 health cost 7-13 and parked every record at
         // 24/49/74 - a wall ten depths thick - so he is x1.8 now.
+        // On a local restore of the 2026-11-18 backup (5 runs each): Mivoru 35
+        // (was 40; stopped by Navka, Kikimora), (pro)boss 10-11 (was 15;
+        // Upir, Strzyga), Tomda 9-16 (was 13; Lady Midday, Black Hound). Most
+        // of the drop for the two weaker accounts is armour, not abilities:
+        // every guardian fights with Malakor's, where the first build lent
+        // depths 6-25 the softer region 1-4 monsters. Upir 2 -> 1.5%, Navka
+        // 3 -> 2%, the Hound 0.7 -> 0.75 after the first pass, where Navka
+        // ended every one of Mivoru's runs at depth 36.
         public const int WardenEvery = 25;
         public const double WardenHp = 1.8;
         public const double WardenAttack = 1.2;
@@ -206,15 +214,15 @@ namespace FolkIdle.Server.Domain.Progression
             => key == Warden.Key ? Warden : Guardians.FirstOrDefault(g => g.Key == key);
 
         /// <summary>The ability numbers the simulator reads, beside the text the screen shows.</summary>
-        public const double LifedrinkerPct = 2.0;
+        public const double LifedrinkerPct = 1.5;
         public const double SecondHeartPct = 40.0;
         public const double NightmareHealthFactor = 0.6;
         public const double ElusiveMissShare = 0.25;
         public const double NoonHeatPerBlow = 0.08;
-        public const double MirrorPctOfHealth = 3.0;
+        public const double MirrorPctOfHealth = 2.0;
         public const double IronHidePlainFactor = 0.6;
         public const double DrowningHealFactor = 0.2;
-        public const double GraveChillSpeedFactor = 0.7;
+        public const double GraveChillSpeedFactor = 0.75;
 
         // --- the elite modifiers ---------------------------------------------
 
