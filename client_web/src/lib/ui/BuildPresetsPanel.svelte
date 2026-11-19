@@ -191,7 +191,7 @@
     <div class="slots">
       {#each slots as slot (slot)}
         {@const p = bySlot.get(slot)}
-        <article class="slot" class:empty={!p} data-testid={`build-slot-${slot}`}>
+        <article class="build" class:empty={!p} data-testid={`build-slot-${slot}`}>
           <input
             class="name"
             maxlength="24"
@@ -251,8 +251,12 @@
     margin-top: 0.5rem;
   }
 
-  .slot {
+  /* Modul: not ".slot" - app.css gives every .slot the dark recessed icon
+     socket, which turned three build cards into muddy grey slabs on the light
+     scheme (screenshot audit, 2026-11-19). */
+  .build {
     border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+    background: var(--bg-raised);
     border-radius: 10px;
     padding: 0.75rem;
     display: flex;
@@ -261,7 +265,7 @@
     min-width: 0;
   }
 
-  .slot.empty {
+  .build.empty {
     opacity: 0.85;
   }
 
