@@ -1541,6 +1541,30 @@
       "model": "gemini-3-pro-image",
       "key": "pure green (#00FF00)",
       "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: Mokosh's crown: a ring of silver thread and spindles with a small horned moon on top, mystical glow. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_nav_roots",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of dark twisted tree roots from the Slavic underworld Nav, cold blue-green moss and a faint teal glow between the roots. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_nav_bone",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: a ring of pale old bone and vertebrae bound with dark cord, a small lantern of bone at the bottom with a cold teal flame. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_nav_veles",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: Veles, the Slavic horned god of the underworld: a ring of dark bronze with two great curved bull horns rising at the top, a serpent coiling along the band, amber glow. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "pframe_nav_crown",
+      "model": "gemini-3-pro-image",
+      "key": "pure magenta (#FF00FF)",
+      "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: the crown of the underworld: a ring of black iron and night-blue crystal with a spiked crown at the top, roots and small skulls woven in, icy blue glow. Painted fantasy game art with inked outlines."
     }
   ]
 }

@@ -19,7 +19,18 @@ namespace FolkIdle.Server.Domain.Combat
     }
 
     /// <summary>What the Workshop and the research add inside Nav, already summed.</summary>
-    public readonly record struct NavBonuses(double DamagePct, double HealthPct, double AttackSpeedPct, double CritDamagePct, double SoulsPct, int StartDepth, int Revives);
+    public readonly record struct NavBonuses(double DamagePct, double HealthPct, double AttackSpeedPct, double CritDamagePct, double SoulsPct, int StartDepth, int Revives)
+    {
+        /// <summary>Each guardian's bane, as the % taken off its rule, keyed by guardian key. Null = no banes.</summary>
+        public IReadOnlyDictionary<string, double>? BaneReductionPct { get; init; }
+
+        /// <summary>The week's restless guardian (NavRules.RestlessGuardian), or empty.</summary>
+        public string Restless { get; init; }
+
+        /// <summary>The share of <paramref name="guardianKey"/>'s rule left after its bane and the omen.</summary>
+        public double StrengthOf(string guardianKey)
+            => NavRules.AbilityStrength(BaneReductionPct != null && BaneReductionPct.TryGetValue(guardianKey, out double r) ? r : 0, guardianKey == Restless);
+    }
 
     /// <summary>
     /// Plays one Descent from the live payload: depth after depth until a
@@ -71,8 +82,12 @@ namespace FolkIdle.Server.Domain.Combat
                 var (hpF, atkF, speedF) = NavRules.EliteFactors(elite);
                 var who = NavRules.GuardianFor(depth);
                 var ability = who.Ability;
+                // How much of the guardian's rule is left: its bane wears it
+                // down, the week's omen makes one guardian half again as strong.
+                double k = ability == NavRules.Ability.Warden ? 1.0 : bonuses.StrengthOf(who.Key);
+                bool restless = who.Key == bonuses.Restless;
                 if (ability == NavRules.Ability.Warden) { hpF *= NavRules.WardenHp; atkF *= NavRules.WardenAttack; }
-                if (ability == NavRules.Ability.SecondHeart) hpF *= 1.0 + NavRules.SecondHeartPct / 100.0;
+                if (ability == NavRules.Ability.SecondHeart) hpF *= 1.0 + (NavRules.SecondHeartPct * k / 100.0);
 
                 // Malakor's armour and dodge: the depth decides the numbers,
                 // the ability decides the fight.
@@ -82,35 +97,45 @@ namespace FolkIdle.Server.Domain.Combat
 
                 var swing = HuntingProjection.PlayerSwing.For(in p, in stats, in guardian, rawMilliAttack, guardianMilliHp);
                 double grave = 1.0 + bonuses.CritDamagePct / 100.0;
-                double normalHit = swing.NormalDamage * (ability == NavRules.Ability.IronHide ? NavRules.IronHidePlainFactor : 1.0);
-                double critHit = ability == NavRules.Ability.Hex ? swing.NormalDamage : swing.CritDamage * grave;
-                double doubleHit = ability == NavRules.Ability.Hex ? swing.NormalDamage * 2.0 : swing.DoubleDamage * grave;
+                double normalHit = swing.NormalDamage * (ability == NavRules.Ability.IronHide ? Math.Max(0.05, 1.0 - ((1.0 - NavRules.IronHidePlainFactor) * k)) : 1.0);
+                double critHit = swing.CritDamage * grave;
+                double doubleHit = swing.DoubleDamage * grave;
+                if (ability == NavRules.Ability.Hex)
+                {
+                    // The hex turns crits back into plain hits; a bane lets a
+                    // share of each crit's extra through again.
+                    double pass = Math.Clamp(1.0 - k, 0.0, 1.0);
+                    critHit = swing.NormalDamage + ((critHit - swing.NormalDamage) * pass);
+                    doubleHit = (swing.NormalDamage * 2.0) + ((doubleHit - (swing.NormalDamage * 2.0)) * pass);
+                }
                 double meanPerSwing = (swing.PNormal * normalHit) + (swing.PCrit * critHit) + (swing.PDouble * doubleHit);
                 meanPerSwing *= 1.0 + bonuses.DamagePct / 100.0;
-                if (ability == NavRules.Ability.Elusive) meanPerSwing *= 1.0 - NavRules.ElusiveMissShare;
+                double missShare = Math.Clamp(NavRules.ElusiveMissShare * k, 0.0, 0.6);
+                if (ability == NavRules.Ability.Elusive) meanPerSwing *= 1.0 - missShare;
 
-                double swingMs = navIntervalMs / (ability == NavRules.Ability.GraveChill ? NavRules.GraveChillSpeedFactor : 1.0);
+                double chill = Math.Max(0.3, 1.0 - ((1.0 - NavRules.GraveChillSpeedFactor) * k));
+                double swingMs = navIntervalMs / (ability == NavRules.Ability.GraveChill ? chill : 1.0);
                 double dps = meanPerSwing * 1000.0 / swingMs;
                 // Lifedrinker: the guardian's own blows mend it, so damage per
                 // second is what the regeneration leaves over.
                 if (ability == NavRules.Ability.Lifedrinker)
-                    dps -= guardianMilliHp * (NavRules.LifedrinkerPct / 100.0) * speedF * 1000.0 / NavRules.GuardianIntervalMs;
+                    dps -= guardianMilliHp * (NavRules.LifedrinkerPct * k / 100.0) * speedF * 1000.0 / NavRules.GuardianIntervalMs;
                 double timeToKill = dps <= 0 ? double.PositiveInfinity : guardianMilliHp / dps;
 
-                double fightMaxHp = navMaxHp * (ability == NavRules.Ability.Nightmare ? NavRules.NightmareHealthFactor : 1.0);
+                double fightMaxHp = navMaxHp * (ability == NavRules.Ability.Nightmare ? Math.Max(0.1, 1.0 - ((1.0 - NavRules.NightmareHealthFactor) * k)) : 1.0);
                 double incomingPerSwing = BossGearBenchmark.ExpectedBossMilliDamagePerSwing(in stats, in guardian, guardianAttack);
                 double incomingPerSecond = incomingPerSwing * speedF * 1000.0 / NavRules.GuardianIntervalMs;
                 double healPerSwing = swing.ExpectedHeal((long)(navMaxHp / 100.0));
-                if (ability == NavRules.Ability.Elusive) healPerSwing *= 1.0 - NavRules.ElusiveMissShare;
-                if (ability == NavRules.Ability.Drowning) healPerSwing *= NavRules.DrowningHealFactor;
+                if (ability == NavRules.Ability.Elusive) healPerSwing *= 1.0 - missShare;
+                if (ability == NavRules.Ability.Drowning) healPerSwing *= Math.Max(0.0, 1.0 - ((1.0 - NavRules.DrowningHealFactor) * k));
                 double healPerSecond = healPerSwing * 1000.0 / swingMs;
                 if (ability == NavRules.Ability.Mirror)
                 {
                     double pLand = swing.PNormal + swing.PCrit + swing.PDouble;
-                    incomingPerSecond += pLand * navMaxHp * (NavRules.MirrorPctOfHealth / 100.0) * 1000.0 / swingMs;
+                    incomingPerSecond += pLand * navMaxHp * (NavRules.MirrorPctOfHealth * k / 100.0) * 1000.0 / swingMs;
                 }
                 double timeToDie = ability == NavRules.Ability.NoonHeat
-                    ? TimeToDieRamping(fightMaxHp, incomingPerSecond, healPerSecond, NavRules.NoonHeatPerBlow * speedF * 1000.0 / NavRules.GuardianIntervalMs)
+                    ? TimeToDieRamping(fightMaxHp, incomingPerSecond, healPerSecond, NavRules.NoonHeatPerBlow * k * speedF * 1000.0 / NavRules.GuardianIntervalMs)
                     : (incomingPerSecond - healPerSecond <= 0 ? double.PositiveInfinity : fightMaxHp / (incomingPerSecond - healPerSecond));
 
                 bool outOfTime = timeToKill > NavRules.SecondsPerGuardian;
@@ -136,7 +161,7 @@ namespace FolkIdle.Server.Domain.Combat
                     break;
                 }
 
-                long paid = NavRules.SoulsForDepth(circle, depth, bonuses.SoulsPct);
+                long paid = NavRules.SoulsForDepth(circle, depth, bonuses.SoulsPct, restless);
                 souls += paid;
                 seconds += timeToKill;
                 deepest = depth;

@@ -276,9 +276,9 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>Souls for clearing one depth of Circle 1, before bonuses.</summary>
         public static long SoulsForDepth(int depth) => (long)Math.Ceiling(1.0 + Math.Pow(depth, 1.3) / 4.0);
 
-        public static long SoulsForDepth(int circle, int depth, double soulBonusPct)
+        public static long SoulsForDepth(int circle, int depth, double soulBonusPct, bool restless = false)
             => (long)Math.Ceiling(SoulsForDepth(depth) * Math.Pow(CircleSouls, Math.Max(0, circle - 1)) * (1.0 + soulBonusPct / 100.0)
-                * (depth % WardenEvery == 0 ? WardenSouls : 1.0));
+                * (depth % WardenEvery == 0 ? WardenSouls : 1.0) * (restless ? RestlessSouls : 1.0));
 
         // --- charges (runs) --------------------------------------------------
 
@@ -290,19 +290,31 @@ namespace FolkIdle.Server.Domain.Progression
 
         /// <summary>Banked charges and the anchor after time has passed (settled on read, like the dungeon tickets).</summary>
         public static (int Charges, long Anchor) SettleCharges(int banked, long anchorEpoch, long nowEpoch)
+            => SettleCharges(banked, anchorEpoch, nowEpoch, ChargeCap, ChargeSeconds);
+
+        /// <summary>The cap and the seconds a charge takes, after Deep well and Swift return.</summary>
+        public static (int Cap, int Seconds) ChargeRules(int wellLevel, int swiftLevel)
+            => (ChargeCap + Math.Clamp(wellLevel, 0, 6), ChargeSeconds - (60 * Math.Clamp(swiftLevel, 0, 8)));
+
+        public static (int Charges, long Anchor) SettleCharges(int banked, long anchorEpoch, long nowEpoch, int cap, int seconds)
         {
-            if (banked >= ChargeCap) return (ChargeCap, nowEpoch);
+            seconds = Math.Max(60, seconds);
+            if (banked >= cap) return (Math.Max(banked, cap), nowEpoch);
             if (anchorEpoch <= 0 || anchorEpoch > nowEpoch) return (Math.Max(0, banked), nowEpoch);
-            long earned = (nowEpoch - anchorEpoch) / ChargeSeconds;
+            long earned = (nowEpoch - anchorEpoch) / seconds;
             if (earned <= 0) return (banked, anchorEpoch);
-            int charges = (int)Math.Min(ChargeCap, banked + earned);
-            long anchor = charges >= ChargeCap ? nowEpoch : anchorEpoch + earned * ChargeSeconds;
+            int charges = (int)Math.Min(cap, banked + earned);
+            long anchor = charges >= cap ? nowEpoch : anchorEpoch + (earned * seconds);
             return (charges, anchor);
         }
 
         // --- the Workshop (Souls, no top level) ------------------------------
 
-        public sealed record WorkshopUpgrade(string Key, string Name, string Effect, double PerLevel, long BaseCost, int MaxLevel);
+        public sealed record WorkshopUpgrade(string Key, string Name, string Effect, double PerLevel, long BaseCost, int MaxLevel)
+        {
+            /// <summary>For a bane: the guardian it answers. Locked until that guardian has stopped one of your runs.</summary>
+            public string Guardian { get; init; } = string.Empty;
+        }
 
         /// <summary>
         /// Cost grows 12% a level, effect stays flat: the shape that never runs
@@ -319,7 +331,57 @@ namespace FolkIdle.Server.Domain.Progression
             new("harvest", "Soul harvest", "+3% Souls", 3.0, 30, 0),
             new("fall", "Long fall", "Start runs one depth deeper (up to half your record)", 1.0, 100, 0),
             new("breath", "Second breath", "One revive a run per 10 levels (up to 3)", 0.1, 500, 30),
+            new("bond", "Spirit bond", "+3% to everything your spirits give", 3.0, 60, 0),
+            // The banes: one per guardian, each wearing down that guardian's
+            // one rule. Locked until the guardian has ended one of your runs, so
+            // the "why it stopped" line points at something you can buy.
+            new("bane_upir", "Garlic wreath", "-4% to the Vampire's Lifedrinker", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "upir" },
+            new("bane_strzyga", "Aspen stake", "-4% to the Two-Hearted Hag's second heart", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "strzyga" },
+            new("bane_mora", "Knife under the pillow", "-4% to the Nightmare's crushing dream", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "mora" },
+            new("bane_wisp", "Fern-flower lantern", "-4% to the Will-o'-wisp's elusiveness", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "wisp" },
+            new("bane_poludnica", "Linden shade", "-4% to Lady Midday's noon heat", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "poludnica" },
+            new("bane_navka", "Wormwood sprig", "-4% to the Pale Maiden's mirror", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "navka" },
+            new("bane_psoglav", "Ash-wood spear", "-4% to the Dog-Headed Giant's iron hide", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "psoglav" },
+            new("bane_kikimora", "Hen-god stone", "-4% to the Spindle Hag's hex", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "kikimora" },
+            new("bane_utopenec", "Miller's charm", "-4% to the Drowned One's drowning", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "utopenec" },
+            new("bane_hound", "Rowan collar", "-4% to the Black Hound's grave chill", BanePerLevelPct, BaneBaseCost, BaneMaxLevel) { Guardian = "hound" },
         };
+
+        /// <summary>
+        /// Modul: BANES ARE BOUGHT, NOT FOUND (2026-11-19, owner: "fix every
+        /// weakness"). The first build named the guardian that stopped a run
+        /// and said what would beat it, and then offered nothing to buy for it:
+        /// the hint was advice about gear. A bane takes 4% off one guardian's
+        /// rule a level, up to 60% at level 15 (Root-craft pushes it a little
+        /// further, 75% at most), so a record that a guardian walls is a
+        /// decision - wear it down, or out-build it - instead of a wait.
+        ///
+        /// MEASURED (14 simulated days on the 2026-11-19 backup, 39 descents a
+        /// day): at 20 levels from 40 Souls Mivoru had every bane at 80% by day
+        /// seven and the ten guardians had become one guardian. Fifteen levels
+        /// from 150 keep 40% of every rule - the restless one's at 60% - so a
+        /// build still loses to its weak guardian; Tomda maxes his first bane
+        /// on day three.
+        /// </summary>
+        public const double BanePerLevelPct = 4.0;
+        public const int BaneMaxLevel = 15;
+        public const long BaneBaseCost = 150;
+        public const double BaneMaxReductionPct = 75.0;
+
+        public static WorkshopUpgrade? BaneFor(string guardianKey) => Workshop.FirstOrDefault(w => w.Guardian == guardianKey);
+
+        /// <summary>The bit a guardian sets in NavProgress.GuardiansMet when it first stops a run (its place among the ten).</summary>
+        public static int GuardianBit(string guardianKey)
+        {
+            for (int i = 0; i < Guardians.Length; i++) if (Guardians[i].Key == guardianKey) return i;
+            return -1;
+        }
+
+        public static bool HasMet(int guardiansMet, string guardianKey)
+        {
+            int bit = GuardianBit(guardianKey);
+            return bit >= 0 && (guardiansMet & (1 << bit)) != 0;
+        }
 
         public static WorkshopUpgrade? WorkshopByKey(string key) => Workshop.FirstOrDefault(w => w.Key == key);
 
@@ -335,14 +397,64 @@ namespace FolkIdle.Server.Domain.Progression
 
         // --- the Volkhv's research (gold, timed) -------------------------------
 
-        public sealed record ResearchLine(string Key, string Name, string Effect, double PerLevel);
+        /// <param name="MaxLevel">0 = no top.</param>
+        /// <param name="OpensAtCircle">The Circle that must be open before the line can be researched.</param>
+        /// <param name="LevelsPerCircle">When above 0, the line's top grows with the Circles: this many levels per Circle opened from <paramref name="OpensAtCircle"/> on, up to MaxLevel.</param>
+        /// <param name="GoldFactor">Multiplies the gold price - the lines that reach outside Nav cost more.</param>
+        public sealed record ResearchLine(string Key, string Name, string Effect, double PerLevel, int MaxLevel = 0, int OpensAtCircle = 1, int LevelsPerCircle = 0, double GoldFactor = 1.0)
+        {
+            /// <summary>True for a line whose bonus counts in the rest of the game, not only in Nav.</summary>
+            public bool Outward { get; init; }
+        }
 
+        /// <remarks>
+        /// Modul: NINE LINES, NOT THREE (2026-11-19). Three lines that all said
+        /// "more of the Workshop" were a gold sink with no decision in it. The
+        /// six new ones each change how you play: more runs (Deep well, Swift
+        /// return), more spirits (Ancestors' call), and from Circle 2 three that
+        /// reach OUTSIDE Nav - combat gold, combat XP, loot luck.
+        ///
+        /// Modul: THE OUTWARD LINES ARE SMALL AND GATED, MEASURED. On the
+        /// 2026-11-19 backup the three players already have +97..101% combat XP,
+        /// +13..128% gold and +25..62% loot luck, and gold multipliers multiply
+        /// (CombatGoldReward.FactorsFor): Mivoru's 95M gold an hour on Malakor
+        /// gains 1% per level - 160M a week - against a level that costs
+        /// 100M x 1.5^level, so the line pays itself back only while it is
+        /// shallow. The XP line adds 1 point to a +100% sum (0.5% more XP a
+        /// level); levels stall at 135-140, so it buys a few levels, not
+        /// regions. Luck is half a point a level from Circle 3. The top of each
+        /// grows with the Circles (10 levels per Circle from the one that opens
+        /// it, 25 at most): the bonus follows how deep you went, not only your
+        /// gold.
+        /// </remarks>
         public static readonly ResearchLine[] Research =
         {
             new("souls", "Soul lore", "+5% Souls", 5.0),
             new("craft", "Root-craft", "+1% to every Workshop effect", 1.0),
-            new("thrift", "Volkhv's thrift", "-2% Workshop prices (up to -60%)", 2.0),
+            new("thrift", "Volkhv's thrift", "-2% Workshop prices (up to -60%)", 2.0, MaxLevel: 30),
+            new("well", "Deep well", "+1 descent can wait (up to +6)", 1.0, MaxLevel: 6),
+            new("swift", "Swift return", "A descent comes back 1 minute sooner (up to 8)", 1.0, MaxLevel: 8),
+            new("call", "Ancestors' call", "+1 spirit walks with you (up to +3)", 1.0, MaxLevel: 3),
+            new("bounty", "Veles' bounty", "+1% combat gold everywhere", 1.0, MaxLevel: 25, OpensAtCircle: 2, LevelsPerCircle: 10, GoldFactor: 2.0) { Outward = true },
+            new("memory", "Memory of the dead", "+1% combat XP everywhere", 1.0, MaxLevel: 25, OpensAtCircle: 2, LevelsPerCircle: 10, GoldFactor: 2.0) { Outward = true },
+            new("luck", "Mokosh's thread", "+0.5% loot luck everywhere", 0.5, MaxLevel: 20, OpensAtCircle: 3, LevelsPerCircle: 10, GoldFactor: 2.0) { Outward = true },
         };
+
+        /// <summary>The top level a line can reach with this many Circles open: 0 = no top, -1 = not open yet.</summary>
+        public static int ResearchCap(ResearchLine line, int highestCircle)
+        {
+            if (highestCircle < line.OpensAtCircle) return -1;
+            if (line.LevelsPerCircle <= 0) return line.MaxLevel;
+            int byCircle = line.LevelsPerCircle * (highestCircle - line.OpensAtCircle + 1);
+            return line.MaxLevel > 0 ? Math.Min(line.MaxLevel, byCircle) : byCircle;
+        }
+
+        /// <summary>Gold for the next level of a line.</summary>
+        public static long ResearchGold(ResearchLine line, int currentLevel)
+        {
+            double gold = ResearchGold(currentLevel) * line.GoldFactor;
+            return gold >= long.MaxValue / 2 ? long.MaxValue / 2 : (long)gold;
+        }
 
         public static ResearchLine? ResearchByKey(string key) => Research.FirstOrDefault(r => r.Key == key);
 
@@ -359,6 +471,119 @@ namespace FolkIdle.Server.Domain.Progression
 
         /// <summary>Seconds the next level takes: 2 h x 1.25^level.</summary>
         public static long ResearchSeconds(int currentLevel) => (long)(2 * 3600 * Math.Pow(1.25, currentLevel));
+
+        // --- spirits of Nav (benched ancestors) ---------------------------------
+
+        /// <summary>
+        /// Modul: SPIRITS OF NAV (owner, 2026-11-19: "the spirits too"). The
+        /// best adults who are NOT in the three slots walk beside every descent:
+        /// each aptitude point above <see cref="SpiritFloor"/> adds a little,
+        /// each aptitude its own thing - Strength damage, Endurance health,
+        /// Skill attack speed, Fortune Souls. Breeding had no goal left after
+        /// 50/50/50/50; now the fourth, fifth and sixth such child still count.
+        ///
+        /// MEASURED on the 2026-11-19 backup (best three benched adults):
+        /// (pro)boss 50/50/50/50 x3 = +36% damage and health, +9% speed;
+        /// Tomda (35/24/34/34, 32/25/31/25, 29/20/29/27) = +14% damage; Mivoru
+        /// (26s) = +7%. +36% damage is about three depths (guardian health grows
+        /// 10% a depth) - a reason to breed, not a replacement for the Workshop.
+        /// Three spirits, six with Ancestors' call; the floor is 20 because the
+        /// first generations start at 4 and a 20 is an ordinary bred adult.
+        /// </summary>
+        public const int SpiritFloor = 20;
+        public const int SpiritsBase = 3;
+        public const double SpiritDamagePerPoint = 0.4;
+        public const double SpiritHealthPerPoint = 0.4;
+        public const double SpiritSpeedPerPoint = 0.1;
+        public const double SpiritSoulsPerPoint = 0.4;
+
+        /// <summary>One spirit: a benched adult's four aptitudes.</summary>
+        public readonly record struct Spirit(string Name, int Strength, int Skill, int Endurance, int Fortune)
+        {
+            public int Total => Strength + Skill + Endurance + Fortune;
+        }
+
+        /// <summary>What a set of spirits adds, after Spirit bond: (damage %, health %, attack speed %, Souls %).</summary>
+        public static (double Damage, double Health, double Speed, double Souls) SpiritBonus(IEnumerable<Spirit> spirits, double bondPct = 0)
+        {
+            double d = 0, h = 0, sp = 0, so = 0;
+            foreach (var s in spirits)
+            {
+                d += Math.Max(0, s.Strength - SpiritFloor) * SpiritDamagePerPoint;
+                h += Math.Max(0, s.Endurance - SpiritFloor) * SpiritHealthPerPoint;
+                sp += Math.Max(0, s.Skill - SpiritFloor) * SpiritSpeedPerPoint;
+                so += Math.Max(0, s.Fortune - SpiritFloor) * SpiritSoulsPerPoint;
+            }
+            double bond = 1.0 + bondPct / 100.0;
+            return (d * bond, h * bond, sp * bond, so * bond);
+        }
+
+        /// <summary>The spirits that walk: the best <paramref name="count"/> by aptitude total.</summary>
+        public static List<Spirit> ChooseSpirits(IEnumerable<Spirit> benched, int count)
+            => benched.OrderByDescending(s => s.Total).ThenByDescending(s => s.Strength).Take(Math.Max(0, count)).ToList();
+
+        // --- the week: omen and board ---------------------------------------------
+
+        /// <summary>Weeks since the Unix epoch, Monday 00:00 UTC to Monday (1970-01-01 was a Thursday).</summary>
+        public static int WeekOf(long epochSeconds) => (int)Math.Floor(((epochSeconds / 86400.0) + 3.0) / 7.0);
+
+        /// <summary>When week <paramref name="week"/> ends, epoch seconds.</summary>
+        public static long WeekEndsEpoch(int week) => (((long)(week + 1) * 7) - 3) * 86400L;
+
+        /// <summary>
+        /// Modul: THE WEEKLY OMEN. One of the ten guardians is restless each
+        /// week: its rule is half again as strong, and its depths pay double
+        /// Souls. The same record is a different climb from week to week, and
+        /// the week's bane is the obvious buy.
+        /// </summary>
+        public const double RestlessAbility = 1.5;
+        public const double RestlessSouls = 2.0;
+
+        public static Guardian RestlessGuardian(int week) => Guardians[((week % Guardians.Length) + Guardians.Length) % Guardians.Length];
+
+        /// <summary>
+        /// The share of a guardian's rule left after its bane and the omen: 1
+        /// is the rule as written, 0 is no rule at all.
+        /// </summary>
+        public static double AbilityStrength(double baneReductionPct, bool restless)
+            => Math.Max(0.0, 1.0 - (Math.Clamp(baneReductionPct, 0, BaneMaxReductionPct) / 100.0)) * (restless ? RestlessAbility : 1.0);
+
+        /// <summary>
+        /// Modul: THE WEEKLY BOARD PAYS ITS TOP THREE (2026-11-19). The all-time
+        /// board only ever moves for one person; "deepest this week" starts
+        /// from zero every Monday. Rank 1 an Ancient chest, 2 a Gold, 3 a
+        /// Silver, paid the next time the player opens Nav - only when at least
+        /// two players descended that week, so a lone runner is not paid for
+        /// showing up. The first week won also grants a title.
+        /// </summary>
+        public const int WeeklyMinRunners = 2;
+        public const string WeeklyTitleSlug = "nav_weekly";
+
+        // --- frames for Souls ------------------------------------------------------
+
+        /// <summary>A frame bought with Souls; <paramref name="Circle"/> must be open and <paramref name="Depth"/> reached in some Circle.</summary>
+        public sealed record NavFrame(string Id, string Name, long Price, int Circle, int Depth);
+
+        /// <summary>
+        /// Modul: SOULS BUY SOMETHING YOU WEAR (2026-11-19). Souls had one use,
+        /// the Workshop, so after a few weeks a record was only a number. Four
+        /// bound frames, each behind a place in Nav and a price that competes
+        /// with a Workshop level - showing where you have been, never power.
+        /// </summary>
+        public static readonly NavFrame[] Frames =
+        {
+            // Prices from the simulated Souls a day: ~6k (Tomda) to ~40k
+            // (Mivoru) on day one, 70k-500k by day fourteen.
+            new("frame_nav_roots", "Roots of Nav", 5_000, 1, 10),
+            new("frame_nav_bone", "Bone Lantern", 20_000, 1, 25),
+            new("frame_nav_veles", "Veles' Horns", 60_000, 1, 50),
+            new("frame_nav_crown", "Crown of the Underworld", 200_000, 2, 25),
+        };
+
+        public static NavFrame? FrameById(string id) => Frames.FirstOrDefault(f => f.Id == id);
+
+        public static IEnumerable<CosmeticDefinition> FrameCosmetics()
+            => Frames.Select(f => new CosmeticDefinition(f.Id, CosmeticKind.Frame, CosmeticRegistry.Legendary, f.Name, null, Bound: true));
 
         // --- milestones --------------------------------------------------------
 

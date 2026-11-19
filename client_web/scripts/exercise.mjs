@@ -7253,14 +7253,73 @@ if (want('nav')) {
       keys.size === 11 && runKeysOk && aheadCount === 4 && loaded === 4,
       `roster ${keys.size}, run keys ok ${runKeysOk}, portraits ${loaded}/${aheadCount}`);
 
-    const cheapest = (after?.Workshop ?? []).filter((u) => !u.Maxed && u.Cost <= after.Souls).sort((a, b) => a.Cost - b.Cost)[0];
+    // The second pass (2026-11-19). The guardian that stopped the run is met,
+    // so its bane opens - and the "why it stopped" box sells it.
+    const stopBane = (after?.Workshop ?? []).find((u) => u.Guardian && u.Guardian === after?.LastRun?.StoppedBy);
+    const hintBuy = page.getByTestId('nav-hint-bane');
+    if (stopBane && !stopBane.Maxed && stopBane.Cost <= after.Souls) {
+      await hintBuy.click().catch(() => {});
+      await page.waitForTimeout(1200);
+      const baned = await apiGet('/api/v1/nav');
+      const nowBane = baned?.Workshop.find((u) => u.Key === stopBane.Key);
+      record('the guardian that stopped you opens its bane, and the hint box buys it',
+        stopBane.Locked === false && nowBane?.Level === stopBane.Level + 1 && baned.Souls === after.Souls - stopBane.Cost,
+        `${stopBane.Key} locked ${stopBane.Locked}, ${stopBane.Level} -> ${nowBane?.Level}, souls ${after.Souls} -> ${baned?.Souls}`);
+    } else {
+      record('the stopping guardian opens its bane', Boolean(stopBane) && stopBane.Locked === false, `bane ${stopBane?.Key} locked ${stopBane?.Locked} maxed ${stopBane?.Maxed}`);
+    }
+    const locked = (after?.Workshop ?? []).filter((u) => u.Guardian && u.Locked);
+    if (locked.length) await page.getByTestId('nav-banes-locked').locator('summary').click().catch(() => {});
+    const lockedRowText = locked.length ? (await page.getByTestId(`nav-up-${locked[0].Key}`).innerText().catch(() => '')) : 'opens when';
+    const lockedButtons = locked.length ? await page.getByTestId(`nav-up-${locked[0].Key}`).getByRole('button').count() : 0;
+    record('a bane whose guardian has not stopped you is shown locked, with no button',
+      /opens when/i.test(lockedRowText) && lockedButtons === 0, `${locked.length} locked, "${lockedRowText.replace(/\s+/g, ' ').slice(0, 60)}"`);
+
+    // The week's omen names the server's restless guardian.
+    const omenText = (await page.getByTestId('nav-omen').innerText().catch(() => '')).trim();
+    const omenG = (after?.Guardians ?? []).find((g) => g.Key === after?.Omen?.Key);
+    record('the weekly omen names the restless guardian', Boolean(omenG) && omenText.includes(omenG.Name) && omenText.includes('2x'), omenText.slice(0, 80));
+
+    // Spirits of Nav: the server's walking spirits, or the empty line.
+    const spiritText = (await page.getByTestId('nav-spirits').innerText().catch(() => '')).trim();
+    const walking = after?.Spirits?.Walking ?? [];
+    record('the spirits panel shows the bench the server chose',
+      walking.length === 0 ? spiritText.includes('No adults rest') : (walking.every((sp) => spiritText.includes(sp.Name)) && (after.Spirits.DamagePct + after.Spirits.HealthPct + after.Spirits.SpeedPct + after.Spirits.SoulsPct === 0 ? spiritText.includes('None of them') : spiritText.includes(`+${after.Spirits.DamagePct}% damage`))),
+      `${walking.length} walking of ${after?.Spirits?.BenchAdults} benched, "${spiritText.slice(0, 60)}"`);
+
+    // The boards: this week by default, all time one tap away.
+    await page.getByTestId('nav-board-all').click().catch(() => {});
+    const weekGone = (await page.getByTestId('nav-week-list').count()) === 0;
+    await page.getByTestId('nav-board-week').click().catch(() => {});
+    const boardText = (await page.getByTestId('nav-board').innerText().catch(() => '')).trim();
+    record('the board switches between this week and all time, and says what the week pays', weekGone && /top three win a chest/i.test(boardText), boardText.slice(0, 80));
+
+    // Research: the outward lines wait for their Circle.
+    const closedBounty = (after?.Research ?? []).find((l) => l.Key === 'bounty');
+    const bountyButton = await page.getByTestId('nav-research-bounty').count();
+    record('the outward research waits for Circle 2 and offers no button before it',
+      closedBounty && (after.Circle >= 2 ? closedBounty.Open : (!closedBounty.Open && bountyButton === 0)), `circle ${after?.Circle}, open ${closedBounty?.Open}, buttons ${bountyButton}`);
+
+    // Frames of Nav: four, each behind a place in Nav, and their art loads.
+    await page.getByTestId('nav-frames').scrollIntoViewIfNeeded().catch(() => {});
+    await page.waitForTimeout(1200);
+    const frameText = (await page.getByTestId('nav-frames').innerText().catch(() => '')).trim();
+    const frameImgs = page.getByTestId('nav-frames').locator('img');
+    const frameLoaded = await frameImgs.evaluateAll((imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length).catch(() => 0);
+    record('the Nav frames are listed with where they open, and their art loads',
+      (after?.Frames ?? []).length === 4 && (after.Frames.every((f) => f.Reached || f.Owned) || frameText.includes('Reach')) && frameLoaded === 4,
+      `frames ${(after?.Frames ?? []).length}, art ${frameLoaded}/4`);
+
+    const cheapest = (after?.Workshop ?? []).filter((u) => !u.Maxed && !u.Locked && !u.Guardian && u.Cost <= after.Souls).sort((a, b) => a.Cost - b.Cost)[0];
     if (cheapest) {
       await page.getByTestId(`nav-up-${cheapest.Key}`).getByRole('button', { name: /^\+1/ }).click().catch(() => {});
       await page.waitForTimeout(1200);
-      const bought = await apiGet('/api/v1/nav');
+      const before2 = await apiGet('/api/v1/nav');
+      const bought = before2;
       const level = bought?.Workshop.find((u) => u.Key === cheapest.Key)?.Level ?? -1;
+      const spentBefore = (stopBane && !stopBane.Maxed && stopBane.Cost <= after.Souls) ? stopBane.Cost : 0;
       record('a Workshop upgrade bought with Souls moves its level and takes its price',
-        level === cheapest.Level + 1 && bought.Souls === after.Souls - cheapest.Cost,
+        level === cheapest.Level + 1 && bought.Souls === after.Souls - spentBefore - cheapest.Cost,
         `${cheapest.Key} ${cheapest.Level} -> ${level}, souls ${after.Souls} -> ${bought?.Souls}`);
     } else {
       record('a Workshop upgrade (skipped: nothing affordable)', true);

@@ -35,11 +35,14 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath == "/api/v1/nav" && method == "GET")
                 {
+                    // Last week's board pays first, in its own transaction.
+                    var notices = await NavEngine.SettleWeekAsync(db, playerId, now, GameClock.UtcNow);
                     var row = await NavEngine.LoadAsync(db, playerId, now);
                     await db.SaveChangesAsync();
                     var snapshot = await NavSnapshotAsync(playerId);
                     bool open = snapshot == null || NavOpenFor(playerId, snapshot.Value.Payload.DefeatedRegionBossMask);
-                    var bonuses = NavEngine.BonusesOf(row);
+                    var bench = await NavEngine.LoadBenchAsync(db, playerId);
+                    var bonuses = NavEngine.BonusesOf(row, bench, now);
                     int highest = row.HighestCircle;
                     int highestRecord = NavEngine.BestDepth(row, highest);
                     var roster = snapshot == null ? Array.Empty<object>() : Enumerable.Range(0, 3)
@@ -54,7 +57,12 @@ namespace FolkIdle.Server.Network
                             return (object)new { Slot = slot, power.Dps, power.MaxHp, power.Worn, ExpectedDepth = expected, ExpectedCircle = highest };
                         }).ToArray();
                     var board = await NavBoardAsync(db, playerId);
-                    await WriteJsonAsync(context, NavEngine.View(row, now, roster, open, open ? string.Empty : NavRules.LockedReason, board));
+                    var weekBoard = await NavWeekBoardAsync(db, playerId, NavRules.WeekOf(now));
+                    var frameIds = NavRules.Frames.Select(f => f.Id).ToList();
+                    var owned = await db.CosmeticItems.AsNoTracking()
+                        .Where(c => c.PlayerId == playerId && frameIds.Contains(c.DefinitionId))
+                        .Select(c => c.DefinitionId).ToListAsync();
+                    await WriteJsonAsync(context, NavEngine.View(row, now, roster, open, open ? string.Empty : NavRules.LockedReason, board, bench, weekBoard, owned, notices));
                     return true;
                 }
 
@@ -74,7 +82,8 @@ namespace FolkIdle.Server.Network
                     if (!NavOpenFor(playerId, snapshot.Value.Payload.DefeatedRegionBossMask)) { await WriteJsonAsync(context, new { Result = NavDescendResult.Locked.ToString() }); return true; }
                     if (!SlotHoldsCharacter(snapshot.Value.Payload, slot)) { await WriteJsonAsync(context, new { Result = NavDescendResult.NoCharacter.ToString() }); return true; }
 
-                    var (result, run, rewards) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next());
+                    var bench = await NavEngine.LoadBenchAsync(db, playerId);
+                    var (result, run, rewards) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next(), bench);
                     await WriteJsonAsync(context, new { Result = result.ToString(), Run = run == null ? null : NavEngine.ViewOf(run, rewards) });
                     return true;
                 }
@@ -117,6 +126,22 @@ namespace FolkIdle.Server.Network
                         CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
                     }
                     await WriteJsonAsync(context, new { Result = result.ToString(), Gold = gold });
+                    return true;
+                }
+
+                if (requestPath == "/api/v1/nav/frame" && method == "POST")
+                {
+                    string id;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(await ReadBodyOrEmptyAsync(context));
+                        id = parsed.RootElement.TryGetProperty("Id", out var k) && k.ValueKind == JsonValueKind.String ? k.GetString() ?? string.Empty : string.Empty;
+                    }
+                    catch (JsonException) { context.Response.StatusCode = 400; return true; }
+
+                    if (!await NavOpenNowAsync(playerId)) { await WriteJsonAsync(context, new { Result = "Locked" }); return true; }
+                    var result = await NavEngine.BuyFrameAsync(db, playerId, id, now, GameClock.UtcNow);
+                    await WriteJsonAsync(context, new { Result = result.ToString() });
                     return true;
                 }
 
@@ -201,6 +226,32 @@ namespace FolkIdle.Server.Network
             {
                 Top = top.Select((t, i) => new { Rank = i + 1, Name = names.GetValueOrDefault(t.PlayerId, $"Player #{t.PlayerId}"), t.Circle, t.Depth, Me = t.PlayerId == playerId }).ToArray(),
                 MyRank = mine >= 0 ? mine + 1 : 0,
+            };
+        }
+
+        /// <summary>
+        /// "Deepest this week": every row whose current week is this one, by
+        /// Circle then depth. The top three are paid when the week is over
+        /// (NavEngine.SettleWeekAsync).
+        /// </summary>
+        private static async Task<object> NavWeekBoardAsync(FolkIdleDbContext db, long playerId, int week)
+        {
+            var rows = await db.NavProgress.AsNoTracking()
+                .Where(n => n.WeekId == week && n.WeekDepth > 0)
+                .OrderByDescending(n => n.WeekCircle).ThenByDescending(n => n.WeekDepth).ThenBy(n => n.PlayerId)
+                .Take(10)
+                .Select(n => new { n.PlayerId, n.WeekCircle, n.WeekDepth })
+                .ToListAsync();
+            var ids = rows.Select(r => r.PlayerId).ToList();
+            var names = await db.PlayerRecords.AsNoTracking()
+                .Where(p => ids.Contains(p.Id))
+                .Select(p => new { p.Id, p.Username })
+                .ToDictionaryAsync(p => p.Id, p => string.IsNullOrWhiteSpace(p.Username) ? $"Player #{p.Id}" : p.Username!);
+            return new
+            {
+                Top = rows.Select((r, i) => new { Rank = i + 1, Name = names.GetValueOrDefault(r.PlayerId, $"Player #{r.PlayerId}"), Circle = r.WeekCircle, Depth = r.WeekDepth, Me = r.PlayerId == playerId }).ToArray(),
+                EndsInSeconds = Math.Max(0, NavRules.WeekEndsEpoch(week) - GameClock.UtcNowOffset.ToUnixTimeSeconds()),
+                MinRunners = NavRules.WeeklyMinRunners,
             };
         }
 

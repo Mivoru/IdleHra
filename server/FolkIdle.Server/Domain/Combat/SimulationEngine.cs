@@ -4105,6 +4105,8 @@ namespace FolkIdle.Server.Domain.Combat
             // Aptitude milestones: Endurance's Stout Frame (block; the tick's
             // 75% block cap still applies in PlayerBlockFraction).
             stats.BlockStrengthPct += AptitudeMilestones.BlockPct(payload.Aptitude_Endurance);
+            // Nav's Mokosh's thread research (NavBlessingsCache).
+            stats.LootLuckPct += NavBlessingsCache.LootLuckPct(payload.PlayerId);
             return stats;
         }
 
@@ -4510,6 +4512,8 @@ namespace FolkIdle.Server.Domain.Combat
             // additive layer would shrink to nothing against a stack of
             // bonuses, and the rule says "40% less".
             finalXpMultiplier += RebirthTrials.XpPctReward(payload.CompletedRebirthTrials);
+            // Nav's Memory of the dead research (NavBlessingsCache).
+            finalXpMultiplier += NavBlessingsCache.XpPct(payload.PlayerId);
             int trialXpCut = RebirthTrials.XpPctDuring(payload.ActiveRebirthTrial);
             if (trialXpCut < 0) finalXpMultiplier = finalXpMultiplier * (100 + trialXpCut) / 100;
             return finalXpMultiplier;

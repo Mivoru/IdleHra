@@ -182,7 +182,9 @@ namespace FolkIdle.Server.Tests
             int chronicleFrames = ChronicleRegistry.SeasonsWithArt.Count;
             // And the thread-only frames of the Wardrobe shop (2026-11-15).
             int threadFrames = WardrobeThreads.Exclusives.Count;
-            Assert.Equal(15 + chronicleFrames + threadFrames, CosmeticRegistry.All.Count(d => d.Bound && d.Kind == CosmeticKind.Frame));
+            // And the Nav frames bought with Souls (2026-11-19).
+            int navFrames = NavRules.Frames.Length;
+            Assert.Equal(15 + chronicleFrames + threadFrames + navFrames, CosmeticRegistry.All.Count(d => d.Bound && d.Kind == CosmeticKind.Frame));
 
             // The Deep's titles are untouched by the ladder's.
             Assert.Empty(TitleRegistry.ForDeepFloor(0));

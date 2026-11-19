@@ -468,6 +468,8 @@ try
 {
     await using var buffDb = await serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContextAsync();
     await GuildBonusesCache.LoadAllAsync(buffDb);
+    // Nav's outward research (combat gold, XP, loot luck) - read by the tick the same way.
+    await NavBlessingsCache.LoadAllAsync(buffDb);
 }
 catch (Exception buffLoadEx)
 {
