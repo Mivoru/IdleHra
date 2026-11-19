@@ -1565,6 +1565,36 @@
       "model": "gemini-3-pro-image",
       "key": "pure magenta (#FF00FF)",
       "prompt": "A single ornate circular portrait frame for a game avatar, seen straight on, perfectly centred, a thick round ring whose band is about one eighth of the image width; small ornaments may rise a little above or below the ring. The inside of the ring is completely EMPTY and filled with the same flat background colour - nothing drawn inside it. The whole frame fits inside the image with a margin. Theme: the crown of the underworld: a ring of black iron and night-blue crystal with a spiked crown at the top, roots and small skulls woven in, icy blue glow. Painted fantasy game art with inked outlines."
+    },
+    {
+      "id": "nav_stage_c1",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "Inside the Descent into Nav, Circle 1, the Roots: a deep vertical chasm walled by the enormous gnarled roots of the World Tree, wet earth and stones between them, narrow stone ledges spiralling downward, small cold blue-green spirit lights and hanging moss, faint bones tangled in the roots. Match the art style, palette and pixel-painting technique of the reference image exactly. A tall vertical shaft scene meant to scroll downward behind a game panel: the composition is even top to bottom with no single focal point, darker toward the edges, the centre calmer for a portrait and text laid over it. No people, no creatures, no text, no letters, no logos, no UI.",
+      "note": "2026-11-19 Nav stage backgrounds, one per Circle (cycled), behind the descent replay."
+    },
+    {
+      "id": "nav_stage_c2",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "Inside the Descent into Nav, Circle 2, the Bone Halls: a deep vertical shaft carved through pale stone, its walls set with skulls and long bones in old ossuary patterns, guttering grave candles in niches, carved pagan wooden idols, a cold violet-grey haze rising from below. Match the art style, palette and pixel-painting technique of the reference image exactly. A tall vertical shaft scene meant to scroll downward behind a game panel: the composition is even top to bottom with no single focal point, darker toward the edges, the centre calmer for a portrait and text laid over it. No people, no creatures, no text, no letters, no logos, no UI.",
+      "note": "2026-11-19 Nav stage backgrounds, one per Circle (cycled), behind the descent replay."
+    },
+    {
+      "id": "nav_stage_c3",
+      "model": "gemini-3-pro-image",
+      "aspectRatio": "16:9",
+      "references": [
+        "client/Assets/Images/SpritesWeb/Backgrounds/banner_nav.webp"
+      ],
+      "prompt": "Inside the Descent into Nav, Circle 3, the Black River of Veles: a vast dark cavern descending toward a slow black underground river, colossal serpent-coiled roots, gold coins and amber glimmering in the dark water, deep amber firelight from below against cold blue shadow. Match the art style, palette and pixel-painting technique of the reference image exactly. A tall vertical shaft scene meant to scroll downward behind a game panel: the composition is even top to bottom with no single focal point, darker toward the edges, the centre calmer for a portrait and text laid over it. No people, no creatures, no text, no letters, no logos, no UI.",
+      "note": "2026-11-19 Nav stage backgrounds, one per Circle (cycled), behind the descent replay."
     }
   ]
 }

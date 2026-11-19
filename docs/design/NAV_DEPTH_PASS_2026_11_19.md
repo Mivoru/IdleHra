@@ -124,6 +124,21 @@ Tickets: ~30 in two weeks against 84 from the daily top-up, and the bonus cap
 (8 a gate) holds. Ancient chests' own diamonds stay under the chest cap (15 a
 week).
 
+## The descent as a scene (owner, the same evening)
+
+"Graphics, animations, transitions, sounds - a really good game experience."
+`client_web/src/lib/ui/NavDescentStage.svelte` (on `Modal`) replaces the
+in-page replay card: the Circle's painted shaft (`Backgrounds/nav_stage_c1-3`,
+Gemini, cycling past Circle 3) scrolls as the depths fall, a rail fills towards
+the record, each guardian arrives, is slashed and sinks with its Souls floating
+up, Veles glows gold, the stopper shakes the scene red, a ribbon marks the
+record, and the run ends on its haul drawn as chest art, gold, diamonds and
+tickets. The server sends the haul as data (`NavLoot`, `RecordBefore` on the
+run view). Six ElevenLabs sounds (`nav_fall`, `nav_stopped`, `nav_veles`,
+`nav_reward`, `nav_buy`, `nav_research`), loudness matched at -21 LUFS (fall
+-28 measured after limiting, buy -24: they repeat). Reduced motion opens on the
+result.
+
 ## Not done
 
 - Weekly omen variants beyond "one guardian restless" (crit twice, no

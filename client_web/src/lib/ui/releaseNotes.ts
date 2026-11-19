@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.101.0',
+    date: '2026-11-19',
+    headline: 'The descent into Nav is a scene now.',
+    sections: [
+      {
+        title: 'Nav',
+        items: [
+          'A descent opens over the screen: the shaft of your Circle scrolls past as you go down (the Roots, the Bone Halls, the Black River of Veles), each guardian arrives and is cut down, its Souls float up, and a rail on the side fills towards your record.',
+          'Beating your record mid-run raises a "New record" ribbon; Veles arrives with a gong and a golden glow; the guardian that stops you shakes the screen red.',
+          'The run ends on what it paid - Souls, the chests themselves, gold, diamonds and dungeon tickets - with Skip and Continue.',
+          'New sounds for a guardian falling, the run stopping, Veles, the rewards, buying in the Workshop and starting research; a bought level flashes on its row.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.100.0',
     date: '2026-11-19',
     headline: 'Every depth of Nav pays.',

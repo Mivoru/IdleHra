@@ -20,7 +20,7 @@
   import Money from '../lib/ui/Money.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { play } from '../lib/ui/audio';
-  import { onDestroy } from 'svelte';
+  import NavDescentStage from '../lib/ui/NavDescentStage.svelte';
   import { noteNavView } from '../lib/stores/navCharges';
 
   const client = useQueryClient();
@@ -92,59 +92,20 @@
   const shownRun = $derived(lastRun ?? data?.LastRun ?? null);
 
   // Modul: THE DESCENT IS PLAYED BACK, NOT JUST LISTED (2026-11-19). The
-  // server decides a run in one request; dropping the finished list on the
-  // screen made the mode's one moment - going down - a table. The depths are
-  // revealed one by one instead: the guardian, its clock filling towards 30
-  // seconds, the Souls adding up. The whole replay is held to about six
-  // seconds whatever the depth, can be skipped, and a player who asked for
-  // reduced motion gets the result at once. Nothing here decides anything:
-  // it is the server's list, shown at a pace.
-  let replayIndex = $state(-1);
-  let replayTimer: ReturnType<typeof setTimeout> | null = null;
-  const replaying = $derived(lastRun !== null && replayIndex >= 0 && replayIndex < lastRun.Depths.length);
-  const replayDepth = $derived(replaying && lastRun ? lastRun.Depths[replayIndex] : null);
-  const replaySouls = $derived(
-    replaying && lastRun ? lastRun.Depths.slice(0, replayIndex + 1).reduce((sum, d) => sum + d.Souls, 0) : 0,
-  );
+  // server decides a run in one request; the scene (NavDescentStage) plays it
+  // back over the screen - the shaft, each guardian, the record, the haul -
+  // and closes on Continue. While it is open the Descend button waits.
+  let stageRun = $state<NavRun | null>(null);
+  const replaying = $derived(stageRun !== null);
 
-  function reducedMotion(): boolean {
-    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // A level bought flashes on its row, so the purchase is seen as well as heard.
+  let flashed = $state('');
+  let flashTimer: ReturnType<typeof setTimeout> | null = null;
+  function flash(key: string) {
+    flashed = key;
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => (flashed = ''), 900);
   }
-
-  function stopReplay() {
-    if (replayTimer) clearTimeout(replayTimer);
-    replayTimer = null;
-    replayIndex = -1;
-  }
-
-  function finishReplay(run: NavRun) {
-    stopReplay();
-    play(run.Rewards.some((line) => line.startsWith('New record')) ? 'navRecord' : 'navDescend');
-    for (const line of run.Rewards) pushLocalNotice(line, 'info');
-  }
-
-  function startReplay(run: NavRun) {
-    stopReplay();
-    if (run.Depths.length === 0 || reducedMotion()) {
-      finishReplay(run);
-      return;
-    }
-    play('navDescend');
-    const step = Math.max(160, Math.min(450, 6000 / run.Depths.length));
-    replayIndex = 0;
-    const next = () => {
-      if (replayIndex >= run.Depths.length - 1) {
-        // Hold the last guardian - the one that stopped the run - a beat longer.
-        replayTimer = setTimeout(() => finishReplay(run), 1100);
-        return;
-      }
-      replayIndex += 1;
-      replayTimer = setTimeout(next, step);
-    };
-    replayTimer = setTimeout(next, step);
-  }
-
-  onDestroy(stopReplay);
   const activeCircle = $derived(circle > 0 ? circle : (data?.Circle ?? 1));
   const record = $derived(data?.Records.find((r) => r.Circle === activeCircle)?.Depth ?? 0);
 
@@ -164,7 +125,7 @@
       const r = await navDescend(slot, activeCircle);
       if (r?.Result === 'Ran' && r.Run) {
         lastRun = r.Run;
-        startReplay(r.Run);
+        stageRun = r.Run;
       } else {
         pushLocalNotice(
           r?.Result === 'NoCharges' ? `No descents left - one comes back every ${minutes(data?.ChargeSeconds ?? 1200)}.`
@@ -186,7 +147,10 @@
     busy = true;
     try {
       const r = await navBuy(key, levels);
-      if (r?.Result !== 'Bought')
+      if (r?.Result === 'Bought') {
+        play('navBuy');
+        flash(key);
+      } else
         pushLocalNotice(
           r?.Result === 'Maxed' ? 'That upgrade is at its top.'
             : r?.Result === 'Locked' ? (data?.Open ? 'That guardian has not stopped you yet.' : 'Nav opens when you beat Malakor.')
@@ -204,7 +168,11 @@
     busy = true;
     try {
       const r = await navResearch(key);
-      if (r?.Result === 'Started') pushLocalNotice('The Volkhv begins the research.', 'info');
+      if (r?.Result === 'Started') {
+        play('navResearch');
+        flash(key);
+        pushLocalNotice('The Volkhv begins the research.', 'info');
+      }
       else
         pushLocalNotice(
           r?.Result === 'Busy' ? 'The Volkhv is already researching.'
@@ -251,6 +219,10 @@
     return `depths ${n}, ${n + 10}, ${n + 20}...`;
   }
 </script>
+
+{#if stageRun && data}
+  <NavDescentStage run={stageRun} nav={data} onclose={() => (stageRun = null)} />
+{/if}
 
 <div class="nav-wrap">
 <ScreenBanner art="banner_nav" line="Below the roots, the dark goes on forever." />
@@ -325,30 +297,7 @@
       {/if}
     </div>
 
-    {#if replaying && replayDepth && lastRun}
-      {@const g = guardianByKey(data, replayDepth.Guardian)}
-      <section class="stage" class:fail={!replayDepth.Cleared} class:warden={replayDepth.Guardian === 'veles'} data-testid="nav-replay">
-        {#key replayDepth.Depth}
-          <div class="stage-card">
-            <MonsterPortrait monsterId={0} name={g?.Name ?? 'Guardian'} src={guardianArt(replayDepth.Guardian)} size="lg" />
-            <div class="stage-text">
-              <span class="stage-depth">Depth {replayDepth.Depth}</span>
-              <strong>{g?.Name ?? ''}</strong>
-              {#if replayDepth.Elite}<span class="elite">{replayDepth.Elite}</span>{/if}
-              <span class="tiny ability">{g?.AbilityName ?? ''}</span>
-              <div class="clock" aria-hidden="true">
-                <span style={`--fill:${Math.min(100, (replayDepth.Seconds / data.SecondsPerGuardian) * 100)}%`}></span>
-              </div>
-              <span class="tiny">{replayDepth.Cleared ? `Down in ${replayDepth.Seconds}s` : replayDepth.Outcome}</span>
-            </div>
-          </div>
-        {/key}
-        <div class="stage-foot">
-          <span class="small">+{formatNumber(replaySouls)} Souls</span>
-          <button class="ghost" onclick={() => lastRun && finishReplay(lastRun)} data-testid="nav-skip">Skip</button>
-        </div>
-      </section>
-    {:else if shownRun}
+    {#if shownRun}
       {@const stopper = guardianByKey(data, shownRun.StoppedBy)}
       <section class="run" data-testid="nav-run">
         <h3>Last descent: depth {shownRun.DeepestCleared} <span class="dim small">+{formatNumber(shownRun.Souls)} Souls</span></h3>
@@ -507,7 +456,7 @@
       <p class="dim small">Souls buy strength that only counts down here - prices climb 12% a level and never stop.</p>
       <ul class="upgrades">
         {#each plainUpgrades as u (u.Key)}
-          <li data-testid={`nav-up-${u.Key}`}>
+          <li class:flash={flashed === u.Key} data-testid={`nav-up-${u.Key}`}>
             <div class="u-text">
               <strong>{u.Name}</strong> <span class="dim tiny">lv {u.Level}{u.MaxLevel ? ` / ${u.MaxLevel}` : ''}</span>
               <span class="dim tiny">{u.Effect}</span>
@@ -527,7 +476,7 @@
       <ul class="upgrades banes" data-testid="nav-banes">
         {#each banes as u (u.Key)}
           {@const g = guardianByKey(data, u.Guardian)}
-          <li data-testid={`nav-up-${u.Key}`}>
+          <li class:flash={flashed === u.Key} data-testid={`nav-up-${u.Key}`}>
             <MonsterPortrait monsterId={0} name={g?.Name ?? ''} src={guardianArt(u.Guardian)} size="sm" />
             <div class="u-text">
               <strong>{u.Name}</strong> <span class="dim tiny">lv {u.Level} / {u.MaxLevel}</span>
@@ -573,7 +522,7 @@
       {/if}
       <ul class="upgrades">
         {#each data.Research as l (l.Key)}
-          <li class:closed={!l.Open}>
+          <li class:closed={!l.Open} class:flash={flashed === l.Key}>
             <div class="u-text">
               <strong>{l.Name}</strong>
               {#if l.Outward}<span class="everywhere tiny">everywhere</span>{/if}
@@ -764,91 +713,6 @@
     color: var(--danger);
   }
 
-  .stage {
-    margin-top: 0.8rem;
-    padding: 0.7rem;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent);
-  }
-
-  .stage.warden {
-    border-color: var(--warn, #e0b050);
-  }
-
-  .stage.fail {
-    border-color: var(--danger);
-  }
-
-  .stage-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.8rem;
-    align-items: center;
-    animation: rise 0.12s ease-out;
-  }
-
-  .stage-card :global(.portrait[data-size='lg']) {
-    width: 6.5rem;
-    height: 6.5rem;
-  }
-
-  .stage-text {
-    display: grid;
-    gap: 0.2rem;
-    min-width: 0;
-    justify-items: start;
-  }
-
-  .stage-depth {
-    font-size: var(--fs-xs);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.8;
-  }
-
-  .clock {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--line);
-    overflow: hidden;
-  }
-
-  .clock span {
-    display: block;
-    height: 100%;
-    width: var(--fill);
-    background: var(--accent);
-    animation: fill 0.14s ease-out;
-  }
-
-  .stage.fail .clock span {
-    background: var(--danger);
-  }
-
-  .stage-foot {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 0.5rem;
-  }
-
-  @keyframes rise {
-    from {
-      transform: translateY(6px);
-    }
-    to {
-      transform: none;
-    }
-  }
-
-  @keyframes fill {
-    from {
-      width: 0;
-    }
-  }
-
   .why {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -979,6 +843,20 @@
     display: grid;
     min-width: 0;
     flex: 1 1 12rem;
+  }
+
+  /* A bought level: the row catches soul-light for a moment. */
+  .upgrades li.flash {
+    animation: soul-flash 0.9s ease-out;
+  }
+
+  @keyframes soul-flash {
+    0% { background: color-mix(in srgb, #6fe8d8 38%, transparent); box-shadow: inset 3px 0 0 #6fe8d8; }
+    100% { background: transparent; box-shadow: inset 3px 0 0 transparent; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .upgrades li.flash { animation: none; }
   }
 
   .u-buy {
