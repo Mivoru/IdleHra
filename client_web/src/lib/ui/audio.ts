@@ -125,6 +125,16 @@ export const CLIPS = {
   // world boss clips. Played by Nav.svelte only.
   navDescend: 'nav_descend.wav',
   navRecord: 'nav_record.wav',
+  // The descent's stage (2026-11-19, second sound pass): a guardian falling,
+  // the run stopped, Veles at a 25th depth, the rewards, a Souls purchase and
+  // a research begun. Loudness matched to the two above (-21 LUFS; the
+  // frequent ones, fall and buy, a little quieter).
+  navFall: 'nav_fall.wav',
+  navStopped: 'nav_stopped.wav',
+  navVeles: 'nav_veles.wav',
+  navReward: 'nav_reward.wav',
+  navBuy: 'nav_buy.wav',
+  navResearch: 'nav_research.wav',
 } as const;
 
 export type ClipName = keyof typeof CLIPS;

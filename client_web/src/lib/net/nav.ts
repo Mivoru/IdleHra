@@ -34,6 +34,20 @@ export interface NavRun {
   Hint: string;
   Rewards: string[];
   Depths: NavDepth[];
+  /** The Circle's record before this run, so the replay marks the moment it is beaten. Absent on runs from before 2026-11-19. */
+  RecordBefore?: number;
+  /** What the run paid, item by item (NavEngine.NavLoot); null when it paid nothing but Souls. */
+  Loot?: NavLoot | null;
+}
+
+export interface NavLoot {
+  Bronze: number;
+  Silver: number;
+  Gold: number;
+  Ancient: number;
+  GoldCoins: number;
+  Diamonds: number;
+  Tickets: number;
 }
 
 export interface NavWorkshopUpgrade {

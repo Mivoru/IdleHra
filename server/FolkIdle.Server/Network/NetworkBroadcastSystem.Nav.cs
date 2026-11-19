@@ -87,9 +87,9 @@ namespace FolkIdle.Server.Network
                     if (!SlotHoldsCharacter(snapshot.Value.Payload, slot)) { await WriteJsonAsync(context, new { Result = NavDescendResult.NoCharacter.ToString() }); return true; }
 
                     var bench = await NavEngine.LoadBenchAsync(db, playerId);
-                    var (result, run, rewards, payout) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next(), bench);
+                    var (result, run, _, payout, view) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next(), bench);
                     await NotifyNavPayoutAsync(db, playerId, payout);
-                    await WriteJsonAsync(context, new { Result = result.ToString(), Run = run == null ? null : NavEngine.ViewOf(run, rewards) });
+                    await WriteJsonAsync(context, new { Result = result.ToString(), Run = run == null ? null : view });
                     return true;
                 }
 

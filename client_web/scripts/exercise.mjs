@@ -7218,6 +7218,16 @@ if (want('nav')) {
     await page.getByTestId('nav-descend').click().catch(() => {});
     // The run is played back first (nav-replay), then listed (nav-run).
     const replayed = await page.getByTestId('nav-replay').waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+    // The scene ends on its result card (depth, Souls, the haul) and closes on
+    // Continue; until then it covers the page, so a later click would miss.
+    const resultCard = page.getByTestId('nav-result');
+    const resultShown = await resultCard.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+    const resultText = resultShown ? (await resultCard.innerText().catch(() => '')).replace(/\s+/g, ' ').trim() : '';
+    await page.getByTestId('nav-result-close').click().catch(() => {});
+    const resultGone = await resultCard.waitFor({ state: 'detached', timeout: 3000 }).then(() => true).catch(() => false);
+    record('the descent scene ends on a result card that names the depth and the Souls, and Continue closes it',
+      resultShown && /Depth \d+/.test(resultText) && /Souls/.test(resultText) && resultGone,
+      `shown ${resultShown}, gone ${resultGone}, "${resultText.slice(0, 80)}"`);
     await page.getByTestId('nav-run').waitFor({ timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(800);
     const after = await apiGet('/api/v1/nav');

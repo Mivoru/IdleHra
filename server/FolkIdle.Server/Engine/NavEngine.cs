@@ -25,6 +25,30 @@ namespace FolkIdle.Server.Engine
         public static NavPayout operator +(NavPayout a, NavPayout b) => new(a.Gold + b.Gold, a.Diamonds + b.Diamonds);
     }
 
+    /// <summary>What a descent paid, item by item, so the screen draws chests rather than parsing a sentence.</summary>
+    public sealed class NavLoot
+    {
+        public int Bronze { get; set; }
+        public int Silver { get; set; }
+        public int Gold { get; set; }
+        public int Ancient { get; set; }
+        public long GoldCoins { get; set; }
+        public int Diamonds { get; set; }
+        public int Tickets { get; set; }
+        public bool Any => Bronze + Silver + Gold + Ancient > 0 || GoldCoins > 0 || Diamonds > 0 || Tickets > 0;
+
+        public void AddChest(LootChestTier tier, int n)
+        {
+            switch (tier)
+            {
+                case LootChestTier.Bronze: Bronze += n; break;
+                case LootChestTier.Silver: Silver += n; break;
+                case LootChestTier.Gold: Gold += n; break;
+                default: Ancient += n; break;
+            }
+        }
+    }
+
     /// <summary>
     /// The Descent into Nav's writes (NavRules holds the numbers, NavSimulator
     /// plays a run). REST like the dungeon and the expeditions: nothing here is
@@ -160,7 +184,7 @@ namespace FolkIdle.Server.Engine
             => Math.Min(60.0, NavRules.ResearchByKey("thrift")!.PerLevel * NavRules.Unpack(row.Research).GetValueOrDefault("thrift"));
 
         /// <summary>Spends a charge and plays a run with the given payload copy; writes the records it beat.</summary>
-        public static async Task<(NavDescendResult Result, NavRunResult? Run, List<string> Rewards, NavPayout Payout)> DescendAsync(
+        public static async Task<(NavDescendResult Result, NavRunResult? Run, List<string> Rewards, NavPayout Payout, object? View)> DescendAsync(
             FolkIdleDbContext db, long playerId, TickStatePayload payload, int slot, int circle, long nowEpoch, DateTime utcNow, int seed,
             IReadOnlyList<NavRules.Spirit>? bench = null)
         {
@@ -175,12 +199,13 @@ namespace FolkIdle.Server.Engine
                 db.NavProgress.Add(row);
             }
             Settle(row, nowEpoch);
-            if (circle < 1 || circle > row.HighestCircle) { await tx.SafeRollbackAsync(); return (NavDescendResult.CircleLocked, null, rewards, NavPayout.None); }
-            if (row.Charges <= 0) { await tx.SafeRollbackAsync(); return (NavDescendResult.NoCharges, null, rewards, NavPayout.None); }
+            if (circle < 1 || circle > row.HighestCircle) { await tx.SafeRollbackAsync(); return (NavDescendResult.CircleLocked, null, rewards, NavPayout.None, null); }
+            if (row.Charges <= 0) { await tx.SafeRollbackAsync(); return (NavDescendResult.NoCharges, null, rewards, NavPayout.None, null); }
 
             // A row from before the per-depth rewards pays its old depths first,
             // so this run's record cannot pay them a second time.
-            var payout = await PayBacklogAsync(db, row, hourlyIncome, utcNow, rewards);
+            var loot = new NavLoot();
+            var payout = await PayBacklogAsync(db, row, hourlyIncome, utcNow, rewards, loot);
 
             int record = BestDepth(row, circle);
             var run = NavSimulator.Run(payload, slot, circle, BonusesOf(row, bench, nowEpoch), seed, record);
@@ -197,7 +222,7 @@ namespace FolkIdle.Server.Engine
                 best[circle.ToString()] = run.DeepestCleared;
                 row.BestDepths = NavRules.Pack(best);
                 rewards.Add($"New record: depth {run.DeepestCleared} of Circle {circle}");
-                payout += await PayDepthsAsync(db, row, circle, record + 1, run.DeepestCleared, hourlyIncome, utcNow, rewards);
+                payout += await PayDepthsAsync(db, row, circle, record + 1, run.DeepestCleared, hourlyIncome, utcNow, rewards, loot: loot);
             }
             // The guardian that stopped the run is met: its bane opens in the Workshop.
             int metBit = NavRules.GuardianBit(run.StoppedBy);
@@ -235,7 +260,7 @@ namespace FolkIdle.Server.Engine
                 }
             }
 
-            row.LastRunJson = JsonSerializer.Serialize(ViewOf(run, rewards));
+            row.LastRunJson = JsonSerializer.Serialize(ViewOf(run, rewards, record, loot));
             await db.SaveChangesAsync();
             await tx.CommitAsync();
             await ApplyPayoutAsync(db, playerId, payout);
@@ -245,7 +270,7 @@ namespace FolkIdle.Server.Engine
             // Circle opened. Rare by construction - a few times a season.
             string? news = NavNews(PlayerNameResolver.GetCachedOrFallback(playerId), circle, record, run.DeepestCleared, circleOpened);
             if (news != null) Domain.Social.ChatEngine.EnqueueSystemAnnouncement(news);
-            return (NavDescendResult.Ran, run, rewards, payout);
+            return (NavDescendResult.Ran, run, rewards, payout, ViewOf(run, rewards, record, loot));
         }
 
         /// <summary>
@@ -255,7 +280,7 @@ namespace FolkIdle.Server.Engine
         /// ApplyPayoutAsync to add after the commit. One summary line.
         /// </summary>
         public static async Task<NavPayout> PayDepthsAsync(FolkIdleDbContext db, NavProgress row, int circle, int from, int to,
-            long hourlyIncome, DateTime utcNow, List<string> lines, bool skipLegacyChests = false)
+            long hourlyIncome, DateTime utcNow, List<string> lines, bool skipLegacyChests = false, NavLoot? loot = null)
         {
             from = Math.Max(1, from);
             if (to < from) return NavPayout.None;
@@ -294,6 +319,13 @@ namespace FolkIdle.Server.Engine
             parts.Add($"{gold:N0} gold");
             if (diamonds > 0) parts.Add($"{diamonds} diamonds");
             if (tickets > 0) parts.Add($"{tickets} dungeon ticket{(tickets == 1 ? "" : "s")}");
+            if (loot != null)
+            {
+                foreach (var kv in chests) loot.AddChest(kv.Key, kv.Value);
+                loot.GoldCoins += gold;
+                loot.Diamonds += diamonds;
+                loot.Tickets += tickets;
+            }
             string span = from == to ? $"Depth {from}" : $"Depths {from}-{to}";
             lines.Add($"{span} of Circle {circle}: {string.Join(", ", parts)}");
             return new NavPayout(gold, diamonds);
@@ -304,7 +336,7 @@ namespace FolkIdle.Server.Engine
         /// paid once, on the locked row, minus the chests the first build's
         /// 10/25/50 milestones already paid.
         /// </summary>
-        public static async Task<NavPayout> PayBacklogAsync(FolkIdleDbContext db, NavProgress row, long hourlyIncome, DateTime utcNow, List<string> lines)
+        public static async Task<NavPayout> PayBacklogAsync(FolkIdleDbContext db, NavProgress row, long hourlyIncome, DateTime utcNow, List<string> lines, NavLoot? loot = null)
         {
             if (row.DepthRewardsVersion >= 1) return NavPayout.None;
             row.DepthRewardsVersion = 1;
@@ -312,7 +344,7 @@ namespace FolkIdle.Server.Engine
             foreach (var kv in NavRules.Unpack(row.BestDepths).OrderBy(kv => kv.Key, StringComparer.Ordinal))
             {
                 if (!int.TryParse(kv.Key, out int circle) || circle < 1 || kv.Value < 1) continue;
-                payout += await PayDepthsAsync(db, row, circle, 1, kv.Value, hourlyIncome, utcNow, lines, skipLegacyChests: true);
+                payout += await PayDepthsAsync(db, row, circle, 1, kv.Value, hourlyIncome, utcNow, lines, skipLegacyChests: true, loot: loot);
             }
             return payout;
         }
@@ -365,8 +397,11 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>The run as the screen shows it: the last 40 depths are enough to read why it stopped.</summary>
-        public static object ViewOf(NavRunResult run, IReadOnlyList<string> rewards) => new
+        /// <param name="recordBefore">The Circle's record before this run, so the replay can mark the moment it is beaten.</param>
+        public static object ViewOf(NavRunResult run, IReadOnlyList<string> rewards, int recordBefore, NavLoot? loot) => new
         {
+            RecordBefore = recordBefore,
+            Loot = loot is { Any: true } ? loot : null,
             run.Circle,
             run.StartDepth,
             run.DeepestCleared,
