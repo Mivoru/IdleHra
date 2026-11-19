@@ -78,6 +78,7 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.45rem;
+    container-type: inline-size;
   }
 
   .tile {
@@ -187,6 +188,27 @@
     font-size: var(--fs-xs);
     color: var(--text);
     line-height: var(--lh-tight);
+    overflow-wrap: anywhere;
+  }
+
+  /* Modul: AN AMOUNT MAY BREAK INSIDE A TILE (2026-11-19). Money is nowrap
+     everywhere else, which is right in a ledger row - but a quarter of a 360px
+     window is ~70px, and "150 diamonds" or "5.11M gold" ran past the tile's
+     edge on every phone (measured: 4-11px out on each side). Here the unit
+     drops under the number instead, and the coin stays with the figure. */
+  .what :global(.money) {
+    white-space: normal;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0;
+    max-width: 100%;
+    line-height: var(--lh-tight);
+  }
+
+  @container (max-width: 26rem) {
+    .what {
+      font-size: var(--fs-xs);
+    }
   }
 
   .mark {
