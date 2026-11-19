@@ -114,7 +114,7 @@ export interface DungeonReward {
   Diamonds: number;
   Xp: number;
   Gold: number;
-  /** The stage-15 title, by its display name, the first time it is earned; '' otherwise. */
+  /** The stage-15 or stage-20 title, by its display name, the first time it is earned; '' otherwise. */
   Title?: string;
 }
 

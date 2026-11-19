@@ -1,4 +1,5 @@
 using System.Linq;
+using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Xunit;
@@ -34,7 +35,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(new[] { "dungeon", "delve", "ascension", "deeds", "bloodline", "trials", "boons" }, rows.Select(r => r.Key));
             var dungeon = rows.Single(r => r.Key == "dungeon");
             Assert.Equal(22, dungeon.Value);
-            Assert.Equal(45, dungeon.Max);
+            Assert.Equal(3 * DungeonSimulator.StageCount, dungeon.Max);
             Assert.Contains("5 / 8 / 9", dungeon.Progress);
             Assert.Contains("4 tickets", dungeon.Hint);
             Assert.Equal(2, rows.Single(r => r.Key == "deeds").Value);

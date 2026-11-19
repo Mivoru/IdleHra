@@ -1930,8 +1930,8 @@ if (want('dungeon')) {
     dungeonClips.map((f, i) => `${f.replace('dungeon_', '').replace('.wav', '')}:${clipSizes[i]}`).join(' '));
   const view = await apiGet('/api/v1/dungeon').catch(() => null);
   const kinds = (view?.Dungeons ?? []).map((d) => d.Key).join(',');
-  record('the lobby has three gates with fifteen stages and four abilities each', kinds === 'Xp,Gold,Equipment'
-    && view.Dungeons.every((d) => d.Stages.length === 15 && d.Stages[10].Abilities.filter((a) => a.Active).length === 4), kinds || 'no answer');
+  record('the lobby has three gates with twenty stages and four abilities each', kinds === 'Xp,Gold,Equipment'
+    && view.Dungeons.every((d) => d.Stages.length === 20 && d.Stages[10].Abilities.filter((a) => a.Active).length === 4), kinds || 'no answer');
 
   // Plays a live run to its end the way a player does: Skip to the next
   // telegraph, swipe what it shows (arrow keys, or a wrong key when told to

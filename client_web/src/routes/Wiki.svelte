@@ -1415,7 +1415,7 @@
               <thead><tr><th>Track</th><th>How often</th><th>What it pays</th></tr></thead>
               <tbody>
                 <tr><td>Expeditions (Bloodline)</td><td>every few hours</td><td>A loot chest per trip from a benched ancestor; titles at 10 / 50 / 100 trips</td></tr>
-                <tr><td>Dungeon</td><td>2 tickets a day per gate</td><td>Gear, XP or gold, first-clear diamonds, a title at stage 15; each gate forecasts your next stage</td></tr>
+                <tr><td>Dungeon</td><td>2 tickets a day per gate</td><td>Gear, XP or gold, first-clear diamonds, 20 stages with a title at stage 15 and stage 20; each gate forecasts your next stage</td></tr>
                 <tr><td>The Delve and the Deep</td><td>weekly</td><td>Diamonds under a weekly cap, depth titles, the Deepest board</td></tr>
                 <tr><td>Boss Ascension</td><td>whenever</td><td>A loot chest per new step; step 10 adds +2% damage in that region for good</td></tr>
                 <tr><td>World boss</td><td>daily strike, weekly payout</td><td>Diamonds by damage, milestone titles</td></tr>

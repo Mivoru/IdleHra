@@ -55,12 +55,31 @@ namespace FolkIdle.Server.Domain.Combat
     /// Modul: STAGES IN THREE BANDS. 1-5 are region N's boss (as farmed after
     /// its first clear) x1.1; 6-10 are Malakor's Ascension ladder A2-A10;
     /// 11-15 are A10 x1.5 and then x1.4 a stage on attack, health rising as
-    /// attack^0.68 (the Ascension split). The absolute top is set against the
+    /// attack^0.68 (the Ascension split); 16-20 (2026-11-19) x1.35 a stage on
+    /// body alone, the abilities held at their stage-15 strength. The absolute top is set against the
     /// maxed profile once task 112 re-measures it - the shape stays.
     /// </remarks>
     public static class DungeonSimulator
     {
-        public const int StageCount = 15;
+        public const int StageCount = 20;
+        /// <summary>The stage every boss ability reaches its full strength at (DungeonBoss.Grow).</summary>
+        public const int AbilityTopStage = 15;
+        /// <summary>The stage whose first clear pays the boss's title; StageCount pays its second.</summary>
+        public const int TitleStage = 15;
+
+        /// <summary>
+        /// Attack a stage above 15, over the one before (health x this^0.68).
+        /// MEASURED 2026-11-19 (EndgameProfileHarness, production copy, player
+        /// 8): a three-character endgame party - Transcendent gear with searched
+        /// affixes at the top of their range, the best pets and combat potion,
+        /// guild Damage 5, all inheritance and trials, aptitudes 50 - beats
+        /// stage 15 x5.5 (Gold) to x9.9 (Equipment) stronger at level 160 and
+        /// x3.1-3.4 at level 140, with no dodges. 1.35^5 = 4.5, so the level-160
+        /// party clears stage 20 without a single dodge (owner: "no problem with
+        /// 20, maybe even without ideal dodges") and the level-140 one reaches
+        /// about 18 without dodges, 20 with them.
+        /// </summary>
+        public const double LegendStepAttack = 1.35;
         public const int Waves = 5;
         public const int MealCap = 5;
         public const double WaveStrength = 0.4;
@@ -118,7 +137,8 @@ namespace FolkIdle.Server.Domain.Combat
             }
             else
             {
-                double factor = 1.5 * Math.Pow(1.4, stage - 11);
+                double factor = 1.5 * Math.Pow(1.4, Math.Min(stage, AbilityTopStage) - 11)
+                    * Math.Pow(LegendStepAttack, Math.Max(0, stage - AbilityTopStage));
                 attack = (long)(Math.Max(topAttack, fiveAttack) * factor);
                 hp = (long)(Math.Max(topHp, fiveHp) * Math.Pow(factor, 0.68));
             }

@@ -158,7 +158,7 @@ namespace FolkIdle.Server.Tests
 
         private const double HpExponent = 0.68;
 
-        private static bool Beats(TickStatePayload payload, int region, double attackMultiplier)
+        internal static bool Beats(TickStatePayload payload, int region, double attackMultiplier)
         {
             int atkPct = (int)Math.Round((attackMultiplier - 1.0) * 100.0);
             int hpPct = (int)Math.Round((Math.Pow(attackMultiplier, HpExponent) - 1.0) * 100.0);
@@ -174,7 +174,7 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>The live tick until the boss falls, the character dies, or 30 minutes pass.</summary>
-        private static (bool Won, double Seconds, int Limit) Fight(TickStatePayload payload, int region, int step)
+        internal static (bool Won, double Seconds, int Limit) Fight(TickStatePayload payload, int region, int step)
         {
             int boss = RaceUnlockRegistry.GetRegionBossMonsterId(region);
             payload.ActiveActivityId = boss;

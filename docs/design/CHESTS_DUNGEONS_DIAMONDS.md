@@ -664,6 +664,54 @@ wearing nothing).** Highest stage cleared, best region-5 fish:
 
 **Not calibrated yet:** a party of geared champions (no production account has one).
 
+### 2.9 Stages 16-20, the Legend band (owner, 2026-11-19)
+
+The owner cleared all fifteen stages of every gate and asked for twenty, with
+the last one beatable by an account built for a very long time ("the best
+pets, Transcendent full armour on every character, aptitudes, the best
+affixes with refine, all inheritance, the best potions and guild bonuses -
+no problem with 20, maybe even without ideal dodges").
+
+**The endgame profile** (`EndgameProfileHarness`, calibration only, skipped
+without `FOLKIDLE_CALIBRATION_DB`): built on the owner's real character, then
+level L, attribute points 7 a level in the owner's split, all six
+inheritances at 10, 20 rebirths, every Rebirth Trial, guild Damage tier 5,
+aptitudes 50 on all three characters, Transcendent region-5 pieces in all
+eight slots with every affix at the top of its Legendary range (refine reaches
+the cap) and chosen by coordinate search, the best pair of pets and the best
+strong combat potion, also searched. The old "maxed" profile of
+`AscensionCalibrationHarness` takes midpoint round-robin affixes on purpose
+(walls must not be tuned to a perfect build) and is too weak for the top
+stage: it cleared 13-14 while the owner, with dodges, cleared 15.
+
+**Measured** (production copy 2026-11-19 03:17Z, player 8, no dodges, three
+champions): stage-15 headroom (how much stronger the stage-15 boss could be,
+attack x, health x^0.68, and still lose):
+
+| Profile | XP | Gold | Equipment |
+|---|---|---|---|
+| owner today (L126) | x0.49 | x0.52 | x0.49 |
+| endgame L140 | x3.07 | x3.23 | x3.42 |
+| endgame L150 | x4.87 | x5.02 | x5.84 |
+| endgame L160 | x6.86 | x5.48 | x9.87 |
+
+Level dominates: the base health curve grows 9.2% a level, the XP cost 11.4%.
+
+**Built:** `StageCount` 20; stages 16-20 multiply attack by
+`LegendStepAttack` = 1.35 a stage (health x1.35^0.68), so stage 20 is stage 15
+x4.5. Every boss ability is anchored to `AbilityTopStage` = 15 and held there:
+anchored to the last stage, five more stages would have stretched every ramp
+and made stages 1-15 easier (verified: stages 1-15 measure exactly as before).
+Result with 20 stages: endgame L140 clears 18-19 without a dodge, L150 clears
+20 with effort (4-5 meals), L160 with ease. The owner (x0.5 without dodges,
+all fifteen with them) has stage 16 as the next step.
+
+Rewards continue the curve: income minutes 20 + 8 x stage (180 at stage 20),
+first clear 40 diamonds (bands 5 / 10 / 20 / 40, 600 diamonds for all fifteen
+new clears), Baba Yaga's piece floor Mythic, Ancient chest, band name
+"Legend". The stage-15 titles stay (slugs `dungeon_*_15` are stored per
+player); stage 20 pays a second, "<title> of the Deep" (`dungeon_*_20`).
+
 ### 2.6 Decisions for the owner
 
 - **D1. Fight model: A (simulated), B (interactive) or C (timer)?**
