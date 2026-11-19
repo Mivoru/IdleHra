@@ -125,6 +125,23 @@
     {:else if !data.Open}
       <p class="locked" data-testid="dungeon-locked">{data.LockedReason}</p>
       <button onclick={() => requestScreen('combat')}>Go fight</button>
+      <!-- Modul: A LOCKED SCREEN IS AN ADVERT FOR THE GOAL (screenshot audit,
+           2026-11-19). It was one card on an empty page; the three gates and
+           what each pays are shown, greyed, so the lock says what it opens. -->
+      {#if data.Dungeons.length > 0}
+        <p class="pick dim tiny">Behind the lock:</p>
+        <div class="gates preview" data-testid="dungeon-preview">
+          {#each data.Dungeons as d (d.Kind)}
+            {@const g = GATE[d.Key]}
+            <div class="gate-col" data-tone={g.tone}>
+              <div class="gate" style="background-image: url({g.art})" aria-label="{d.Name}, locked">
+                <span class="gate-name">{d.Name}</span>
+                <span class="gate-pays">{g.pays}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
     {:else}
       <p class="pick dim tiny">Pick a gate, then its stage underneath.</p>
       <div class="gates" role="radiogroup" aria-label="Dungeon">
@@ -506,5 +523,10 @@
     border-left: 3px solid var(--accent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border-radius: 6px;
+  }
+
+  .gates.preview .gate {
+    filter: grayscale(0.6) brightness(0.8);
+    cursor: default;
   }
 </style>
