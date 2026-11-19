@@ -170,7 +170,7 @@
   }
 
   function endedLine(state: NavState, run: NavRun): string {
-    const who = guardianByKey(state, run.StoppedBy)?.Name ?? 'A guardian';
+    const who = guardianByKey(state, run.StoppedBy)?.Subject ?? 'A guardian';
     if (run.EndedBy === 'fell') return `${who} struck you down at depth ${run.DeepestCleared + 1}.`;
     if (run.EndedBy === 'time') return `${who} outlasted the ${state.SecondsPerGuardian}-second clock at depth ${run.DeepestCleared + 1}.`;
     return 'The run reached its limit.';

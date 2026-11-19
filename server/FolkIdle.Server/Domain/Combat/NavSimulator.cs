@@ -132,7 +132,7 @@ namespace FolkIdle.Server.Domain.Combat
                     stoppedBy = who.Key;
                     hint = NavRules.Hint(ability, falls);
                     depths.Add(new NavDepthResult(depth, who.Key, NavRules.EliteName(elite), Math.Round(spent, 1), false,
-                        falls ? $"{who.Name} struck you down." : $"{who.Name} outlasted the clock.", 0));
+                        falls ? $"{who.Subject} struck you down." : $"{who.Subject} outlasted the clock.", 0));
                     break;
                 }
 

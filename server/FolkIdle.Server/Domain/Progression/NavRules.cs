@@ -89,21 +89,21 @@ namespace FolkIdle.Server.Domain.Progression
         public enum Ability : byte
         {
             None = 0,
-            /// <summary>Upir: heals 1.5% of its health with every blow it lands.</summary>
+            /// <summary>Vampire: heals 1.5% of its health with every blow it lands.</summary>
             Lifedrinker = 1,
-            /// <summary>Strzyga: a second heart - rises once with 40% of its health.</summary>
+            /// <summary>Two-Hearted Hag: a second heart - rises once with 40% of its health.</summary>
             SecondHeart = 2,
-            /// <summary>Mora: sits on your chest - you fight with 60% of your health.</summary>
+            /// <summary>Nightmare: sits on your chest - you fight with 60% of your health.</summary>
             Nightmare = 3,
             /// <summary>Will-o'-wisp: a quarter of your swings pass through it, and heal nothing.</summary>
             Elusive = 4,
             /// <summary>Lady Midday: every blow 8% harder than the last.</summary>
             NoonHeat = 5,
-            /// <summary>Navka: each of your hits costs you 2% of your own health.</summary>
+            /// <summary>Pale Maiden: each of your hits costs you 2% of your own health.</summary>
             Mirror = 6,
-            /// <summary>Psoglav: plain hits lose 40%; crits pass in full.</summary>
+            /// <summary>Dog-Headed Giant: plain hits lose 40%; crits pass in full.</summary>
             IronHide = 7,
-            /// <summary>Kikimora: no crit lands as a crit.</summary>
+            /// <summary>Spindle Hag: no crit lands as a crit.</summary>
             Hex = 8,
             /// <summary>Drowned One: your healing is cut by 80%.</summary>
             Drowning = 9,
@@ -114,7 +114,11 @@ namespace FolkIdle.Server.Domain.Progression
         }
 
         /// <summary>A guardian of Nav: its own name and art, and one ability.</summary>
-        public sealed record Guardian(string Key, string Name, Ability Ability, string AbilityName, string AbilityText);
+        public sealed record Guardian(string Key, string Name, Ability Ability, string AbilityName, string AbilityText)
+        {
+            /// <summary>The name at the start of a sentence: "The Vampire", but "Lady Midday" and "Veles".</summary>
+            public string Subject => Name.StartsWith("Lady ", StringComparison.Ordinal) || Name == "Veles" ? Name : "The " + Name;
+        }
 
         /// <summary>
         /// The ten servants of Nav, in the order they stand: depth 1 meets the
@@ -130,6 +134,10 @@ namespace FolkIdle.Server.Domain.Progression
         /// here. Names avoid what the game already uses - Koschei is a dungeon
         /// boss, Vodnik a race.
         ///
+        /// Modul: ENGLISH NAMES (owner, 2026-11-19): the game is in English, so
+        /// the creatures are named in it - Vampire, not Upir; the keys (and the
+        /// art files) keep the folklore word. Kikimora is a pet already.
+        ///
         /// Modul: AN ABILITY PER GUARDIAN IS THE REASON TO OWN TWO BUILDS. Iron
         /// hide rewards crit, Hex punishes it; Drowning punishes a lifesteal
         /// tank, Noon heat a slow killer. A record stops where the build's weak
@@ -137,14 +145,14 @@ namespace FolkIdle.Server.Domain.Progression
         /// </remarks>
         public static readonly Guardian[] Guardians =
         {
-            new("upir", "Upir", Ability.Lifedrinker, "Lifedrinker", "Heals 1.5% of its health with every blow it lands."),
-            new("strzyga", "Strzyga", Ability.SecondHeart, "Second heart", "Rises once more with 40% of its health."),
-            new("mora", "Mora", Ability.Nightmare, "Nightmare", "Sits on your chest: you fight with 60% of your health."),
+            new("upir", "Vampire", Ability.Lifedrinker, "Lifedrinker", "Heals 1.5% of its health with every blow it lands."),
+            new("strzyga", "Two-Hearted Hag", Ability.SecondHeart, "Second heart", "Rises once more with 40% of its health."),
+            new("mora", "Nightmare", Ability.Nightmare, "Crushing dream", "Sits on your chest: you fight with 60% of your health."),
             new("wisp", "Will-o'-wisp", Ability.Elusive, "Elusive", "A quarter of your swings pass through it and heal nothing."),
             new("poludnica", "Lady Midday", Ability.NoonHeat, "Noon heat", "Every blow lands 8% harder than the last."),
-            new("navka", "Navka", Ability.Mirror, "Mirror", "Each of your hits costs you 2% of your own health."),
-            new("psoglav", "Psoglav", Ability.IronHide, "Iron hide", "Plain hits lose 40%; crits pass in full."),
-            new("kikimora", "Kikimora", Ability.Hex, "Hex", "No crit lands as a crit."),
+            new("navka", "Pale Maiden", Ability.Mirror, "Mirror", "Each of your hits costs you 2% of your own health."),
+            new("psoglav", "Dog-Headed Giant", Ability.IronHide, "Iron hide", "Plain hits lose 40%; crits pass in full."),
+            new("kikimora", "Spindle Hag", Ability.Hex, "Hex", "No crit lands as a crit."),
             new("utopenec", "Drowned One", Ability.Drowning, "Drowning", "Your healing is cut by 80%."),
             new("hound", "Black Hound", Ability.GraveChill, "Grave chill", "Your swings are 25% slower."),
         };
@@ -183,14 +191,14 @@ namespace FolkIdle.Server.Domain.Progression
         /// </summary>
         public static string Hint(Ability ability, bool fell) => ability switch
         {
-            Ability.Lifedrinker => fell ? "Upir heals as it hits you: more health or lifesteal outlasts it." : "Upir heals every blow: only fast damage outruns it.",
-            Ability.SecondHeart => "Strzyga rises once more: it needs 40% more damage than its depth.",
-            Ability.Nightmare => "Mora takes 40% of your health: health and armour (Barkskin, CON) win here.",
+            Ability.Lifedrinker => fell ? "The Vampire heals as it hits you: more health or lifesteal outlasts it." : "The Vampire heals every blow: only fast damage outruns it.",
+            Ability.SecondHeart => "The Two-Hearted Hag rises once more: it needs 40% more damage than its depth.",
+            Ability.Nightmare => "The Nightmare takes 40% of your health: health and armour (Barkskin, CON) win here.",
             Ability.Elusive => "A quarter of your swings pass through the wisp: raw damage and attack speed.",
             Ability.NoonHeat => fell ? "Lady Midday's blows keep growing: end the fight sooner or bring more health." : "Lady Midday's heat grows every blow: more damage ends it before it peaks.",
-            Ability.Mirror => "Navka costs you health per hit: fewer, harder hits and lifesteal pay it back.",
-            Ability.IronHide => "Psoglav's hide stops plain hits: crit chance gets through in full.",
-            Ability.Hex => "Kikimora's hex stops crits: plain damage beats her - crit gear adds nothing here.",
+            Ability.Mirror => "The Pale Maiden costs you health per hit: fewer, harder hits and lifesteal pay it back.",
+            Ability.IronHide => "The Giant's hide stops plain hits: crit chance gets through in full.",
+            Ability.Hex => "The Spindle Hag's hex stops crits: plain damage beats her - crit gear adds nothing here.",
             Ability.Drowning => "The Drowned One cuts your healing: armour and health instead of lifesteal.",
             Ability.GraveChill => "The Black Hound slows your swings: attack speed (Quick roots) answers the chill.",
             Ability.Warden => fell ? "Veles hits hard: Barkskin and Second breath carry you through his depth." : "Veles has almost twice the health: Rootstrength and Grave luck break the wall.",
