@@ -47,7 +47,12 @@ export const RELEASE_NOTES: readonly Release[] = [
           'The "Do this next" hint no longer hides under the Chronicle badge on a computer.',
           "The World Boss's Sunday titles are readable in the light theme.",
           'A locked gathering spot names the boss that opens it.',
+          'Monster and item pictures show initials instead of a broken image while the game reconnects.',
         ],
+      },
+      {
+        title: 'Chat',
+        items: ['News now announces drops from Ancient up. Relic drops no longer fill the channel.'],
       },
     ],
   },
