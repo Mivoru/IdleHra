@@ -199,17 +199,59 @@ namespace FolkIdle.Server.Domain.Combat
         // measured: owner A3 both runs, maxed A5 (A6 once), A10 x152, about 2x
         // the maxed power. 47 / 1.18 overshot (owner A2, maxed A4), because the
         // enrage from A4 on costs more than the headroom search prices.
+        //
+        // Re-measured 2026-11-19 (EndgameProfileHarness, production copy): the
+        // ladder had become midgame. The owner (level 126) cleared A8; under
+        // A10's own rules (120% time limit, Enrage, Ward) he beats x106, while
+        // an endgame account - three Transcendent characters with searched
+        // max-roll affixes, the best pets and potion, guild Damage 5, every
+        // inheritance and trial - beats x820 at level 140, x1,647 at 150 and
+        // x3,836 at 160, against an A10 of x152. Owner's rule for the split:
+        // regions and their bosses are early and midgame, the world boss, the
+        // dungeon and Nav are endgame, and the start must not get harder. So
+        // A0-A5 stay exactly as they were, and A6-A10 climb geometrically from
+        // A5 to MalakorTopAttack = x1,500: the level-150 endgame account's edge,
+        // the same anchor as dungeon stage 20. The owner lands on about A5-A6.
         internal const double MalakorHeadroomAtStepThree = 40.0;
         internal const double MalakorStepGrowth = 1.21;
         internal const double MalakorHpExponent = 0.68;
+        /// <summary>The last step whose number predates the endgame retune (2026-11-19).</summary>
+        internal const int MalakorMidgameTopStep = 5;
+        /// <summary>Malakor's attack multiplier at A10 (health x this^0.68).</summary>
+        internal const double MalakorTopAttack = 1500.0;
 
         /// <summary>Malakor's attack multiplier at an Ascension step (1 = unchanged at step 0).</summary>
         internal static double MalakorAttackMultiplier(int step)
         {
             if (step <= 0) return 1.0;
-            return step <= 3
-                ? Math.Pow(MalakorHeadroomAtStepThree, step / 3.0)
-                : MalakorHeadroomAtStepThree * Math.Pow(MalakorStepGrowth, step - 3);
+            if (step <= 3) return Math.Pow(MalakorHeadroomAtStepThree, step / 3.0);
+            double midgame(int s) => MalakorHeadroomAtStepThree * Math.Pow(MalakorStepGrowth, s - 3);
+            if (step <= MalakorMidgameTopStep) return midgame(step);
+            double from = midgame(MalakorMidgameTopStep);
+            double t = (Math.Min(step, MaxStep) - MalakorMidgameTopStep) / (double)(MaxStep - MalakorMidgameTopStep);
+            return from * Math.Pow(MalakorTopAttack / from, t);
+        }
+
+        /// <summary>
+        /// Malakor at the PRE-2026-11-19 A10 (x152 attack, health ^0.68, Enrage):
+        /// the body dungeon stages 6-20 are measured from.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE DUNGEON IS ANCHORED HERE, NOT ON TODAY'S A10. DungeonSimulator
+        /// built stage 10 as "Malakor at A10 x the band scale", so the endgame
+        /// retune of A6-A10 (x152 -> x1,500) made every dungeon stage from 6 up
+        /// about ten times harder in one stroke - measured: the owner fell from
+        /// stage 12-13 to 9 and the level-150 endgame account from 20 to 13. The
+        /// dungeon's own calibration (AscensionBandScale, LegendStepAttack) was
+        /// measured against this body, so it keeps it.
+        /// </remarks>
+        public static AscensionModifiers DungeonAnchor()
+        {
+            double attack = MalakorHeadroomAtStepThree * Math.Pow(MalakorStepGrowth, MaxStep - 3);
+            return new AscensionModifiers(
+                (int)Math.Round((attack - 1.0) * 100.0),
+                (int)Math.Round((Math.Pow(attack, MalakorHpExponent) - 1.0) * 100.0),
+                120) { Enrage = true, Ward = true };
         }
 
         public static (double Hp, double Attack) StepTenRatio(int region)

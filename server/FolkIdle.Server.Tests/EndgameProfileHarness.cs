@@ -85,12 +85,14 @@ namespace FolkIdle.Server.Tests
             if (realParty.Length == 0) realParty = new[] { 0 };
             PrintLadder("real", real, realParty);
             PrintAscension("real", real);
+            PrintAscensionTopEdge("real", real);
 
             foreach (int level in levels)
             {
                 TickStatePayload maxed = BuildEndgame(real, level);
                 PrintLadder($"endgame L{level}", maxed, Party);
                 PrintAscension($"endgame L{level}", maxed);
+                PrintAscensionTopEdge($"endgame L{level}", maxed);
             }
         }
 
@@ -132,6 +134,34 @@ namespace FolkIdle.Server.Tests
                 for (int i = 0; i < 12; i++) { double mid = Math.Sqrt(lo * hi); if (AscensionCalibrationHarness.Beats(payload, BossAscensionRegistry.LastRegion, mid)) lo = mid; else hi = mid; }
             }
             _output.WriteLine($"{name,-13} Ascension r5 headroom x{lo:F1}; ladder A3 x{BossAscensionRegistry.ModifiersFor(5, 3).AttackPct / 100.0 + 1:F1} A6 x{BossAscensionRegistry.ModifiersFor(5, 6).AttackPct / 100.0 + 1:F1} A10 x{BossAscensionRegistry.ModifiersFor(5, 10).AttackPct / 100.0 + 1:F1}");
+        }
+
+        /// <summary>
+        /// The strongest Malakor A10 this payload still beats, with A10's own
+        /// rules (time limit, Enrage, Ward): attack x, health x^0.68. Fights roll,
+        /// so a multiplier counts as beaten on two wins of three.
+        /// </summary>
+        private void PrintAscensionTopEdge(string name, TickStatePayload payload)
+        {
+            var top = BossAscensionRegistry.ModifiersFor(BossAscensionRegistry.LastRegion, BossAscensionRegistry.MaxStep);
+            bool Wins(double attack)
+            {
+                int atkPct = (int)Math.Round((attack - 1.0) * 100.0);
+                int hpPct = (int)Math.Round((Math.Pow(attack, 0.68) - 1.0) * 100.0);
+                BossAscensionRegistry.CalibrationOverride = new AscensionModifiers(atkPct, hpPct, top.TimeLimitPctOfSwift) { Enrage = top.Enrage, Ward = top.Ward };
+                try
+                {
+                    int won = 0;
+                    for (int i = 0; i < 3; i++) if (AscensionCalibrationHarness.Fight(payload, BossAscensionRegistry.LastRegion, BossAscensionRegistry.MaxStep).Won) won++;
+                    return won >= 2;
+                }
+                finally { BossAscensionRegistry.CalibrationOverride = null; }
+            }
+            double lo = 1.0, hi = 2.0;
+            if (!Wins(lo)) { _output.WriteLine($"{name,-13} Ascension A10 rules: loses even at x1"); return; }
+            while (hi < 1e6 && Wins(hi)) { lo = hi; hi *= 2; }
+            for (int i = 0; i < 10; i++) { double mid = Math.Sqrt(lo * hi); if (Wins(mid)) lo = mid; else hi = mid; }
+            _output.WriteLine($"{name,-13} Ascension A10 rules (limit {top.TimeLimitPctOfSwift}%, enrage, ward): beats up to x{lo:F0}");
         }
 
         private static DungeonRunResult RunOnce(TickStatePayload payload, DungeonKind kind, int stage, int[] party)

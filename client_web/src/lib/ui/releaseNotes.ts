@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.104.0',
+    date: '2026-11-19',
+    headline: "Malakor's Ascension is endgame from step 6.",
+    sections: [
+      {
+        title: 'Ascension',
+        items: [
+          "Steps 1 to 5 of Malakor's Ascension are exactly as before. Steps 6 to 10 grow much faster now: step 10 is meant for a fully built account, about as hard as stage 20 of the dungeons.",
+          'Every title, frame and reward you have already earned stays yours.',
+          "The other bosses' Ascensions, the regions and the dungeons are unchanged.",
+        ],
+      },
+    ],
+  },
+  {
     version: '1.103.1',
     date: '2026-11-19',
     sections: [

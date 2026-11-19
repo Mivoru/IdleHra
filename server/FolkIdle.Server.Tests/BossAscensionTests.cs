@@ -109,19 +109,21 @@ namespace FolkIdle.Server.Tests
             double Attack(int step) => 1 + BossAscensionRegistry.ModifiersFor(5, step).AttackPct / 100.0;
             double Health(int step) => 1 + BossAscensionRegistry.ModifiersFor(5, step).BossHpPct / 100.0;
 
-            // Re-measured 2026-11-02 (roadmap 3.5): the owner's character
-            // ~x47.6, the maxed profile ~x73 (68-77 over two runs of
-            // AscensionCalibrationHarness). A3 sits below the owner's headroom
-            // because the enrage from A4 on costs more than the search prices.
+            // A0-A5 are the 2026-11-02 midgame ladder, unchanged: A3 x40, x1.21 a step.
             Assert.InRange(Attack(3), 39.9, 40.1);
-            for (int step = 4; step <= 10; step++)
-            {
+            for (int step = 4; step <= 5; step++)
                 Assert.InRange(Attack(step) / Attack(step - 1), 1.20, 1.22);
-            }
-            // The maxed profile's ~x73 reaches A5 and falls short of A7...
-            Assert.True(Attack(5) <= 73 && Attack(7) > 73, $"A5 x{Attack(5):F1}, A7 x{Attack(7):F1}");
-            // ...and A10 asks about twice it.
-            Assert.InRange(Attack(10), 1.8 * 73.0, 2.3 * 73.0);
+            // A6-A10 (2026-11-19) climb geometrically to the endgame edge:
+            // EndgameProfileHarness measured, under A10's rules, the owner at
+            // x106, an endgame account at x820 (level 140), x1,647 (150) and
+            // x3,836 (160). A10 is the level-150 edge.
+            double growth = Attack(6) / Attack(5);
+            Assert.InRange(growth, 1.85, 1.98);
+            for (int step = 7; step <= 10; step++)
+                Assert.InRange(Attack(step) / Attack(step - 1), growth * 0.99, growth * 1.01);
+            Assert.InRange(Attack(10), 1490, 1510);
+            Assert.True(Attack(10) < 1647 && Attack(10) > 820, "A10 sits between the level-140 and level-150 endgame accounts");
+            Assert.True(Attack(5) < 106 && Attack(7) > 106, $"the owner (x106) reaches A5-A6: A5 x{Attack(5):F0}, A7 x{Attack(7):F0}");
             // Health rides on attack, as the old ladder's split did.
             for (int step = 1; step <= 10; step++)
             {
