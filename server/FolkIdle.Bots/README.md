@@ -18,7 +18,7 @@ unless `--allow-remote` is given.
 $env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_bots;Username=postgres;Password=postgres'
 $env:FOLKIDLE_DEV_TOOLS='1'
 $env:FOLKIDLE_TICK_SPEED='100'
-$env:FOLKIDLE_BOSS_MINIGAME='wheel'   # as production
+$env:FOLKIDLE_BOSS_MINIGAME='duel'; $env:FOLKIDLE_NAV='on'; $env:FOLKIDLE_DELVE_DEEP='on'   # as production
 dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj
 
 # 2. The bots (another terminal); --speed must match FOLKIDLE_TICK_SPEED
@@ -148,9 +148,11 @@ The same decisions for every persona; only the attention differs.
 | Workshop, Great Works | A commission for the weakest slot; logs and ore beyond 1,500 into the monument | `BotBrain.Economy.cs` |
 | Claims | Quest steps, achievements, mail, loot chests | `BotBrain.Economy.cs` |
 | Chest | Sells Common on the way in until the Forge; then only gear two regions back; bulk-sells old regions | `BotBrain.Economy.cs` |
-| World boss | Today's strike: the Auto strike with the shield wheel on, opcode 32 with it off | `BotBrain.Events.cs` |
+| World boss | Today's strike: the Auto strike with the shield wheel or the duel on, opcode 32 with both off | `BotBrain.Events.cs` |
 | Dungeons | Every ticket: pushes the next stage (telegraphs answered at human speed, one in twelve missed), sweeps the best stage after a loss | `BotBrain.Events.cs` |
-| Delve | A run when the fee is under a fifth of the spare gold; the door with the best odds; banks under 65% | `BotBrain.Events.cs` |
+| Delve | The day's free run always; a paid run when the fee is under a fifth of the spare gold; the door with the best odds; banks under 65% | `BotBrain.Events.cs` |
+| Daily missions, Chronicle | Claims finished missions, the all-done bonus and every reached pass level every 90 game minutes; never swaps a mission | `BotBrain.Daily.cs` |
+| Nav | Every charge (checked every 20 game minutes) from the character with the best server-expected depth in the highest Circle; Souls into the cheapest open Workshop upgrade; no gold research | `BotBrain.Daily.cs` |
 | Boss Ascension | The next step when the plain boss holds and dies inside a third of the time limit | `BotBrain.Events.cs` |
 | Roster | Benched members into open playable slots; characters 2 and 3 woodcut and mine | `BotBrain.Lineage.cs` |
 | Breeding | Main character x the best villager of the other sex and same race, when the preview says eligible | `BotBrain.Lineage.cs` |
@@ -176,7 +178,10 @@ ends with the speed the server really ran at, from `/metrics`.
 
 ## Not done
 
-Market and guilds (a single bot has nobody to trade with), the seasonal event
+Situational builds (skill tree v3 binds a build to the world boss, the
+dungeons or grinding; the bot fights everything with one tree, so its world
+boss and dungeon numbers are a generalist's), Nav's gold research, mission
+swaps, market and guilds (a single bot has nobody to trade with), the seasonal event
 shop and boss, playing the shield wheel (the bot takes the Auto strike), the
 Deep below Delve floor 8, and breeding between two of the player's own
 characters.
