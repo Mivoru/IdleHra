@@ -386,6 +386,27 @@ of reading past them. `WebSocketClient.ParseAndEnqueuePacket` uses this and
 drops (logs and returns on) a failed parse rather than propagating garbage
 state.
 
+## 7a. The REST gateway is one partial class in many files (2026-11-20)
+
+`NetworkBroadcastSystem` was a 13,935-line file (671 KB): the WebSocket
+loop, the router and every REST handler. On 2026-11-20 the handlers moved out
+unchanged into partial files named for their domain: `.Auth`, `.Account`,
+`.AdminDev`, `.Billing`, `.ChestForge`, `.DelveBoss`, `.Guild`, `.Leaderboards`,
+`.Lineage`, `.Market`, `.PlayerSnapshots`, `.Progress`, `.Social` and
+`.StaticFiles`. They sit beside the older ones (`.Nav`, `.Dungeon`, `.Missions`
+and the rest). The move was mechanical (Roslyn, the method with its comments
+and attributes). It was checked as a pure move: the remaining file is a
+subsequence of the old one, and the moved lines equal the removed lines.
+
+What stayed in `NetworkBroadcastSystem.cs` (about 4,700 lines): the session
+and WebSocket writer, startup and registration, `RouteCoreAsync` (the route
+table, 1,700 lines), the client loop, `SendToPlayer`, and the fields and
+response types the handlers share. **A new route goes in its domain's file.
+Only its dispatch line goes in `RouteCoreAsync`.** Splitting the route table
+itself into per-domain `TryHandle...Async` routers (the pattern `.Nav` and
+`.Missions` already use) is the next step. It was not done here because it
+changes the order routes are tried in.
+
 ## 8. Test Suite State
 
 **592 server tests, all passing** as of 2026-09-05, verified against a real
