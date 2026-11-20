@@ -186,6 +186,7 @@ namespace FolkIdle.Server.Engine
                     if (newFlags != currentFlags)
                     {
                         achievementRecord.ClaimedAchievementFlags = newFlags;
+                        await Engine.DiamondLedger.LabelAsync(dbContext, Engine.DiamondLedger.Achievement);
                         player.PremiumDiamonds += diamondsToAward;
                         await dbContext.SaveChangesAsync(stoppingToken);
                     }

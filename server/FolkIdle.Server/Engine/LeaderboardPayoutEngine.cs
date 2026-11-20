@@ -177,6 +177,7 @@ namespace FolkIdle.Server.Engine
                             continue;
                         }
 
+                        await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Leaderboard);
                         player.PremiumDiamonds += diamonds;
                         player.LeaderboardPayoutWeekKey = weekKey;
                         player.LeaderboardPayoutRank = rank;

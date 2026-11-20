@@ -365,8 +365,12 @@ namespace FolkIdle.Server.Engine
             }
             if (payout.Diamonds > 0)
             {
+                // The diamond ledger's label is transaction-local (DiamondLedger), and this runs after the commit.
+                await using var own = db.Database.CurrentTransaction == null ? await db.Database.BeginTransactionAsync() : null;
+                await DiamondLedger.LabelAsync(db, DiamondLedger.Nav);
                 await db.PlayerRecords.Where(p => p.Id == playerId)
                     .ExecuteUpdateAsync(u => u.SetProperty(p => p.PremiumDiamonds, p => p.PremiumDiamonds + payout.Diamonds));
+                if (own != null) await own.CommitAsync();
             }
         }
 

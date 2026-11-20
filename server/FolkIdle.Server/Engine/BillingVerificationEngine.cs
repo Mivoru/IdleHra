@@ -98,6 +98,7 @@ namespace FolkIdle.Server.Engine
                     if (profile == null) return false;
 
                     int previousBalance = profile.PremiumDiamonds;
+                    await Engine.DiamondLedger.LabelAsync(context, Engine.DiamondLedger.Purchase);
                     profile.PremiumDiamonds += premiumAmount;
 
                     var purchase = new PrimaryPurchaseLedger
@@ -255,6 +256,7 @@ namespace FolkIdle.Server.Engine
                         }
 
                         int previousBalance = profile.PremiumDiamonds;
+                        await Engine.DiamondLedger.LabelAsync(context, Engine.DiamondLedger.Purchase);
                         profile.PremiumDiamonds += premiumAmount;
 
                         context.PrimaryPurchaseLedgers.Add(new PrimaryPurchaseLedger
@@ -355,6 +357,7 @@ namespace FolkIdle.Server.Engine
                             throw new InvalidOperationException($"Refund alert for TransactionId '{transactionId}' cannot resolve the granted diamond amount - no ProcessedTransactions row and ProductId '{purchase.ProductId}' is not in the price table.");
                         }
 
+                        await Engine.DiamondLedger.LabelAsync(context, Engine.DiamondLedger.Refund);
                         profile.PremiumDiamonds -= deduction;
 
                         var log = new EventHorizonPremiumLedger

@@ -19,6 +19,30 @@ do next.
 
 ---
 
+# 2026-11-20 - the diamond ledger, and the diamonds it found missing
+
+`diamond_daily` (PlayerId, Day, Reason, Gained, Spent) is written by a
+TRIGGER on `PlayerRecords."PremiumDiamonds"`, not by the ~20 writers, so a
+writer nobody remembered still lands - as `unlabelled`. Writers only label
+the change: `Engine.DiamondLedger.LabelAsync` inside their transaction, or
+`LabelSql` in the same command when there is none. Query it the way you
+query `gold_spend_daily`.
+
+Its first run found a real loss. The checkpoint wrote the payload's diamond
+balance back as an ABSOLUTE, so any diamonds an engine added to the row while
+the player was online (Delve bank, Deep record, loot chest, guild war, the
+checkpoint's own lifetime deeds, a purchase) were overwritten at the next
+flush: `delve +20, checkpoint -20`. Some engines had been patched one by one
+with a BillingSync; the rest still lost them. The tick's own drops now ride
+`TickStatePayload.PendingDiamondDelta` (the village-delta pattern: zeroed at
+RequestFlush, handed back by a failed ack, carried across a reload) and the
+checkpoint ADDS it. `DiamondLedgerPostgresTests` pins both.
+
+**Standing trap:** never write `player.PremiumDiamonds = <payload value>`.
+The row is the truth; the payload's `PremiumCurrency` is the screen's copy.
+
+---
+
 # 2026-11-19 evening - every depth of Nav pays
 
 Owner: a reward for every depth. First clear of a depth (per Circle): gold

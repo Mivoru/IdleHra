@@ -131,6 +131,7 @@ namespace FolkIdle.Server.Engine
                         return;
                     }
 
+                    await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Inheritance);
                     owner.PremiumDiamonds -= (int)cost;
 
                     if (row == null)

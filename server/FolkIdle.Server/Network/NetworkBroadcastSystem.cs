@@ -11021,6 +11021,7 @@ namespace FolkIdle.Server.Network
                 var player = await db.PlayerRecords.FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"PlayerGuid\" = {0} FOR UPDATE", accountId).FirstOrDefaultAsync();
                 if (player != null)
                 {
+                    await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Refund);
                     player.PremiumDiamonds -= refundedDiamonds;
                     if (player.PremiumDiamonds < 0)
                     {

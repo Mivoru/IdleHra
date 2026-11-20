@@ -581,6 +581,29 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("DelveRunRecords");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.DiamondDaily", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<long>("Gained")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Spent")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlayerId", "Day", "Reason");
+
+                    b.ToTable("diamond_daily");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.DungeonProgress", b =>
                 {
                     b.Property<long>("PlayerId")

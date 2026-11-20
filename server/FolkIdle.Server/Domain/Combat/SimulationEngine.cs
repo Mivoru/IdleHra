@@ -3352,6 +3352,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 int previousBalance = player.PremiumDiamonds;
+                await Engine.DiamondLedger.LabelAsync(context, Engine.DiamondLedger.ChroniclePass);
                 player.PremiumDiamonds -= ChroniclePassEconomy.PremiumPassPriceDiamonds;
 
                 if (pass == null)
@@ -3514,6 +3515,7 @@ namespace FolkIdle.Server.Domain.Combat
                     int diamondReward = ChroniclePassEconomy.GetPremiumDiamondReward((int)milestoneIndex);
                     if (diamondReward > 0)
                     {
+                        await Engine.DiamondLedger.LabelAsync(context, Engine.DiamondLedger.ChroniclePass);
                         player.PremiumDiamonds += diamondReward;
                     }
                 }
@@ -5915,6 +5917,7 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         if (!OrdinaryKillPaysDiamond(rng.NextDouble())) continue;
                         payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
+                        payload.PendingDiamondDelta += 1;
                         payload.IsDirty = true;
                     }
                 }

@@ -164,6 +164,9 @@ namespace FolkIdle.Server.Models
         // Task 79, phase 2: where it came from (GoldLedger), and the material
         // flow (MaterialLedger). Written only through those two.
         public DbSet<GoldIncomeDaily> GoldIncomeDaily { get; set; }
+
+        // 2026-11-20: written only by the PlayerRecords trigger (Models.DiamondDaily).
+        public DbSet<DiamondDaily> DiamondDaily { get; set; }
         public DbSet<MaterialFlowDaily> MaterialFlowDaily { get; set; }
 
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
@@ -656,6 +659,9 @@ namespace FolkIdle.Server.Models
                 .HasKey(g => new { g.PlayerId, g.Day, g.Source });
             modelBuilder.Entity<MaterialFlowDaily>()
                 .HasKey(m => new { m.PlayerId, m.Day, m.ItemId, m.Direction });
+            // The key IS the diamond trigger's ON CONFLICT target.
+            modelBuilder.Entity<DiamondDaily>()
+                .HasKey(d => new { d.PlayerId, d.Day, d.Reason });
         }
     }
 }

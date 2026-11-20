@@ -111,6 +111,12 @@ namespace FolkIdle.Server.Engine
             // screen shows, exactly as the gold delta is added to the balance.
             reloaded.PendingWoodDelta += live.PendingWoodDelta;
             reloaded.CachedWoodStock += live.PendingWoodDelta;
+            // Unbanked diamond drops: in no row the reload read, so owed AND shown.
+            if (live.PendingDiamondDelta != 0L)
+            {
+                reloaded.PendingDiamondDelta += live.PendingDiamondDelta;
+                reloaded.SetPremiumCurrency((int)System.Math.Clamp((long)reloaded.PremiumCurrency + live.PendingDiamondDelta, 0L, int.MaxValue));
+            }
             reloaded.PendingStoneDelta += live.PendingStoneDelta;
             reloaded.CachedStoneStock += live.PendingStoneDelta;
             reloaded.PendingIronDelta += live.PendingIronDelta;

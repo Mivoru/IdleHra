@@ -720,6 +720,7 @@ namespace FolkIdle.Server.Domain.Economy
                     RecordDepth(player, run.CurrentFloor, Now());
                     if (newWeeklyDeepest)
                     {
+                        await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Deep);
                         outcome.DiamondsGranted = PayDeepRecordDiamond(player, run.CurrentFloor);
 
                         // Loot chests (owner L1, 2026-10-30): a new weekly-deepest
@@ -849,6 +850,7 @@ namespace FolkIdle.Server.Domain.Economy
 
             if (granted > 0)
             {
+                await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Delve);
                 player.PremiumDiamonds += granted;
                 player.DelveDiamondsThisWeek += granted;
             }

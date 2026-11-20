@@ -716,6 +716,7 @@ namespace FolkIdle.Server.Engine
             // are the prestige currency. One UPDATE across the winning roster
             // rather than a row per member.
             await dbContext.Database.ExecuteSqlRawAsync(
+                Engine.DiamondLedger.LabelSql(Engine.DiamondLedger.GuildWar) +
                 @"UPDATE ""PlayerRecords"" SET ""PremiumDiamonds"" = ""PremiumDiamonds"" + {1}
                   WHERE ""Id"" IN (SELECT ""PlayerId"" FROM ""GuildMembers"" WHERE ""GuildId"" = {0})",
                 winningGuildId, VictoryDiamondReward);

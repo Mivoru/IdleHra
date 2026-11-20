@@ -404,6 +404,7 @@ namespace FolkIdle.Server.Tests
             var live = await checkpoints.LoadPlayerState(me.PlayerId);
             Assert.Equal(66, live.CurrentLevel);
             live.PremiumCurrency += 100;
+            live.PendingDiamondDelta += 100; // the tick mints both (TickStatePayload.PendingDiamondDelta)
             live.ActiveActivityId = 23;
             live.IsDirty = true;
             var oldLife = live;
