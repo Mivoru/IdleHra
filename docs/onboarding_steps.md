@@ -271,6 +271,22 @@ a layout rule.
 
 ---
 
+## 4c. The quest line (server-owned, caught up 2026-11-20)
+
+`QuestLineRegistry` (server) owns the acts a player is made to try once; the
+client draws `GET /api/v1/quests` and decides nothing. On 2026-11-20 the line
+had fallen six weeks behind the game - daily missions, the dungeons, the
+situational builds of skill tree v3 and Nav all shipped after its last step -
+so four steps were added: **Missions** (3), **Dungeon** (13), **Builds** (14)
+and **Nav** (17). The order is by when each system opens: Forge level, the
+region-2 boss, Malakor. Steps are keyed by id, so renumbering is free; a
+veteran who already did an act sees the step ticked and claimable. The Delve
+step and the client's Delve lock open at level 5 as well as with the fee,
+because the day's first run is free.
+
+`questTargets.test.ts` fails if a step's first `data-guide` target is on no
+control; add the attribute to the button in the same change as the step.
+
 ## 5. What the packet cannot express
 
 Reported rather than solved. A wire change is expensive here — the packet is

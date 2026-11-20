@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -144,6 +145,27 @@ namespace FolkIdle.Server.Domain.Progression
                 || await db.HistoricalMarketArchives.AsNoTracking()
                     .AnyAsync(a => a.SellerId == playerId && a.OrderType == "SELL");
 
+            // Modul: the 2026-11-20 steps. The boss mask is built from the same
+            // defeated set as HighestUnlockedRegion, so the dungeon and Nav
+            // gates cannot disagree with the region the reward is priced in.
+            byte bossMask = BossFirstClearRules.MaskFrom(defeated);
+            bool missionOrPass = await db.PlayerMissionDays.AsNoTracking()
+                    .AnyAsync(m => m.PlayerId == playerId && (m.ClaimedMask != 0 || m.BonusClaimed))
+                || await db.PlayerChroniclePasses.AsNoTracking()
+                    .AnyAsync(c => c.PlayerId == playerId && c.ClaimedMilestonesBitmask != 0UL);
+            // A lost run leaves BestStage at 0; the mission counter is the
+            // evidence that a fight happened at all.
+            short dungeonAction = (short)MissionAction.DungeonFight;
+            bool dungeonFought = await db.DungeonProgress.AsNoTracking()
+                    .AnyAsync(d => d.PlayerId == playerId && (d.BestStage >= 1 || d.FirstClearMask != 0))
+                || await db.PlayerMissionCounters.AsNoTracking()
+                    .AnyAsync(c => c.PlayerId == playerId && c.Action == dungeonAction && c.Count > 0);
+            bool buildBound = await db.BuildPresets.AsNoTracking()
+                .AnyAsync(b => b.PlayerId == playerId && b.BoundActivities != 0);
+            int navRuns = await db.NavProgress.AsNoTracking()
+                .Where(n => n.PlayerId == playerId)
+                .Select(n => (int?)n.RunsTotal).SingleOrDefaultAsync() ?? 0;
+
             return new QuestFacts
             {
                 Level = player.CurrentLevel,
@@ -173,6 +195,12 @@ namespace FolkIdle.Server.Domain.Progression
                     || player.ActiveOffensivePotionExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds()
                     || player.ActiveDefensivePotionExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds()
                     || player.ActiveGatheringPotionExpiresEpoch > GameClock.UtcNowOffset.ToUnixTimeSeconds(),
+                MissionOrPassClaimed = missionOrPass,
+                DungeonsOpen = DungeonEngine.IsOpen(bossMask),
+                DungeonFought = dungeonFought,
+                BuildBoundToActivity = buildBound,
+                NavOpen = NavRules.Enabled() && NavRules.IsOpen(bossMask),
+                NavRunsTotal = navRuns,
             };
         }
 

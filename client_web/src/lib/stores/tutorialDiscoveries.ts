@@ -188,8 +188,9 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     title: 'You have a skill point',
     reached: (s) => Number(s.AvailableSkillPoints) >= 1,
     body:
-      'The Skill Tree is where levels turn into power. Your first respec is free and every ' +
-      'one after that is paid, so spend the early points on what you are actually doing.',
+      'The Skill Tree is where levels turn into power. Only one keystone can be active, and each ' +
+      'one trades a strength for a weakness. Your first respec is free and every one after that is ' +
+      'paid, so spend the early points on what you are actually doing.',
   },
   {
     id: 'village',
@@ -235,9 +236,9 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     title: 'The Delve is open',
     reached: delveOpen,
     body:
-      `A dive costs gold - ${formatNumber(DELVE_FIRST_ENTRY_GOLD)} in the first region - ` +
-      'and pays diamonds if your nerve holds. Eight floors, three doors each; bank what you ' +
-      'have or push on, and three failures lose the lot.',
+      'The first dive of every day is free; after that a dive costs gold - ' +
+      `${formatNumber(DELVE_FIRST_ENTRY_GOLD)} in the first region - and pays diamonds if your nerve holds. ` +
+      'Eight floors, three doors each; bank what you have or push on, and three failures lose the lot.',
   },
   {
     id: 'forge',

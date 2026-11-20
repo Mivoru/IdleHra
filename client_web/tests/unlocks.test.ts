@@ -61,6 +61,8 @@ describe('screens unlock as they become useful', () => {
     expect(lockedRequirement('forge', snapshot({ CurrentLevel: 5 }), NO_GUILD, NONE)).toBeNull();
     expect(lockedRequirement('forge', snapshot({ ForgeLevel: 1 }), NO_GUILD, NONE)).toBeNull();
     expect(lockedRequirement('delve', snapshot({ Gold: DELVE_FIRST_ENTRY_GOLD }), NO_GUILD, NONE)).toBeNull();
+    // The day's first Delve run is free, so level 5 opens it without the fee.
+    expect(lockedRequirement('delve', snapshot({ CurrentLevel: 5 }), NO_GUILD, NONE)).toBeNull();
     expect(lockedRequirement('market', snapshot({ CurrentLevel: 10 }), NO_GUILD, NONE)).toBeNull();
     expect(lockedRequirement('guildops', snapshot({ CurrentLevel: 10 }), NO_GUILD, NONE)).toBeNull();
     expect(lockedRequirement('guildops', snapshot(), { hasGuild: true }, NONE)).toBeNull();
