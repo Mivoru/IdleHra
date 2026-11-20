@@ -44,7 +44,11 @@ namespace FolkIdle.Bots
             string mode = challenge is { } c ? c.Str("Mode") : "off";
             int plate = Enumerable.Range(0, 5).FirstOrDefault(i => (_state.WorldBossBrokenPlateMask & (1 << i)) == 0);
 
-            if (mode.Equals("wheel", StringComparison.OrdinalIgnoreCase))
+            // Modul: the duel replaced the wheel on 2026-11-14 (#418) and takes
+            // the same REST Auto strike (WorldBossStrikeService.AutoOpen covers
+            // both). Matching "wheel" alone sent the bot to opcode 32, which a
+            // minigame mode refuses, so no bot struck the boss after the switch.
+            if (mode.Equals("wheel", StringComparison.OrdinalIgnoreCase) || mode.Equals("duel", StringComparison.OrdinalIgnoreCase))
             {
                 var (status, body) = await _client.PostAsync("/api/v1/worldboss/strike", new { Mode = "Auto", Plate = plate }, token);
                 string result = body is { } b ? b.Str("Result") : status.ToString();
@@ -205,11 +209,16 @@ namespace FolkIdle.Bots
             if (!v.Bool("Active"))
             {
                 long spare = _state.Gold - GoldReserve;
-                if (v.Long("EntryFeeForNextRun") <= 0 || v.Long("EntryFeeForNextRun") * 5 > spare) return;
+                long fee = v.Long("EntryFeeForNextRun");
+                // Modul: a fee of 0 is the day's FREE run (2026-11-20,
+                // FreeRunToday), not a missing field - the old "<= 0 means
+                // skip" made the bot the one player who never took it.
+                bool free = v.Bool("FreeRunToday") || fee <= 0;
+                if (!free && fee * 5 > spare) return;
                 if (v.Int("WeeklyDiamondCeiling") > 0 && v.Int("DiamondsEarnedThisWeek") >= v.Int("WeeklyDiamondCeiling")) return;
                 var (_, started) = await _client.PostAsync("/api/v1/delve/start", new { }, token);
                 if (started is not { } st || st.Str("Result") != "Ok") return;
-                Event($"delve: started (fee {v.Long("EntryFeeForNextRun")})");
+                Event(free ? "delve: started (free run)" : $"delve: started (fee {fee})");
                 Count("delve_runs");
                 v = st.Obj("View");
             }
