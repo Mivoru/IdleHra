@@ -35,6 +35,28 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.107.0',
+    date: '2026-11-20',
+    headline: 'The Forge rings true.',
+    sections: [
+      {
+        title: 'The Forge',
+        items: [
+          'Every press strikes where you pressed: sparks and a glow at the button, heavier for a fusion, lighter for a refine.',
+          "After a reroll or refine the affix row tells you how it came out: the value change, a rarity step up or down, or that it stayed the same.",
+          'New sounds: a fusion, a refine, and a rarity step up or down each have their own.',
+          'The piece you are working on is marked with its rarity colour, and on a wide screen it stays in view while you scroll.',
+        ],
+      },
+      {
+        title: 'Smoother',
+        items: [
+          'The band of light that crosses a card (loot, a level, a birth) no longer stutters on phones.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.106.0',
     date: '2026-11-20',
     headline: 'The Delve pays more and asks for less clicking.',

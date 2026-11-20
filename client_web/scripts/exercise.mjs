@@ -1065,6 +1065,10 @@ async function forgeTab(name) {
     await page.waitForTimeout(500);
     spentAfter = await refineSpent();
   }
+  // 2026-11-20: the row answers the press with how the roll came out (a
+  // delta, a rarity step, or "unchanged" after a quiet spell).
+  const verdict = await page.getByTestId('forge-verdict').first().textContent({ timeout: 4000 }).catch(() => '');
+  record('the refined affix row says how the roll came out', (verdict ?? '').trim() !== '', `verdict "${(verdict ?? '').trim()}"`);
   after = itemId > 0 ? await apiPost('/api/v1/dev/item/payload', { Id: itemId }).catch(() => null) : null;
   const keys = (p) => Object.keys(JSON.parse(p?.AffixPayload ?? '{}')).join(',');
   record('a Refine keeps every affix and charges the ledger as Refine',
