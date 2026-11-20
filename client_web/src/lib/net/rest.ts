@@ -2224,6 +2224,10 @@ export interface DelveRunView {
   DeepWeeklyDiamondCeiling: number;
   DeepDiamondsEarnedThisWeek: number;
   EntryFeeForNextRun: number;
+  /** Today's free run is unused: the next start costs nothing (2026-11-20). */
+  FreeRunToday: boolean;
+  /** Today's first walk to the bottom still pays a Gold chest and a ticket per dungeon gate. */
+  BottomRewardToday: boolean;
   HighestRegionReached: number;
   CurrentGold: number;
   Attributes: number[];
@@ -2283,11 +2287,24 @@ export interface DelveActionResponse {
   GoldReturned: number;
   /** A Deep toll or lantern: exactly what was debited. */
   GoldCharged: number;
+  /** The day's first walk to the bottom: the chest tier (3 = Gold) and the dungeon tickets it paid. */
+  BottomChestGranted?: number;
+  BottomTicketsGranted?: number;
+  /** Nav Souls a new weekly-deepest Deep floor paid. */
+  SoulsGranted?: number;
+  /** An auto run's log, one line per door; null for the hand-played acts. */
+  AutoSteps?: string[] | null;
+  AutoBanked?: boolean;
   View: DelveRunView;
 }
 
 export function fetchDelve(): Promise<DelveRunView> {
   return authedGet<DelveRunView>('/api/v1/delve');
+}
+
+/** One run played by the server: best visible door each floor, out at the bottom (2026-11-20). */
+export function autoDelve(): Promise<DelveActionResponse | null> {
+  return authedPost<DelveActionResponse>('/api/v1/delve/auto', {});
 }
 
 export function startDelve(): Promise<DelveActionResponse | null> {

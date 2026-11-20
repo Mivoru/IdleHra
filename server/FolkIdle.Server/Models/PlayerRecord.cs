@@ -299,6 +299,13 @@ namespace FolkIdle.Server.Models
         public int DelveDiamondsThisWeek { get; set; }
         public int DelveWeekKey { get; set; }
 
+        // Modul: THE DELVE'S DAILY PULL (owner, 2026-11-20). The UTC day key
+        // (DailyLoginRewardEngine.ToDateKey) of the day's free run and of the
+        // day's first walk to the bottom (Gold chest + a ticket per gate). Same
+        // single writer, DelveEngine.
+        public int DelveFreeRunDayKey { get; set; }
+        public int DelveBottomRewardDayKey { get; set; }
+
         // Modul: THE DEEP'S RECORDS (task 37). The deepest floor ever CLEARED,
         // and the deepest this week - which SHARES DelveWeekKey with the diamond
         // counter above. That sharing is the one subtle rule here: whichever of

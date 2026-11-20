@@ -3697,6 +3697,28 @@ if (!duelMode) {
 }
 if (want('the-delve')) {
 await go('The Delve');
+// --- the daily pull and the auto run (owner, 2026-11-20) ---------------------
+// The first run of the day is free; the auto run plays one from the gate to
+// the bank. Runs first, so the paid run below still meets a priced gate.
+{
+  const gate = await apiGet('/api/v1/delve');
+  if (gate && !gate.Active) {
+    const free = gate.FreeRunToday;
+    record("the gate says when today's run is free",
+      free === ((await page.getByTestId('delve-free-run').count()) > 0) && (!free || gate.EntryFeeForNextRun === 0),
+      `free ${free}, fee ${gate.EntryFeeForNextRun}`);
+    const auto = page.getByTestId('delve-auto');
+    if ((await auto.count()) > 0 && (await auto.isEnabled())) {
+      await auto.click();
+      await page.getByTestId('delve-auto-log').waitFor({ timeout: 20000 }).catch(() => {});
+      const after = await apiGet('/api/v1/delve');
+      const lines = await page.getByTestId('delve-auto-log').locator('li').count();
+      record('the auto run plays a whole run and leaves the gate open again',
+        Boolean(after) && !after.Active && lines >= 2 && after.FreeRunToday === false,
+        `${lines} log lines, active ${after?.Active}, free left ${after?.FreeRunToday}`);
+    }
+  }
+}
 {
   const before = await apiGet('/api/v1/delve');
   record(

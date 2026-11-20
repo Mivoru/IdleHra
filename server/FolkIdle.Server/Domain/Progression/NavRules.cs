@@ -276,6 +276,19 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>Souls for clearing one depth of Circle 1, before bonuses.</summary>
         public static long SoulsForDepth(int depth) => (long)Math.Ceiling(1.0 + Math.Pow(depth, 1.3) / 4.0);
 
+        /// <summary>
+        /// One Circle-1 descent's Souls to <paramref name="record"/>, before
+        /// bonuses: what the Delve pays for a new weekly-deepest Deep floor
+        /// (2026-11-20). At least depth 10's worth, so a player new to Nav is
+        /// paid something.
+        /// </summary>
+        public static long SoulsForOneDescent(int record)
+        {
+            long total = 0;
+            for (int d = 1; d <= Math.Max(10, record); d++) total += SoulsForDepth(d);
+            return total;
+        }
+
         public static long SoulsForDepth(int circle, int depth, double soulBonusPct, bool restless = false)
             => (long)Math.Ceiling(SoulsForDepth(depth) * Math.Pow(CircleSouls, Math.Max(0, circle - 1)) * (1.0 + soulBonusPct / 100.0)
                 * (depth % WardenEvery == 0 ? WardenSouls : 1.0) * (restless ? RestlessSouls : 1.0));
