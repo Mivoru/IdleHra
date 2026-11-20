@@ -46,7 +46,7 @@ namespace FolkIdle.Server.Tests
         private static string ReadInitializerSource()
         {
             string path = LocateSimulationEngine();
-            string source = File.ReadAllText(path);
+            string source = PartialClassSource.ReadFile(path);
 
             int start = source.IndexOf("new StateUpdatePacket", StringComparison.Ordinal);
             Assert.True(start >= 0, "could not find the StateUpdatePacket initializer");

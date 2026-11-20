@@ -36,7 +36,9 @@ describe('what a gathering node yields (task 101)', () => {
   });
 
   it('mastery needs 50 * (level + 1)^2 xp, as SimulationEngine.MasteryXpForLevel', () => {
-    const source = readFileSync(join(serverRoot, 'Domain', 'Combat', 'SimulationEngine.cs'), 'utf8');
+    // SimulationEngine is split over partial files since 2026-11-20; the
+    // mastery curve lives in SimulationEngine.GatheringCrafting.cs.
+    const source = readFileSync(join(serverRoot, 'Domain', 'Combat', 'SimulationEngine.GatheringCrafting.cs'), 'utf8');
     expect(source).toMatch(/return 50L \* \(level \+ 1L\) \* \(level \+ 1L\);/);
     expect(masteryXpForLevel(0)).toBe(50);
     expect(masteryXpForLevel(9)).toBe(5000);

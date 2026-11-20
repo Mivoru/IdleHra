@@ -133,7 +133,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(3, callers);
 
             // And login, which is what pays the backfill.
-            string sim = File.ReadAllText(Path.Combine(root, "Domain", "Combat", "SimulationEngine.cs"));
+            string sim = PartialClassSource.ReadFile(Path.Combine(root, "Domain", "Combat", "SimulationEngine.cs"));
             int login = sim.IndexOf("ExtrapolateOfflineProgressAsync", StringComparison.Ordinal);
             int ready = sim.IndexOf("_readyLogins.Enqueue(payload)", login, StringComparison.Ordinal);
             Assert.True(login > 0 && ready > login);

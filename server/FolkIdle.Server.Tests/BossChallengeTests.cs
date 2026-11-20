@@ -86,7 +86,7 @@ namespace FolkIdle.Server.Tests
         {
             var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
             while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "server", "FolkIdle.Server"))) dir = dir.Parent;
-            string sim = File.ReadAllText(Path.Combine(dir!.FullName, "server", "FolkIdle.Server", "Domain", "Combat", "SimulationEngine.cs"))
+            string sim = PartialClassSource.ReadFile(Path.Combine(dir!.FullName, "server", "FolkIdle.Server", "Domain", "Combat", "SimulationEngine.cs"))
                 .Replace("\r\n", "\n");
 
             int levelAt = sim.IndexOf("int levelAtKill = payload.CurrentLevel;", StringComparison.Ordinal);

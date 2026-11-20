@@ -143,7 +143,7 @@ namespace FolkIdle.Server.Tests
             Assert.NotNull(dir);
             string full = Path.Combine(dir!.FullName, "server", "FolkIdle.Server", relativePath.Replace('/', Path.DirectorySeparatorChar));
             Assert.True(File.Exists(full), $"{full} not found");
-            return File.ReadAllText(full);
+            return PartialClassSource.ReadFile(full);
         }
     }
 }

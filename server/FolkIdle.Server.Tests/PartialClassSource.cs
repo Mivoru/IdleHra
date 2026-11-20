@@ -16,10 +16,22 @@ namespace FolkIdle.Server.Tests
     /// by name. A "does not contain" guard over one file would have kept
     /// passing while the pattern it forbids moved next door. So every such
     /// test reads the whole class: the base file and every partial beside it,
-    /// in name order, each headed by its file name.
+    /// in name order, each headed by its file name. SimulationEngine was split
+    /// the same way on the same day.
     /// </remarks>
     internal static class PartialClassSource
     {
+        /// <summary>
+        /// A file's text, or - when partial files named "Name.*.cs" sit beside
+        /// it - the whole class. Drop-in for File.ReadAllText in a source guard.
+        /// </summary>
+        public static string ReadFile(string path)
+        {
+            string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+            string name = Path.GetFileNameWithoutExtension(path);
+            return Directory.GetFiles(directory, name + ".*.cs").Length > 0 ? Read(directory, name) : File.ReadAllText(path);
+        }
+
         /// <param name="directory">The folder that holds the class's files.</param>
         /// <param name="className">The base file's name without ".cs".</param>
         public static string Read(string directory, string className)

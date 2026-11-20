@@ -124,7 +124,7 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void EveryWriterIsStillWired()
         {
-            string Read(params string[] parts) => File.ReadAllText(Path.Combine(ServerRoot(), Path.Combine(parts)));
+            string Read(params string[] parts) => PartialClassSource.ReadFile(Path.Combine(ServerRoot(), Path.Combine(parts)));
 
             string sim = Read("Domain", "Combat", "SimulationEngine.cs");
             Assert.Contains("PersonalRecords.ObserveHit(ref payload", sim);
