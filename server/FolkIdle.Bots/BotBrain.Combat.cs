@@ -368,11 +368,21 @@ namespace FolkIdle.Bots
         /// a hundred fish are caught - the idle bot otherwise fished for its
         /// whole 12-hour offline window (49,515 fish, no XP).
         /// </summary>
-        private bool LeavingSoon => _persona.HoursLeftInCheckIn(Now) < 10.0 / 60;
+        /// <remarks>
+        /// Modul: BEDTIME IS LEAVING TOO (2026-11-20 measurement). An all-day
+        /// persona's check-in never ends, so this read "never leaving" and the
+        /// night's logout caught optimal1 on a herb trip: 6.4 offline hours of
+        /// marsh mallow, +0 XP, +0 gold. The start of the next night counts the same as the
+        /// end of a check-in.
+        /// </remarks>
+        private bool LeavingSoon => Math.Min(_persona.HoursLeftInCheckIn(Now), _persona.HoursUntilAsleep(_time.GameUtc, _name)) < 10.0 / 60;
 
         private long ChooseActivity()
         {
-            if (_trip != null && LeavingSoon && (_trip.ItemId != 0 || FoodInInventory() >= 100)) EndTrip("check-in ending: back to the fight before logging out");
+            // A fishing trip also ends when the larder still holds food: the
+            // fight it returns to is fed, and a new river caught casual7 and
+            // casual8 three minutes before logout for a whole night (+0 XP).
+            if (_trip != null && LeavingSoon && (_trip.ItemId != 0 || FoodInInventory() >= 100 || LarderCount > 0)) EndTrip("check-in ending: back to the fight before logging out");
             if (_trip != null)
             {
                 if (TripDone(_trip)) EndTrip("target reached or time up");
@@ -389,7 +399,7 @@ namespace FolkIdle.Bots
             int riverTier = ContentRegistry.GetNodeLocation(newRiver);
             int heldTier = BestFoodTierHeld();
             int region = Math.Max(1, (int)_state.HighestUnlockedRegion);
-            if (newRiver > 0 && riverTier > heldTier && riverTier >= 2 && region >= riverTier)
+            if (!LeavingSoon && newRiver > 0 && riverTier > heldTier && riverTier >= 2 && region >= riverTier)
             {
                 StartTrip(new Trip(newRiver, $"fishing (new river, tier {riverTier} over held tier {heldTier})", 0, FishingTarget(), Now, 90));
                 return newRiver;
