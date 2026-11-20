@@ -60,6 +60,17 @@ export const CLIPS = {
   chestOpenLegendary: 'chest_open_legendary.wav',
   petFound: 'pet_found.wav',
   forgeReroll: 'forge_reroll.wav',
+  // Modul: THE FORGE HAD ONE SOUND FOR FOUR ACTS (owner, 2026-11-20: "focus on
+  // the forge's graphics and sounds"). A fusion, a refine and a reroll all
+  // played the same hammer, and nothing said how a roll came out. Fuse is the
+  // heavy double strike and quench, refine the light tap and whetstone, and the
+  // two outcome clips answer the server's result when an affix's RARITY moves
+  // (ElevenLabs, 2026-11-20, prompts in tools/assets/manifest.json). A value
+  // nudge within the same rarity stays silent: the press already sounded.
+  forgeFuse: 'forge_fuse.wav',
+  forgeRefine: 'forge_refine.wav',
+  forgeBetter: 'forge_better.wav',
+  forgeWorse: 'forge_worse.wav',
   childBorn: 'child_born.wav',
   buildingDone: 'building_done.wav',
   craftingCompleted: 'crafting_completed.wav',

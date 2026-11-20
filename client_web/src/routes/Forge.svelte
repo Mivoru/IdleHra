@@ -12,7 +12,7 @@
   import { summarizeAffixes } from '../lib/ui/itemRow';
   import { prettifyBaseId } from '../lib/net/content';
   import { executeForgeFusion, fuseStack, rerollAffix, refineCost, REFINE_OPERATION, MAX_FORGE_LEVEL } from '../lib/net/commands';
-  import Burst from '../lib/ui/Burst.svelte';
+  import ForgeStrike from '../lib/ui/ForgeStrike.svelte';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
   import { commandInFlight } from '../lib/ui/commandInFlight';
@@ -38,6 +38,8 @@
     RETIRED_AFFIX_IDS,
     affixLabel,
     describeStopCondition,
+    formatAffixValue,
+    type DisplayAffix,
   } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
@@ -243,8 +245,8 @@
     claim(fusionTarget, [fusionSacOne, fusionSacTwo]);
     fusionSacOne = 0;
     fusionSacTwo = 0;
-    fusionFlash++;
-    play('forgeReroll');
+    strike('heavy');
+    play('forgeFuse');
     refresh();
   }
 
@@ -287,8 +289,8 @@
     fusionTarget = 0;
     fusionSacOne = 0;
     fusionSacTwo = 0;
-    fusionFlash++;
-    play('forgeReroll');
+    strike('heavy');
+    play('forgeFuse');
     refresh();
   }
 
@@ -429,8 +431,8 @@
     if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     claim(next.target, [...next.sacrifices]);
-    fusionFlash++;
-    play('forgeReroll');
+    strike('heavy');
+    play('forgeFuse');
     refresh();
   }
 
@@ -575,15 +577,122 @@
   // came back with a worse affix and a reroll that was rejected outright looked
   // identical: nothing moved.
   //
-  // The counters key the flourish so it replays on every press - without a key
-  // Svelte reuses the node and a CSS animation runs exactly once, ever, which
-  // is the same trap the hit spark and the achievement toast both document.
-  //
-  // Fired on ACCEPTANCE rather than on the server's answer, matching how the
-  // rest of this screen already behaves: the round trip is short, and a refusal
-  // arrives as a toast.
-  let fusionFlash = $state(0);
-  let rerollFlash = $state(0);
+  // Modul: AND THEN IT GAVE THE WRONG SIGN (owner, 2026-11-20: the band of
+  // light across the whole screen "looks bad and stutters"). The first answer
+  // swept a band over the entire panel and threw sparks from its centre; on a
+  // phone the centre of a panel taller than the screen was usually off-screen,
+  // and the band repainted everything it crossed. Now there are two signs, each
+  // where the eye already is:
+  //  - on the PRESS, a strike at the button pressed (ForgeStrike: glow, ring,
+  //    sparks; heavy for a fusion, light for a refine);
+  //  - on the server's ANSWER, the affix row itself says how the roll came out:
+  //    rarity up glows gold, rarity down dims, a value nudge shows its delta.
+  //    That is the half that was missing - the screen never said whether the
+  //    gold just spent made the piece better.
+  type StrikeWeight = 'light' | 'normal' | 'heavy';
+  let strikes = $state<{ id: number; x: number; y: number; weight: StrikeWeight }[]>([]);
+  let strikeSeq = 0;
+  let lastPressed: HTMLElement | null = null;
+
+  // Remembered on pointerdown, in the capture phase, because Safari does not
+  // focus a button it clicks; document.activeElement is the fallback for a
+  // keyboard press.
+  function notePress(event: PointerEvent) {
+    lastPressed = (event.target as HTMLElement | null)?.closest('button') ?? null;
+  }
+
+  function strike(weight: StrikeWeight) {
+    const from = lastPressed?.isConnected
+      ? lastPressed
+      : document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const box = from?.getBoundingClientRect();
+    const x = box && box.width > 0 ? box.left + box.width / 2 : window.innerWidth / 2;
+    const y = box && box.height > 0 ? box.top + box.height / 2 : window.innerHeight / 2;
+    const id = ++strikeSeq;
+    // At most three at once: a player hammering Refine gets a strike per
+    // press, not a pile-up.
+    strikes = [...strikes.slice(-2), { id, x, y, weight }];
+    setTimeout(() => (strikes = strikes.filter((s) => s.id !== id)), 950);
+  }
+
+  type Verdict = 'up' | 'down' | 'better' | 'worse' | 'changed' | 'same';
+  interface Reveal {
+    seq: number;
+    index: number;
+    verdict: Verdict;
+    text: string;
+  }
+
+  // Not $state: the effect below must run when the ITEM changes, not when a
+  // press arms it - arming it is what makes the next change an answer.
+  let awaiting: { itemId: number; index: number; before: DisplayAffix | undefined; at: number } | null = null;
+  let reveal = $state<Reveal | null>(null);
+  let revealSeq = 0;
+  let revealTimer: ReturnType<typeof setTimeout> | undefined;
+  // The server answers in well under a second, and an auto-reroll run of a
+  // thousand attempts is still one answer. Past this, a change to the same
+  // slot has some other cause (a reload) and is not dressed up as a result.
+  const RESULT_WINDOW_MS = 8000;
+
+  // A roll can land exactly where it was (a Refine inside a narrow range does,
+  // about one time in twenty). Nothing changes, so nothing arrives to answer
+  // the press; after a quiet spell the row says so rather than saying nothing.
+  const UNCHANGED_AFTER_MS = 2500;
+  let unchangedTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function showReveal(index: number, verdict: Verdict, text: string) {
+    reveal = { seq: ++revealSeq, index, verdict, text };
+    clearTimeout(revealTimer);
+    revealTimer = setTimeout(() => (reveal = null), 2600);
+  }
+
+  function awaitResult(index: number) {
+    const wait = { itemId: rerollItemId, index, before: rerollAffixRows[index], at: performance.now() };
+    awaiting = wait;
+    clearTimeout(unchangedTimer);
+    unchangedTimer = setTimeout(() => {
+      if (awaiting !== wait || rerollItemId !== wait.itemId) return;
+      awaiting = null;
+      showReveal(index, 'same', 'unchanged');
+    }, UNCHANGED_AFTER_MS);
+  }
+
+  function judge(before: DisplayAffix, after: DisplayAffix): { verdict: Verdict; text: string } {
+    if (after.rarity > before.rarity) return { verdict: 'up', text: `▲ ${after.rarityName}` };
+    if (after.rarity < before.rarity) return { verdict: 'down', text: `▼ ${after.rarityName}` };
+    if (after.id !== before.id) return { verdict: 'changed', text: 'new stat' };
+    const delta = after.magnitude - before.magnitude;
+    if (delta === 0) return { verdict: 'same', text: 'unchanged' };
+    const shown = formatAffixValue(after.id, Math.abs(delta)).replace(/^\+/, '');
+    return delta > 0 ? { verdict: 'better', text: `+${shown}` } : { verdict: 'worse', text: `−${shown}` };
+  }
+
+  $effect(() => {
+    const rows = rerollAffixRows;
+    const wait = awaiting;
+    if (!wait || !rerollItem || rerollItem.Id !== wait.itemId) return;
+    if (performance.now() - wait.at > RESULT_WINDOW_MS) {
+      awaiting = null;
+      return;
+    }
+    const after = rows[wait.index];
+    const before = wait.before;
+    if (!after || !before || (after.key === before.key && after.magnitude === before.magnitude)) return;
+    awaiting = null;
+    clearTimeout(unchangedTimer);
+    const { verdict, text } = judge(before, after);
+    showReveal(wait.index, verdict, text);
+    if (verdict === 'up') play('forgeBetter');
+    else if (verdict === 'down') play('forgeWorse');
+  });
+
+  // A different piece picked: an old verdict does not belong to its rows.
+  $effect(() => {
+    void rerollItemId;
+    reveal = null;
+  });
 
   // Modul: THE GUARD ASKS INLINE. It was a native confirm(), which the
   // Android WebView draws as an unstyled system dialog; now a guarded affix
@@ -608,8 +717,9 @@
     rerollAffixIndex = index;
     const outcome = rerollAffix(rerollItemId, index, REFINE_OPERATION);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
-    rerollFlash++;
-    play('forgeReroll');
+    awaitResult(index);
+    strike('light');
+    play('forgeRefine');
     refresh();
   }
 
@@ -621,7 +731,8 @@
       stopAffixIndex,
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
-    rerollFlash++;
+    awaitResult(index);
+    strike('normal');
     play('forgeReroll');
     refresh();
   }
@@ -635,7 +746,7 @@
   <span class="purse dim small">You have <Money amount={gold} /></span>
 </div>
 
-<div class="grid single">
+<div class="grid single" onpointerdowncapture={notePress}>
   {#if tab === 'fusion'}
   <section class="panel">
     <h2>Fusion</h2>
@@ -859,12 +970,6 @@
       </div>
     {/if}
 
-    {#if fusionFlash > 0}
-      {#key fusionFlash}
-        <span class="forgefx folk-sweep"></span>
-        <span class="forgeburst"><Burst count={14} reach={3.6} /></span>
-      {/key}
-    {/if}
   </section>
   {:else}
   <section class="panel affixpanel">
@@ -942,13 +1047,16 @@
 
     <div class="cardcol" bind:this={cardCol}>
     {#if !rerollItem}
-      <p class="dim small pickfirst">Pick a piece to see its affixes.</p>
+      <div class="pickfirst">
+        <span class="anvil" aria-hidden="true">⚒</span>
+        <p class="dim small">Pick a piece to see its affixes.</p>
+      </div>
     {:else}
       {#if rerollItem.IsAffixLocked}
         <p class="warn">This item's affixes are locked.</p>
       {/if}
 
-      <div class="itemcard">
+      <div class="itemcard" style="--rar: {rarityColor(rerollItem.QualityTier)}">
         <span
           class="cardname"
           style="color: {rarityColor(rerollItem.QualityTier)}"
@@ -978,11 +1086,21 @@
             {@const fam = familyIndex.byAffix.get(row.id)}
             {@const boosted = boostedValue(row.id, row.magnitude, fam)}
             <li class="affixrow" class:selected={rerollAffixIndex === index}>
+              {#if reveal && reveal.index === index}
+                {#key reveal.seq}
+                  <span class="rowglow {reveal.verdict}" aria-hidden="true"></span>
+                {/key}
+              {/if}
               <span class="what">
                 <span class="dim tiny">slot {index + 1}</span>
                 <span class="label">{row.label} {#if boosted}<s class="dim small">{row.value}</s> <span class="boostedv" title="With your {fam?.Column} tree's Affinity">{boosted}</span>{:else}{row.value}{/if}</span>
                 <span class="dim tiny">{row.rarityName}</span>
                 {#if fam}<span class="famchip" style="--fam: {FAMILY_COLOR[fam.Key] ?? 'var(--text-dim)'}">{fam.Name}</span>{/if}
+                {#if reveal && reveal.index === index}
+                  {#key reveal.seq}
+                    <span class="verdict {reveal.verdict}" role="status" data-testid="forge-verdict">{reveal.text}</span>
+                  {/key}
+                {/if}
               </span>
               <span class="acts">
                 {#if guard}
@@ -1079,12 +1197,6 @@
         {/if}
       </details>
 
-      {#if rerollFlash > 0}
-        {#key rerollFlash}
-          <span class="forgefx folk-sweep"></span>
-          <span class="forgeburst"><Burst count={12} reach={3} color="var(--brass-lit)" /></span>
-        {/key}
-      {/if}
       {#if gold < rerollFee}
         <p class="dim tiny">
           You have <Money amount={gold} /> and a reroll of this piece costs <Money amount={rerollFee} />.
@@ -1103,26 +1215,11 @@
        Tools live on the Crafting screen with the rest of the recipe tree. -->
 </div>
 
+{#each strikes as s (s.id)}
+  <ForgeStrike x={s.x} y={s.y} weight={s.weight} />
+{/each}
+
 <style>
-  /* The flourish overlays the whole panel rather than one control: a fusion
-     changes an item that is listed in several places on this screen, so
-     marking the machine reads better than marking one row of it. */
-  .forgefx {
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius);
-    pointer-events: none;
-  }
-
-  .forgeburst {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-  }
-
   .panel {
     position: relative;
   }
@@ -1382,9 +1479,13 @@
     padding: 0 1.1rem;
     font-weight: 700;
   }
+  /* The chosen tab is filled, not only outlined: two outlined tabs with one
+     slightly browner label did not say which one you were on. */
   .tab.active {
     border-color: var(--accent);
     color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    box-shadow: inset 0 -3px 0 var(--accent);
   }
   .purse {
     margin-left: auto;
@@ -1421,8 +1522,29 @@
       font-size: 0.68rem;
     }
   }
+  /* An empty right half read as a broken screen on a wide monitor. */
   .pickfirst {
-    padding: 1rem 0;
+    display: grid;
+    place-items: center;
+    gap: 0.4rem;
+    min-height: 10rem;
+    padding: 1.5rem 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+  .pickfirst .anvil {
+    font-size: 2rem;
+    opacity: 0.55;
+    filter: grayscale(0.3);
+  }
+  /* On a wide screen the card follows the scroll, so a long picker never
+     leaves the affixes you are rolling behind. */
+  @media (min-width: 761px) {
+    .cardcol {
+      position: sticky;
+      top: 4.5rem;
+    }
   }
   .cardname {
     font-weight: 700;
@@ -1437,6 +1559,7 @@
     gap: 0.4rem;
   }
   .affixrow {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1448,6 +1571,104 @@
   }
   .affixrow.selected {
     border-color: var(--accent);
+  }
+
+  /* The server's answer, on the row it changed. Opacity only: the glow is a
+     fixed inset shadow that fades in and out, never an animated shadow. */
+  .rowglow {
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    animation: forge-rowglow 1.6s ease-out;
+  }
+  .rowglow.up {
+    box-shadow:
+      0 0 0 1px var(--brass-lit),
+      0 0 18px color-mix(in srgb, var(--brass-lit) 55%, transparent),
+      inset 0 0 14px color-mix(in srgb, var(--brass-lit) 30%, transparent);
+  }
+  .rowglow.better {
+    box-shadow: 0 0 0 1px var(--good), inset 0 0 10px color-mix(in srgb, var(--good) 25%, transparent);
+  }
+  .rowglow.worse,
+  .rowglow.down {
+    box-shadow: 0 0 0 1px var(--danger), inset 0 0 10px color-mix(in srgb, var(--danger) 22%, transparent);
+  }
+  .rowglow.changed,
+  .rowglow.same {
+    box-shadow: 0 0 0 1px var(--text-dim);
+  }
+  @keyframes forge-rowglow {
+    0% {
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .verdict {
+    display: inline-block;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+    animation: forge-verdict 2.6s ease-out forwards;
+  }
+  .verdict.up {
+    color: var(--brass-lit);
+    background: color-mix(in srgb, var(--brass-lit) 16%, transparent);
+  }
+  .verdict.better {
+    color: var(--good);
+    background: color-mix(in srgb, var(--good) 14%, transparent);
+  }
+  .verdict.worse,
+  .verdict.down {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
+  .verdict.changed,
+  .verdict.same {
+    color: var(--text-dim);
+    background: color-mix(in srgb, var(--text-dim) 12%, transparent);
+  }
+  @keyframes forge-verdict {
+    0% {
+      opacity: 0;
+      transform: translateY(0.4rem) scale(0.9);
+    }
+    10% {
+      opacity: 1;
+      transform: none;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verdict {
+      animation-name: forge-verdict-still;
+    }
+    @keyframes forge-verdict-still {
+      0%,
+      85% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
   }
   .affixrow .what {
     display: flex;
@@ -1585,12 +1806,16 @@
     margin-bottom: 0;
   }
 
+  /* The piece on the anvil: its rarity colour runs down the left edge and
+     warms the card, so the eye finds what is being worked on. */
   .itemcard {
-    padding: 0.5rem 0.6rem;
+    padding: 0.6rem 0.75rem;
     border: 1px solid var(--border);
+    border-left: 4px solid var(--rar, var(--border));
     border-radius: var(--radius);
     margin-bottom: 0.6rem;
     font-size: 0.85rem;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--rar, transparent) 10%, transparent), transparent 60%);
   }
 
   .preview {

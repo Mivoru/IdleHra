@@ -5771,6 +5771,54 @@
       "estimatedUsd": 0.134,
       "seconds": 15,
       "at": "2026-11-19T22:41:33.199Z"
+    },
+    {
+      "id": "sfx_forge_fuse",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "Two heavy hammer blows on hot iron at an anvil, then glowing metal plunged into water with a short hiss, and a warm low resonant hum swelling as the pieces become one, folk fantasy forge, close, short tail",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_forge_fuse.mp3",
+      "bytes": 26792,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-20T14:19:23.655Z"
+    },
+    {
+      "id": "sfx_forge_refine",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A small hammer tapping a blade twice lightly, with a quick whetstone scrape along steel, precise and delicate, close, dry, no reverb",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_forge_refine.mp3",
+      "bytes": 12163,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-20T14:19:28.282Z"
+    },
+    {
+      "id": "sfx_forge_better",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A warm rising shimmer of plucked cimbalom strings ending on a clear bright bell ping, a blade glowing stronger, folk fantasy, mellow, not shrill, short",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_forge_better.mp3",
+      "bytes": 20105,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-20T14:19:32.833Z"
+    },
+    {
+      "id": "sfx_forge_worse",
+      "kind": "sfx",
+      "model": null,
+      "prompt": "A dull flat clank of iron on an anvil followed by a soft fizzling hiss of cooling metal, a small disappointment, low pitched, short, no reverb",
+      "generationId": null,
+      "file": "tools/assets/staging/sfx_forge_worse.mp3",
+      "bytes": 13835,
+      "credits": 0,
+      "seconds": 3,
+      "at": "2026-11-20T14:19:37.007Z"
     }
   ]
 }
