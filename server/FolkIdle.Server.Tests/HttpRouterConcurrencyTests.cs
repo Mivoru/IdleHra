@@ -237,8 +237,9 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void C_NoUnboundedBodyReadsInTheRouter()
         {
-            string path = Path.Combine(FindServerRoot(), "FolkIdle.Server", "Network", "NetworkBroadcastSystem.cs");
-            string source = File.ReadAllText(path);
+            // The router's handlers live in NetworkBroadcastSystem.*.cs since the
+            // 2026-11-20 split, so the guard reads the whole class.
+            string source = PartialClassSource.Read(Path.Combine(FindServerRoot(), "FolkIdle.Server", "Network"), "NetworkBroadcastSystem");
 
             var offenders = source.Split('\n')
                 .Select((line, i) => (line, number: i + 1))

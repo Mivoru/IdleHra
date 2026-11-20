@@ -97,7 +97,9 @@ namespace FolkIdle.Server.Tests
                 Path.Combine("Network", "NetworkBroadcastSystem.cs"),
             })
             {
-                string source = File.ReadAllText(Path.Combine(dir!.FullName, "FolkIdle.Server", file));
+                string full = Path.Combine(dir!.FullName, "FolkIdle.Server", file);
+                // A split class (NetworkBroadcastSystem.*.cs, 2026-11-20) is read whole.
+                string source = PartialClassSource.Read(Path.GetDirectoryName(full)!, Path.GetFileNameWithoutExtension(full));
                 Assert.Contains("RegionCompletionRules.", source);
                 Assert.False(Regex.IsMatch(source, @"KillCount\s*(>=|<)\s*1000"),
                     $"{file} still hard-codes the 1000-kill completion rule");

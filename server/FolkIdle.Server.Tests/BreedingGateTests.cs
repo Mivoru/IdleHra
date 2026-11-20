@@ -65,7 +65,7 @@ namespace FolkIdle.Server.Tests
                 BreedingGateRules.CheckPair(Adult(), Adult(isFemale: true), nowEpoch: 100));
 
             string engine = ReadSource("Engine", "BreedingEngine.cs");
-            string broadcast = ReadSource("Network", "NetworkBroadcastSystem.cs");
+            string broadcast = PartialClassSource.Read(Path.GetDirectoryName(LocateSource("Network", "NetworkBroadcastSystem.cs"))!, "NetworkBroadcastSystem");
             Assert.DoesNotContain("Level < 50", engine);
             Assert.DoesNotContain("Level < 50", broadcast);
         }
@@ -241,7 +241,7 @@ namespace FolkIdle.Server.Tests
         public void TheEngineAndBothPreviewsGoThroughTheGate()
         {
             string engine = ReadSource("Engine", "BreedingEngine.cs");
-            string broadcast = ReadSource("Network", "NetworkBroadcastSystem.cs");
+            string broadcast = PartialClassSource.Read(Path.GetDirectoryName(LocateSource("Network", "NetworkBroadcastSystem.cs"))!, "NetworkBroadcastSystem");
 
             Assert.Contains("BreedingGateRules.CheckPair", engine);
             Assert.Contains("BreedingGateRules.CheckVillagerPair", engine);
