@@ -33,6 +33,11 @@ namespace FolkIdle.Server.Domain.Progression
         SkillPointSpent = 23,
         WardrobeChestOpened = 24,
         LootChestOpened = 25,
+
+        // 2026-11-20 (owner): Nav as a daily habit, and the Delve back on the list.
+        NavDescent = 26,
+        NavWorkshopBought = 27,
+        DelveRun = 28,
     }
 
     /// <summary>
@@ -57,6 +62,10 @@ namespace FolkIdle.Server.Domain.Progression
         public bool ReachedDeep { get; init; }
         public bool DeepEnabled { get; init; }
         public bool WorldBossActive { get; init; }
+        /// <summary>Nav is switched on (FOLKIDLE_NAV) and Malakor is beaten (NavRules.IsOpen).</summary>
+        public bool NavOpen { get; init; }
+        /// <summary>The Delve's entry fee for this player's highest region.</summary>
+        public long DelveEntryFee { get; init; } = MissionRegistry.DelveFirstEntryGold;
     }
 
     public sealed record MissionDefinition(
@@ -119,6 +128,9 @@ namespace FolkIdle.Server.Domain.Progression
             new(MissionAction.DungeonFight, "Fight in every dungeon", "One run at each of the three gates.", 3, true, true, f => f.DungeonsOpen),
             new(MissionAction.ExpeditionSent, "Send an expedition", "Send a grown villager out from the Breeding Grounds.", 1, true, false, f => f.BreedingGroundsLevel >= 1 && f.HasExpeditionCandidate),
             new(MissionAction.WorldBossStrike, "Strike the world boss", "Any strike at this week's world boss.", 1, true, false, f => f.WorldBossActive),
+            // Fixed for the endgame: a Nav charge comes back every 20 minutes, so
+            // five descents are always possible on a day Nav is open.
+            new(MissionAction.NavDescent, "Descend into Nav", "Make five descents into Nav.", 5, true, false, f => f.NavOpen),
 
             // Rotating.
             new(MissionAction.AffixReforge, "Reforge affixes", "Reroll an affix at the Forge three times.", 3, false, false, f => f.Level >= ForgeOpenLevel),
@@ -137,6 +149,8 @@ namespace FolkIdle.Server.Domain.Progression
             new(MissionAction.SkillPointSpent, "Learn a skill", "Spend a skill point in the skill tree.", 1, false, false, f => f.AvailableSkillPoints > 0),
             new(MissionAction.WardrobeChestOpened, "Open a wardrobe chest", "Open a cosmetic chest in the Wardrobe.", 1, false, false, f => f.WardrobeChests > 0),
             new(MissionAction.LootChestOpened, "Open a loot chest", "Open a loot chest.", 1, false, false, f => f.LootChests > 0),
+            new(MissionAction.NavWorkshopBought, "Spend Souls in Nav", "Buy any upgrade in Nav's Workshop.", 1, false, false, f => f.NavOpen),
+            new(MissionAction.DelveRun, "Run the Delve", "Pay the fee and start a run in the Delve.", 1, false, false, f => f.Gold >= f.DelveEntryFee),
         };
 
         private static readonly Dictionary<MissionAction, MissionDefinition> ByAction = All.ToDictionary(d => d.Action);

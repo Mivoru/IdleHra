@@ -4385,6 +4385,7 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/delve/start")
                 {
                     outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.StartRunAsync(playerId));
+                    if (outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DelveRun);
                 }
                 else if (requestPath == "/api/v1/delve/bank")
                 {

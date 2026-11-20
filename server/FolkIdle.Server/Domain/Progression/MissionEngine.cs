@@ -125,6 +125,9 @@ namespace FolkIdle.Server.Domain.Progression
                 ReachedDeep = player.DelveDeepestFloor >= DelveRegistry.FirstDeepFloor,
                 DeepEnabled = deepEnabled,
                 WorldBossActive = worldBossActive,
+                NavOpen = NavRules.Enabled() && NavRules.IsOpen(bossMask),
+                // At most the fee DelveEngine charges (its region is the highest with a kill, never past beaten bosses + 1).
+                DelveEntryFee = DelveRegistry.EntryFeeForRegion(1 + System.Numerics.BitOperations.PopCount((uint)bossMask)),
             };
         }
 
