@@ -79,7 +79,9 @@ if (!dry && !key) {
 
 function promptOf(asset) {
   const tail = asset.key ? ` ${manifest.keyLine.replace('{key}', asset.key)}` : '';
-  return `${asset.prompt}${tail} ${manifest.style}`;
+  // Modul: noStyle - an asset that must match EXISTING art (the monster set
+  // is inked comic art, not painted) carries its own style words instead.
+  return asset.noStyle ? `${asset.prompt}${tail}` : `${asset.prompt}${tail} ${manifest.style}`;
 }
 
 function referencesOf(asset) {
