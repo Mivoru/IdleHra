@@ -18,7 +18,7 @@ unless `--allow-remote` is given.
 $env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_bots;Username=postgres;Password=postgres'
 $env:FOLKIDLE_DEV_TOOLS='1'
 $env:FOLKIDLE_TICK_SPEED='100'
-$env:FOLKIDLE_BOSS_MINIGAME='wheel'   # as production
+$env:FOLKIDLE_BOSS_MINIGAME='duel'; $env:FOLKIDLE_NAV='on'; $env:FOLKIDLE_DELVE_DEEP='on'   # as production
 dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj
 
 # 2. The bots (another terminal); --speed must match FOLKIDLE_TICK_SPEED

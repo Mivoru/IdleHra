@@ -90,7 +90,7 @@ function Run([string]$Tag, [string]$Mode, [int]$Scale, [double]$Hours) {
     $env:FOLKIDLE_DB_CONN = "Host=localhost;Database=$db;Username=postgres;Password=postgres"
     & $ServerExe --migrate *> "$out\migrate.log"
     if ($LASTEXITCODE -ne 0) { Fail "$Tag migration failed (exit $LASTEXITCODE): $(Tail "$out\migrate.log")" }
-    $env:FOLKIDLE_DEV_TOOLS = '1'; $env:FOLKIDLE_BOSS_MINIGAME = 'wheel'; $env:FOLKIDLE_OFFLINE_SIM = '1'
+    $env:FOLKIDLE_DEV_TOOLS = '1'; $env:FOLKIDLE_BOSS_MINIGAME = 'duel'; $env:FOLKIDLE_NAV = 'on'; $env:FOLKIDLE_DELVE_DEEP = 'on'; $env:FOLKIDLE_OFFLINE_SIM = '1'
     $env:FOLKIDLE_SIM_START_UTC = $start.ToString('o')
     Remove-Item Env:FOLKIDLE_SIM_LOCKSTEP, Env:FOLKIDLE_TICK_SPEED, Env:FOLKIDLE_SIM_CRON_SCALE -ErrorAction SilentlyContinue
     $speed = 1
