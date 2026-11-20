@@ -89,6 +89,7 @@ namespace FolkIdle.Server.Network
                     var bench = await NavEngine.LoadBenchAsync(db, playerId);
                     var (result, run, _, payout, view) = await NavEngine.DescendAsync(db, playerId, snapshot.Value.Payload, slot, circle, now, GameClock.UtcNow, Random.Shared.Next(), bench);
                     await NotifyNavPayoutAsync(db, playerId, payout);
+                    if (result == NavDescendResult.Ran) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.NavDescent);
                     await WriteJsonAsync(context, new { Result = result.ToString(), Run = run == null ? null : view });
                     return true;
                 }
@@ -107,6 +108,7 @@ namespace FolkIdle.Server.Network
 
                     if (!await NavOpenNowAsync(playerId)) { await WriteJsonAsync(context, new { Result = "Locked", Level = 0 }); return true; }
                     var (result, level) = await NavEngine.BuyAsync(db, playerId, key, levels, now);
+                    if (result == NavBuyResult.Bought) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.NavWorkshopBought);
                     await WriteJsonAsync(context, new { Result = result.ToString(), Level = level });
                     return true;
                 }

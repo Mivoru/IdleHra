@@ -51,6 +51,29 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void WithNavOpen_TheDescentIsAFourthFixedMission()
+        {
+            var day = MissionRegistry.Draw(42, 20_000, Veteran with { NavOpen = true });
+            Assert.Equal(MissionRegistry.MissionsPerDay, day.Length);
+            Assert.Equal(new[] { MissionAction.DungeonFight, MissionAction.ExpeditionSent, MissionAction.WorldBossStrike, MissionAction.NavDescent }, day.Take(4));
+            // Without Nav neither Nav mission is ever drawn.
+            for (int d = 20_000; d < 20_060; d++)
+            {
+                var closed = MissionRegistry.Draw(42, d, Veteran);
+                Assert.DoesNotContain(MissionAction.NavDescent, closed);
+                Assert.DoesNotContain(MissionAction.NavWorkshopBought, closed);
+            }
+        }
+
+        [Fact]
+        public void TheDelveRunNeedsTheFee()
+        {
+            Assert.True(MissionRegistry.TryGet(MissionAction.DelveRun, out var def));
+            Assert.False(def.Eligible(Veteran with { Gold = 499_999, DelveEntryFee = 500_000 }));
+            Assert.True(def.Eligible(Veteran with { Gold = 500_000, DelveEntryFee = 500_000 }));
+        }
+
+        [Fact]
         public void TheDrawIsTheSameForTheSameDay_AndMovesBetweenDays()
         {
             var a = MissionRegistry.Draw(42, 20_000, Veteran);

@@ -35,6 +35,25 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.105.0',
+    date: '2026-11-20',
+    sections: [
+      {
+        title: 'Daily missions',
+        items: [
+          'Once Malakor is beaten, every day has a Nav mission: five descents.',
+          'Two new missions can turn up: buy an upgrade in the Nav Workshop, and start a run in the Delve.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Diamonds from the Delve, the Deep, loot chests, guild wars and lifetime deeds could vanish if you were online when they were paid. They stay now.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.104.1',
     date: '2026-11-20',
     sections: [

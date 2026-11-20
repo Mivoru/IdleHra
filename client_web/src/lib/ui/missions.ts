@@ -27,4 +27,7 @@ export const MISSION_SCREEN: Record<string, string> = {
   SkillPointSpent: 'character',
   WardrobeChestOpened: 'wardrobe',
   LootChestOpened: 'chest',
+  NavDescent: 'nav',
+  NavWorkshopBought: 'nav',
+  DelveRun: 'delve',
 };
