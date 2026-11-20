@@ -231,6 +231,7 @@ namespace FolkIdle.Server.Domain.Shared
             // TryStoreFrame above already zeroed them if Redis took them, so a
             // non-zero value here is one that only the checkpoint will bank.
             state.PendingWoodDelta = 0L;
+            state.PendingDiamondDelta = 0L;
             state.PendingStoneDelta = 0L;
             state.PendingIronDelta = 0L;
             state.FlushesInFlight++;
@@ -495,6 +496,7 @@ namespace FolkIdle.Server.Domain.Shared
 
                 // The snapshot's village production is in CommodityRecords now.
                 state.PendingWoodDelta -= snapshot.PendingWoodDelta;
+                state.PendingDiamondDelta -= snapshot.PendingDiamondDelta;
                 state.PendingStoneDelta -= snapshot.PendingStoneDelta;
                 state.PendingIronDelta -= snapshot.PendingIronDelta;
             }
@@ -629,6 +631,8 @@ namespace FolkIdle.Server.Domain.Shared
                     dbContext.ChangeTracker.Clear();
 
                     using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                    // The checkpoint's diamond delta is kill drops (live and away) plus the lifetime deed tiers it pays.
+                    await Engine.DiamondLedger.LabelAsync(dbContext, Engine.DiamondLedger.Checkpoint);
 
                     // Pessimistic row-level epoch lock. FOR UPDATE prevents concurrent epoch modification.
                     var player = await dbContext.PlayerRecords
@@ -733,7 +737,8 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveFoodId = state.ActiveFoodBuffId;
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
-                        player.PremiumDiamonds = state.PremiumCurrency;
+                        // A DELTA, never the payload's absolute (TickStatePayload.PendingDiamondDelta).
+                        player.PremiumDiamonds = (int)Math.Clamp((long)player.PremiumDiamonds + state.PendingDiamondDelta, 0L, int.MaxValue);
                         player.EventCurrency = state.EventCurrency;
                         player.EventCurrencyEventId = state.EventCurrencyEventId;
                         player.EventCurrencyDayKey = state.EventCurrencyDayKey;
@@ -2086,6 +2091,8 @@ namespace FolkIdle.Server.Domain.Shared
                     dbContext.ChangeTracker.Clear();
 
                     using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                    // The checkpoint's diamond delta is kill drops (live and away) plus the lifetime deed tiers it pays.
+                    await Engine.DiamondLedger.LabelAsync(dbContext, Engine.DiamondLedger.Checkpoint);
 
                     foreach (var state in stateList)
                     {
@@ -2136,7 +2143,8 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveFoodId = state.ActiveFoodBuffId;
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
-                        player.PremiumDiamonds = state.PremiumCurrency;
+                        // A DELTA, never the payload's absolute (TickStatePayload.PendingDiamondDelta).
+                        player.PremiumDiamonds = (int)Math.Clamp((long)player.PremiumDiamonds + state.PendingDiamondDelta, 0L, int.MaxValue);
                         player.EventCurrency = state.EventCurrency;
                         player.EventCurrencyEventId = state.EventCurrencyEventId;
                         player.EventCurrencyDayKey = state.EventCurrencyDayKey;

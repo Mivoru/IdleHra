@@ -1588,14 +1588,18 @@ await go('Gathering');
     .filter({ has: page.getByRole('heading', { name: 'Fishing', exact: true }) })
     .last();
   // The first location is the only one a fresh account has reached, so it is
-  // the only one with a Gather button - the rest read "Beat the boss before".
+  // the only one with a Gather button - the rest read "Beat <that boss>".
   const fishBtn = fishingSection.getByRole('button', { name: 'Gather' }).first();
   const deployed = (await fishBtn.count()) > 0;
   if (deployed) await fishBtn.click();
 
+  // Since the 2026-11-19 screenshot audit a locked node names its boss
+  // ("Beat Leshy"), so the check reads the lock label, not a fixed sentence.
+  const lockedHint = page.locator('.lock').filter({ hasText: /^Beat / }).first();
+  await lockedHint.waitFor({ timeout: 5000 }).catch(() => {});
   record(
     'gathering is locked to locations the player has reached',
-    (await page.getByText('Beat the boss before').count()) > 0,
+    (await lockedHint.count()) > 0,
     'later locations are gated',
   );
   await page.waitForTimeout(9000);
@@ -2796,6 +2800,9 @@ await go('Chest');
   const incomeBefore = await lootIncome();
   const granted = await apiPost('/api/v1/dev/chests/grant', { Tier: 2, Region: 1 }).catch(() => null);
   await page.reload();
+  // A reload is a fresh visit, so the very-full-chest prompt (bigChestPromptStep)
+  // comes back over the fixture's thousands of pieces and swallows every click.
+  await page.getByTestId('big-chest-close').click({ timeout: 6000 }).catch(() => {});
   await page.getByTestId('loot-chest-open-2').waitFor({ timeout: 15000 }).catch(() => {});
   await page.getByTestId('loot-chest-open-2').click().catch(() => {});
   const reveal = page.getByTestId('loot-chest-reveal');
@@ -4101,10 +4108,15 @@ await go('The Delve');
     }
     await page.getByTestId('chest-reveal').waitFor({ timeout: 12000 }).catch(() => {});
     const after = await apiGet('/api/v1/cosmetics');
+    // Since Wardrobe threads (#433) a duplicate unravels into threads instead
+    // of a second copy, and a fixture that has opened many Rare chests mostly
+    // rolls duplicates - so either outcome is the chest paying out.
+    const gotNew = Boolean(after) && cosmeticsHeld(after) === cosmeticsHeld(before) + 1;
+    const gotThreads = Boolean(after) && Number(after.Threads ?? 0) > Number(before?.Threads ?? 0);
     record(
-      'opening a chest turns it into a cosmetic',
-      Boolean(after) && cosmeticsHeld(after) === cosmeticsHeld(before) + 1 && after.Chests[2] === (before?.Chests[2] ?? 0),
-      after ? `cosmetics ${cosmeticsHeld(before)} -> ${cosmeticsHeld(after)}, rare chests ${after.Chests[2]}` : 'no view',
+      'opening a chest turns it into a cosmetic (or threads for a duplicate)',
+      (gotNew || gotThreads) && after.Chests[2] === (before?.Chests[2] ?? 0),
+      after ? `cosmetics ${cosmeticsHeld(before)} -> ${cosmeticsHeld(after)}, threads ${before?.Threads ?? 0} -> ${after.Threads ?? 0}, rare chests ${after.Chests[2]}` : 'no view',
     );
     const reveal = page.getByTestId('chest-reveal');
     const revealed = (await reveal.count()) > 0 ? ((await reveal.textContent()) ?? '').trim().replace(/\s+/g, ' ') : '';
@@ -4116,7 +4128,8 @@ await go('The Delve');
     const worn = await apiGet('/api/v1/cosmetics');
     const newest = [...(after?.Owned ?? [])].filter((o) => o.Kind !== 0).sort((a, b) => b.Id - a.Id)[0];
     const wearing = newest?.Kind === 1 ? worn?.EquippedAvatarId : worn?.EquippedFrameId;
-    record('Wear it puts it on, on the server', Boolean(newest) && wearing === newest.DefinitionId, `${newest?.DefinitionId} worn as ${wearing}`);
+    // A duplicate brings nothing new to wear, so the check only applies to a new piece.
+    if (gotNew) record('Wear it puts it on, on the server', Boolean(newest) && wearing === newest.DefinitionId, `${newest?.DefinitionId} worn as ${wearing}`);
 
     // Put the face back as it was.
     await apiPost('/api/v1/cosmetics/equip', { Kind: 1, Id: before?.EquippedAvatarId ?? null });

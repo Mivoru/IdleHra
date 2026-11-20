@@ -280,6 +280,7 @@ namespace FolkIdle.Server.Domain.Economy
                 {
                     row.FirstClearMask |= bit;
                     diamonds = FirstClearDiamonds(stage);
+                    await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Dungeon);
                     player.PremiumDiamonds += diamonds;
                 }
                 row.BestStage = Math.Max(row.BestStage, stage);

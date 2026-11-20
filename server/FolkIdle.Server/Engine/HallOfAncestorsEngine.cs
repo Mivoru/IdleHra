@@ -129,6 +129,7 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.HallOfAncestors);
                 owner.PremiumDiamonds -= (int)cost;
                 owner.AncestorSlotsPurchased++;
 

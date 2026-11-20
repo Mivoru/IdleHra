@@ -328,6 +328,7 @@ namespace FolkIdle.Server.Engine
                 {
                     if (mail.DiamondAttachment > 0)
                     {
+                        await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Mail);
                         player.PremiumDiamonds += mail.DiamondAttachment;
                     }
                     if (FolkIdle.Server.Domain.Progression.TitleRegistry.Find(mail.TitleAttachment) != null)

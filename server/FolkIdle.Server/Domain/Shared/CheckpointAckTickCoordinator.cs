@@ -118,6 +118,8 @@ namespace FolkIdle.Server.Domain.Shared
             // Village production likewise: still owed to CommodityRecords, and
             // already counted in the Cached*Stock the screen shows.
             payload.PendingWoodDelta += ack.WoodDelta;
+            // Diamond drops likewise: already on the screen's PremiumCurrency, still owed to the row.
+            payload.PendingDiamondDelta += ack.DiamondDelta;
             payload.PendingStoneDelta += ack.StoneDelta;
             payload.PendingIronDelta += ack.IronDelta;
             payload.IsDirty = true;

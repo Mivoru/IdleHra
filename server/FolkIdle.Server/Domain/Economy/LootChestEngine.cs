@@ -195,6 +195,7 @@ namespace FolkIdle.Server.Domain.Economy
                 if (roll.Diamonds > 0)
                 {
                     week.DiamondsThisWeek += roll.Diamonds;
+                    await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.LootChest);
                     await db.PlayerRecords.Where(p => p.Id == playerId)
                         .ExecuteUpdateAsync(s => s.SetProperty(p => p.PremiumDiamonds, p => p.PremiumDiamonds + roll.Diamonds));
                 }

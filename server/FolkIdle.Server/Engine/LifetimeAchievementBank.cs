@@ -69,6 +69,7 @@ WHERE ""PlayerId"" = {playerId} AND ""AchievementId"" = {AchievementMilestones.M
                 return (0, 0);
             }
 
+            await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Lifetime);
             var balance = await db.Database.SqlQuery<int>($@"
 UPDATE ""PlayerRecords"" SET ""PremiumDiamonds"" = ""PremiumDiamonds"" + {AchievementMilestones.MonsterKillReward}
 WHERE ""Id"" = {playerId}

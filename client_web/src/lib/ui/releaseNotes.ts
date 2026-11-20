@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.104.1',
+    date: '2026-11-20',
+    sections: [
+      {
+        title: 'Looks and sound',
+        items: [
+          "The Dungeon, the World Boss, the Delve and the top of Malakor's Ascension open with a painted scene, like Nav.",
+          'The Dungeon and the World Boss have their own music.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.104.0',
     date: '2026-11-19',
     headline: "Malakor's Ascension is endgame from step 6.",

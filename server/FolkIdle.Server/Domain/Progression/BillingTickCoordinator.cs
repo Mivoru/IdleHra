@@ -33,7 +33,9 @@ namespace FolkIdle.Server.Domain.Progression
 
         internal static void Apply(ref TickStatePayload payload, in BillingSyncNotification billingSyncNotif)
         {
-            payload.SetPremiumCurrency(billingSyncNotif.PremiumDiamondsBalance);
+            // The row's balance does not hold the tick's own unbanked drops yet
+            // (TickStatePayload.PendingDiamondDelta), so the screen adds them.
+            payload.SetPremiumCurrency((int)Math.Clamp((long)billingSyncNotif.PremiumDiamondsBalance + payload.PendingDiamondDelta, 0L, int.MaxValue));
             payload.IsDirty = true;
         }
 

@@ -118,6 +118,8 @@ namespace FolkIdle.Server.Engine
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerCraftingSlots\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
                 // Task 79: the gold ledger is per-player history.
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM gold_spend_daily WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+                // 2026-11-20: the diamond ledger is per-player history too.
+                await db.Database.ExecuteSqlRawAsync("DELETE FROM diamond_daily WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
                 // The quest line's latches and claims.
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM quest_line_claims WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
 

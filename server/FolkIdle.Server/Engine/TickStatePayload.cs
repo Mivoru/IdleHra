@@ -744,6 +744,22 @@ namespace FolkIdle.Server.Engine
         public long PendingStoneDelta;
         public long PendingIronDelta;
 
+        // Modul: DIAMONDS THE TICK MINTED AND THE DATABASE HAS NOT SEEN YET
+        // (2026-11-20). The checkpoint used to write PremiumCurrency back as an
+        // ABSOLUTE (player.PremiumDiamonds = state.PremiumCurrency), so every
+        // diamond an engine added to PlayerRecords while the player was online
+        // - a Delve bank, a loot chest, a guild war, a lifetime deed the
+        // checkpoint itself paid - was overwritten by the payload's older
+        // balance at the next flush. The diamond ledger caught it on its first
+        // run: delve +20, checkpoint -20. Several engines had been patched one
+        // by one with a BillingSync; the rest still lost diamonds.
+        //
+        // Now the checkpoint banks this delta onto the row, exactly the way
+        // the village deltas above ride the snapshot: zeroed at RequestFlush,
+        // subtracted after a synchronous commit, handed back by a failed ack,
+        // carried across a reload. PremiumCurrency stays the screen's copy.
+        public long PendingDiamondDelta;
+
         // Fractional-tick production accumulators. Internal bookkeeping only,
         // never read by StateUpdatePacket.
         //

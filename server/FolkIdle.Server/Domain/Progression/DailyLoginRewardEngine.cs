@@ -159,6 +159,7 @@ namespace FolkIdle.Server.Domain.Progression
             player.LoginRewardClaimDay = today;
             player.LoginStreakDays = day;
             if (day == DaysInWeek) player.LoginCyclesCompleted++;
+            await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.LoginReward);
             if (reward.Diamonds > 0) player.PremiumDiamonds += reward.Diamonds;
 
             int tickets = 0;

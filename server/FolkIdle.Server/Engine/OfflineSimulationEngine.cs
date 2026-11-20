@@ -1014,6 +1014,7 @@ namespace FolkIdle.Server.Engine
                 if (diamonds > 0)
                 {
                     payload.SetPremiumCurrency((int)Math.Min(int.MaxValue, (long)payload.PremiumCurrency + diamonds));
+                    payload.PendingDiamondDelta += diamonds;
                     payload.IsDirty = true;
                 }
             }

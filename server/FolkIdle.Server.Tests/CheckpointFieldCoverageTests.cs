@@ -51,7 +51,8 @@ namespace FolkIdle.Server.Tests
             ("CON", "renamed to PlayerRecord.BaseConstitution"),
             ("LCK", "renamed to PlayerRecord.BaseLuck"),
             ("UnspentAttributePoints", "same name on PlayerRecord"),
-            ("PremiumCurrency", "renamed to PlayerRecord.PremiumDiamonds"),
+            // 2026-11-20: banked as a DELTA, not the payload's absolute PremiumCurrency (which overwrote engine grants).
+            ("PendingDiamondDelta", "added onto PlayerRecord.PremiumDiamonds"),
             ("AvailableSkillPoints", "same name on PlayerRecord"),
             ("Food1_ItemId", "the larder, slot 1"),
             ("Food1_Count", "the larder, slot 1"),

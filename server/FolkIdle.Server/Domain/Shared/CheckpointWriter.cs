@@ -86,6 +86,8 @@ namespace FolkIdle.Server.Domain.Shared
         public long WoodDelta;
         public long StoneDelta;
         public long IronDelta;
+        /// <summary>The job's unbanked diamond drops (TickStatePayload.PendingDiamondDelta), handed back on a failure.</summary>
+        public long DiamondDelta;
         public FlushReason Reason;
         public bool SplitBrain;
     }
@@ -349,6 +351,7 @@ namespace FolkIdle.Server.Domain.Shared
             long goldForTick = committed ? 0L : job.GoldDelta;
             GoldIncomeTally incomeForTick = committed ? default : job.Snapshot.PendingGoldIncome;
             long woodForTick = committed ? 0L : job.Snapshot.PendingWoodDelta;
+            long diamondsForTick = committed ? 0L : job.Snapshot.PendingDiamondDelta;
             long stoneForTick = committed ? 0L : job.Snapshot.PendingStoneDelta;
             long ironForTick = committed ? 0L : job.Snapshot.PendingIronDelta;
             if (!committed && job.Reason == FlushReason.Logout)
@@ -394,6 +397,7 @@ namespace FolkIdle.Server.Domain.Shared
                 WoodDelta = woodForTick,
                 StoneDelta = stoneForTick,
                 IronDelta = ironForTick,
+                DiamondDelta = diamondsForTick,
                 Reason = job.Reason,
                 SplitBrain = splitBrain
             });

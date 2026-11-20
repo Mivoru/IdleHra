@@ -182,6 +182,7 @@ namespace FolkIdle.Server.Domain.Progression
                 row.OverflowClaimed += overflow;
 
                 int diamonds = rewards.Where(r => r.Kind == ChronicleRewardKind.Diamonds).Sum(r => r.Amount);
+                await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Chronicle);
                 player.PremiumDiamonds += diamonds;
 
                 int tickets = 0;
