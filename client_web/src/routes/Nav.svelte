@@ -251,7 +251,14 @@
   {#if nav.isPending}
     <Skeleton rows={4} />
   {:else if nav.isError || !data}
-    <p class="dim">Nav is closed.</p>
+    <!-- Modul: this used to read "Nav is closed." for ANY failed load, so a
+         dropped request on a phone looked like the feature being switched off
+         (owner screenshot, 2026-11-20). A closed Nav arrives as data
+         (Open=false, LockedReason) and never lands here. -->
+    <p class="dim" data-testid="nav-load-error">
+      Nav could not be loaded{nav.error ? ` (${nav.error.message})` : ''}.
+    </p>
+    <button class="tiny-btn" onclick={() => nav.refetch()}>Try again</button>
   {:else}
     <div class="col">
     <div class="descend">
