@@ -23,17 +23,18 @@ namespace FolkIdle.Server.Tests
         public QuestLineRulesTests(ITestOutputHelper o) => _o = o;
 
         [Fact]
-        public void TheStepsAreTheOwnersThirteenInTheOwnersOrder()
+        public void TheStepsAreTheOwnersSeventeenInTheOwnersOrder()
         {
             var ids = QuestLineRegistry.Steps.OrderBy(s => s.Order).Select(s => s.Id).ToArray();
             Assert.Equal(new[]
             {
-                QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
+                QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell, QuestLineRegistry.Missions,
                 QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Potion, QuestLineRegistry.Market,
                 QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
-                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Breed, QuestLineRegistry.Rebirth,
+                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Dungeon, QuestLineRegistry.Builds,
+                QuestLineRegistry.Breed, QuestLineRegistry.Rebirth, QuestLineRegistry.Nav,
             }, ids);
-            Assert.Equal(Enumerable.Range(1, 13), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
+            Assert.Equal(Enumerable.Range(1, 17), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
             Assert.Equal(ids.Length, ids.Distinct().Count());
             // The StepId column is varchar(32).
             Assert.All(ids, id => Assert.InRange(id.Length, 1, 32));
@@ -91,6 +92,17 @@ namespace FolkIdle.Server.Tests
             Assert.True(Unlocked(QuestLineRegistry.Delve, new QuestFacts { Gold = fee, HighestUnlockedRegion = 1 }));
             // The fee is the player's own region's: region 3's is dearer.
             Assert.False(Unlocked(QuestLineRegistry.Delve, new QuestFacts { Gold = fee, HighestUnlockedRegion = 3 }));
+            // The day's first run is free (2026-11-20), so level 5 opens it without the fee.
+            Assert.True(Unlocked(QuestLineRegistry.Delve, new QuestFacts { Level = QuestLineRegistry.ForgeOpenLevel }));
+
+            Assert.False(Unlocked(QuestLineRegistry.Missions, new QuestFacts { Level = QuestLineRegistry.ForgeOpenLevel - 1 }));
+            Assert.True(Unlocked(QuestLineRegistry.Missions, new QuestFacts { Level = QuestLineRegistry.ForgeOpenLevel }));
+            Assert.False(Unlocked(QuestLineRegistry.Dungeon, new QuestFacts { Level = 60, HighestUnlockedRegion = 2 }));
+            Assert.True(Unlocked(QuestLineRegistry.Dungeon, new QuestFacts { DungeonsOpen = true }));
+            Assert.False(Unlocked(QuestLineRegistry.Builds, new QuestFacts { Level = 60 }));
+            Assert.True(Unlocked(QuestLineRegistry.Builds, new QuestFacts { DungeonsOpen = true }));
+            Assert.False(Unlocked(QuestLineRegistry.Nav, new QuestFacts { Level = 200, HighestUnlockedRegion = 5 }));
+            Assert.True(Unlocked(QuestLineRegistry.Nav, new QuestFacts { NavOpen = true }));
 
             Assert.False(Unlocked(QuestLineRegistry.WorldBoss, new QuestFacts { Level = 9 }));
             Assert.True(Unlocked(QuestLineRegistry.WorldBoss, new QuestFacts { Level = 10 }));
@@ -127,6 +139,12 @@ namespace FolkIdle.Server.Tests
             Assert.True(Done(QuestLineRegistry.WorldBoss, new QuestFacts { HasWorldBossAttemptRow = true }));
             Assert.True(Done(QuestLineRegistry.Ascension, new QuestFacts { HighestAscensionStep = 1 }));
             Assert.True(Done(QuestLineRegistry.Rebirth, new QuestFacts { RebirthCount = 1 }));
+            Assert.True(Done(QuestLineRegistry.Missions, new QuestFacts { MissionOrPassClaimed = true }));
+            Assert.True(Done(QuestLineRegistry.Dungeon, new QuestFacts { DungeonFought = true }));
+            Assert.False(Done(QuestLineRegistry.Dungeon, new QuestFacts { DungeonsOpen = true }));
+            Assert.True(Done(QuestLineRegistry.Builds, new QuestFacts { BuildBoundToActivity = true }));
+            Assert.True(Done(QuestLineRegistry.Nav, new QuestFacts { NavRunsTotal = 1 }));
+            Assert.False(Done(QuestLineRegistry.Nav, new QuestFacts { NavOpen = true }));
 
             // Being rich, high level, or standing next to the button is not doing it.
             var richAndStrong = new QuestFacts { Level = 99, Gold = 1_000_000_000, Diamonds = 9_999, HighestUnlockedRegion = 5, ForgeLevel = 5, BreedingGroundsLevel = 5 };
@@ -251,13 +269,13 @@ namespace FolkIdle.Server.Tests
         private static string StateOf(QuestLineView view, string step) => view.Steps.Single(s => s.Id == step).State;
 
         [Fact]
-        public async Task TheViewListsTwelveStepsInOrderWithTheirState()
+        public async Task TheViewListsEveryStepInOrderWithTheirState()
         {
             long id = await CreatePlayerAsync(level: 1);
             var view = await ViewAsync(id);
 
-            Assert.Equal(13, view.Total);
-            Assert.Equal(Enumerable.Range(1, 13), view.Steps.Select(s => s.Order));
+            Assert.Equal(17, view.Total);
+            Assert.Equal(Enumerable.Range(1, 17), view.Steps.Select(s => s.Order));
             Assert.All(view.Steps, s => Assert.Equal("locked", s.State));
             Assert.All(view.Steps, s => Assert.False(string.IsNullOrEmpty(s.UnlockHint)));
             Assert.All(view.Steps, s => Assert.False(s.Claimable));
@@ -285,6 +303,11 @@ namespace FolkIdle.Server.Tests
                 db.BossAscensionProgress.Add(new BossAscensionProgress { PlayerId = id, Region = 1, HighestStep = 2, UpdatedAtUtc = DateTime.UtcNow });
                 db.MarketOrderRecords.Add(new MarketOrderRecord { SellerId = id, OrderType = "SELL", BaseItemId = "x", Price = 5, CreatedAtEpoch = 1 });
                 db.PlayerWorldBossAttempts.Add(new PlayerWorldBossAttempt { PlayerId = id, BossInstanceId = 987654, AttemptCount = 1, TotalInflictedDamage = 10 });
+                db.PlayerMissionDays.Add(new PlayerMissionDay { PlayerId = id, DayKey = 20800, ClaimedMask = 1, CreatedAtUtc = DateTime.UtcNow });
+                // A lost run: no stage won, but the mission counter saw the fight.
+                db.PlayerMissionCounters.Add(new PlayerMissionCounter { PlayerId = id, DayKey = 20800, Action = (short)MissionAction.DungeonFight, Count = 1 });
+                db.BuildPresets.Add(new BuildPreset { PlayerId = id, Slot = 1, Name = "Boss", BoundActivities = 1, UpdatedAtUtc = DateTime.UtcNow });
+                db.NavProgress.Add(new NavProgress { PlayerId = id, RunsTotal = 1 });
                 await db.SaveChangesAsync();
                 await GoldLedger.RecordSpendAsync(db, id, GoldSpendCategory.Breeding, 500);
                 await GoldLedger.RecordIncomeAsync(db, id, GoldIncomeSource.ChestSale, 120);
@@ -294,15 +317,16 @@ namespace FolkIdle.Server.Tests
             var view = await ViewAsync(id);
             foreach (var step in new[]
             {
-                QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
+                QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell, QuestLineRegistry.Missions,
                 QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Potion, QuestLineRegistry.Market,
                 QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
-                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Breed, QuestLineRegistry.Rebirth,
+                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Dungeon, QuestLineRegistry.Builds,
+                QuestLineRegistry.Breed, QuestLineRegistry.Rebirth, QuestLineRegistry.Nav,
             })
             {
                 Assert.Equal("done", StateOf(view, step));
             }
-            Assert.Equal(13, view.Done);
+            Assert.Equal(17, view.Done);
             Assert.All(view.Steps, s => Assert.True(s.Claimable));
         }
 

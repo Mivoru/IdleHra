@@ -292,7 +292,7 @@
       {#if !data.Open}
         <p class="locked" data-testid="nav-locked">{data.LockedReason}</p>
       {/if}
-      <button class="primary go" disabled={busy || replaying || data.Charges <= 0 || !data.Open} onclick={descend} data-testid="nav-descend">
+      <button class="primary go" disabled={busy || replaying || data.Charges <= 0 || !data.Open} onclick={descend} data-testid="nav-descend" data-guide="nav-descend">
         {busy ? 'Descending...' : replaying ? 'Going down...' : 'Descend'}
       </button>
       <p class="dim small charges" data-testid="nav-charges">

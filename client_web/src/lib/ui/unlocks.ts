@@ -54,9 +54,13 @@ export const CHEAPEST_INHERITANCE_LEVEL = 40;
 export const forgeOpen = (s: StateUpdate): boolean =>
   Number(s.CurrentLevel) >= FORGE_OPEN_LEVEL || Number(s.ForgeLevel) >= 1;
 
-// Gold alone: once the card has been seen the screen stays open however the
-// purse moves (see lockedRequirement).
-export const delveOpen = (s: StateUpdate): boolean => Number(s.Gold) >= DELVE_FIRST_ENTRY_GOLD;
+// Modul: level 5 OR the first fee in gold. Since 2026-11-20 the day's first
+// run is free (DelveEngine.StartRunAsync), so a gold-only gate greyed out a
+// run that costs nothing. The server quest line's Delve step mirrors this.
+// Once the card has been seen the screen stays open however the purse moves
+// (see lockedRequirement).
+export const delveOpen = (s: StateUpdate): boolean =>
+  Number(s.CurrentLevel) >= FORGE_OPEN_LEVEL || Number(s.Gold) >= DELVE_FIRST_ENTRY_GOLD;
 
 export const marketOpen = (s: StateUpdate): boolean => Number(s.CurrentLevel) >= MARKET_OPEN_LEVEL;
 
@@ -101,7 +105,7 @@ export const UNLOCK_RULES: readonly UnlockRule[] = [
   },
   {
     screens: ['delve'],
-    requirement: `${formatNumber(DELVE_FIRST_ENTRY_GOLD)} gold`,
+    requirement: `Level ${FORGE_OPEN_LEVEL} or ${formatNumber(DELVE_FIRST_ENTRY_GOLD)} gold`,
     open: delveOpen,
     discoveries: ['delve'],
   },

@@ -173,7 +173,7 @@ const TRIGGERS: readonly {
     { id: 'skills', fields: { AvailableSkillPoints: 1 } },
     { id: 'village', fields: { VillagePopulation: 1 } },
     { id: 'region2', fields: { HighestUnlockedRegion: 2 } },
-    { id: 'market', fields: { CurrentLevel: 10 }, also: ['forge'] },
+    { id: 'market', fields: { CurrentLevel: 10 }, also: ['forge', 'delve'] },
     { id: 'delve', fields: { Gold: 7000 } },
     // Modul: ForgeLevel 1 with TownHallLevel 0 gives a ceiling of 2, which the
     // forge has NOT reached - so this fires 'forge' alone and not 'town_hall'.
@@ -181,7 +181,7 @@ const TRIGGERS: readonly {
     { id: 'town_hall', fields: { InnLevel: 2 } },
     { id: 'guild', fields: {}, hasGuild: true },
     // Owner 2026-10-14: the Grounds AND a rebirth in sight - the level also opens the market and forge.
-    { id: 'breeding', fields: { BreedingLevel: 1, CurrentLevel: 40 }, also: ['market', 'forge'] },
+    { id: 'breeding', fields: { BreedingLevel: 1, CurrentLevel: 40 }, also: ['market', 'forge', 'delve'] },
     { id: 'first_child', fields: { ActiveChildMaturationMs: 1 } },
     { id: 'world_boss', fields: { WorldBossEventState: 1 } },
     { id: 'deeds', fields: { AchievementTierTotal: 1 } },

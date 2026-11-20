@@ -35,6 +35,27 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.108.0',
+    date: '2026-11-21',
+    headline: 'The quest line catches up with the game.',
+    sections: [
+      {
+        title: 'Quest line',
+        items: [
+          'Four new steps: finish a daily mission, fight in a dungeon, bind a build to an activity, and descend into Nav.',
+          'Each new step pays the usual quest reward, and a step you have already done ticks itself off.',
+          'The "Show me" ring now finds the Chronicle bubble, the dungeon Enter button, the Builds panel and the Nav descent button.',
+        ],
+      },
+      {
+        title: 'The Delve',
+        items: [
+          'The Delve opens at level 5 as well as with the first entry fee in hand, because the first run of every day is free.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.107.0',
     date: '2026-11-20',
     headline: 'The Forge rings true.',

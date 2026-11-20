@@ -141,7 +141,7 @@ namespace FolkIdle.Server.Tests
 
             // The read side. Its first edit was lost to a hook-blocked command and
             // everything above still passed - only exercise.mjs noticed.
-            string router = Read("Network", "NetworkBroadcastSystem.cs");
+            string router = PartialClassSource.Read(Path.Combine(ServerRoot(), "Network"), "NetworkBroadcastSystem");
             Assert.Contains("requestPath == \"/api/v1/player/records\"", router);
             Assert.Contains("private async Task HandlePlayerRecords(", router);
         }

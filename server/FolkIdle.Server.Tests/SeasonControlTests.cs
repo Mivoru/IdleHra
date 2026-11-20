@@ -82,7 +82,7 @@ namespace FolkIdle.Server.Tests
             Assert.Matches(new Regex(@"ResetPlayersAsync\(\s*FolkIdleDbContext db,\s*long onlyPlayerId"), engine);
             Assert.Matches(new Regex(@"AwardLegacyShardsAsync\(\s*FolkIdleDbContext db,\s*int eraId,\s*long onlyPlayerId"), engine);
 
-            string network = File.ReadAllText(Path.Combine(ServerRoot(), "Network", "NetworkBroadcastSystem.cs"));
+            string network = PartialClassSource.Read(Path.Combine(ServerRoot(), "Network"), "NetworkBroadcastSystem");
             Assert.DoesNotContain("\"/api/v1/admin/season", network);
         }
 

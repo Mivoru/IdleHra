@@ -40,8 +40,8 @@ describe('the quest line targets', () => {
     targets: [...m[2].matchAll(/"([^"]+)"/g)].map((t) => t[1]),
   }));
 
-  it('finds the thirteen steps in the registry', () => {
-    expect(steps).toHaveLength(13);
+  it('finds the seventeen steps in the registry', () => {
+    expect(steps).toHaveLength(17);
     for (const step of steps) expect(step.targets.length).toBeGreaterThan(0);
   });
 
@@ -57,7 +57,9 @@ describe('the quest line targets', () => {
   it('points every step at a screen the app can open', () => {
     // 'inheritance' and 'ancestors' are tab-only keys App.svelte opens through
     // requestScreen (TAB_ONLY_KEYS), so they are not in SCREEN_KEYS.
-    const known = new Set<string>([...SCREEN_KEYS, 'inheritance', 'ancestors']);
+    // 'nav' is a menu entry Game.svelte shows only where the server runs Nav,
+    // so it is not in SCREEN_KEYS either.
+    const known = new Set<string>([...SCREEN_KEYS, 'inheritance', 'ancestors', 'nav']);
     for (const step of steps) {
       expect(known.has(step.screen), `${step.constant} -> ${step.screen}`).toBe(true);
     }

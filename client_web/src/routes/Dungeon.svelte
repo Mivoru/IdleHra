@@ -247,6 +247,7 @@
           <button
             class="primary enter"
             data-testid="dungeon-enter"
+            data-guide="dungeon-enter"
             disabled={running || dungeon.Tickets <= 0 || stage.LockedReason !== ''}
             onclick={() => enter()}
           ><img class="btn-ticket" src={TICKET_ICON[dungeon.Key]} alt="" width="20" height="20" />{running ? 'Entering...' : dungeon.Tickets > 0 ? `Enter stage ${stage.Stage} (1 ticket)` : 'No tickets until midnight UTC'}</button>

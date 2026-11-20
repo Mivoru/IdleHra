@@ -52,7 +52,11 @@ $server = Start-Job -ScriptBlock {
     $env:FOLKIDLE_DB_CONN = 'Host=localhost;Database=folkidle_bots;Username=postgres;Password=postgres'
     $env:FOLKIDLE_DEV_TOOLS = '1'
     $env:FOLKIDLE_TICK_SPEED = "$speed"
-    $env:FOLKIDLE_BOSS_MINIGAME = 'wheel'   # as production
+    # Modul: production's flags (ops/oracle/.env, read 2026-11-20): the duel,
+    # Nav and the Deep. A run without them measured a game nobody plays.
+    $env:FOLKIDLE_BOSS_MINIGAME = 'duel'
+    $env:FOLKIDLE_NAV = 'on'
+    $env:FOLKIDLE_DELVE_DEEP = 'on'
     $env:FOLKIDLE_OFFLINE_SIM = "$offlineSim"
     dotnet run --no-build -c Release --project server/FolkIdle.Server/FolkIdle.Server.csproj *> "$root\bot-runs\server.log"
 } -ArgumentList $repo, $Speed, $OfflineSim

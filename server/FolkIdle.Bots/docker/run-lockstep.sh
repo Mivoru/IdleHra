@@ -11,7 +11,7 @@ set -e
 DB="$1"; MIX="$2"; HOURS="$3"; OUT="$4"; SCALE="${5:-1}"; MODE="${6:-lockstep}"
 export FOLKIDLE_DB_CONN="Host=folk-idle-db;Database=$DB;Username=postgres;Password=postgres"
 export REDIS_CONNECTION="folk-idle-redis:6379"
-export FOLKIDLE_DEV_TOOLS=1 FOLKIDLE_BOSS_MINIGAME=wheel FOLKIDLE_OFFLINE_SIM=1
+export FOLKIDLE_DEV_TOOLS=1 FOLKIDLE_BOSS_MINIGAME=duel FOLKIDLE_NAV=on FOLKIDLE_DELVE_DEEP=on FOLKIDLE_OFFLINE_SIM=1
 mkdir -p "$OUT"
 cd /work/server
 dotnet FolkIdle.Server.dll --migrate > "$OUT/migrate.log" 2>&1

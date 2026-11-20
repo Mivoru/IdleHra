@@ -419,6 +419,7 @@ namespace FolkIdle.Bots
             await BuildChoresAsync(token);
             await EconomyChoresAsync(token);
             await EventChoresAsync(token);
+            await DailyChoresAsync(token);
             await LineageChoresAsync(token);
         }
 
