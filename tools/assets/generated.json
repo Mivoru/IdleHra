@@ -5819,6 +5819,312 @@
       "credits": 0,
       "seconds": 3,
       "at": "2026-11-20T14:19:37.007Z"
+    },
+    {
+      "id": "mon_gray_direwolf_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same grey direwolf - same head, fur, spiked bone ridge, snarling jaws and amber eyes - but as its FULL BODY: a huge shaggy wolf standing on all four legs in three-quarter view, head lowered and snarling, tail behind it. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_gray_direwolf_v1.jpg",
+      "bytes": 603615,
+      "usage": {
+        "promptTokenCount": 440,
+        "candidatesTokenCount": 1455,
+        "totalTokenCount": 1895,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 182
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:30:39.983Z"
+    },
+    {
+      "id": "mon_gray_direwolf_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same grey direwolf - same head, fur, spiked bone ridge, snarling jaws and amber eyes - but as its FULL BODY: a huge shaggy wolf standing on all four legs in three-quarter view, head lowered and snarling, tail behind it. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_gray_direwolf_v2.jpg",
+      "bytes": 630327,
+      "usage": {
+        "promptTokenCount": 440,
+        "candidatesTokenCount": 1495,
+        "totalTokenCount": 1935,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 182
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:30:48.586Z"
+    },
+    {
+      "id": "mon_mountain_bear_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same mountain bear - same moss-grown dark fur, bark-like shaggy coat, roaring face - but as its FULL BODY: a massive bear standing on all four legs in three-quarter view, roaring, moss and lichen growing over its back and shoulders. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_mountain_bear_v1.jpg",
+      "bytes": 704227,
+      "usage": {
+        "promptTokenCount": 440,
+        "candidatesTokenCount": 1494,
+        "totalTokenCount": 1934,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 182
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 10,
+      "at": "2026-11-20T21:30:58.175Z"
+    },
+    {
+      "id": "mon_mountain_bear_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same mountain bear - same moss-grown dark fur, bark-like shaggy coat, roaring face - but as its FULL BODY: a massive bear standing on all four legs in three-quarter view, roaring, moss and lichen growing over its back and shoulders. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_mountain_bear_v2.jpg",
+      "bytes": 631411,
+      "usage": {
+        "promptTokenCount": 440,
+        "candidatesTokenCount": 1530,
+        "totalTokenCount": 1970,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 182
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 8,
+      "at": "2026-11-20T21:31:06.457Z"
+    },
+    {
+      "id": "mon_forest_dryad_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same forest dryad - same hooded bark face, mossy green and autumn-leaf beard, glowing eyes - but as its FULL FIGURE: a tall gaunt tree-spirit standing on root-like legs, long branch arms with twig fingers, leaves and moss trailing from its body. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_forest_dryad_v1.jpg",
+      "bytes": 567284,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1606,
+        "totalTokenCount": 2049,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:31:15.363Z"
+    },
+    {
+      "id": "mon_forest_dryad_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same forest dryad - same hooded bark face, mossy green and autumn-leaf beard, glowing eyes - but as its FULL FIGURE: a tall gaunt tree-spirit standing on root-like legs, long branch arms with twig fingers, leaves and moss trailing from its body. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure magenta (#FF00FF) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_forest_dryad_v2.jpg",
+      "bytes": 514624,
+      "usage": {
+        "promptTokenCount": 443,
+        "candidatesTokenCount": 1506,
+        "totalTokenCount": 1949,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 185
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:31:24.175Z"
+    },
+    {
+      "id": "mon_alpha_wolf_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same black alpha wolf crouched on the snowy rock with the bone in its collar - same pose, fur, eyes and lighting - but zoom the camera out so the WHOLE rock it stands on is visible, ending in a natural irregular rocky bottom edge, not a straight cut. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_alpha_wolf_v1.jpg",
+      "bytes": 636120,
+      "usage": {
+        "promptTokenCount": 447,
+        "candidatesTokenCount": 1458,
+        "totalTokenCount": 1905,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 189
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:31:33.168Z"
+    },
+    {
+      "id": "mon_alpha_wolf_v2",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Edit this image. Keep exactly the same black alpha wolf crouched on the snowy rock with the bone in its collar - same pose, fur, eyes and lighting - but zoom the camera out so the WHOLE rock it stands on is visible, ending in a natural irregular rocky bottom edge, not a straight cut. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_alpha_wolf_v2.jpg",
+      "bytes": 648401,
+      "usage": {
+        "promptTokenCount": 447,
+        "candidatesTokenCount": 1486,
+        "totalTokenCount": 1933,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 189
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:31:42.584Z"
+    },
+    {
+      "id": "mon_malakor_v1",
+      "kind": "image",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "prompt": "Redraw this same dark lord Malakor - same skeletal armoured warlock, purple crystal staff, violet magic flame, pile of skulls and bones at his feet - as a LARGE square boss portrait: the figure standing tall and filling most of the square frame from head to the bone pile, staff raised, violet magic swirling around his hand. The whole creature fits inside the frame with a clear empty margin on every side - nothing is cut off by the edge of the image. Keep EXACTLY the art style of the reference: bold black ink outlines, hand-inked comic illustration with crisp cel shading, the same palette, line weight and level of detail, so it sits in the same set as the reference. No text, no watermark, no border, no ground shadow. Background: one perfectly flat solid pure green (#00FF00) colour filling the whole image, no gradient, no floor, no shadow, no glow spilling onto the background.",
+      "file": "tools/assets/staging/mon_malakor_v1.jpg",
+      "bytes": 830042,
+      "usage": {
+        "promptTokenCount": 451,
+        "candidatesTokenCount": 1545,
+        "totalTokenCount": 1996,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 193
+          },
+          {
+            "modality": "IMAGE",
+            "tokenCount": 258
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1120
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "estimatedUsd": 0.067,
+      "seconds": 9,
+      "at": "2026-11-20T21:31:51.924Z"
     }
   ]
 }

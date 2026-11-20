@@ -1,5 +1,32 @@
 # Art backlog: items that still render as two initials
 
+## Monster art (2026-11-20)
+
+The 25 region monsters were audited side by side. Five were redrawn with
+Gemini from the old art as a style reference (`tools/assets/gemini.json`,
+ids `mon_*`): Gray Direwolf and Mountain Bear were heads cut off at the neck,
+Forest Dryad a bust, Alpha Wolf's rock ended in a straight cut at the image
+edge, and Malakor - the last boss - was a wide strip with a small figure in
+it. Picked variants: direwolf v2, bear v1, dryad v1, alpha wolf v2, malakor v1.
+The new masters are the keyed PNGs; the web copies went through the same
+`trim`, `downscale` and `polish` as every other sprite.
+
+**Still open** (the run hit the Gemini project's monthly spend cap; the
+prompts are already in the manifest):
+
+- `mon_rock_giant` - Rock Giant (region 4) is nearly the same drawing as
+  Frost Titan. Needs its own design: a granite giant, not ice.
+- `mon_ember_elemental` - Ember Elemental (region 3) is a recoloured
+  Sandstone Golem (a gold crystal golem). Needs to be fire.
+
+Run with `node tools/assets/gemini.mjs --only mon_rock_giant,mon_ember_elemental --variants 2`
+once the cap is raised, then key out, review on both floors and process as
+above.
+
+---
+
+# Items that still render as two initials
+
 Written 2026-09-24 for task 35c (`docs/TASK_BOARD.md` §35). The source list
 is `client_web/src/lib/ui/sprites.missing.txt`, which `generate-sprites.mjs`
 regenerates. After the task-33 deletions (#26) and the ten-ore follow-up
