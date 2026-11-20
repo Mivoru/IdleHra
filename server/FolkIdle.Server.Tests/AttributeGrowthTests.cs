@@ -157,7 +157,7 @@ namespace FolkIdle.Server.Tests
                 dir!.FullName, "server", "FolkIdle.Server",
                 relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
             Assert.True(System.IO.File.Exists(full), $"{full} not found");
-            return System.IO.File.ReadAllText(full);
+            return PartialClassSource.ReadFile(full);
         }
 
     }

@@ -36,7 +36,7 @@ namespace FolkIdle.Server.Tests
                 dir = dir.Parent;
             }
             Assert.NotNull(dir);
-            return File.ReadAllText(Path.Combine(dir!.FullName, "FolkIdle.Server", relativePath));
+            return PartialClassSource.ReadFile(Path.Combine(dir!.FullName, "FolkIdle.Server", relativePath));
         }
 
         [Fact]

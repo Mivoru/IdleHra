@@ -80,7 +80,7 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void NeitherAgingPathCarriesItsOwnThresholds()
         {
-            string live = File.ReadAllText(LocateSource("Domain", "Combat", "SimulationEngine.cs"));
+            string live = PartialClassSource.ReadFile(LocateSource("Domain", "Combat", "SimulationEngine.cs"));
             string offline = File.ReadAllText(LocateSource("Engine", "OfflineSimulationEngine.cs"));
 
             // The PHASE BOUNDARIES only, old and new. A bare 36000 is not on

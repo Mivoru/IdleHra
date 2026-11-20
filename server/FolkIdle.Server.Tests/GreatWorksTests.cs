@@ -287,7 +287,7 @@ namespace FolkIdle.Server.Tests
                 ("Engine", "OfflineSimulationEngine.cs"), ("Domain/Combat", "SimulationEngine.cs"), ("Engine", "OfflineCapNotifier.cs"),
             })
             {
-                string text = File.ReadAllText(FindSource(folder, file));
+                string text = PartialClassSource.ReadFile(FindSource(folder, file));
                 Assert.Contains("EffectiveOfflineCapSeconds(", text, StringComparison.Ordinal);
                 Assert.DoesNotContain("GetVodnikExtendedOfflineSeconds(payload", text, StringComparison.Ordinal);
             }

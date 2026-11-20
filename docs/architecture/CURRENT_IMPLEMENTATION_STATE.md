@@ -113,6 +113,20 @@ the right `*TickCoordinator`, and an entry in `BuildCommandHandlers`. REST
 features that the tick never reads (the Delve, the Deep, the shield wheel's
 practice) bypass all of this on purpose. See their own sections.
 
+## 2.2 SimulationEngine is one partial class in many files (2026-11-20)
+
+`SimulationEngine.cs` was 7,045 lines. The per-system methods moved out
+unchanged into `SimulationEngine.CombatTick.cs` (the swing loop, death,
+kills, ration), `.CombatMath.cs` (crit, block, hit chance, the attack and
+health formulas), `.GatheringCrafting.cs`, `.Slots.cs` (the slot register
+swap and sub-ticks), `.Players.cs` (the active-player registry), `.AccountTick.cs`
+(village, ageing, the account pass), `.BattlePass.cs`, `.Lockstep.cs` and
+`.Broadcast.cs`. `EngineLoop`, `ProcessTick`, the command handlers and the
+fields stay in `SimulationEngine.cs`, about 2,900 lines. The move was checked
+the same way as the gateway's (7a). **Tests that read source go through
+`PartialClassSource.ReadFile`**, which reads the whole class when partial
+files sit beside the named file.
+
 ## 3. Persistence and Migration State
 
 Postgres via EF Core (Npgsql), `IsolationLevel.Serializable` transactions
