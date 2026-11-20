@@ -703,7 +703,7 @@
   }
 
   .gate-cost.free strong {
-    color: var(--ug-good, #6fbf73);
+    color: var(--ug-good);
   }
 
   .gate-actions {
