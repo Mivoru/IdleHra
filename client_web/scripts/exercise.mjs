@@ -4662,10 +4662,10 @@ await go('The Delve');
   const view = await apiGet('/api/v1/quests');
   const steps = view?.Steps ?? [];
   record(
-    "the server lists the quest line: thirteen steps, in the owner's order, each with a screen and a target",
-    steps.length === 13
+    "the server lists the quest line: seventeen steps, in the owner's order, each with a screen and a target",
+    steps.length === 17
       && steps.every((st, i) => st.Order === i + 1 && st.Screen && st.GuideTargets.length > 0 && st.Title)
-      && steps.map((st) => st.Id).join(',') === 'clear_chest,auto_sell,fuse,reroll,village,potion,market,inheritance,delve,world_boss,ascension,breed,rebirth',
+      && steps.map((st) => st.Id).join(',') === 'clear_chest,auto_sell,missions,fuse,reroll,village,potion,market,inheritance,delve,world_boss,ascension,dungeon,builds,breed,rebirth,nav',
     steps.map((st) => `${st.Id}:${st.State}`).join(' '),
   );
   record(
@@ -4726,7 +4726,7 @@ await go('The Delve');
     const toggle = page.getByTestId('quest-all-toggle');
     if ((await toggle.count()) > 0) await toggle.click();
     const rows = await page.locator('[data-testid^="quest-step-"]').count();
-    record('the quest panel lists every step, skipped ones included', rows === 13, `${rows} rows`);
+    record('the quest panel lists every step, skipped ones included', rows === steps.length && rows === 17, `${rows} rows`);
 
     // "Show me" goes to the screen and lights the control - when a step is open.
     const open = steps.find((st) => st.State === 'available');
@@ -5203,7 +5203,10 @@ await go('Character');
     {
       const panel = page.getByTestId('build-presets');
       await panel.waitFor({ timeout: 10000 }).catch(() => {});
-      const slots = panel.locator('article.slot');
+      // Modul: the card is article.build since the 2026-11-19 screenshot audit
+      // (697b5390); article.slot matched nothing, so this step reported "no
+      // empty slot" on every run from then on.
+      const slots = panel.locator('article.build');
       const emptyIndex = await slots
         .evaluateAll((els) => els.findIndex((el) => el.classList.contains('empty')))
         .catch(() => -1);
@@ -7563,7 +7566,7 @@ if (want('new-player')) {
       const text = (await panel.count()) > 0 ? ((await panel.innerText()).replace(/\s+/g, ' ').trim()) : '';
       record(
         'a new account sees the quest line on Home, waiting behind the first steps',
-        /Quest line/.test(text) && /0 of 13 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
+        /Quest line/.test(text) && /0 of 17 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
         text.slice(0, 90) || 'no quest panel',
       );
       const token = await fresh.evaluate(() => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'));

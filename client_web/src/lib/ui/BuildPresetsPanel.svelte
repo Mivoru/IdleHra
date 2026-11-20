@@ -176,7 +176,7 @@
   }
 </script>
 
-<section class="presets" data-testid="build-presets">
+<section class="presets" data-testid="build-presets" data-guide="build-presets">
   <header>
     <h3>Builds</h3>
     <p class="dim tiny">

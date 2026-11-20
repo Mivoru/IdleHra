@@ -70,6 +70,7 @@
     aria-label={claimable > 0 ? `Chronicle, ${claimable} to claim` : `Chronicle, level ${level}`}
     title="Chronicle and daily missions"
     data-testid={placement === 'header' ? 'chronicle-head' : 'chronicle-bubble'}
+    data-guide="chronicle"
   >
     <span class="glyph" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="26" height="26">

@@ -46,7 +46,7 @@ export function nearestScreenUnlock(level: number, locked: (screen: string) => s
   const you = Number.isFinite(level) && level > 0 ? ` - you are level ${level}` : '';
   if (locked('forge')) return `The Forge opens at level ${FORGE_OPEN_LEVEL}${you}.`;
   if (locked('market')) return `The Market and guilds open at level ${MARKET_OPEN_LEVEL}${you}.`;
-  if (locked('delve')) return `The Delve opens once you hold ${formatNumber(DELVE_FIRST_ENTRY_GOLD)} gold.`;
+  if (locked('delve')) return `The Delve opens at level ${FORGE_OPEN_LEVEL}, or once you hold ${formatNumber(DELVE_FIRST_ENTRY_GOLD)} gold.`;
   return null;
 }
 

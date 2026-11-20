@@ -53,6 +53,23 @@ namespace FolkIdle.Server.Domain.Progression
         /// the engine's latch makes it a fact the first time it is seen.
         /// </summary>
         public bool PotionRunningOrShelved { get; init; }
+
+        // Modul: the five facts below were added 2026-11-20, when the quest
+        // line had fallen six weeks behind the game: daily missions, the
+        // dungeons, situational builds and Nav all shipped after the last step
+        // was written, and no tier of the tutorial named any of them.
+
+        /// <summary>A daily mission or a Chronicle pass level has ever been claimed.</summary>
+        public bool MissionOrPassClaimed { get; init; }
+        /// <summary>DungeonEngine.IsOpen: the region-2 boss is beaten.</summary>
+        public bool DungeonsOpen { get; init; }
+        /// <summary>A dungeon stage was won, or a dungeon fight was counted by the missions.</summary>
+        public bool DungeonFought { get; init; }
+        /// <summary>A saved build is bound to at least one activity (BuildPreset.BoundActivities).</summary>
+        public bool BuildBoundToActivity { get; init; }
+        /// <summary>NavRules.Enabled() and NavRules.IsOpen: Malakor is beaten on a server running Nav.</summary>
+        public bool NavOpen { get; init; }
+        public int NavRunsTotal { get; init; }
     }
 
     public readonly record struct QuestReward(int Region, long Gold, string MaterialLog, string MaterialOre, int MaterialQuantity);
@@ -74,7 +91,7 @@ namespace FolkIdle.Server.Domain.Progression
         Func<QuestFacts, bool> Done);
 
     /// <summary>
-    /// The owner's quest line (2026-10-07): ten acts a player is MADE to try
+    /// The owner's quest line (2026-10-07, caught up 2026-11-20): the acts a player is MADE to try
     /// once, because a friend played for weeks without learning that fusion or
     /// affix reroll existed. Static definitions only; QuestLineEngine decides
     /// state and pays.
@@ -121,6 +138,10 @@ namespace FolkIdle.Server.Domain.Progression
         public const string Ascension = "ascension";
         public const string Rebirth = "rebirth";
         public const string Potion = "potion";
+        public const string Missions = "missions";
+        public const string Dungeon = "dungeon";
+        public const string Builds = "builds";
+        public const string Nav = "nav";
         public const int PotionOpenLevel = 5;
 
         public const int ForgeOpenLevel = 5;
@@ -157,13 +178,23 @@ namespace FolkIdle.Server.Domain.Progression
                 ForgeOpen,
                 f => f.AutoSellRuleSet),
 
-            new(Fuse, 3, "Fuse an item",
+            // Modul: 2026-11-20. The Chronicle is a side bubble, not a menu
+            // screen, so the step points at Home and lights the bubble; the
+            // missions are the daily reason to come back, and a player who
+            // never opens the bubble never learns the pass exists.
+            new(Missions, 3, "Finish a daily mission",
+                "The Chronicle bubble at the side of the screen holds six daily missions. Each one pays Chronicle XP, and the Chronicle pass turns that XP into rewards over the season - claim them in the same window.",
+                "hub", new[] { "chronicle" }, $"Reach level {ForgeOpenLevel}",
+                ForgeOpen,
+                f => f.MissionOrPassClaimed),
+
+            new(Fuse, 4, "Fuse an item",
                 "The Forge fuses spare pieces of one rarity into one of the next rarity up. Fusing is how gear climbs past what drops.",
                 "forge", new[] { "forge-fuse" }, $"Reach level {ForgeOpenLevel}",
                 ForgeOpen,
                 f => f.FusionsCompleted > 0 || f.GoldSpentOnFusion > 0),
 
-            new(Reroll, 4, "Reroll an affix",
+            new(Reroll, 5, "Reroll an affix",
                 // 2026-10-11: the step now teaches the affix RARITY axis - a
                 // player stuck at boss 4 for days had rerolled without ever
                 // learning that the boss gates on Epic affixes.
@@ -174,7 +205,7 @@ namespace FolkIdle.Server.Domain.Progression
                 ForgeOpen,
                 f => f.RerollsPerformed > 0 || f.GoldSpentOnReroll > 0),
 
-            new(Village, 5, "Upgrade a village building",
+            new(Village, 6, "Upgrade a village building",
                 "Buildings produce materials and unlock whole systems while you are away. Start any upgrade; it finishes on its own.",
                 "village", new[] { "village-upgrade" }, $"Reach level {ForgeOpenLevel}",
                 ForgeOpen,
@@ -182,45 +213,68 @@ namespace FolkIdle.Server.Domain.Progression
 
             // Herbs and potions (step 5, 2026-10-31): the herbs a newcomer picks
             // have a use, and the shelf is a screen nobody finds alone.
-            new(Potion, 6, "Brew and drink a potion",
+            new(Potion, 7, "Brew and drink a potion",
                 "Pick herbs on the Gathering screen, brew a potion at Alchemy in Crafting, then put it on a shelf on Auto-Eat and drink it. A potion runs for an hour, online and offline.",
                 "larder", new[] { "potion-drink", "potion-stock" }, $"Reach level {PotionOpenLevel}",
                 f => f.Level >= PotionOpenLevel,
                 f => f.PotionRunningOrShelved),
 
-            new(Market, 7, "List an item on the market",
+            new(Market, 8, "List an item on the market",
                 "The market is player to player. List a piece you will not wear instead of salvaging it - the mailbox pays you when it sells. Trading needs a guild.",
                 "market", new[] { "market-list" }, $"Reach level {MarketOpenLevel} and join a guild",
                 f => f.Level >= MarketOpenLevel && f.InGuild,
                 f => f.HasOpenOrSoldListing),
 
-            new(Inheritance, 8, "Buy an inheritance level",
+            new(Inheritance, 9, "Buy an inheritance level",
                 "Inheritance is permanent: diamonds buy a bonus that survives every rebirth. Diamonds come from the Delve.",
                 "inheritance", new[] { "inheritance-buy" }, "Hold enough diamonds for the cheapest level",
                 f => f.Diamonds >= CheapestInheritanceLevel,
                 f => f.InheritanceLevelsBought > 0),
 
-            new(Delve, 9, "Enter the Delve",
-                "The Delve turns gold into diamonds, if your nerve holds. Pay the entry fee, then pick a door on each floor.",
-                "delve", new[] { "delve-start" }, "Hold one entry fee in gold",
-                f => f.Gold >= DelveRegistry.EntryFeeForRegion(f.HighestUnlockedRegion),
+            new(Delve, 10, "Enter the Delve",
+                "The Delve turns gold into diamonds, if your nerve holds. The first run of every day is free; after that a run costs an entry fee. Pick a door on each floor, and bank what you have before your lanterns run out.",
+                "delve", new[] { "delve-start" }, $"Reach level {ForgeOpenLevel} or hold one entry fee in gold",
+                // Modul: 2026-11-20 - the day's first run is free (DelveEngine
+                // .StartRunAsync), so holding the fee is no longer the only way
+                // in. Level 5 mirrors client unlocks.ts delveOpen.
+                f => ForgeOpen(f) || f.Gold >= DelveRegistry.EntryFeeForRegion(f.HighestUnlockedRegion),
                 f => f.GoldSpentOnDelve > 0 || f.DelveDeepestFloor > 0),
 
-            new(WorldBoss, 10, "Strike the world boss",
+            new(WorldBoss, 11, "Strike the world boss",
                 "One strike a day on the shared boss. Everybody's damage is added up, and the board pays out weekly by damage.",
                 "worldboss", new[] { "worldboss-strike" }, $"Reach level {WorldBossOpenLevel}",
                 f => f.Level >= WorldBossOpenLevel,
                 f => f.HasWorldBossAttemptRow),
 
-            new(Ascension, 11, "Clear a boss Ascension step",
+            new(Ascension, 12, "Clear a boss Ascension step",
                 "Every region boss can be fought again, stronger, at ten steps. Each first clear pays a title and a loot chest; step 10 adds +2% damage against that region for good.",
                 "combat", new[] { "ascension-start", "ascension" }, "Defeat the first region's boss",
                 f => f.HighestUnlockedRegion >= 2,
                 f => f.HighestAscensionStep >= 1),
 
+            // Modul: 2026-11-20. DungeonEngine.IsOpen is the gate the Dungeon
+            // screen itself shows, so the step can never point at a closed
+            // gate. A lost run leaves BestStage at 0, which is why the mission
+            // counter for a dungeon fight also counts as done.
+            new(Dungeon, 13, "Fight in a dungeon",
+                "Three dungeon gates open with the second region's boss. Each gate takes a ticket - two come back every day - and drops gear of its own school and set. Clear a stage once, then Sweep it for the loot without fighting.",
+                "dungeon", new[] { "dungeon-enter" }, "Defeat the second region's boss",
+                f => f.DungeonsOpen,
+                f => f.DungeonFought),
+
+            // Modul: skill tree v3 (2026-11-14) made builds situational - the
+            // world boss, the dungeons and grinding each fight with the build
+            // bound to them. A player who never binds one fights everything
+            // with a single tree and never sees why the keystones differ.
+            new(Builds, 14, "Bind a build to an activity",
+                "Under Builds on the Character screen, save your skill tree and attributes into a slot and tap the activities it should fight: world boss, dungeon or grinding. The game switches to it on its own, and switching costs nothing.",
+                "character", new[] { "build-presets" }, "Defeat the second region's boss",
+                f => f.DungeonsOpen,
+                f => f.BuildBoundToActivity),
+
             // Second to last on purpose: the child is what the rebirth after it
             // carries. Open again after a rebirth (the level is 1 by then).
-            new(Breed, 12, "Breed an heir",
+            new(Breed, 15, "Breed an heir",
                 "A rebirth takes your level and gear - your bloodline is what stays. Marry a villager on the Breeding screen: " +
                 "the child inherits the four aptitudes, a bonus to damage, gathering, health and luck that grows over the rebirths. " +
                 "Field the child from the Hall of Ancestors to raise it, and mark it Keep so it carries.",
@@ -228,11 +282,19 @@ namespace FolkIdle.Server.Domain.Progression
                 f => f.BreedingGroundsLevel >= 1 && (f.Level >= BloodlineNearLevel || f.RebirthCount > 0),
                 f => f.GoldSpentOnBreeding > 0),
 
-            new(Rebirth, 13, "Take a Rebirth",
+            new(Rebirth, 16, "Take a Rebirth",
                 "A rebirth starts a new life at level 1 but keeps what is permanent. One taken from level 50 or above also adds Renown.",
                 "rebirth", new[] { "rebirth-start", "rebirth" }, $"Reach level {RebirthRules.RenownLevel}",
                 f => f.Level >= RebirthRules.RenownLevel,
                 f => f.RebirthCount > 0),
+
+            // Modul: 2026-11-20. Nav opens with Malakor's fall and has no top;
+            // it is the endgame's last door, so it is the line's last step.
+            new(Nav, 17, "Descend into Nav",
+                "Below the World Tree's roots the depths never end. Each descent spends a charge - one returns every 20 minutes - and every guardian you beat pays Souls, which buy strength that works inside Nav only.",
+                "nav", new[] { "nav-descend" }, "Defeat Malakor, the last region's boss",
+                f => f.NavOpen,
+                f => f.NavRunsTotal > 0),
         };
 
         public static QuestStep? Find(string? id)
