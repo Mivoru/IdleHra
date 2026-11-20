@@ -10,14 +10,13 @@ By the end of 2026-10-29 every item is fixed and live, kept on purpose, or
 parked by the owner - its status table says which, and where. The sections
 above describe the code as of production 1.0.1310 (client 1.37.0).
 
-> **Not re-verified since 1.0.1310 (checked 2026-11-02).** Systems that change
-> numbers here have shipped since, and this document was not updated for them:
-> the War skill tree replaced the old tree (1.0.1352), the Hearth half added
-> gathering, craft and offline terms (client 1.41.0), the affix rework moved the
-> damage family and added Refine, `crushing_blow_pct` and `thorns_pct`
-> (2026-10-30), potions added armour and other shelf effects (1.0.1472), and the
-> diamond rework changed inheritance (1.0.1482). Read the owning file before you
-> trust a number below; `CharacterStatSheet` and its tests are the live answer.
+> **Numbers moved to a generated file (2026-11-20).** `STATS_TABLES.md` is
+> written by `StatsTablesGeneratorTests` from the registries: the monster
+> ladder, every skill node, affixes, pets, potions, inheritance, rebirth and Nav.
+> CI fails when it drifts. This file keeps the formulas and the reasons behind
+> them. Section 8 was rewritten and 10.3 updated on 2026-11-20. The rest was last
+> checked against 1.0.1310, so read the owning file before you trust a number
+> here. `CharacterStatSheet` and its tests are the live answer for one character.
 
 ---
 
@@ -529,46 +528,34 @@ Owners: `Engine/CombatDamageModel.cs`, `Domain/Combat/SimulationEngine.cs`.
 
 ## 8. Skill tree
 
-Owners: `Engine/SkillTreeRegistry.cs`, `Engine/SkillTreeEngine.cs`.
+Owners: `Engine/WarTreeRegistry.cs` (nodes, costs, keystones),
+`Engine/SkillTreeEngine.cs` (spend, respec), `Domain/Progression/SkillLoadoutEngine.cs`
+and `BuildPreset` (builds bound to activities). **Every node, its cost and its
+effect is listed in `STATS_TABLES.md` section 3, generated from the registry.**
+This section only explains the shape. Rewritten 2026-11-20; the 20-node,
+five-limb tree that stood here was replaced on 2026-10-30.
 
-### 8.1 Shape
-
-The tree has five limbs. Each limb has one **root**, a fork of two **boughs**
-(you may take **only one**) and one **crown**.
-
-| Ring | Max level | Cost | Unlock |
-|---|---|---|---|
-| Root | 10 | 1 point per level for levels 1-5, 2 points for 6-10 (15 total) | — |
-| Bough | 8 | 2 points per level (16 total) | Root at level 5. The other bough must be 0. |
-| Crown | 1 | 12 points | The chosen bough at level 5 |
-
-A full limb costs 15 + 16 + 12 = **43 points**. All five limbs cost **215**.
-
-### 8.2 The 20 nodes
-
-| Limb | Root (per level → max) | Bough A | Bough B | Crown |
-|---|---|---|---|---|
-| **Fortune** | Loot rarity: +1% loot luck → +10% | Plenty: +1.5% material stack size → +12% | Rarity: +1% rarity elevation → +8% | **Golden Fleece:** every 100th kill drops an item +2 tiers |
-| **Giantslayer** | World boss damage: +2% → +20% | First Blood: −4% of the first-clear boss HP penalty per level | Trophy Hunter: +2.5% boss gold → +20%, and bosses always drop a material | **Thunderer:** a free opening blow at 500% weapon damage against a boss |
-| **Precision** | Crit chance: +0.4 → +4 | Guile: +3% crit damage → +24% | Relentless: −1% attack interval → −8% | **Double Strike:** a 25% chance a crit lands twice |
-| **Cruelty** | Crit damage: +3% → +30% | Bloodthirst: +0.5% damage dealt as healing → +4% | Fortitude: +2% max HP and +2% armour → +16% each | **Last Stand:** once an hour, a killing blow leaves you at 1 HP |
-| **Insight** | XP: +0.4% → +4% | Craft: −2.5% craft time → −20% | Harvest: +2% gathering speed → +16% | **Scholar:** +25% offline rate |
-
-### 8.3 Where points come from
-
-| Source | Points |
-|---|---|
-| Each level | 1 |
-| Each Book of Deeds Seal (5 seals) | 2, kept forever and re-granted after a rebirth |
-| Each rebirth, up to 10 | 2 |
-
-At level 100 with all seals and 10 rebirths, that is about 99 + 10 + 20 =
-**129 points**, enough for three complete limbs. The tree is designed so you
-cannot buy all of it.
-
-**Respec:** all or nothing. One free respec per run, which a rebirth restores.
-Extra respecs are paid grants, and unused grants survive a rebirth. A rebirth
-wipes the whole tree.
+- **The War tree** has four columns: Fortune, Might, Precision and Guard. The
+  rows open when the tree holds 0, 4, 10, 16, 26, 34, 44 and 56 points
+  (`WarTreeRegistry.RowGates`). Rows 5-7 are the outer ring, built in skill
+  tree v3 step D (2026-11-14). It has four lanes: Hunter (grinding), Bossbreaker
+  (region bosses), Titan-slayer (the world boss) and Warden (survival).
+- **One keystone.** A character can hold one keystone at a time
+  (`WarTreeRegistry.HeldKeystone`). The outer ring's keystones are trades: each
+  one has a strength and a cost, applied in `WarEffects.ApplyKeystoneTrades`.
+- **Builds.** `BuildPreset` has 3 slots. Each slot holds attributes and tree
+  ranks, and can be bound to the world boss, the dungeons or grinding. The
+  game switches to the bound build for that activity, and switching is free.
+  The world boss strike prices the tree: `WorldBossTickCoordinator.TreeStrike`,
+  from 2026-11-16. `BuildSituationMatrixTests` asserts that each situation is
+  won by its own lane.
+- **Respec.** The first respec of a run is free. After that a respec costs
+  `points spent x level x 15` gold (`RespecGoldPrice`).
+- **Points.** You get 1 per level, 2 per rebirth (up to `RebirthRules.RewardedRebirths`,
+  10) and 2 per Book of Deeds Seal. There is no level cap, and the tree is built so
+  that nobody can fill it.
+- Some nodes are built but `Hidden` and not offered yet (Sunder, Momentum,
+  Lacerate at the time of writing). The table marks them.
 
 ---
 
@@ -637,6 +624,7 @@ from a Great Work), seals, codex, pets, legacy perks and paid respec grants.
 | Phoenix pet and title | at the 10th rebirth |
 | Bloodline ceiling | `20 + 30 × rebirths / 20`: 0 → 20, 5 → 27, 10 → 35, 15 → 42, 20 → 50 |
 | Free skill respec | restored |
+| Past 20 rebirths | Rebirth is unlimited since 2026-11-13. Past `BloodlineRebirths` (20) it pays Legacy Shards for the Ancestral Boons, and title milestones. It pays no power that multiplies by the count. |
 
 Renown adds to the same group as inheritance Damage and the guild Damage buff.
 
