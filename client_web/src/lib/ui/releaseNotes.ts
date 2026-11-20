@@ -35,6 +35,26 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.106.0',
+    date: '2026-11-20',
+    headline: 'The Delve pays more and asks for less clicking.',
+    sections: [
+      {
+        title: 'The Delve',
+        items: [
+          'Your first run each day is free.',
+          'Reaching the bottom (floor 8) for the first time each day pays a Gold loot chest and a ticket for each dungeon.',
+          "A new deepest floor of the week in the Deep (from floor 10) now also pays Souls for Nav: about one descent's worth.",
+          'Auto run: the game takes the best door you can see on each floor and walks out at the bottom, or sooner before it would risk your last lantern on a bad door. It never goes into the Deep for you.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: ['If Nav fails to load, the screen now says so and offers Try again, instead of saying Nav is closed.'],
+      },
+    ],
+  },
+  {
     version: '1.105.0',
     date: '2026-11-20',
     sections: [

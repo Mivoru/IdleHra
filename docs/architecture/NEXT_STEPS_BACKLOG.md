@@ -19,6 +19,29 @@ do next.
 
 ---
 
+# 2026-11-20 - the Delve's daily pull
+
+The owner noticed that two of the three players had almost stopped running
+the Delve: about 9 and 6 runs in 47 days, and one Deep run each. It paid only
+diamonds, which they had nothing to spend on, and each run is eight floors of
+clicking. The owner picked three changes:
+- **The day's first run is free.** `PlayerRecord.DelveFreeRunDayKey`. A free
+  run pays no consolation gold, because the consolation is a share of the fee.
+- **The day's first walk to the bottom** pays a Gold loot chest
+  (`LootChestSource.DelveBottom`) and one ticket per dungeon gate, up to
+  `BonusTicketCap`. Stored in `PlayerRecord.DelveBottomRewardDayKey`. It pays
+  once a day, so a cheap fee cannot farm chests.
+- **A new weekly-deepest Deep floor (10+)** also pays Nav Souls: one Circle-1
+  descent's worth at the player's own record
+  (`NavRules.SoulsForOneDescent`), and only if they have a Nav row.
+- **Auto run** (`POST /api/v1/delve/auto`, `DelveEngine.AutoRunAsync`). It
+  plays the ordinary Start, Door and Bank acts, choosing the best door the
+  view shows. A hidden door is valued at its average over the four
+  attributes. The run banks rather than ride the last lantern on a door below
+  55%. It never descends into the Deep.
+
+---
+
 # 2026-11-20 - the diamond ledger, and the diamonds it found missing
 
 `diamond_daily` (PlayerId, Day, Reason, Gained, Spent) is written by a

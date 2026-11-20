@@ -50,6 +50,7 @@
   import {
     fetchDelve,
     startDelve,
+    autoDelve,
     chooseDelveDoor,
     bankDelve,
     descendDeep,
@@ -209,6 +210,18 @@
           if (outcome.GoldReturned > 0) parts.push(`${formatNumber(outcome.GoldReturned)} gold`);
           notice = `You climb out with ${parts.join(' and ')}.`;
         }
+        // The daily pull (2026-11-20): said on the act that paid it.
+        const extras: string[] = [];
+        if ((outcome.BottomChestGranted ?? 0) > 0) {
+          extras.push(
+            `Today's first time at the bottom: a Gold chest` +
+              ((outcome.BottomTicketsGranted ?? 0) > 0 ? ` and ${outcome.BottomTicketsGranted} dungeon tickets` : '') +
+              '.',
+          );
+        }
+        if ((outcome.SoulsGranted ?? 0) > 0) extras.push(`${formatNumber(outcome.SoulsGranted ?? 0)} Souls for Nav.`);
+        if (extras.length) notice = `${notice} ${extras.join(' ')}`.trim();
+        autoLog = outcome.AutoSteps ?? [];
       } else {
         await load();
       }
@@ -223,6 +236,7 @@
   }
 
   const lightLantern = () => buyDeepLantern();
+  let autoLog = $state<string[]>([]);
   const lanternOut = $derived(!!view?.IsDeep && view.ChargesRemaining === 0 && !view.AtLanding);
 
   const canAfford = $derived(!!view && view.CurrentGold >= view.EntryFeeForNextRun);
@@ -327,11 +341,29 @@
       <section class="gate">
         <div class="gate-head">
           <h2>The gate</h2>
-          <span class="gate-cost">A run costs <strong><Money amount={view.EntryFeeForNextRun} /></strong></span>
+          {#if view.FreeRunToday}
+            <span class="gate-cost free" data-testid="delve-free-run">Today's first run is <strong>free</strong></span>
+          {:else}
+            <span class="gate-cost">A run costs <strong><Money amount={view.EntryFeeForNextRun} /></strong></span>
+          {/if}
         </div>
-        <button class="primary" data-guide="delve-start" disabled={busy || !canAfford} onclick={() => act(startDelve)}>
-          {canAfford ? 'Pay and descend' : 'Not enough gold'}
-        </button>
+        <div class="gate-actions">
+          <button class="primary" data-guide="delve-start" disabled={busy || !canAfford} onclick={() => act(startDelve)}>
+            {view.FreeRunToday ? 'Descend for free' : canAfford ? 'Pay and descend' : 'Not enough gold'}
+          </button>
+          <button
+            class="secondary"
+            data-testid="delve-auto"
+            disabled={busy || !canAfford}
+            title="The server picks the best door you can see on each floor and walks out at the bottom - or sooner, before it would risk the last lantern on a bad door."
+            onclick={() => act(autoDelve)}
+          >
+            Auto run
+          </button>
+        </div>
+        {#if view.BottomRewardToday}
+          <p class="muted small" data-testid="delve-bottom-reward">Reach the bottom today for a Gold chest and a ticket for each dungeon.</p>
+        {/if}
         <p class="muted small">
           You have <Money amount={view.CurrentGold} />. The price is about forty minutes of what you
           earn in region {view.HighestRegionReached}. Eight floors, three doors on each, and each door
@@ -462,6 +494,14 @@
 
     {#if notice}
       <p class="notice" role="status">{notice}</p>
+    {/if}
+    {#if autoLog.length}
+      <details class="auto-log" data-testid="delve-auto-log" open>
+        <summary>What the auto run did</summary>
+        <ol>
+          {#each autoLog as line, i (i)}<li>{line}</li>{/each}
+        </ol>
+      </details>
     {/if}
 
     <!-- The week, in one place: the diamond ceiling and when it lifts. The
@@ -659,6 +699,23 @@
   }
 
   .gate-cost {
+    color: var(--ug-text-soft);
+  }
+
+  .gate-cost.free strong {
+    color: var(--ug-good);
+  }
+
+  .gate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .auto-log ol {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+    font-size: 0.85rem;
     color: var(--ug-text-soft);
   }
 

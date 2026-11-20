@@ -4381,8 +4381,17 @@ namespace FolkIdle.Server.Network
                 // every action is safe to rerun (nothing leaves the database
                 // before its commit), so it is retried (audit 2026-11-02).
                 FolkIdle.Server.Domain.Economy.DelveActionOutcome outcome;
+                FolkIdle.Server.Domain.Economy.DelveAutoOutcome? auto = null;
 
-                if (requestPath == "/api/v1/delve/start")
+                if (requestPath == "/api/v1/delve/auto")
+                {
+                    // Not retried as a whole: every step inside is its own
+                    // transaction, and a rerun would play a second run.
+                    auto = await engine.AutoRunAsync(playerId);
+                    outcome = auto.Final;
+                    if (auto.StartedRun) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DelveRun);
+                }
+                else if (requestPath == "/api/v1/delve/start")
                 {
                     outcome = await Domain.Shared.TransientDbConflict.RetryAsync(() => engine.StartRunAsync(playerId));
                     if (outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok) FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DelveRun);
@@ -4481,7 +4490,8 @@ namespace FolkIdle.Server.Network
                             || requestPath == "/api/v1/delve/deep/descend"
                             || requestPath == "/api/v1/delve/deep/lantern"))
                     || (outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.FloorCleared
-                        && outcome.DiamondsGranted > 0);
+                        && outcome.DiamondsGranted > 0)
+                    || (auto != null && (auto.StartedRun || auto.Banked));
 
                 if (changedBalances)
                 {
@@ -4500,6 +4510,11 @@ namespace FolkIdle.Server.Network
                     outcome.DiamondsGranted,
                     outcome.GoldReturned,
                     outcome.GoldCharged,
+                    BottomChestGranted = auto?.BottomChestGranted ?? outcome.BottomChestGranted,
+                    BottomTicketsGranted = auto?.BottomTicketsGranted ?? outcome.BottomTicketsGranted,
+                    outcome.SoulsGranted,
+                    AutoSteps = auto?.Steps,
+                    AutoBanked = auto?.Banked ?? false,
                     outcome.View
                 });
             }

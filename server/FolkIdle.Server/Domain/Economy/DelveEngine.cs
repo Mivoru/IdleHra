@@ -108,8 +108,14 @@ namespace FolkIdle.Server.Domain.Economy
         /// <summary>Deep record diamonds paid this ISO week, derived from DeepestThisWeek.</summary>
         public int DeepDiamondsEarnedThisWeek { get; set; }
 
-        /// <summary>What a run would cost to start, for the screen that has none in progress.</summary>
+        /// <summary>What a run would cost to start, for the screen that has none in progress. 0 while today's free run is unused.</summary>
         public long EntryFeeForNextRun { get; set; }
+
+        /// <summary>Today's free run is still there (owner, 2026-11-20): the next start costs nothing.</summary>
+        public bool FreeRunToday { get; set; }
+
+        /// <summary>Today's first walk to the bottom has not been paid yet: reaching floor 8 pays a Gold chest and a ticket per dungeon gate.</summary>
+        public bool BottomRewardToday { get; set; }
         public int HighestRegionReached { get; set; }
         public long CurrentGold { get; set; }
 
@@ -200,6 +206,27 @@ namespace FolkIdle.Server.Domain.Economy
 
         /// <summary>Set only by a Deep purchase (a toll or a lantern): exactly what was debited.</summary>
         public long GoldCharged { get; set; }
+
+        /// <summary>The day's first walk to the bottom: the Gold chest tier and the dungeon tickets it paid (0 = not this time).</summary>
+        public int BottomChestGranted { get; set; }
+        public int BottomTicketsGranted { get; set; }
+
+        /// <summary>Nav Souls a new weekly-deepest Deep floor paid (0 = none, or Nav not open).</summary>
+        public long SoulsGranted { get; set; }
+    }
+
+    /// <summary>
+    /// What an automatic run did (owner, 2026-11-20): one line per door, and
+    /// the outcome of the act that ended it (the bank, or the lost run).
+    /// </summary>
+    public sealed class DelveAutoOutcome
+    {
+        public DelveActionOutcome Final { get; set; } = new();
+        public System.Collections.Generic.List<string> Steps { get; set; } = new();
+        public bool Banked { get; set; }
+        public bool StartedRun { get; set; }
+        public int BottomChestGranted { get; set; }
+        public int BottomTicketsGranted { get; set; }
     }
 
     /// <summary>
@@ -412,7 +439,10 @@ namespace FolkIdle.Server.Domain.Economy
         {
             bool thisWeek = player.DelveWeekKey == CurrentWeekKey(utcNow);
             view.HighestRegionReached = highestRegion;
-            view.EntryFeeForNextRun = DelveRegistry.EntryFeeForRegion(highestRegion);
+            int today = TodayKey(utcNow);
+            view.FreeRunToday = player.DelveFreeRunDayKey != today;
+            view.BottomRewardToday = player.DelveBottomRewardDayKey != today;
+            view.EntryFeeForNextRun = view.FreeRunToday ? 0L : DelveRegistry.EntryFeeForRegion(highestRegion);
             view.CurrentGold = gold;
             view.WeeklyDiamondCeiling = weeklyCeiling;
             view.DiamondsEarnedThisWeek = thisWeek ? player.DelveDiamondsThisWeek : 0;
@@ -585,7 +615,11 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 int highestRegion = await HighestRegionReachedAsync(db, playerId);
-                long fee = DelveRegistry.EntryFeeForRegion(highestRegion);
+                // The day's first run is free (owner, 2026-11-20). A free run pays
+                // no consolation gold, because the consolation is a share of the fee.
+                int today = TodayKey(Now());
+                bool free = player.DelveFreeRunDayKey != today;
+                long fee = free ? 0L : DelveRegistry.EntryFeeForRegion(highestRegion);
 
                 var existing = await db.DelveRunRecords.SingleOrDefaultAsync(r => r.PlayerId == playerId);
                 if (existing != null)
@@ -602,7 +636,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 var goldRow = await LockGoldRowAsync(db, playerId);
 
-                if (goldRow == null || goldRow.Quantity < fee)
+                if (fee > 0 && (goldRow == null || goldRow.Quantity < fee))
                 {
                     await tx.SafeRollbackAsync();
                     outcome.Result = DelveResult.NotEnoughGold;
@@ -610,8 +644,12 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
-                goldRow.Quantity -= fee;
-                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Delve, fee);
+                if (fee > 0)
+                {
+                    goldRow!.Quantity -= fee;
+                    await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Delve, fee);
+                }
+                if (free) player.DelveFreeRunDayKey = today;
 
                 var (packed, mask) = RollFloor(player.BaseLuck, rng);
                 var run = new DelveRunRecord
@@ -632,7 +670,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 outcome.Result = DelveResult.Ok;
                 outcome.View = new DelveRunView();
-                ApplyPlayerContext(outcome.View, player, highestRegion, goldRow.Quantity, Now(), await WeeklyCeilingAsync(db, playerId));
+                ApplyPlayerContext(outcome.View, player, highestRegion, goldRow?.Quantity ?? 0L, Now(), await WeeklyCeilingAsync(db, playerId));
                 ApplyRunToView(outcome.View, run, player);
                 ApplyBankPreview(outcome.View, run);
                 return outcome;
@@ -722,6 +760,7 @@ namespace FolkIdle.Server.Domain.Economy
                     {
                         await Engine.DiamondLedger.LabelAsync(db, Engine.DiamondLedger.Deep);
                         outcome.DiamondsGranted = PayDeepRecordDiamond(player, run.CurrentFloor);
+                        outcome.SoulsGranted = await PayDeepRecordSoulsAsync(db, playerId, run.CurrentFloor);
 
                         // Loot chests (owner L1, 2026-10-30): a new weekly-deepest
                         // floor from 10 also pays a chest, in this transaction, so
@@ -754,6 +793,7 @@ namespace FolkIdle.Server.Domain.Economy
                         run.CurrentFloor = DelveRegistry.FloorCount;
                         run.RevealedDoorMask = 0;
                         outcome.Result = DelveResult.AtTheBottom;
+                        await PayBottomRewardAsync(db, player, playerId, outcome);
                     }
                     else
                     {
@@ -891,6 +931,163 @@ namespace FolkIdle.Server.Domain.Economy
 
             player.PremiumDiamonds += paid;
             return paid;
+        }
+
+        /// <summary>The auto run banks instead of risking the last lantern on a door below these odds.</summary>
+        public const double AutoBankBelow = 0.55;
+
+        private static readonly string[] AttributeNames = { "Might", "Finesse", "Vigour", "Fortune" };
+
+        /// <summary>
+        /// The best door on the view, by the odds the player can see: a shown
+        /// door's published odds, a hidden door's average over the four
+        /// attributes (what guessing is worth). Reads ONLY the view, so the auto
+        /// run knows nothing a player at the screen does not.
+        /// </summary>
+        public static (int Door, double Odds) BestDoor(DelveRunView view)
+        {
+            double hidden = 0;
+            int n = Math.Max(1, view.Attributes.Length);
+            foreach (int a in view.Attributes) hidden += DelveRegistry.SuccessChance(a, view.CurrentFloor);
+            hidden /= n;
+
+            int best = 0;
+            double bestOdds = -1;
+            for (int i = 0; i < view.DoorOdds.Length; i++)
+            {
+                double odds = view.DoorOdds[i] >= 0 ? view.DoorOdds[i] : hidden;
+                if (odds > bestOdds) { best = i; bestOdds = odds; }
+            }
+            return (best, bestOdds);
+        }
+
+        /// <summary>
+        /// One run played by the server (owner, 2026-11-20: "a quick run, less
+        /// clicking"). Starts a run if none is open (the day's free one first),
+        /// takes the best visible door on each floor of 1-8, and walks out at
+        /// the bottom - or earlier, when the last lantern would ride on a door
+        /// below <see cref="AutoBankBelow"/>. Never descends into the Deep: that
+        /// is a priced decision the player makes.
+        ///
+        /// Modul: EVERY STEP IS THE ORDINARY ACT. It calls StartRunAsync,
+        /// ChooseDoorAsync and BankAsync - each its own transaction with its own
+        /// checks - so the auto run cannot pay anything a hand-played run could
+        /// not, and a crash halfway leaves an ordinary run the screen can finish.
+        /// </summary>
+        public async Task<DelveAutoOutcome> AutoRunAsync(long playerId, Random? rng = null)
+        {
+            var auto = new DelveAutoOutcome();
+            var view = await GetViewAsync(playerId);
+            if (view.IsDeep)
+            {
+                auto.Final = new DelveActionOutcome { Result = DelveResult.NotAtTheBottom, View = view };
+                return auto;
+            }
+            if (!view.Active)
+            {
+                long fee = view.EntryFeeForNextRun;
+                var start = await StartRunAsync(playerId, rng);
+                if (start.Result != DelveResult.Ok)
+                {
+                    auto.Final = start;
+                    return auto;
+                }
+                auto.StartedRun = true;
+                auto.Steps.Add(fee == 0 ? "Today's free run." : $"Entry fee {fee:N0} gold.");
+                view = start.View;
+            }
+
+            for (int guard = 0; guard < 64; guard++)
+            {
+                if (view.AtLanding || view.FloorsCleared >= DelveRegistry.FloorCount) break;
+                var (door, odds) = BestDoor(view);
+                if (view.FloorsCleared > 0 && view.ChargesRemaining <= 1 && odds < AutoBankBelow)
+                {
+                    auto.Steps.Add($"Floor {view.CurrentFloor}: the best door is {odds:P0} on the last lantern - walking out.");
+                    break;
+                }
+
+                int floor = view.CurrentFloor;
+                int demand = door < view.DoorDemands.Length ? view.DoorDemands[door] : -1;
+                string doorName = demand >= 0 && demand < AttributeNames.Length ? $"the {AttributeNames[demand]} door" : "a hidden door";
+                var step = await ChooseDoorAsync(playerId, door, rng);
+                auto.BottomChestGranted += step.BottomChestGranted;
+                auto.BottomTicketsGranted += step.BottomTicketsGranted;
+                switch (step.Result)
+                {
+                    case DelveResult.FloorCleared:
+                    case DelveResult.AtTheBottom:
+                        auto.Steps.Add($"Floor {floor}: {doorName} ({odds:P0}) - cleared.");
+                        break;
+                    case DelveResult.ChargeLost:
+                        auto.Steps.Add($"Floor {floor}: {doorName} ({odds:P0}) - failed, a lantern went out.");
+                        break;
+                    case DelveResult.RunLost:
+                        auto.Steps.Add($"Floor {floor}: {doorName} ({odds:P0}) - failed, the last lantern went out.");
+                        auto.Final = step;
+                        return auto;
+                    default:
+                        auto.Final = step;
+                        return auto;
+                }
+                view = step.View;
+            }
+
+            var bank = await BankAsync(playerId);
+            auto.Final = bank;
+            auto.Banked = bank.Result == DelveResult.Ok;
+            return auto;
+        }
+
+        private static int TodayKey(DateTime utcNow) => (int)DailyLoginRewardEngine.ToDateKey(utcNow);
+
+        /// <summary>Dungeon tickets the day's first walk to the bottom adds to EACH gate (above the daily cap, up to BonusTicketCap).</summary>
+        public const int BottomTicketsPerGate = 1;
+
+        /// <summary>
+        /// The day's first walk to the bottom of floor 8 pays a Gold loot chest
+        /// of the player's region and a ticket per dungeon gate (owner,
+        /// 2026-11-20: "better rewards" - the Delve paid only diamonds, which
+        /// two of the three players had nothing to spend on). Once a UTC day,
+        /// so a cheap entry fee cannot farm chests. Tracked entities only; the
+        /// caller commits with the floor clear.
+        /// </summary>
+        private async Task PayBottomRewardAsync(FolkIdleDbContext db, PlayerRecord player, long playerId, DelveActionOutcome outcome)
+        {
+            int today = TodayKey(Now());
+            if (player.DelveBottomRewardDayKey == today) return;
+            player.DelveBottomRewardDayKey = today;
+
+            LootChestEngine.Stage(db, playerId, LootChestTier.Gold, await HighestRegionReachedAsync(db, playerId), LootChestSource.DelveBottom, Now());
+            outcome.BottomChestGranted = (int)LootChestTier.Gold;
+
+            var gates = await DungeonEngine.LoadAsync(db, playerId, Now());
+            int tickets = 0;
+            foreach (var gate in gates.Values)
+            {
+                for (int i = 0; i < BottomTicketsPerGate; i++)
+                {
+                    if (DungeonEngine.AddBonusTicket(gate)) tickets++;
+                }
+            }
+            outcome.BottomTicketsGranted = tickets;
+        }
+
+        /// <summary>
+        /// Nav Souls for a new weekly-deepest Deep floor (owner, 2026-11-20):
+        /// one descent's worth at the player's own Circle-1 record
+        /// (NavRules.SoulsForOneDescent), so it scales with how far they get in
+        /// Nav. Nothing when they have no Nav row yet (Nav not open).
+        /// </summary>
+        private static async Task<long> PayDeepRecordSoulsAsync(FolkIdleDbContext db, long playerId, int floor)
+        {
+            if (floor < DelveRegistry.FirstDiamondDeepFloor) return 0L;
+            var row = await db.NavProgress.SingleOrDefaultAsync(n => n.PlayerId == playerId);
+            if (row == null) return 0L;
+            long souls = NavRules.SoulsForOneDescent(NavEngine.BestDepth(row, 1));
+            row.Souls += souls;
+            row.SoulsLifetime += souls;
+            return souls;
         }
 
         private static Task<PlayerRecord?> LockPlayerAsync(FolkIdleDbContext db, long playerId)

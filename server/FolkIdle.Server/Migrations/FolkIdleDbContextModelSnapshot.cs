@@ -2400,6 +2400,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("DefensivePotionDurationMs")
                         .HasColumnType("integer");
 
+                    b.Property<int>("DelveBottomRewardDayKey")
+                        .HasColumnType("integer");
+
                     b.Property<long>("DelveDeepGoldSpent")
                         .HasColumnType("bigint");
 
@@ -2416,6 +2419,9 @@ namespace FolkIdle.Server.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DelveDiamondsThisWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DelveFreeRunDayKey")
                         .HasColumnType("integer");
 
                     b.Property<int>("DelveWeekKey")

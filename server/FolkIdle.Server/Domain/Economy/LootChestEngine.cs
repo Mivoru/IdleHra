@@ -28,6 +28,8 @@ namespace FolkIdle.Server.Domain.Economy
         Chronicle = 7,
         // The Descent into Nav (2026-11-19): a Circle's first-time depth milestones.
         Nav = 8,
+        // The Delve (2026-11-20): the day's first walk to the bottom.
+        DelveBottom = 9,
     }
 
     /// <summary>

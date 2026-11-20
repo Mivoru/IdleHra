@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
@@ -23,6 +25,16 @@ namespace FolkIdle.Server.Tests
         private readonly double _value;
         public ConstantRandom(double value) => _value = value;
         public override double NextDouble() => _value;
+        public override int Next(int maxValue) => 0;
+    }
+
+    /// <summary>NextDouble returns the first value once, then the second for ever.</summary>
+    internal sealed class SequenceRandom : Random
+    {
+        private readonly double _first, _rest;
+        private bool _used;
+        public SequenceRandom(double first, double rest) { _first = first; _rest = rest; }
+        public override double NextDouble() { if (_used) return _rest; _used = true; return _first; }
         public override int Next(int maxValue) => 0;
     }
 
@@ -169,7 +181,9 @@ namespace FolkIdle.Server.Tests
         /// A player with gold, a sheet, and a codex entry deep enough to price
         /// the run. Returns the id.
         /// </summary>
-        private async Task<long> SeedPlayerAsync(long playerId, long gold, int attributeValue, int regionMonsterId, int weekDiamonds = 0)
+        // freeRunUsed: true by default, so the fee arithmetic these tests pin is
+        // the paid run's; the free run (2026-11-20) has tests of its own.
+        private async Task<long> SeedPlayerAsync(long playerId, long gold, int attributeValue, int regionMonsterId, int weekDiamonds = 0, bool freeRunUsed = true)
         {
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
 
@@ -190,7 +204,8 @@ namespace FolkIdle.Server.Tests
                 BaseLuck = attributeValue,
                 PremiumDiamonds = 0,
                 DelveDiamondsThisWeek = weekDiamonds,
-                DelveWeekKey = weekDiamonds > 0 ? DelveEngine.CurrentWeekKey(DateTime.UtcNow) : 0
+                DelveWeekKey = weekDiamonds > 0 ? DelveEngine.CurrentWeekKey(DateTime.UtcNow) : 0,
+                DelveFreeRunDayKey = freeRunUsed ? (int)DailyLoginRewardEngine.ToDateKey(DateTime.UtcNow) : 0,
             });
 
             var goldRow = await db.CommodityRecords.SingleOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
@@ -270,6 +285,131 @@ namespace FolkIdle.Server.Tests
 
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
             Assert.Null(await db.DelveRunRecords.AsNoTracking().SingleOrDefaultAsync(r => r.PlayerId == playerId));
+        }
+
+        // --- the daily pull (owner, 2026-11-20) ---------------------------------
+
+        private async Task DropRunAsync(long playerId)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await db.DelveRunRecords.Where(r => r.PlayerId == playerId).ExecuteDeleteAsync();
+        }
+
+        [Fact]
+        public async Task TheDaysFirstRunIsFree_AndTheNextOnePaysTheFee()
+        {
+            const long playerId = 980000290L;
+            await SeedPlayerAsync(playerId, gold: 1_000_000, attributeValue: 150, regionMonsterId: ContentRegistry.FirstCanonicalMonsterId, freeRunUsed: false);
+            var engine = Engine();
+
+            Assert.True((await engine.GetViewAsync(playerId)).FreeRunToday);
+            Assert.Equal(0L, (await engine.GetViewAsync(playerId)).EntryFeeForNextRun);
+
+            var first = await engine.StartRunAsync(playerId, new ConstantRandom(0.0));
+            Assert.Equal(DelveResult.Ok, first.Result);
+            Assert.Equal(1_000_000, await ReadGoldAsync(playerId));
+            Assert.False(first.View.FreeRunToday);
+
+            await DropRunAsync(playerId);
+            var second = await engine.StartRunAsync(playerId, new ConstantRandom(0.0));
+            Assert.Equal(DelveResult.Ok, second.Result);
+            Assert.Equal(1_000_000 - DelveRegistry.EntryFeeForRegion(1), await ReadGoldAsync(playerId));
+        }
+
+        [Fact]
+        public async Task TheFreeRunNeedsNoGold()
+        {
+            const long playerId = 980000291L;
+            await SeedPlayerAsync(playerId, gold: 0, attributeValue: 150, regionMonsterId: ContentRegistry.FirstCanonicalMonsterId, freeRunUsed: false);
+            var outcome = await Engine().StartRunAsync(playerId, new ConstantRandom(0.0));
+            Assert.Equal(DelveResult.Ok, outcome.Result);
+            Assert.Equal(0, await ReadGoldAsync(playerId));
+        }
+
+        [Fact]
+        public async Task TheDaysFirstWalkToTheBottomPaysAGoldChestAndTickets_OnlyOnce()
+        {
+            const long playerId = 980000292L;
+            await SeedPlayerAsync(playerId, gold: 10_000_000, attributeValue: 400, regionMonsterId: ContentRegistry.FirstCanonicalMonsterId);
+            await using (var clean = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await clean.LootChests.Where(c => c.PlayerId == playerId).ExecuteDeleteAsync();
+                await clean.DungeonProgress.Where(d => d.PlayerId == playerId).ExecuteDeleteAsync();
+            }
+            var engine = Engine();
+            var pass = new ConstantRandom(0.0);
+
+            async Task<DelveActionOutcome> WalkToTheBottomAsync()
+            {
+                await engine.StartRunAsync(playerId, pass);
+                DelveActionOutcome last = null!;
+                for (int i = 0; i < DelveRegistry.FloorCount; i++) last = await engine.ChooseDoorAsync(playerId, 0, pass);
+                Assert.Equal(DelveResult.AtTheBottom, last.Result);
+                return last;
+            }
+
+            Assert.True((await engine.GetViewAsync(playerId)).BottomRewardToday);
+            var first = await WalkToTheBottomAsync();
+            Assert.Equal((int)LootChestTier.Gold, first.BottomChestGranted);
+            Assert.Equal(3 * DelveEngine.BottomTicketsPerGate, first.BottomTicketsGranted);
+
+            await DropRunAsync(playerId);
+            var second = await WalkToTheBottomAsync();
+            Assert.Equal(0, second.BottomChestGranted);
+            Assert.Equal(0, second.BottomTicketsGranted);
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var chests = await db.LootChests.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync();
+            var chest = Assert.Single(chests);
+            Assert.Equal((byte)LootChestTier.Gold, chest.Tier);
+            Assert.Equal((byte)LootChestSource.DelveBottom, chest.Source);
+        }
+
+        [Fact]
+        public async Task TheAutoRunTakesTheBestDoors_WalksOutAtTheBottom_AndPaysLikeAHandRun()
+        {
+            const long playerId = 980000293L;
+            await SeedPlayerAsync(playerId, gold: 1_000_000, attributeValue: 400, regionMonsterId: ContentRegistry.FirstCanonicalMonsterId);
+            var engine = Engine();
+
+            var auto = await engine.AutoRunAsync(playerId, new ConstantRandom(0.0));
+
+            Assert.True(auto.StartedRun);
+            Assert.True(auto.Banked);
+            Assert.Equal(DelveResult.Ok, auto.Final.Result);
+            Assert.Equal(DelveRegistry.DiamondsForBanking(DelveRegistry.FloorCount), auto.Final.DiamondsGranted);
+            Assert.Equal(1 + DelveRegistry.FloorCount, auto.Steps.Count); // the fee line + one per floor
+            Assert.False(auto.Final.View.Active);
+            foreach (var line in auto.Steps) _output.WriteLine(line);
+        }
+
+        [Fact]
+        public async Task TheAutoRunWalksOutRatherThanRiskTheLastLanternOnABadDoor()
+        {
+            const long playerId = 980000294L;
+            // A thin sheet: floor 1 is fine, deep floors are long odds.
+            await SeedPlayerAsync(playerId, gold: 1_000_000, attributeValue: 20, regionMonsterId: ContentRegistry.FirstCanonicalMonsterId);
+            var engine = Engine();
+
+            // Every check fails after the first floor: 0.0 passes, 0.99 fails.
+            var auto = await engine.AutoRunAsync(playerId, new SequenceRandom(0.0, 0.99));
+
+            Assert.True(auto.Banked || auto.Final.Result == DelveResult.RunLost);
+            Assert.Contains(auto.Steps, l => l.Contains("walking out") || l.Contains("last lantern"));
+            foreach (var line in auto.Steps) _output.WriteLine(line);
+        }
+
+        [Fact]
+        public void BestDoorPrefersAShownDoorWithBetterOddsThanGuessing()
+        {
+            var view = new DelveRunView
+            {
+                CurrentFloor = 5,
+                Attributes = new[] { 300, 20, 20, 20 },
+                DoorDemands = new[] { -1, 1, 0 },
+                DoorOdds = new[] { -1.0, DelveRegistry.SuccessChance(20, 5), DelveRegistry.SuccessChance(300, 5) },
+            };
+            Assert.Equal(2, DelveEngine.BestDoor(view).Door);
         }
 
         [Fact]
