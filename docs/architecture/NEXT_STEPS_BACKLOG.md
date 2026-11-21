@@ -19,6 +19,49 @@ do next.
 
 ---
 
+# 2026-11-21 - overnight run: quest line, art, bots, splits, measurement
+
+The owner asked for a night of autonomous work: cleanup and structure,
+badly cropped monster art, bot realism, a stats overview with the best way to
+play, and the tutorial. What shipped and what waits:
+
+**Deployed (1.0.2002 and 1.0.2010, no migrations).**
+- #461 quest line from 13 to 17 steps (missions, dungeon, builds, Nav), each
+  on a durable server fact; Delve opens at level 5 or the fee.
+- #462 five monsters redrawn (Gray Direwolf, Mountain Bear, Forest Dryad,
+  Alpha Wolf, Malakor). **Rock Giant and Ember Elemental are still copies of
+  other monsters**: the Gemini monthly spend cap stopped the batch. Their
+  prompts are `mon_rock_giant` and `mon_ember_elemental` in
+  `tools/assets/gemini.json`; run them when the cap is raised.
+- #463 #466 bots: duel world boss, free Delve run, daily missions, Chronicle,
+  Nav; no logout in the middle of a gathering or fishing trip.
+- #464 #465 `NetworkBroadcastSystem` (13.9k lines) and `SimulationEngine`
+  (7k lines) split into partial files, moves only. Source-reading tests go
+  through `PartialClassSource`; see CURRENT_IMPLEMENTATION_STATE 2.2 and 7a.
+
+**Open, waiting for the owner.**
+- #467 world boss damage milestones x2.5 (7.5k ... 750k): prod strikes are
+  13k-43k, so the old ladder was cleared in a day.
+- #470 the first Order ("fish when the larder runs dry") from level 1 instead
+  of 20. Every casual and idle bot starved on its first nights; see
+  `docs/design/PLAYER_PATH.md`, Open findings.
+- Late gold has no sink (bots 11-70 M after a week, prod top account 15 B).
+
+**Measurement.** `server/FolkIdle.Bots/measure.ps1` runs one game week in
+lockstep with production's flags in about two hours;
+`analyze-stalls.py` reports stalls and median level curves. Results and the
+best order to play are in `docs/design/PLAYER_PATH.md`; every stat the
+registries hold is in the generated `docs/architecture/STATS_TABLES.md`,
+which CI keeps in step with the code.
+
+**Trap found on the way.** `OfflineCombatParityTests.Character()` builds a
+character with 50 + growth in every attribute. A real character gets seven
+points a level to spend, so at level 7 it has about 40 in total and a
+fifth of the armour. Parity holds, but a balance number taken from that
+helper describes a much stronger character than any player has.
+
+---
+
 # 2026-11-20 - the Delve's daily pull
 
 The owner noticed that two of the three players had almost stopped running
