@@ -167,7 +167,43 @@ namespace FolkIdle.Server.Domain.Economy
             _ => $"A region {DungeonSimulator.RegionOfStage(stage)} piece, {RarityTier.GetName(RarityFloorFor(stage))} or better, and a {ChestFor(stage)} chest. First clear: {FirstClearDiamonds(stage)} diamonds.",
         };
 
-        public sealed record RunReward(long PieceId, string PieceBaseId, string PieceRarity, long ChestId, string Chest, int Diamonds, long Xp = 0, long Gold = 0, string Title = "");
+        public sealed record RunReward(long PieceId, string PieceBaseId, string PieceRarity, long ChestId, string Chest, int Diamonds, long Xp = 0, long Gold = 0, string Title = "")
+        {
+            /// <summary>How many tickets this answer paid; above 1 only for a multi-ticket sweep.</summary>
+            public int Runs { get; init; } = 1;
+
+            /// <summary>Every piece and chest of a multi-ticket sweep, one entry per run (empty otherwise).</summary>
+            public IReadOnlyList<SweptLoot> Loot { get; init; } = Array.Empty<SweptLoot>();
+        }
+
+        /// <summary>One run's piece and chest inside a multi-ticket sweep.</summary>
+        public sealed record SweptLoot(long PieceId, string PieceBaseId, string PieceRarity, long ChestId, string Chest);
+
+        /// <summary>
+        /// Modul: A SWEEP CAN SPEND SEVERAL TICKETS AT ONCE (owner, 2026-11-21:
+        /// "so the player does not have to click so much"). It is the same as
+        /// sweeping that many times in a row, not one reward multiplied: every
+        /// run rolls its own piece and chest, so ten tickets are not ten copies
+        /// of one 4-star piece. XP and gold add up. Bounded by the tickets held.
+        /// </summary>
+        public static RunReward? Combine(IReadOnlyList<RunReward?> rewards)
+        {
+            var paid = rewards.Where(r => r != null).Select(r => r!).ToList();
+            if (paid.Count == 0) return null;
+            if (rewards.Count == 1) return paid[0];
+            var first = paid[0];
+            return first with
+            {
+                Diamonds = paid.Sum(r => r.Diamonds),
+                Xp = paid.Sum(r => r.Xp),
+                Gold = paid.Sum(r => r.Gold),
+                Title = paid.Select(r => r.Title).FirstOrDefault(t => t.Length > 0) ?? string.Empty,
+                Runs = rewards.Count,
+                Loot = paid.Where(r => r.PieceId != 0 || r.ChestId != 0)
+                    .Select(r => new SweptLoot(r.PieceId, r.PieceBaseId, r.PieceRarity, r.ChestId, r.Chest))
+                    .ToList(),
+            };
+        }
 
         public enum RunOutcome { Ok, NoTickets, Locked, PlayerNotFound }
 
@@ -183,7 +219,7 @@ namespace FolkIdle.Server.Domain.Economy
         /// </summary>
         public static async Task<(RunOutcome Outcome, string? Reason, DungeonRunResult? Result, RunReward? Reward, int TicketsLeft)> RunAsync(
             FolkIdleDbContext db, long playerId, DungeonKind kind, int stage, TickStatePayload snapshot, int foodItemId, int foodCount,
-            Income income, DateTime utcNow, Random rng, bool sweep = false)
+            Income income, DateTime utcNow, Random rng, bool sweep = false, int count = 1)
         {
             await using var tx = await db.Database.BeginTransactionAsync();
             var player = await LockPlayerAsync(db, playerId);
@@ -199,8 +235,15 @@ namespace FolkIdle.Server.Domain.Economy
             }
 
             var result = sweep ? SweepResult(kind, stage) : DungeonSimulator.Run(snapshot, kind, stage, foodItemId, foodCount);
-            row.Tickets--;
-            var reward = await PayAsync(db, player, row, kind, stage, result.Won, income, utcNow, rng);
+            // Only a sweep takes several tickets; a fought run is one.
+            int runs = sweep ? Math.Clamp(count, 1, row.Tickets) : 1;
+            var rewards = new List<RunReward?>(runs);
+            for (int i = 0; i < runs; i++)
+            {
+                row.Tickets--;
+                rewards.Add(await PayAsync(db, player, row, kind, stage, result.Won, income, utcNow, rng));
+            }
+            var reward = Combine(rewards);
 
             await db.SaveChangesAsync();
             await tx.CommitAsync();

@@ -254,5 +254,62 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(DungeonEngine.TicketCap - 2, sweep.TicketsLeft);
             }
         }
+
+        [Fact]
+        public async Task AMultiTicketSweepPaysEachTicketAsItsOwnRun()
+        {
+            // Owner 2026-11-21: sweep several tickets at once, rolled as that
+            // many separate runs - not one piece copied.
+            const long playerId = 950_420_021L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+            var now = new DateTime(2026, 11, 21, 12, 0, 0, DateTimeKind.Utc);
+            int fish = FoodRegistry.FirstRawFishOfTier(1);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var won = await DungeonEngine.RunAsync(db, playerId, DungeonKind.Equipment, 1, Strong(playerId), fish, 100, default, now, new Random(1));
+                Assert.True(won.Result!.Won);
+            }
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                // Asks for more than it holds: three tickets are left, three are swept.
+                var sweep = await DungeonEngine.RunAsync(db, playerId, DungeonKind.Equipment, 1, Strong(playerId), 0, 0, default, now, new Random(7), sweep: true, count: 6);
+                Assert.Equal(DungeonEngine.RunOutcome.Ok, sweep.Outcome);
+                Assert.Equal(0, sweep.TicketsLeft);
+                Assert.Equal(DungeonEngine.TicketCap - 1, sweep.Reward!.Runs);
+                Assert.Equal(DungeonEngine.TicketCap - 1, sweep.Reward.Loot.Count);
+                Assert.Equal(DungeonEngine.TicketCap - 1, sweep.Reward.Loot.Select(l => l.PieceId).Distinct().Count());
+                Assert.All(sweep.Reward.Loot, l => Assert.True(l.PieceId > 0 && l.ChestId > 0));
+            }
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            Assert.Equal(DungeonEngine.TicketCap, await verify.EquipmentInstances.CountAsync(e => e.PlayerId == playerId));
+            Assert.Equal(DungeonEngine.TicketCap, await verify.LootChests.CountAsync(c => c.PlayerId == playerId));
+        }
+
+        [Fact]
+        public async Task AMultiTicketGoldSweepAddsTheGoldOfEveryRun()
+        {
+            const long playerId = 950_420_022L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+            var now = new DateTime(2026, 11, 21, 12, 0, 0, DateTimeKind.Utc);
+            var income = new DungeonEngine.Income(0, 3_000_000);
+            int fish = FoodRegistry.FirstRawFishOfTier(1);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                Assert.True((await DungeonEngine.RunAsync(db, playerId, DungeonKind.Gold, 1, Strong(playerId), fish, 100, income, now, new Random(1))).Result!.Won);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var sweep = await DungeonEngine.RunAsync(db, playerId, DungeonKind.Gold, 1, Strong(playerId), 0, 0, income, now, new Random(1), sweep: true, count: 2);
+                Assert.Equal(2, sweep.Reward!.Runs);
+                Assert.Equal(2 * DungeonEngine.GoldFor(1, 3_000_000, won: true), sweep.Reward.Gold);
+                Assert.Equal(DungeonEngine.TicketCap - 3, sweep.TicketsLeft);
+            }
+        }
     }
 }

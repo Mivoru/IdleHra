@@ -586,7 +586,7 @@
       <strong>{result.Won ? 'Victory' : 'Defeat'}</strong>
       <span class="dim small">
         {result.Won && result.Seconds === 0
-          ? 'Swept: a stage you have beaten, paid without the fight'
+          ? (reward?.Runs ?? 1) > 1 ? `Swept ${reward?.Runs} times: a stage you have beaten, paid without the fight` : 'Swept: a stage you have beaten, paid without the fight'
           : result.Won
           ? `${dungeon.Boss} falls after ${result.Seconds.toFixed(0)} s of fighting`
           : result.ReachedBoss
@@ -599,8 +599,16 @@
         <ul class="reward">
           {#if reward.Xp > 0}<li>+{formatNumber(reward.Xp)} XP{result.Won ? '' : ' (a quarter, for trying)'}</li>{/if}
           {#if reward.Gold > 0}<li>+{formatNumber(reward.Gold)} gold{result.Won ? '' : ' (a quarter, for trying)'}</li>{/if}
-          {#if reward.PieceBaseId}<li>{reward.PieceRarity} {prettifyBaseId(reward.PieceBaseId)}</li>{/if}
-          {#if reward.Chest}<li>A {reward.Chest} loot chest</li>{/if}
+          {#if (reward.Runs ?? 1) > 1}
+            <li data-testid="dungeon-sweep-runs">{reward.Runs} runs swept</li>
+            {#each reward.Loot ?? [] as loot, i (i)}
+              {#if loot.PieceBaseId}<li>{loot.PieceRarity} {prettifyBaseId(loot.PieceBaseId)}{loot.Chest ? ` + a ${loot.Chest} chest` : ''}</li>
+              {:else if loot.Chest}<li>A {loot.Chest} loot chest</li>{/if}
+            {/each}
+          {:else}
+            {#if reward.PieceBaseId}<li>{reward.PieceRarity} {prettifyBaseId(reward.PieceBaseId)}</li>{/if}
+            {#if reward.Chest}<li>A {reward.Chest} loot chest</li>{/if}
+          {/if}
           {#if reward.Diamonds > 0}<li>+{reward.Diamonds} diamonds for the first clear</li>{/if}
           {#if reward.Title}<li class="title-earned" data-testid="dungeon-title-earned">A new title: <strong>{reward.Title}</strong> - wear it from the title picker in The Delve</li>{/if}
         </ul>
