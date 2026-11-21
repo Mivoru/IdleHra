@@ -79,12 +79,17 @@
   let runOf = $state<DungeonInfo | null>(null);
   let runStage = $state(1);
 
+  // Modul: a sweep can spend several tickets at once (owner, 2026-11-21) -
+  // the server pays each one as its own run, so the pieces differ.
+  let sweepWanted = $state(1);
+  const sweepCount = $derived(Math.max(1, Math.min(sweepWanted, dungeon?.Tickets ?? 1)));
+
   async function enter(sweep = false) {
     if (!dungeon || !stage || running) return;
     running = true;
     answer = null;
     try {
-      const reply = await runDungeon(dungeon.Kind, stage.Stage, party.length > 0 ? party : [0], sweep);
+      const reply = await runDungeon(dungeon.Kind, stage.Stage, party.length > 0 ? party : [0], sweep, sweep ? sweepCount : 1);
       if (!reply) return;
       if (reply.Outcome !== 'Ok' || (!reply.RunId && !reply.Result)) {
         pushLocalNotice(reply.Reason || 'The run could not start.', 'error');
@@ -96,7 +101,7 @@
       runStage = stage.Stage;
       answer = reply;
       client.invalidateQueries({ queryKey: dungeonKeys.view });
-      if (reply.Reward?.PieceId || reply.Reward?.ChestId) invalidateOwnedItems(client);
+      if (reply.Reward?.PieceId || reply.Reward?.ChestId || reply.Reward?.Loot?.length) invalidateOwnedItems(client);
     } catch (e) {
       const status = (e as { status?: number }).status;
       pushLocalNotice(status === 409 ? 'Your character is not online - reconnect and try again.' : 'The run could not start. Nothing was spent.', 'error');
@@ -239,9 +244,18 @@
             two blessings; a miss hurts and leaves a curse. Both last until the run ends.
           </p>
           {#if stage.Cleared}
+            {#if dungeon.Tickets > 1}
+              <div class="sweep-count" data-testid="dungeon-sweep-count">
+                <span class="dim small">Tickets to sweep</span>
+                <button class="step" aria-label="One ticket fewer" disabled={sweepCount <= 1} onclick={() => (sweepWanted = sweepCount - 1)}>−</button>
+                <strong>{sweepCount}</strong>
+                <button class="step" aria-label="One ticket more" disabled={sweepCount >= dungeon.Tickets} onclick={() => (sweepWanted = sweepCount + 1)}>+</button>
+                <button class="step" disabled={sweepCount >= dungeon.Tickets} onclick={() => (sweepWanted = dungeon.Tickets)}>All</button>
+              </div>
+            {/if}
             <button class="sweep" data-testid="dungeon-sweep" disabled={running || dungeon.Tickets <= 0} onclick={() => enter(true)}>
               <img class="btn-ticket" src={TICKET_ICON[dungeon.Key]} alt="" width="20" height="20" />
-              Sweep stage {stage.Stage}: paid as won, no fight (1 ticket)
+              Sweep stage {stage.Stage}{sweepCount > 1 ? ` ×${sweepCount}` : ''}: paid as won, no fight ({sweepCount} ticket{sweepCount === 1 ? '' : 's'})
             </button>
           {/if}
           <button
@@ -474,6 +488,16 @@
   }
   .sweep {
     margin-bottom: 0.4rem;
+  }
+  .sweep-count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .sweep-count .step {
+    min-width: 44px;
+    min-height: 44px;
   }
   .how {
     margin: 0 0 0.6rem;

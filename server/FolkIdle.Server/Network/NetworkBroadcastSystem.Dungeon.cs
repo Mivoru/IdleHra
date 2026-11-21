@@ -189,7 +189,7 @@ namespace FolkIdle.Server.Network
             return new { Stage = stage, r.Won, r.WavesCleared, r.ReachedBoss, r.BossHpLeftPct, Party = party.Count };
         }
 
-        // POST /api/v1/dungeon/run {Kind, Stage, Party?, Sweep?}
+        // POST /api/v1/dungeon/run {Kind, Stage, Party?, Sweep?, Count?}
         // A live run (slice 3): takes the ticket, simulates to the first
         // telegraph and answers with that segment and a RunId; /dungeon/act
         // carries it on. Sweep pays a beaten stage as won without the fight.
@@ -202,6 +202,7 @@ namespace FolkIdle.Server.Network
 
                 int stage = 0;
                 bool sweep = false;
+                int count = 1;
                 DungeonKind kind = DungeonKind.Equipment;
                 var party = new System.Collections.Generic.List<int> { 0 };
                 try
@@ -210,6 +211,8 @@ namespace FolkIdle.Server.Network
                     using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
                     if (parsed.RootElement.TryGetProperty("Stage", out var s) && s.TryGetInt32(out int sv)) stage = sv;
                     if (parsed.RootElement.TryGetProperty("Sweep", out var sw) && sw.ValueKind == JsonValueKind.True) sweep = true;
+                    // How many tickets a sweep spends; the engine caps it at the tickets held.
+                    if (parsed.RootElement.TryGetProperty("Count", out var c) && c.TryGetInt32(out int cv)) count = Math.Clamp(cv, 1, DungeonEngine.BonusTicketCap);
                     if (parsed.RootElement.TryGetProperty("Kind", out var k) && k.TryGetInt32(out int kv))
                     {
                         if (!Enum.IsDefined(typeof(DungeonKind), kv)) { context.Response.StatusCode = 400; return; }
@@ -255,12 +258,13 @@ namespace FolkIdle.Server.Network
                 if (sweep)
                 {
                     var (sOutcome, sReason, sResult, sReward, sTickets) = await DungeonEngine.RunAsync(
-                        db, playerId, kind, stage, payload, food.ItemId, food.Count, income, GameClock.UtcNow, Random.Shared, sweep: true);
+                        db, playerId, kind, stage, payload, food.ItemId, food.Count, income, GameClock.UtcNow, Random.Shared, sweep: true, count: count);
                     if (sResult != null)
                     {
                         await AfterDungeonRunAsync(db, playerId, sResult, sReward, food.SlotIndex, food.ItemId);
-                        // A sweep is a fight at this gate for the daily mission.
-                        FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DungeonFight, detail: (int)kind);
+                        // A sweep is a fight at this gate for the daily mission - one per ticket.
+                        for (int i = 0; i < (sReward?.Runs ?? 1); i++)
+                            FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, FolkIdle.Server.Domain.Progression.MissionAction.DungeonFight, detail: (int)kind);
                     }
                     await WriteJsonAsync(context, new { Outcome = sOutcome.ToString(), Reason = sReason ?? string.Empty, Finished = true, Result = sResult, Reward = sReward, Tickets = sTickets });
                     return;

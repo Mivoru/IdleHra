@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.116.0',
+    date: '2026-11-21',
+    sections: [
+      {
+        title: 'Dungeons',
+        items: [
+          'A sweep can spend several tickets at once - pick how many, or All. Each ticket is paid as its own run, so the Equipment gate rolls a separate piece and chest for every one; XP and gold add up.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.115.0',
     date: '2026-11-21',
     sections: [

@@ -116,6 +116,18 @@ export interface DungeonReward {
   Gold: number;
   /** The stage-15 or stage-20 title, by its display name, the first time it is earned; '' otherwise. */
   Title?: string;
+  /** Tickets this answer paid: above 1 only for a multi-ticket sweep. */
+  Runs?: number;
+  /** Each run's own piece and chest in a multi-ticket sweep (each one rolled separately). */
+  Loot?: DungeonSweptLoot[];
+}
+
+export interface DungeonSweptLoot {
+  PieceId: number;
+  PieceBaseId: string;
+  PieceRarity: string;
+  ChestId: number;
+  Chest: string;
 }
 
 /** A bonus on a card, or a penalty in a banner. */
@@ -171,8 +183,8 @@ export function fetchDungeon(): Promise<DungeonView> {
   return authedGet<DungeonView>('/api/v1/dungeon');
 }
 
-export function runDungeon(kind: DungeonKind, stage: number, party: number[] = [0], sweep = false): Promise<DungeonRunAnswer | null> {
-  return authedPost<DungeonRunAnswer>('/api/v1/dungeon/run', { Kind: kind, Stage: stage, Party: party, Sweep: sweep });
+export function runDungeon(kind: DungeonKind, stage: number, party: number[] = [0], sweep = false, count = 1): Promise<DungeonRunAnswer | null> {
+  return authedPost<DungeonRunAnswer>('/api/v1/dungeon/run', { Kind: kind, Stage: stage, Party: party, Sweep: sweep, Count: count });
 }
 
 export function showTelegraph(runId: string): Promise<DungeonTelegraph | null> {
