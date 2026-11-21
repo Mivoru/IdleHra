@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FolkIdle.Server.Domain.Combat;
 
 namespace FolkIdle.Bots
 {
@@ -27,6 +28,48 @@ namespace FolkIdle.Bots
         {
             if (Due("missions", 90)) await MissionsAsync(token);
             if (Due("nav", 20)) await NavAsync(token);
+            if (_state.CurrentLevel >= AutomationRules.UnlockLevels[0] && Due("automation", 240)) await AutomationAsync(token);
+        }
+
+        // ------------------------------------------------------------------
+        // Orders (automation rules)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// The main character's orders: fish the best reached spot when the
+        /// larder runs dry (slot 1, level 20) and step down a monster after a
+        /// death (slot 2, level 40). Re-sent when a better spot is reached.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A PLAYER WHO KNOWS THE GAME SETS THESE (measurement
+        /// 2026-11-21). The bot never did, so every night its larder ran dry
+        /// the character stood idle or died for the rest of the window, and
+        /// the offline numbers under-reported what the Orders panel is for.
+        /// Fusion (slot 3) is left alone: the bot fuses by hand in ForgeAsync.
+        /// </remarks>
+        private async Task AutomationAsync(CancellationToken token)
+        {
+            var view = await _client.GetAsync("/api/v1/automation-rules", token);
+            if (view is not { } v) return;
+            var main = v.Arr("Characters").FirstOrDefault(c => c.Int("Slot", -1) == 0);
+            if (main.ValueKind != JsonValueKind.Object) return;
+
+            long spot = NodeFor(0, ProfessionFishing, forRoster: true);
+            bool stepDown = _state.CurrentLevel >= AutomationRules.UnlockLevels[1];
+            var wanted = new (int Type, int Param)[]
+            {
+                spot > 0 ? (AutomationRules.FishWhenLarderDry, (int)spot) : (AutomationRules.None, 0),
+                stepDown ? (AutomationRules.StepDownOnDeath, 0) : (AutomationRules.None, 0),
+                (AutomationRules.None, 0),
+            };
+            var current = main.Arr("Rules").Select(r => (r.Int("Type"), r.Int("Param"))).ToArray();
+            if (current.SequenceEqual(wanted)) return;
+            var rules = wanted.Select(w => new { Type = w.Type, Param = w.Param }).ToArray();
+
+            var (_, saved) = await _client.PostAsync("/api/v1/automation-rules", new { CharacterId = main.Str("CharacterId"), Rules = rules }, token);
+            string result = saved is { } s2 ? s2.Str("Result") : "no answer";
+            Event($"orders: fish at {spot} when the larder runs dry{(stepDown ? ", step down after a death" : "")}: {result}");
+            if (result == "Ok") Count("automation_orders");
         }
 
         // ------------------------------------------------------------------
