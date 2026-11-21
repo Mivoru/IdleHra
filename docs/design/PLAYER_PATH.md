@@ -87,6 +87,9 @@ them in this order.
 1. Fight the best monster you beat without dying; move up as soon as the next
    one dies faster than it hurts you. Food (fish) is your health: the larder is
    the real difficulty ceiling, so fish before a push, not after a death.
+   Before logging off, stock the larder for the hours away: the Combat row's
+   "needs food (~N/h)" times the hours. Below level 20 a dry larder offline
+   ends the night in a death (see Open findings).
 2. Turn on auto-sell for commons (quest step 2) and wear every upgrade.
 3. Claim the daily missions and the Chronicle (step 3); they are free XP,
    diamonds and chests.
@@ -145,6 +148,16 @@ After a change: run the measurement, compare this file's tables, and update
 them in the same PR.
 
 ## Open findings (2026-11-21)
+
+- **The first nights starve (levels 1-19).** A real character gets seven
+  attribute points a level; at level 7 it has about 40 in total and 14
+  armour, and eats ~240 fish an hour even against the Field Mouse. Every
+  casual and idle bot logged out with a few hundred fish and died offline on
+  each of its first nights. Reproduced on a bot character loaded from the run
+  database: 330 fish lasted 1.4 of 8 hours (level 7 -> 10); with enough food
+  the same night is level 7 -> 16. The Orders rule "fish when the larder runs
+  dry" is the fix the game already has, but it opens at level 20. Proposal:
+  #470 (first Order from level 1), owner decision.
 
 - **Late gold has no sink.** 11-70 M gold per optimal bot after a week; prod's
   top account 15 B. A balance decision for the owner, not tuned here.
