@@ -59,11 +59,11 @@ namespace FolkIdle.Bots
         // ------------------------------------------------------------------
 
         /// <summary>The best reachable node of any gathering kind that drops <paramref name="itemId"/>.</summary>
-        private long NodeDropping(int itemId)
+        private long NodeDropping(int itemId, NodeUser user = NodeUser.Main)
         {
             foreach (int profession in new[] { ProfessionWoodcutting, ProfessionMining, ProfessionHerbalism, ProfessionFishing })
             {
-                long node = NodeFor(itemId, profession);
+                long node = NodeFor(itemId, profession, user);
                 if (node > 0) return node;
             }
             return 0;
@@ -74,7 +74,9 @@ namespace FolkIdle.Bots
             if (itemId <= 0 || quantity <= 0) return;
             // The first goal of a pass wins; chores run in priority order.
             if (_materialGoal != null && _materialGoal.ItemId != itemId && _materialGoalSetAt == Now) return;
-            if (NodeDropping(itemId) <= 0) return;
+            // Anyone: a goal the main character may not gather (its roster
+            // does that kind of work) is the roster's job (RosterAsync).
+            if (NodeDropping(itemId, NodeUser.Anyone) <= 0) return;
             _materialGoal = new MaterialGoal(itemId, quantity, purpose);
             _materialGoalSetAt = Now;
         }
@@ -89,7 +91,8 @@ namespace FolkIdle.Bots
             int held = Held(goal.ItemId);
             if (held >= goal.Quantity) { _materialGoal = null; return 0; }
             long node = NodeDropping(goal.ItemId);
-            if (node <= 0) { _materialGoal = null; return 0; }
+            // Kept for the roster when only its kind of work drops it.
+            if (node <= 0) return 0;
             StartTrip(new Trip(node, $"gathering {ContentRegistry.GetItemBaseId(goal.ItemId)} for {goal.Purpose}", goal.ItemId, goal.Quantity, Now, MaterialTripMinutes));
             _materialGoal = null;
             return node;

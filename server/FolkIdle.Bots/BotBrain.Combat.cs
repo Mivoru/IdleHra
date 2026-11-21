@@ -257,16 +257,19 @@ namespace FolkIdle.Bots
         }
 
         /// <summary>The nodes whose loot table drops <paramref name="itemId"/>, best reachable first.</summary>
-        /// <param name="forRoster">
-        /// Modul: ONE CHARACTER PER NODE (measurement 2026-11-21). The server
-        /// refuses a second character of the same account on a node
-        /// (CommandResultCode.NodeOccupied). Characters 2 and 3 sit on the best
-        /// wood and ore nodes, and the main character's material trips picked
-        /// the same best node: 90 refusals in one week, each a lost retry.
-        /// The main character now skips a node its own roster already works -
-        /// that character is gathering the material anyway.
+        /// <param name="user">
+        /// Modul: ONE CHARACTER PER KIND OF WORK (measurement 2026-11-21). The
+        /// server refuses a second character of the account on the same KIND
+        /// of work - woodcutting, mining, fishing - anywhere, not only on the
+        /// same node (CharacterSlotEngine.IsSameKindOfWork, NodeOccupied).
+        /// Characters 2 and 3 woodcut and mine, and the main character's
+        /// material trips asked for the same kind: 90 NodeOccupied and about
+        /// 60 silent refusals in one week, each a lost retry. The main
+        /// character now skips a kind its roster already does (that character
+        /// gathers the material anyway), and a roster job skips the kind the
+        /// main character is doing right now.
         /// </param>
-        private long NodeFor(int itemId, int professionType, bool forRoster = false)
+        private long NodeFor(int itemId, int professionType, NodeUser user = NodeUser.Main)
         {
             int reach = Math.Max(1, (int)_state.HighestLocationReached);
             long best = 0;
@@ -274,7 +277,10 @@ namespace FolkIdle.Bots
             foreach (var node in ContentRegistry.GatheringNodes.ToArray())
             {
                 if (node.ProfessionType != professionType || IsRefused(node.ActivityId)) continue;
-                if (!forRoster && (node.ActivityId == (long)_state.Slot2ActivityId || node.ActivityId == (long)_state.Slot3ActivityId)) continue;
+                if (user == NodeUser.Roster && CharacterSlotEngine.IsSameKindOfWork(_state.ActiveActivityId, node.ActivityId)) continue;
+                if (user == NodeUser.Main
+                    && (CharacterSlotEngine.IsSameKindOfWork(_state.Slot2ActivityId, node.ActivityId)
+                        || CharacterSlotEngine.IsSameKindOfWork(_state.Slot3ActivityId, node.ActivityId))) continue;
                 int location = ContentRegistry.GetNodeLocation(node.ActivityId);
                 if (location < 1 || location > reach) continue;
                 bool drops = itemId == 0;
@@ -291,6 +297,9 @@ namespace FolkIdle.Bots
             }
             return best;
         }
+
+        /// <summary>Who a node is chosen for: which characters' work it must not clash with.</summary>
+        private enum NodeUser { Main, Roster, Anyone }
 
         private const int ProfessionFishing = 2;
 

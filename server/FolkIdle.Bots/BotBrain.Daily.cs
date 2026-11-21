@@ -54,7 +54,7 @@ namespace FolkIdle.Bots
             var main = v.Arr("Characters").FirstOrDefault(c => c.Int("Slot", -1) == 0);
             if (main.ValueKind != JsonValueKind.Object) return;
 
-            long spot = NodeFor(0, ProfessionFishing, forRoster: true);
+            long spot = NodeFor(0, ProfessionFishing, NodeUser.Anyone);
             bool stepDown = _state.CurrentLevel >= AutomationRules.UnlockLevels[1];
             var wanted = new (int Type, int Param)[]
             {
