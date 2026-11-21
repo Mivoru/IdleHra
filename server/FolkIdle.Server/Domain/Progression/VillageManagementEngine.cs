@@ -134,8 +134,8 @@ namespace FolkIdle.Server.Domain.Progression
         public static int EndgameStep(int buildingId, int currentLevel)
             => currentLevel - (IsStructuralBuilding(buildingId) ? LegacyStructuralCap : LegacyBuildingCap);
 
-        /// <summary>Gold for an endgame level: 5 million, doubling each level (owner, 2026-11-21).</summary>
-        public const long EndgameGoldBase = 5_000_000L;
+        /// <summary>Gold for an endgame level: 20 million, doubling each level (owner, 2026-11-21; 5 million the same morning was a day of the top income).</summary>
+        public const long EndgameGoldBase = 20_000_000L;
 
         /// <summary>Logs and ore for an endgame level: 1,000, x1.5 each level.</summary>
         public const long EndgameMaterialBase = 1_000L;

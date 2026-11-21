@@ -35,6 +35,25 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.114.0',
+    date: '2026-11-21',
+    sections: [
+      {
+        title: 'Forge',
+        items: [
+          'The top of the ladder is harder to forge: four Demonic make a Godly and five Godly a Transcendent, and both fusions cost double (1.2 and 3 billion gold). Everything below Demonic is still three to one.',
+          'Those two fusions run through the item\'s Fuse button or the stack fusion, which pick the pieces for you.',
+        ],
+      },
+      {
+        title: 'Village',
+        items: [
+          'The new village levels cost more: 20 million gold for the first, doubling each level (it was 5 million).',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.113.0',
     date: '2026-11-21',
     headline: 'A Shrine for the village.',

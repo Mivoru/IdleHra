@@ -23,6 +23,7 @@
   import {
     buildFusionRows,
     fusionFeeCeiling,
+    piecesFor,
     hiddenByPending,
     settlePending,
     PENDING_FUSION_TTL_MS,
@@ -152,7 +153,7 @@
       groups.set(key, seen);
     }
     return [...groups.values()]
-      .filter((g) => g.count >= 3)
+      .filter((g) => g.count >= 3 && piecesFor(g.tier) === 3)
       .sort((a, b) => b.tier - a.tier || a.base.localeCompare(b.base));
   });
 
@@ -421,12 +422,16 @@
   function fuseRow(row: FusionRow) {
     const next = row.next;
     if (!next) return;
+    // Out of Demonic and Godly a fusion takes 4 and 5 pieces (piecesFor); the
+    // three-id command cannot name them, so the stack command makes exactly one.
     const outcome = commandInFlight.run(rowKey(row), () =>
-      executeForgeFusion(next.target, next.sacrifices[0], next.sacrifices[1], forgeLevel, {
-        sameBase: true,
-        sameRarity: true,
-        resultTier: next.tier + 1,
-      }),
+      next.pieces > 3
+        ? fuseStack(next.target, next.tier, next.tier + 1, forgeLevel)
+        : executeForgeFusion(next.target, next.sacrifices[0], next.sacrifices[1], forgeLevel, {
+            sameBase: true,
+            sameRarity: true,
+            resultTier: next.tier + 1,
+          }),
     );
     if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
@@ -763,7 +768,7 @@
     {:else if forge.data !== undefined && allRows.length === 0}
       <p class="dim small">
         Nothing to fuse yet - you need three of the same item at the same
-        rarity.
+        rarity (four Demonic, five Godly).
       </p>
     {:else if allRows.length > 0}
       <!-- Modul: ONE ROW PER ITEM, worn lines first (task 100). It replaced a
@@ -807,13 +812,13 @@
               </span>
               {#if row.next}
                 <span class="nextfuse">
-                  3 {rarityName(row.next.tier)} &rarr;
+                  {row.next.pieces} {rarityName(row.next.tier)} &rarr;
                   <b style="color: {rarityColor(row.next.tier + 1)}">1 {rarityName(row.next.tier + 1)}</b>
                   &middot; up to {formatGold(fusionFeeCeiling(row.next.tier))}
                 </span>
               {:else if row.worn}
                 <span class="dim tiny">
-                  Three spare pieces at one rarity make the next one up.
+                  Three spare pieces at one rarity make the next one up (four Demonic, five Godly).
                 </span>
               {/if}
               {#if blocked && row.next && !FORGE_LEVEL_REASON.test(blocked)}<span class="blocked tiny">{blocked}</span>{/if}
@@ -884,7 +889,12 @@
       </select>
     </label>
 
-    {#if fusionTarget !== 0 && twins.length < 2}
+    {#if fusionTargetItem && piecesFor(fusionTargetItem.QualityTier) > 3}
+      <p class="blocked small">
+        {rarityName(fusionTargetItem.QualityTier)} fuses {piecesFor(fusionTargetItem.QualityTier)} pieces at a
+        time - use the item's Fuse button or the stack fusion above.
+      </p>
+    {:else if fusionTarget !== 0 && twins.length < 2}
       <p class="blocked small">
         You only have {twins.length + 1} of this item at
         {rarityName(fusionTargetItem?.QualityTier ?? 0)}. Fusion needs three.

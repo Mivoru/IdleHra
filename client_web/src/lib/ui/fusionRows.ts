@@ -16,7 +16,25 @@ export const FORGE_FEE_GROWTH = 2.5;
  * off server-side, so this is a ceiling and the UI says "up to".
  */
 export function fusionFeeCeiling(currentTier: number): number {
-  return Math.ceil(FORGE_BASE_FEE * Math.pow(FORGE_FEE_GROWTH, currentTier));
+  const fee = Math.ceil(FORGE_BASE_FEE * Math.pow(FORGE_FEE_GROWTH, currentTier));
+  return currentTier >= DEMONIC_TIER ? fee * TOP_TIER_FEE_MULTIPLIER : fee;
+}
+
+/** RarityTier.Demonic. */
+export const DEMONIC_TIER = 12;
+/** ForgeSplicingEngine.TopTierFeeMultiplier - fusions out of Demonic and Godly cost double (2026-11-21). */
+export const TOP_TIER_FEE_MULTIPLIER = 2;
+
+/**
+ * ForgeSplicingEngine.PiecesFor: identical pieces one fusion consumes, the
+ * survivor included - 3, then 4 out of Demonic and 5 out of Godly. A fusion
+ * that takes more than three goes through the stack command, which picks the
+ * pieces server-side; the three-id command cannot name them.
+ */
+export function piecesFor(fromTier: number): number {
+  if (fromTier === DEMONIC_TIER) return 4;
+  if (fromTier > DEMONIC_TIER) return 5;
+  return 3;
 }
 
 export interface FusionPiece {
@@ -44,7 +62,7 @@ export interface FusionRow {
    * The single fusion the row offers: the HIGHEST rarity with three fusable
    * pieces, below the top of the ladder. Null when no rarity has three.
    */
-  next: { tier: number; target: number; sacrifices: [number, number] } | null;
+  next: { tier: number; target: number; sacrifices: [number, number]; pieces: number } | null;
   /**
    * The lowest rarity with three fusable pieces - where "the whole stack"
    * starts - and one piece of it, which is all the stack command needs.
@@ -105,7 +123,7 @@ export function buildFusionRows(
       .map(([tier, list]) => ({ tier, count: list.length }))
       .sort((a, b) => b.tier - a.tier);
 
-    const fusable = counts.filter((c) => c.count >= 3 && c.tier < maxTier);
+    const fusable = counts.filter((c) => c.count >= piecesFor(c.tier) && c.tier < maxTier);
     let next: FusionRow['next'] = null;
     if (fusable.length > 0) {
       const tier = fusable[0].tier;
@@ -116,7 +134,7 @@ export function buildFusionRows(
       // it too. Ties go to the lowest id, so the pick is stable between
       // renders.
       const pieces = [...(byTier.get(tier) ?? [])].sort((a, b) => affixCount(b) - affixCount(a) || a.Id - b.Id);
-      next = { tier, target: pieces[0].Id, sacrifices: [pieces[1].Id, pieces[2].Id] };
+      next = { tier, target: pieces[0].Id, sacrifices: [pieces[1].Id, pieces[2].Id], pieces: piecesFor(tier) };
     }
 
     const lowest = fusable.length > 0 ? fusable[fusable.length - 1] : null;

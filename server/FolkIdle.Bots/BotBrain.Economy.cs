@@ -448,7 +448,7 @@ namespace FolkIdle.Bots
             }).ToList();
 
             var stack = owned.Where(e => !e.Worn && ItemRegion(e.BaseId) >= region - 1 && e.Tier + 1 <= _state.ForgeLevel)
-                .GroupBy(e => (e.BaseId, e.Tier)).Where(g => g.Count() >= 3)
+                .GroupBy(e => (e.BaseId, e.Tier)).Where(g => g.Count() >= FolkIdle.Server.Domain.Economy.ForgeSplicingEngine.PiecesFor(g.Key.Tier))
                 .OrderByDescending(g => ItemRegion(g.Key.BaseId)).ThenByDescending(g => g.Key.Tier).FirstOrDefault();
             if (stack != null)
             {

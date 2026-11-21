@@ -54,7 +54,8 @@ namespace FolkIdle.Server.Domain.Economy
         //   tier   3: 156,250       tier   9: 38,146,973
         //   tier   4: 390,625       tier  10: 95,367,432
         //   tier   5: 976,563       tier  11: 238,418,580
-        //   tier   6: 2,441,407     tier  12: 596,046,448 (never charged: 12 is the ceiling)
+        //   tier   6: 2,441,407     tier  12: 596,046,448 x2 (4 pieces, 2026-11-21)
+        //                            tier  13: 1,490,116,120 x2 (5 pieces)
 
         // Modul: fusion is no longer a gamble. Three IDENTICAL items of the
         // SAME rarity produce one of the next rarity, for a gold fee. The
@@ -238,6 +239,17 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 int currentTier = targetItem.QualityTier;
+
+                // Village 2: out of Demonic and Godly a fusion takes 4 and 5
+                // pieces (PiecesFor). This command names exactly three, so it
+                // cannot make one; the stack fusion picks the pieces instead.
+                if (PiecesFor(currentTier) != 3 && currentTier < MaxQualityTier)
+                {
+                    await transaction.SafeRollbackAsync();
+                    Console.WriteLine($"Fusion failed: rarity {currentTier} fuses {PiecesFor(currentTier)} pieces, through the stack fusion.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                    return ForgeSplicingResult.InvalidRequest;
+                }
 
                 // Modul: hard tier cap - rejected before any resource
                 // consumption (the gold check/deduction below) or database
@@ -432,8 +444,35 @@ namespace FolkIdle.Server.Domain.Economy
         public static long FusionFee(int currentTier, double feeDiscount)
         {
             long cost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(2.5, currentTier));
+            if (currentTier >= RarityTier.Demonic) cost *= TopTierFeeMultiplier;
             return (long)Math.Ceiling(cost * (1.0 - feeDiscount));
         }
+
+        /// <summary>
+        /// How many identical pieces one fusion FROM this rarity consumes,
+        /// counting the one that survives: 3, then 4 out of Demonic and 5 out
+        /// of Godly.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE TOP OF THE LADDER STAYS RARE (owner, 2026-11-21). Village 2
+        /// raised the Forge to 14, the first Forge that could fuse past
+        /// Demonic. At 3:1 and the old fee, the strongest account (53 Demonic
+        /// pieces, 13.5 billion gold, 44 billion a week) could have forged three
+        /// Transcendents on day one - the rarity the 2026-10-07 pass took off
+        /// the boss trophy so it would not be a handout. Four Demonic make a
+        /// Godly and five Godly a Transcendent, and both fees double
+        /// (TopTierFeeMultiplier): a Transcendent from Demonic is twenty
+        /// identical pieces and about nine billion gold.
+        /// </remarks>
+        public static int PiecesFor(int fromTier) => fromTier switch
+        {
+            RarityTier.Demonic => 4,
+            >= RarityTier.Godly => 5,
+            _ => 3,
+        };
+
+        /// <summary>The fee multiplier on fusions out of Demonic and Godly (owner, 2026-11-21).</summary>
+        public const int TopTierFeeMultiplier = 2;
 
         // Modul: TASK 69 - A WHOLE STACK IN ONE ACTION.
         //
@@ -491,7 +530,8 @@ namespace FolkIdle.Server.Domain.Economy
 
             for (int tier = Math.Max(1, fromTier); tier < ceiling; tier++)
             {
-                int possible = after[tier] / 3;
+                int pieces = PiecesFor(tier);
+                int possible = after[tier] / pieces;
                 if (possible == 0) continue;
 
                 long fee = FusionFee(tier, feeDiscount);
@@ -504,7 +544,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
                 if (done <= 0) break;
 
-                after[tier] -= done * 3;
+                after[tier] -= done * pieces;
                 after[tier + 1] += done;
                 fusions[tier] = done;
                 gold -= done * fee;
@@ -663,12 +703,13 @@ namespace FolkIdle.Server.Domain.Economy
                 for (int n = 0; n < plan.FusionsByTier[tier]; n++)
                 {
                     var target = byTier[tier].Dequeue();
-                    var sac1 = byTier[tier].Dequeue();
-                    var sac2 = byTier[tier].Dequeue();
-                    db.EquipmentInstances.Remove(sac1);
-                    db.EquipmentInstances.Remove(sac2);
-                    consumed.Add(sac1.Id);
-                    consumed.Add(sac2.Id);
+                    // The first piece survives; the rest of PiecesFor go (2, 3 or 4).
+                    for (int s = 1; s < PiecesFor(tier); s++)
+                    {
+                        var sacrifice = byTier[tier].Dequeue();
+                        db.EquipmentInstances.Remove(sacrifice);
+                        consumed.Add(sacrifice.Id);
+                    }
 
                     if (!originalTier.ContainsKey(target.Id)) originalTier[target.Id] = tier;
                     target.QualityTier = tier + 1;
