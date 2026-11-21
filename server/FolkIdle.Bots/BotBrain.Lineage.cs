@@ -98,7 +98,7 @@ namespace FolkIdle.Bots
             })
             {
                 if (characterId == Guid.Empty || slotIndex >= playable) continue;
-                long node = NodeFor(0, profession);
+                long node = NodeFor(0, profession, forRoster: true);
                 if (node <= 0 || node == activity || IsRefused(node + characterId.GetHashCode())) continue;
                 Enqueue(new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = node, TargetGuid = characterId },
                     $"roster: character {characterId.ToString()[..8]} to {(profession == ProfessionWoodcutting ? "woodcutting" : "mining")} at node {node}", 35,
