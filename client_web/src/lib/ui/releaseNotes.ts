@@ -35,9 +35,15 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
-    version: '1.109.0',
+    version: '1.110.0',
     date: '2026-11-21',
     sections: [
+      {
+        title: 'Orders',
+        items: [
+          'The first standing order is open from the start. Set "Fish when the larder runs dry" on the Character screen and a new character goes fishing instead of starving through the night.',
+        ],
+      },
       {
         title: 'World boss',
         items: [

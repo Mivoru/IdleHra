@@ -37,8 +37,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Theory]
-        [InlineData(19, 0, false)]
-        [InlineData(20, 0, true)]
+        [InlineData(1, 0, true)]
         [InlineData(39, 1, false)]
         [InlineData(40, 1, true)]
         [InlineData(59, 2, false)]
@@ -52,8 +51,7 @@ namespace FolkIdle.Server.Tests
         public void TheSetterRefusesWhatTheOwnerDidNotGrant()
         {
             Assert.Null(AutomationRules.Validate(new[] { Fish(), StepDown, Fuse(5) }, 60));
-            Assert.Null(AutomationRules.Validate(new[] { StepDown, Empty, Empty }, 20));
-            Assert.Equal("SlotLocked", AutomationRules.Validate(new[] { StepDown, Empty, Empty }, 19));
+            Assert.Null(AutomationRules.Validate(new[] { StepDown, Empty, Empty }, 1));
             Assert.Equal("SlotLocked", AutomationRules.Validate(new[] { Empty, StepDown, Empty }, 39));
             Assert.Equal("DuplicateRule", AutomationRules.Validate(new[] { StepDown, StepDown, Empty }, 60));
             Assert.Equal("NotAFishingSpot", AutomationRules.Validate(new[] { new AutomationRules.Rule { Type = AutomationRules.FishWhenLarderDry, Param = 0 }, Empty, Empty }, 60));
@@ -124,7 +122,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0, none.ActiveActivityId);
             Assert.Equal(Network.ActivityHaltReason.Died, none.ActivityHaltReason);
 
-            var tooLow = Fighter(AutomationRules.Pack(new[] { StepDown, Empty, Empty }), level: 19);
+            var tooLow = Fighter(AutomationRules.Pack(new[] { Empty, StepDown, Empty }), level: 39);
             SimulationEngine.ApplyCombatDeath(ref tooLow, 93, 5000);
             Assert.Equal(0, tooLow.ActiveActivityId);
         }
@@ -215,7 +213,7 @@ namespace FolkIdle.Server.Tests
         public void TheDropRequestCarriesTheFuseRule_LiveAndOfflineAlike()
         {
             // Build is the only builder, for the live kill and the offline window.
-            var payload = Fighter(AutomationRules.Pack(new[] { Fuse(4), Empty, Empty }));
+            var payload = Fighter(AutomationRules.Pack(new[] { Empty, Fuse(4), Empty }));
             var stats = SimulationEngine.LiveCombatStats(in payload);
             Assert.Equal(4, CombatLootDropRequest.Build(in payload, in stats, 93, 1, 0, false).AutoFuseToTier);
             Assert.Equal(4, CombatLootDropRequest.Build(in payload, in stats, 93, 50, 0, true, DropSource.Offline).AutoFuseToTier);
