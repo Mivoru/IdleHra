@@ -131,7 +131,7 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'structural',
     cap: STRUCTURAL_MAX_LEVEL,
     effect:
-      'Sets the level ceiling every other building may reach (2 + 2 per level, so 2 at level 0, 12 at level 5 and the cap of 20 at level 9), unlocks the second character slot at level 3 and the third at level 5, and trickles gold on its own: 50/h up to level 1, rising to 3,000 at level 5 and 30,000 at level 10. Caps at 10; levels 6-10 cost gold (5 M, doubling) and region 3-5 materials.',
+      'Sets the level ceiling every other building may reach (2 + 2 per level, so 2 at level 0, 12 at level 5 and the cap of 20 at level 9), unlocks the second character slot at level 3 and the third at level 5, and trickles gold on its own: 50/h up to level 1, rising to 3,000 at level 5 and 30,000 at level 10. Caps at 10; levels 6-10 cost gold (20 M, doubling) and region 3-5 materials.',
     source: 'GetMaxBuildingLevelCeiling, CharacterSlotEngine, GetTownHallGoldRatePerHour',
   },
   {
@@ -149,7 +149,7 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'service',
     cap: null,
     effect:
-      'Its level is the rarity ceiling for fusion. A level 5 Forge fuses up to rarity 5 and refuses anything above, which is the single most common reason a fusion is turned down. Caps at 14, the highest rarity: levels 13 and 14 open the last two.',
+      'Its level is the rarity ceiling for fusion. A level 5 Forge fuses up to rarity 5 and refuses anything above, which is the single most common reason a fusion is turned down. Caps at 14, the highest rarity: levels 13 and 14 open the last two. Four Demonic make a Godly and five Godly a Transcendent, each at double the usual fee.',
     source: 'ForgeSplicingEngine, ClientCommandValidator.ValidateForgeSplicingRequest',
   },
   {

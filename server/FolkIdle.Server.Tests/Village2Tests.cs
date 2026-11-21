@@ -51,12 +51,12 @@ namespace FolkIdle.Server.Tests
         }
 
         [Theory]
-        [InlineData(Lumberjack, 12, 5_000_000L, 1_000L, "acacia_log")]
-        [InlineData(Lumberjack, 14, 20_000_000L, 2_250L, "acacia_log")]
-        [InlineData(Lumberjack, 19, 640_000_000L, 17_086L, "frostpine_log")]
-        [InlineData(TownHall, 5, 5_000_000L, 1_000L, "acacia_log")]
-        [InlineData(TownHall, 9, 80_000_000L, 5_063L, "ebon_log")]
-        public void EndgameLevels_PayGoldDoublingFromFiveMillion(int building, int level, long gold, long materials, string log)
+        [InlineData(Lumberjack, 12, 20_000_000L, 1_000L, "acacia_log")]
+        [InlineData(Lumberjack, 14, 80_000_000L, 2_250L, "acacia_log")]
+        [InlineData(Lumberjack, 19, 2_560_000_000L, 17_086L, "frostpine_log")]
+        [InlineData(TownHall, 5, 20_000_000L, 1_000L, "acacia_log")]
+        [InlineData(TownHall, 9, 320_000_000L, 5_063L, "ebon_log")]
+        public void EndgameLevels_PayGoldDoublingFromTwentyMillion(int building, int level, long gold, long materials, string log)
         {
             var quote = VillageManagementEngine.QuoteUpgrade(building, level);
             Assert.Equal(gold, quote.Single(l => l.ItemId == "gold").Quantity);
@@ -66,12 +66,12 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void TheWholeEndgameBuilding_CostsAboutOnePointThreeBillion()
+        public void TheWholeEndgameBuilding_CostsAboutFiveBillion()
         {
             long total = 0;
             for (int level = VillageManagementEngine.LegacyBuildingCap; level < VillageManagementEngine.MaxBuildingLevel; level++)
                 total += VillageManagementEngine.QuoteUpgrade(Lumberjack, level).Single(l => l.ItemId == "gold").Quantity;
-            Assert.Equal(1_275_000_000L, total);
+            Assert.Equal(5_100_000_000L, total);
         }
 
         [Fact]

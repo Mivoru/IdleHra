@@ -1737,9 +1737,9 @@ export function villageMaterialCost(currentLevel: number): number {
   return Math.ceil(100 * Math.pow(1.5, Math.max(0, levelInTier)));
 }
 
-/** Mirrors VillageManagementEngine.EndgameGoldCost - Village 2's levels: 5 M, doubling. */
+/** Mirrors VillageManagementEngine.EndgameGoldCost - Village 2's levels: 20 M, doubling. */
 export function villageEndgameGoldCost(step: number): number {
-  return step < 0 ? 0 : 5_000_000 * Math.pow(2, Math.min(step, 20));
+  return step < 0 ? 0 : 20_000_000 * Math.pow(2, Math.min(step, 20));
 }
 
 /** Mirrors VillageManagementEngine.EndgameMaterialCost - 1,000, x1.5 a level. */

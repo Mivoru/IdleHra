@@ -310,9 +310,13 @@ namespace FolkIdle.Server.Tests
 
             // And the whole way up: 13 -> 14 was unreachable too, because the
             // global ceiling was read as "tiers 0-13" while every item in the
-            // game is 1-based and Transcendent is 14.
-            var toTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 13, forgeEngine);
+            // game is 1-based and Transcendent is 14. Since 2026-11-21 Godly fuses
+            // FIVE pieces, so this three-piece command refuses it (the stack
+            // fusion makes it - ForgeTopTierFusionTests); the climb is proved up to 12.
+            var toTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 11, forgeEngine);
             Assert.Equal(ForgeSplicingResult.Success, toTheTop);
+            var threeGodly = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 13, forgeEngine);
+            Assert.Equal(ForgeSplicingResult.InvalidRequest, threeGodly);
 
             // Task 26's drop record: a fusion leaves a Forge row saying what it
             // started from, so "dropped or forged?" is a query.
@@ -320,7 +324,7 @@ namespace FolkIdle.Server.Tests
             {
                 Assert.True(await record.NotableItemEvents.AsNoTracking().AnyAsync(e =>
                     e.PlayerId == DbSeeder.PlayerHighId && e.Source == (short)DropSource.Forge
-                    && e.RolledTier == 13 && e.FinalTier == 14 && e.BaseItemId == starterBaseId
+                    && e.RolledTier == 11 && e.FinalTier == 12 && e.BaseItemId == starterBaseId
                     && e.EquipmentInstanceId != null));
             }
 
