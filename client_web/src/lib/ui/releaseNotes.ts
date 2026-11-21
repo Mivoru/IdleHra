@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.113.0',
+    date: '2026-11-21',
+    headline: 'A Shrine for the village.',
+    sections: [
+      {
+        title: 'Village',
+        items: [
+          'A new building, the Shrine, opens at Town Hall 10. Each level adds 2% damage and 2% max health to every character, online and away, and it has no level cap.',
+          'It is priced for the end of the game: 1 billion gold for the first level, x1.5 for each level after, plus region 5 logs and ore. Each level takes six hours.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.112.0',
     date: '2026-11-21',
     headline: 'The village grows past its old walls.',

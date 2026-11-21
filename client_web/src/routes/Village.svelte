@@ -35,7 +35,7 @@
   // started upgrade asks again by itself; the interval catches what gathering
   // adds while the screen is open.
   const levelSignature = $derived(
-    snap ? `${BUILDINGS.map((b) => levelOf(snap, b.stateField)).join('.')}:${snap.PendingUpgradeBuildingId}` : '',
+    snap ? `${BUILDINGS.map((b) => snapshotLevel(snap, b.stateField)).join('.')}:${snap.PendingUpgradeBuildingId}` : '',
   );
   const quote = createQuery(() => ({
     queryKey: [...queryKeys.villageQuote, levelSignature] as const,
@@ -65,9 +65,21 @@
     return missing.length > 0 ? `You need ${missing.join(', ')} more.` : null;
   }
 
-  function levelOf(state: StateUpdate, field: string): number {
+  function snapshotLevel(state: StateUpdate, field: string): number | null {
     const value = (state as unknown as Record<string, unknown>)[field];
-    return typeof value === 'number' ? value : 0;
+    return typeof value === 'number' ? value : null;
+  }
+
+  // Modul: THE SHRINE IS NOT ON THE WIRE (Village 2, 2026-11-21). Its level
+  // changes a few times a month, so it rides the quote rather than a byte on
+  // every snapshot; a building the snapshot does not carry reads the quote's
+  // CurrentLevel. The signature above reads the snapshot only, or the quote
+  // would key itself.
+  function levelOf(state: StateUpdate, field: string): number {
+    const fromSnapshot = snapshotLevel(state, field);
+    if (fromSnapshot !== null) return fromSnapshot;
+    const id = BUILDINGS.find((b) => b.stateField === field)?.id;
+    return quote.data?.Buildings.find((b) => b.BuildingId === id)?.CurrentLevel ?? 0;
   }
 
   // Modul: PendingUpgradeBuildingId == 0 means no upgrade is in flight. Only

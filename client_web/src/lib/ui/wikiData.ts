@@ -29,6 +29,10 @@ import {
   villageEndgameGoldCost,
   villageEndgameMaterialCost,
   villageUpgradeDurationSeconds,
+  villageDurationLevelFor,
+  shrineGoldCost,
+  SHRINE_BUILDING_ID,
+  SHRINE_MATERIAL_PER_LEVEL,
   maxBuildingLevelCeiling,
   MAX_STRUCTURAL_BUILDING_LEVEL,
   LEGACY_STRUCTURAL_CAP,
@@ -105,7 +109,7 @@ export const SLOT3_TOWN_HALL = 5;
 /** VillageManagementEngine.RareYieldPercent. */
 export const VILLAGE_RARE_YIELD_PCT = 10;
 
-export type VillageCostKind = 'service' | 'production' | 'structural';
+export type VillageCostKind = 'service' | 'production' | 'structural' | 'shrine';
 
 /**
  * What each building is, what its level actually changes, and how it is paid
@@ -198,6 +202,15 @@ export const VILLAGE_BUILDINGS: readonly {
       'Stores what the Lumberjack and the Mine make while you are away: 1,000 per level of each material, emptied into the chest when you return (what the chest already holds does not count). At level 0 they bank nothing away. Each level also adds 5% to their output, online and away.',
     source: 'CalculateWarehouseMaxStorage, WarehouseBonusPermille',
   },
+  {
+    id: 11,
+    name: 'Shrine',
+    costKind: 'shrine',
+    cap: null,
+    effect:
+      'The last building of Village 2: opens at Town Hall 10, and each level adds 2% damage and 2% max health to every character, online and away. It costs 1 billion gold for the first level and x1.5 each level after, plus region 5 logs and ore, so the price is the cap.',
+    source: 'VillageManagementEngine.ShrineBonusPct, SimulationEngine.EffectiveMilliAttackFor / EffectiveMaxMilliHpFor',
+  },
 ];
 
 /**
@@ -206,6 +219,20 @@ export const VILLAGE_BUILDINGS: readonly {
  * caps (structural 5, the rest 12) pays the Village 2 gold price.
  */
 export function villageCostRow(costKind: VillageCostKind, currentLevel: number) {
+  if (costKind === 'shrine') {
+    // VillageManagementEngine's Shrine branch of QuoteUpgrade.
+    const top = VILLAGE_TIER_MATERIALS[VILLAGE_TIER_MATERIALS.length - 1];
+    return {
+      level: `${currentLevel} → ${currentLevel + 1}`,
+      gold: shrineGoldCost(currentLevel),
+      materials: SHRINE_MATERIAL_PER_LEVEL * (currentLevel + 1),
+      log: top.log,
+      ore: top.ore,
+      rareLog: 0,
+      rareLogId: top.rareLog,
+      seconds: villageUpgradeDurationSeconds(villageDurationLevelFor(SHRINE_BUILDING_ID, currentLevel)),
+    };
+  }
   const structural = costKind === 'structural';
   const step = currentLevel - (structural ? LEGACY_STRUCTURAL_CAP : LEGACY_BUILDING_CAP);
   const endgame = step >= 0;

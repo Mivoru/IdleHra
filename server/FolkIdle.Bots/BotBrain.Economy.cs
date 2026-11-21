@@ -229,7 +229,7 @@ namespace FolkIdle.Bots
         private static string BuildingName(int id) => id switch
         {
             BuildingForge => "Forge", BuildingInn => "Inn", BuildingBreeding => "Breeding Grounds", BuildingLumberjack => "Lumberjack",
-            BuildingMine => "Mine", BuildingWarehouse => "Warehouse", BuildingTownHall => "Town Hall", BuildingWorkshop => "Crafting Workshop", _ => $"building {id}",
+            BuildingMine => "Mine", BuildingWarehouse => "Warehouse", BuildingTownHall => "Town Hall", BuildingWorkshop => "Crafting Workshop", FolkIdle.Server.Domain.Progression.VillageManagementEngine.ShrineBuildingId => "Shrine", _ => $"building {id}",
         };
 
         /// <summary>
@@ -246,6 +246,8 @@ namespace FolkIdle.Bots
                 BuildingLumberjack or BuildingMine or BuildingWorkshop => 1,
                 BuildingWarehouse => 2,
                 BuildingInn or BuildingBreeding => _state.CurrentLevel >= 40 ? 1 : 4,
+                // Village 2's Shrine (billions a level): only once the rest of the village is done.
+                FolkIdle.Server.Domain.Progression.VillageManagementEngine.ShrineBuildingId => 20,
                 _ => 5,
             };
             return level + offset;
@@ -261,7 +263,7 @@ namespace FolkIdle.Bots
             // 15 game minutes instead; a refused one simply costs that wait.
             var quote = await _client.GetAsync("/api/v1/village/quote", token);
             if (quote is not { } q) return;
-            var options = new List<(int Id, int Level, int Rank, List<(string Item, int Need, int Held)> Lines)>();
+            var options = new List<(int Id, int Level, int Rank, List<(string Item, long Need, long Held)> Lines)>();
             foreach (var b in q.Arr("Buildings"))
             {
                 int id = b.Int("BuildingId");
@@ -277,16 +279,16 @@ namespace FolkIdle.Bots
                 // cheaper upgrades below it waited behind it.
                 int cap = FolkIdle.Server.Domain.Progression.VillageManagementEngine.MaxLevelFor(id, _state.TownHallLevel);
                 if (level >= cap) continue;
-                var lines = b.Arr("Lines").Select(l => (l.Str("ItemId"), l.Int("Quantity"), l.Int("Held"))).ToList();
+                var lines = b.Arr("Lines").Select(l => (l.Str("ItemId"), l.Long("Quantity"), l.Long("Held"))).ToList();
                 if (lines.Count == 0) continue;
                 options.Add((id, level, BuildingRank(id, level), lines));
             }
             if (options.Count == 0) return;
 
-            static (int Id, int Level, int Rank, List<(string Item, int Need, int Held)> Lines) wanted0(List<(int Id, int Level, int Rank, List<(string Item, int Need, int Held)> Lines)> o)
+            static (int Id, int Level, int Rank, List<(string Item, long Need, long Held)> Lines) wanted0(List<(int Id, int Level, int Rank, List<(string Item, long Need, long Held)> Lines)> o)
                 => o.OrderBy(x => x.Rank).ThenBy(x => x.Id).First();
 
-            bool Affordable(List<(string Item, int Need, int Held)> lines)
+            bool Affordable(List<(string Item, long Need, long Held)> lines)
                 => lines.All(l => l.Item == "gold" ? _state.Gold >= l.Need : l.Held >= l.Need);
 
             _goldReserve = wanted0(options).Lines.Where(l => l.Item == "gold").Sum(l => (long)l.Need);
@@ -307,7 +309,7 @@ namespace FolkIdle.Bots
                 foreach (var (item, need, held) in wanted.Lines.Where(l => l.Item != "gold" && l.Held < l.Need))
                 {
                     if (!ContentRegistry.TryGetItemDefinitionByBaseId(item, out var def)) continue;
-                    WantMaterial(def.Id, need - held + Held(def.Id), $"{BuildingName(wanted.Id)} {wanted.Level + 1}");
+                    WantMaterial(def.Id, (int)Math.Min(int.MaxValue, need - held + Held(def.Id)), $"{BuildingName(wanted.Id)} {wanted.Level + 1}");
                     break;
                 }
             }

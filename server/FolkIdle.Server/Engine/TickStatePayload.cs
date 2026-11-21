@@ -716,6 +716,13 @@ namespace FolkIdle.Server.Engine
         // a colliding duplicate. CraftingWorkshopLevel is genuinely new.
         public byte CraftingWorkshopLevel;
 
+        /// <summary>
+        /// The Shrine (Village 2, 2026-11-21): +ShrineRules.PctPerLevel damage
+        /// and max health a level, account-wide. Not on the wire - the Village
+        /// screen reads it off /api/v1/village/quote.
+        /// </summary>
+        public byte ShrineLevel;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;

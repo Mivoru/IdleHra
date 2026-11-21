@@ -40,6 +40,40 @@ namespace FolkIdle.Server.Domain.Progression
         public const int TownHallBuildingId = 9;
         public const int CraftingWorkshopBuildingId = 10;
 
+        /// <summary>
+        /// The Shrine (Village 2's new building, owner 2026-11-21): account-wide
+        /// damage and max health, priced in billions, with no practical cap.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE SINK THAT MOVES POWER. Production measured 6-44 billion
+        /// gold a week per real account and 11-70 million per optimal bot at
+        /// the end of week one, with nothing to buy that made a character
+        /// stronger. The Shrine turns that gold into a small, permanent,
+        /// account-wide edge: +2% damage and +2% max health a level, at
+        /// 1 billion x 1.5^level. Level 10 is about 113 billion in total, a few
+        /// weeks for the strongest account; a level past that costs more than
+        /// any account earns, so the curve, not a number, is the cap. It opens
+        /// at Town Hall 10, so it is the last thing the village builds.
+        /// Shrine levels sit in the additive damage group (inheritance, guild,
+        /// Renown), so they never multiply each other.
+        /// </remarks>
+        public const int ShrineBuildingId = 11;
+        public const int ShrineTownHallLevel = 10;
+        public const int ShrinePctPerLevel = 2;
+        public const int MaxShrineLevel = 250;
+        public const long ShrineGoldBase = 1_000_000_000L;
+        public const long ShrineMaterialPerLevel = 5_000L;
+
+        /// <summary>Gold for the Shrine's next level: 1 billion x 1.5^level, saturating.</summary>
+        public static long ShrineGoldCost(int currentLevel)
+        {
+            double scaled = ShrineGoldBase * Math.Pow(1.5, Math.Max(0, currentLevel));
+            return scaled >= long.MaxValue / 2 ? long.MaxValue / 2 : (long)Math.Ceiling(scaled);
+        }
+
+        /// <summary>The Shrine's damage and max health bonus, in percent.</summary>
+        public static int ShrineBonusPct(int shrineLevel) => Math.Clamp(shrineLevel, 0, MaxShrineLevel) * ShrinePctPerLevel;
+
         /// <summary>The Town Hall's and the Workshop's last level.</summary>
         /// <remarks>
         /// Modul: VILLAGE 2 (owner, 2026-11-21). The three real accounts held
@@ -84,6 +118,7 @@ namespace FolkIdle.Server.Domain.Progression
         public static int MaxLevelFor(int buildingId, int townHallLevel)
         {
             if (IsStructuralBuilding(buildingId)) return MaxStructuralBuildingLevel;
+            if (buildingId == ShrineBuildingId) return townHallLevel >= ShrineTownHallLevel ? MaxShrineLevel : 0;
             int ceiling = GetMaxBuildingLevelCeiling(townHallLevel);
             return buildingId == ForgeBuildingId ? Math.Min(MaxForgeLevel, ceiling) : ceiling;
         }
@@ -92,6 +127,7 @@ namespace FolkIdle.Server.Domain.Progression
         public static int AbsoluteMaxLevelFor(int buildingId)
             => IsStructuralBuilding(buildingId) ? MaxStructuralBuildingLevel
              : buildingId == ForgeBuildingId ? MaxForgeLevel
+             : buildingId == ShrineBuildingId ? MaxShrineLevel
              : MaxBuildingLevel;
 
         /// <summary>How many levels past the pre-Village-2 cap this upgrade starts from; negative below it.</summary>
@@ -116,7 +152,8 @@ namespace FolkIdle.Server.Domain.Progression
         /// not the eight minutes its own small number would give.
         /// </summary>
         public static int DurationLevelFor(int buildingId, int currentLevel)
-            => IsStructuralBuilding(buildingId) && currentLevel >= LegacyStructuralCap
+            => buildingId == ShrineBuildingId ? MaxBuildingLevel
+             : IsStructuralBuilding(buildingId) && currentLevel >= LegacyStructuralCap
                 ? LegacyBuildingCap + (currentLevel - LegacyStructuralCap)
                 : currentLevel;
 
@@ -262,6 +299,18 @@ namespace FolkIdle.Server.Domain.Progression
         public static UpgradeCostLine[] QuoteUpgrade(int buildingId, int currentLevel)
         {
             bool structural = IsStructuralBuilding(buildingId);
+            if (buildingId == ShrineBuildingId)
+            {
+                // Region 5's common pair, 5,000 a level more each time, and the gold.
+                var top = TierMaterials[^1];
+                long materials = ShrineMaterialPerLevel * (Math.Max(0, currentLevel) + 1L);
+                return new[]
+                {
+                    new UpgradeCostLine(top.Log, materials),
+                    new UpgradeCostLine(top.Ore, materials),
+                    new UpgradeCostLine(GoldItemId, ShrineGoldCost(currentLevel)),
+                };
+            }
             int step = EndgameStep(buildingId, currentLevel);
             if (step >= 0)
             {
@@ -981,7 +1030,8 @@ namespace FolkIdle.Server.Domain.Progression
             return (buildingId >= ForgeBuildingId && buildingId <= BreedingGroundsBuildingId)
                 || buildingId == LumberjackBuildingId || buildingId == MineBuildingId || buildingId == WarehouseBuildingId
                 || buildingId == TownHallBuildingId
-                || buildingId == CraftingWorkshopBuildingId;
+                || buildingId == CraftingWorkshopBuildingId
+                || buildingId == ShrineBuildingId;
         }
 
         public static long CalculateUpgradeCost(int currentLevel)
@@ -1032,6 +1082,7 @@ namespace FolkIdle.Server.Domain.Progression
             int warehouseLevel = 0;
             int townHallLevel = 0;
             int craftingWorkshopLevel = 0;
+            int shrineLevel = 0;
             byte pendingUpgradeBuildingId = 0;
             long pendingUpgradeCompletesAtEpoch = 0;
 
@@ -1046,6 +1097,7 @@ namespace FolkIdle.Server.Domain.Progression
                 else if (levels[i].BuildingId == WarehouseBuildingId) warehouseLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == TownHallBuildingId) townHallLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == CraftingWorkshopBuildingId) craftingWorkshopLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == ShrineBuildingId) shrineLevel = levels[i].CurrentLevel;
 
                 if (levels[i].UpgradeTargetLevel > 0)
                 {
@@ -1085,6 +1137,7 @@ namespace FolkIdle.Server.Domain.Progression
                 WarehouseLevel = ClampByte(warehouseLevel),
                 TownHallLevel = ClampByte(townHallLevel),
                 CraftingWorkshopLevel = ClampByte(craftingWorkshopLevel),
+                ShrineLevel = ClampByte(shrineLevel),
                 PendingUpgradeBuildingId = pendingUpgradeBuildingId,
                 PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch
             };

@@ -121,6 +121,7 @@ namespace FolkIdle.Server.Domain.Progression
             payload.WarehouseLevel = updateNotif.WarehouseLevel;
             payload.TownHallLevel = updateNotif.TownHallLevel;
             payload.CraftingWorkshopLevel = updateNotif.CraftingWorkshopLevel;
+            payload.ShrineLevel = updateNotif.ShrineLevel;
             payload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
             payload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
             // Modul: the row is already debited (VillageManagementEngine),

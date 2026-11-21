@@ -112,6 +112,47 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void Shrine_OpensAtTownHall10_AndCostsBillions()
+        {
+            const int shrine = VillageManagementEngine.ShrineBuildingId;
+            Assert.True(VillageManagementEngine.IsValidBuildingId((uint)shrine));
+            Assert.Equal(0, VillageManagementEngine.MaxLevelFor(shrine, 9));
+            Assert.Equal(VillageManagementEngine.MaxShrineLevel, VillageManagementEngine.MaxLevelFor(shrine, 10));
+
+            var first = VillageManagementEngine.QuoteUpgrade(shrine, 0);
+            Assert.Equal(1_000_000_000L, first.Single(l => l.ItemId == "gold").Quantity);
+            Assert.Equal("ebon_log", first[0].ItemId);
+            Assert.Equal(5_000L, first[0].Quantity);
+            Assert.Equal(1_500_000_000L, VillageManagementEngine.QuoteUpgrade(shrine, 1).Single(l => l.ItemId == "gold").Quantity);
+
+            // Level 10 in total: about 113 billion - weeks for the strongest account.
+            long toTen = Enumerable.Range(0, 10).Sum(l => VillageManagementEngine.ShrineGoldCost(l));
+            Assert.InRange(toTen, 110_000_000_000L, 115_000_000_000L);
+            // The curve saturates instead of overflowing.
+            Assert.True(VillageManagementEngine.ShrineGoldCost(VillageManagementEngine.MaxShrineLevel) > 0);
+        }
+
+        [Fact]
+        public void Shrine_AddsTwoPercentDamageAndHealthALevel()
+        {
+            ContentRegistry.Initialize();
+            var stats = default(CombatStats);
+            stats.MaxHp = 500;
+            stats.FlatMeleeDamage = 200;
+            var bare = new TickStatePayload { CurrentLevel = 60 };
+            var shrined = new TickStatePayload { CurrentLevel = 60, ShrineLevel = 10 };
+
+            long hpBare = SimulationEngine.EffectiveMaxMilliHpFor(in bare, in stats);
+            long hpShrine = SimulationEngine.EffectiveMaxMilliHpFor(in shrined, in stats);
+            Assert.InRange(hpShrine * 100.0 / hpBare, 119.5, 120.5);
+
+            long atkBare = SimulationEngine.EffectiveMilliAttackFor(ref bare, in stats, 0);
+            long atkShrine = SimulationEngine.EffectiveMilliAttackFor(ref shrined, in stats, 0);
+            Assert.True(atkShrine > atkBare, $"{atkShrine} vs {atkBare}");
+            Assert.Equal(20, VillageManagementEngine.ShrineBonusPct(10));
+        }
+
+        [Fact]
         public void TownHallGold_KeepsRising_PastFive()
         {
             Assert.Equal(3000L, VillageManagementEngine.GetTownHallGoldRatePerHour(5));

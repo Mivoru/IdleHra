@@ -233,6 +233,17 @@ export const MAX_STRUCTURAL_BUILDING_LEVEL = 10;
 export const MAX_BUILDING_LEVEL = 20;
 /** VillageManagementEngine.MaxForgeLevel - fusion rarity stops at 14. */
 export const MAX_FORGE_LEVEL = 14;
+/** VillageManagementEngine.ShrineBuildingId and its rules (Village 2's new building). */
+export const SHRINE_BUILDING_ID = 11;
+export const SHRINE_TOWN_HALL_LEVEL = 10;
+export const SHRINE_PCT_PER_LEVEL = 2;
+export const MAX_SHRINE_LEVEL = 250;
+export const SHRINE_MATERIAL_PER_LEVEL = 5_000;
+
+/** VillageManagementEngine.ShrineGoldCost - 1 billion x 1.5^level. */
+export function shrineGoldCost(currentLevel: number): number {
+  return Math.ceil(1_000_000_000 * Math.pow(1.5, Math.max(0, currentLevel)));
+}
 /** The structural cap before Village 2; DurationLevelFor counts from it. */
 export const LEGACY_STRUCTURAL_CAP = 5;
 export const LEGACY_BUILDING_CAP = 12;
@@ -249,18 +260,21 @@ function isStructuralBuilding(buildingId: number): boolean {
 /** VillageManagementEngine.AbsoluteMaxLevelFor - the last level, whatever the Town Hall. */
 export function absoluteMaxLevelFor(buildingId: number): number {
   if (isStructuralBuilding(buildingId)) return MAX_STRUCTURAL_BUILDING_LEVEL;
+  if (buildingId === SHRINE_BUILDING_ID) return MAX_SHRINE_LEVEL;
   return buildingId === FORGE_BUILDING_ID ? MAX_FORGE_LEVEL : MAX_BUILDING_LEVEL;
 }
 
 /** VillageManagementEngine.MaxLevelFor - the level this building can reach with this Town Hall. */
 export function maxLevelFor(buildingId: number, townHallLevel: number): number {
   if (isStructuralBuilding(buildingId)) return MAX_STRUCTURAL_BUILDING_LEVEL;
+  if (buildingId === SHRINE_BUILDING_ID) return townHallLevel >= SHRINE_TOWN_HALL_LEVEL ? MAX_SHRINE_LEVEL : 0;
   const ceiling = maxBuildingLevelCeiling(townHallLevel);
   return buildingId === FORGE_BUILDING_ID ? Math.min(MAX_FORGE_LEVEL, ceiling) : ceiling;
 }
 
 /** VillageManagementEngine.DurationLevelFor - a structural level past 5 times like a building past 12. */
 export function villageDurationLevelFor(buildingId: number, currentLevel: number): number {
+  if (buildingId === SHRINE_BUILDING_ID) return MAX_BUILDING_LEVEL;
   return isStructuralBuilding(buildingId) && currentLevel >= LEGACY_STRUCTURAL_CAP
     ? LEGACY_BUILDING_CAP + (currentLevel - LEGACY_STRUCTURAL_CAP)
     : currentLevel;
@@ -282,6 +296,9 @@ export function villageUpgradeBlockedReason(
   if (isStructuralBuilding(buildingId)) return null;
 
   const ceiling = maxLevelFor(buildingId, townHallLevel);
+  if (buildingId === SHRINE_BUILDING_ID && ceiling === 0) {
+    return `The Shrine opens at Town Hall ${SHRINE_TOWN_HALL_LEVEL}.`;
+  }
   return currentLevel + 1 > ceiling
     ? `The Town Hall caps this at level ${ceiling}. Raise the Town Hall first.`
     : null;
@@ -1620,7 +1637,7 @@ export function purchaseInheritanceLevel(statId: number, currentLevel: number, d
  * The Mentorship Academy is NOT in this list any more: the feature was
  * removed and the server refuses the building id.
  */
-export type CostKind = 'service' | 'production' | 'structural';
+export type CostKind = 'service' | 'production' | 'structural' | 'shrine';
 
 export const BUILDINGS: readonly {
   id: number;
@@ -1695,6 +1712,14 @@ export const BUILDINGS: readonly {
     stateField: 'WarehouseLevel',
     costKind: 'production',
     what: 'Stores what the Lumberjack and Mine make while you are away (1,000 per level of each material) and adds 5% to their output a level.',
+  },
+  {
+    id: SHRINE_BUILDING_ID,
+    name: 'Shrine',
+    // Not on the snapshot: the Village screen reads this level off the quote.
+    stateField: 'ShrineLevel',
+    costKind: 'shrine',
+    what: `+${SHRINE_PCT_PER_LEVEL}% damage and max health a level for every character. Opens at Town Hall ${SHRINE_TOWN_HALL_LEVEL}; costs billions of gold.`,
   },
 ];
 

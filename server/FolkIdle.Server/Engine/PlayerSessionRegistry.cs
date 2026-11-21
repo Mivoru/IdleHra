@@ -325,6 +325,8 @@ namespace FolkIdle.Server.Engine
         // Modul: Play Mode audit fix - see StateUpdatePacket's own comment.
         public byte TownHallLevel;
         public byte CraftingWorkshopLevel;
+        /// <summary>Village 2's Shrine, copied onto TickStatePayload.ShrineLevel.</summary>
+        public byte ShrineLevel;
 
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village (only

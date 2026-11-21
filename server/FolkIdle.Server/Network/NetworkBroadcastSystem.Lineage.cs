@@ -74,7 +74,7 @@ namespace FolkIdle.Server.Network
                 var buildings = new List<(int Id, int Level, Domain.Progression.VillageManagementEngine.UpgradeCostLine[] Lines)>();
                 var wanted = new HashSet<string>();
                 int townHall = levels.FirstOrDefault(l => l.BuildingId == Domain.Progression.VillageManagementEngine.TownHallBuildingId)?.CurrentLevel ?? 0;
-                for (uint id = 1; id <= 10; id++)
+                for (uint id = 1; id <= (uint)Domain.Progression.VillageManagementEngine.ShrineBuildingId; id++)
                 {
                     if (!Domain.Progression.VillageManagementEngine.IsValidBuildingId(id)) continue;
                     int level = levels.FirstOrDefault(l => l.BuildingId == (int)id)?.CurrentLevel ?? 0;

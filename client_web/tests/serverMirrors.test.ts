@@ -215,6 +215,12 @@ describe('the numbers the client mirrors still match the server', () => {
       [/MAX_FORGE_LEVEL = (\d+)/, /MaxForgeLevel = (\d+)/, 'forge cap'],
       [/LEGACY_STRUCTURAL_CAP = (\d+)/, /LegacyStructuralCap = (\d+)/, 'legacy structural cap'],
       [/LEGACY_BUILDING_CAP = (\d+)/, /LegacyBuildingCap = (\d+)/, 'legacy building cap'],
+      [/SHRINE_BUILDING_ID = (\d+)/, /ShrineBuildingId = (\d+)/, 'shrine id'],
+      [/SHRINE_TOWN_HALL_LEVEL = (\d+)/, /ShrineTownHallLevel = (\d+)/, 'shrine town hall'],
+      [/SHRINE_PCT_PER_LEVEL = (\d+)/, /ShrinePctPerLevel = (\d+)/, 'shrine pct'],
+      [/MAX_SHRINE_LEVEL = (\d+)/, /MaxShrineLevel = (\d+)/, 'shrine cap'],
+      [/SHRINE_MATERIAL_PER_LEVEL = ([\d_]+)/, /ShrineMaterialPerLevel = ([\d_]+)L/, 'shrine materials'],
+      [/Math\.ceil\(([\d_]+) \* Math\.pow\(1\.5, Math\.max\(0, currentLevel\)\)\)/, /ShrineGoldBase = ([\d_]+)L/, 'shrine gold'],
     ];
     for (const [client, server, what] of pairs) {
       expect(num(commands, client, `client ${what}`)).toBe(num(village, server, `server ${what}`));

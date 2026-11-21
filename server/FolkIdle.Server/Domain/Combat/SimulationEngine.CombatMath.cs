@@ -123,6 +123,8 @@ namespace FolkIdle.Server.Domain.Combat
             // Rebirth Trials: Frailty's cut while active, a finished trial's
             // reward after - one percent, on the whole pool.
             effectiveMilliHp += effectiveMilliHp * RebirthTrials.MaxHpPct(payload.ActiveRebirthTrial, payload.CompletedRebirthTrials) / 100L;
+            // Village 2's Shrine: +2% a level, on the whole pool like inheritance.
+            effectiveMilliHp += effectiveMilliHp * VillageManagementEngine.ShrineBonusPct(payload.ShrineLevel) / 100L;
 
             // Modul: the bloodline's health - Endurance, then health traits -
             // layered the same additive-percent way as inheritance and the tree
@@ -464,7 +466,9 @@ namespace FolkIdle.Server.Domain.Combat
                     // under a ceiling (RebirthRules), in PowerCeilingTests.
                     + RebirthRules.DamageBonusPct(payload.RenownedRebirths)
                     // Rebirth Trials: the Trial of Iron's reward.
-                    + RebirthTrials.DamagePctReward(payload.CompletedRebirthTrials));
+                    + RebirthTrials.DamagePctReward(payload.CompletedRebirthTrials)
+                    // Village 2's Shrine: +2% a level, in this additive group.
+                    + VillageManagementEngine.ShrineBonusPct(payload.ShrineLevel));
 
             // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
             // applied as a flat percent boost to effective damage output per
