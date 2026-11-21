@@ -59,6 +59,35 @@ Median level by game hour:
 | casual | 5.5 | 18.5 | 33 | 48.5 | 59.5 | 64.5 | 69.5 |
 | idle | 1 | 6 | 12.5 | 17.5 | 22.5 | 33 | 42 |
 
+### Run B (with the bot fixes)
+
+| Milestone | optimal | casual | idle |
+|---|---:|---:|---:|
+| Level 10 | 2.1 | 16 | 48 |
+| Region 1 boss | 7.7 | 32 | 96 |
+| Level 30 | 13 | 40 | 108 |
+| Region 2 boss (dungeons) | 28 | 84 | - |
+| Level 50 | 44 | 72 | 144 (1 of 2) |
+| Level 60 | 72 | 104 | - |
+| Region 3 boss | 112 (2 of 4) | 152 (2 of 4) | - |
+| First rebirth | 144 (4 of 4) | - | - |
+| Level at the end of the week | 33-64 (reborn once) | 68-71 | 46, 50 |
+
+| Persona | 12h | 24h | 48h | 72h | 96h | 120h | 156h |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| optimal | 27 | 36.5 | 50 | 59 | 64.5 | 68.5 | 72 |
+| casual | 5 | 18 | 39.5 | 51 | 58 | 63.5 | 69 |
+| idle | 1 | 5.5 | 10.5 | 20 | 29.5 | 40 | 48 |
+
+A against B: the bot fixes removed the wasted commands (optimal refusals
+104/9/30/38 in A, 7/9/11/9 in B; the 519 refused Town Hall 6 upgrades are
+gone) and the curve barely moved, so the hours above are the game's pace and
+not bot noise. Optimal now rebirths later (day 6, at level 70-74) because it
+keeps climbing past 65 instead of looping on the Town Hall. The first-night
+deaths are unchanged (every casual and idle bot at its first one or two
+logins), as expected: #470 is not in this run. End gold: optimal 0.7-18 M
+(spent on rerolls), casual 24-59 M.
+
 What the shape says:
 
 - **The first day is fast and the curve flattens at Renown.** Optimal reaches
