@@ -139,6 +139,9 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   73: 'Boon raised - it lasts through every rebirth.',
   74: 'Not enough Legacy Shards for that boon yet.',
   75: 'That boon is already complete.',
+
+  // Never shown as a toast (COMMAND_RESULT_QUIET_CODES); mapped for the debug log.
+  76: 'Rerolled.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
@@ -201,7 +204,25 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   70,
   // A duplicate pet paid in diamonds.
   71,
+  76,
 ]);
+
+/**
+ * Results that refresh the screens but never pop a toast (owner, 2026-11-21:
+ * "the popups while rerolling annoy me - only tell me when the auto-reroll
+ * stops because the affix I wanted dropped").
+ *
+ * 76 is a single reroll or refine; 24 is an auto-reroll run that spent every
+ * attempt. The Forge's affix row already shows how each roll came out, so a
+ * toast only repeated it. 23 - the stop condition met - still pops, and so
+ * does every refusal (not enough gold, the item is locked).
+ */
+export const COMMAND_RESULT_QUIET_CODES: ReadonlySet<number> = new Set([24, 76]);
+
+/** The entries that deserve a toast. */
+export function toastable<T extends { code: number }>(entries: readonly T[]): T[] {
+  return entries.filter((entry) => !COMMAND_RESULT_QUIET_CODES.has(entry.code));
+}
 
 /**
  * Results that make no sound at all (owner, 2026-09-28): "the auto-reroll
@@ -212,7 +233,7 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
  * Forge button can meet (top rarity, fusion's three-of-a-kind rule, the Forge
  * level). The toast still says what happened; only the tone goes.
  */
-export const COMMAND_RESULT_SILENT_CODES: ReadonlySet<number> = new Set([10, 16, 19, 20, 23, 24, 25, 49, 50]);
+export const COMMAND_RESULT_SILENT_CODES: ReadonlySet<number> = new Set([10, 16, 19, 20, 23, 24, 25, 49, 50, 76]);
 
 /** Whether a batch of results deserves the error tone: a real refusal, not good news and not the Forge. */
 export function shouldPlayErrorTone(codes: readonly number[]): boolean {

@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.115.0',
+    date: '2026-11-21',
+    sections: [
+      {
+        title: 'Forge',
+        items: [
+          'Rerolling and refining no longer pop a notice after every roll - the affix row already shows how it came out. An auto-reroll speaks up only when it stops on the affix you asked for.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.114.0',
     date: '2026-11-21',
     sections: [

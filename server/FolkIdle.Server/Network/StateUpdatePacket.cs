@@ -360,7 +360,14 @@ namespace FolkIdle.Server.Network
         // too few Legacy Shards, the boon already at its cap.
         BoonPurchased = 73,
         BoonInsufficientShards = 74,
-        BoonMaxed = 75
+        BoonMaxed = 75,
+
+        // Modul: a single reroll or refine landed (owner, 2026-11-21: "the
+        // popups while rerolling annoy me"). Its own code instead of Success so
+        // the client can refetch on it without a toast - the Forge already shows
+        // the outcome on the affix row itself. Success is shared by many
+        // commands, so the client could not tell a reroll's "Done." apart.
+        AffixRerollDone = 76
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
