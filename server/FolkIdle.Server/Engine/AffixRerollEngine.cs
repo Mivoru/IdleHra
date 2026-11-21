@@ -535,7 +535,7 @@ namespace FolkIdle.Server.Engine
                 Console.WriteLine($"Reroll success: {affixKeyToReroll} -> {newAffixKey} ({resultRarity})");
                 // After the commit; an auto-reroll counts every attempt it paid for.
                 FolkIdle.Server.Domain.Progression.MissionEvents.Record(playerId, refine ? FolkIdle.Server.Domain.Progression.MissionAction.AffixRefine : FolkIdle.Server.Domain.Progression.MissionAction.AffixReforge);
-                if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.AffixRerollDone);
 
                 // The outcome is built HERE, after the commit returned, which is
                 // the whole point of returning one: everything above this line

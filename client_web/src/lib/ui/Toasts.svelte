@@ -1,10 +1,10 @@
 <script lang="ts">
   import { commandResults, dismissCommandResult } from '../stores/game';
-  import { COMMAND_RESULT_OK_CODES } from '../stores/commandResults';
+  import { COMMAND_RESULT_OK_CODES, toastable } from '../stores/commandResults';
 </script>
 
 <div class="toasts" role="status" aria-live="polite">
-  {#each $commandResults as toast (toast.id)}
+  {#each toastable($commandResults) as toast (toast.id)}
     <div class="toast" class:ok={COMMAND_RESULT_OK_CODES.has(toast.code)}>
       <span>{toast.message}</span>
       <button aria-label="Dismiss" onclick={() => dismissCommandResult(toast.id)}>×</button>

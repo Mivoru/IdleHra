@@ -169,3 +169,11 @@ describe('GuildWarsLocked (37)', () => {
     setGuildWarLockProgress(null);
   });
 });
+
+describe('quiet Forge results (owner, 2026-11-21)', () => {
+  it('a single reroll and a spent auto-run never toast; the stop condition and refusals still do', async () => {
+    const { toastable } = await import('../src/lib/stores/commandResults');
+    const shown = toastable([{ code: 76 }, { code: 24 }, { code: 23 }, { code: 5 }]).map((e) => e.code);
+    expect(shown).toEqual([23, 5]);
+  });
+});
