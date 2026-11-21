@@ -38,6 +38,28 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void EveryRowGate_HasNodes_AndIsReachableFromTheRowsBelow()
+        {
+            // 2026-11-21: the Hearth shared War's eight gates after skill tree v3,
+            // so every column ended in three empty tiers locked at 34/44/56 that
+            // no column could ever fill (owner: "there are only locks").
+            Assert.Equal(HearthTreeRegistry.RowCount, HearthTreeRegistry.RowGates.Length);
+            for (int column = 0; column < HearthTreeRegistry.ColumnCount; column++)
+            {
+                var col = HearthTreeRegistry.All().Where(n => n.Column == column).ToList();
+                for (int row = 0; row < HearthTreeRegistry.RowGates.Length; row++)
+                {
+                    Assert.Contains(col, n => n.Row == row);
+                    // The most a column can hold from the rows below, one fork side only.
+                    int below = col.Where(n => n.Row < row && !(n.Kind == "Fork" && n.Fork < n.Id))
+                        .Sum(n => n.MaxLevel * n.CostPerRank);
+                    Assert.True(below >= HearthTreeRegistry.RowGates[row],
+                        $"{HearthTreeRegistry.ColumnNames[column]} row {row}: gate {HearthTreeRegistry.RowGates[row]}, at most {below} below");
+                }
+            }
+        }
+
+        [Fact]
         public void EveryColumnHasTheWarShape_And37PointsWithOneForkSide()
         {
             for (int column = 0; column < HearthTreeRegistry.ColumnCount; column++)

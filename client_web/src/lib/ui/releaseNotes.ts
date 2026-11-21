@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.111.0',
+    date: '2026-11-21',
+    sections: [
+      {
+        title: 'Skill tree',
+        items: [
+          'The Hearth tree no longer ends in three locked rows (34, 44 and 56 points) with nothing behind them. The Hearth has five rows; its keystone at 26 points is the top of each column.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.110.0',
     date: '2026-11-21',
     sections: [

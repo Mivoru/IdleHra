@@ -87,8 +87,17 @@ namespace FolkIdle.Server.Engine
         public const int ColumnKin = 3;
         public const int ColumnCount = 4;
 
-        /// <summary>Points a column must hold before each row opens - the War half's gates.</summary>
-        public static readonly int[] RowGates = WarTreeRegistry.RowGates;
+        /// <summary>Points a column must hold before each row opens - the War half's gates, for the five rows the Hearth has.</summary>
+        /// <remarks>
+        /// Modul: NOT THE WAR ARRAY ITSELF (2026-11-21). Skill tree v3 grew War
+        /// to eight rows (gates up to 56); the Hearth kept five rows and a
+        /// column holds at most 32 points (38 in the Workshop), yet it shared
+        /// the array. The screen draws one tier per gate, so every Hearth
+        /// column ended in three empty locked tiers at 34, 44 and 56 that no
+        /// player could ever open. HearthTreeInvariantTests pins it.
+        /// </remarks>
+        public const int RowCount = 5;
+        public static readonly int[] RowGates = WarTreeRegistry.RowGates[..RowCount];
 
         public static readonly string[] ColumnNames = { "Wood & Stone", "Water & Herb", "Workshop", "Kin" };
         public static readonly string[] ColumnIcons = { "col_wood_stone", "col_water_herb", "col_workshop", "col_kin" };
