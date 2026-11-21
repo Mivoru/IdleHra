@@ -238,12 +238,14 @@ describe('the tables the wiki restates still match the server', () => {
     // The method name also appears in a comment further up the file, so the
     // marker is the signature rather than the bare name.
     const body = after(village, 'public static int GetMaxBuildingLevelCeiling', 'the ceiling function', 400);
-    const match = body.match(/return (\d+) \+ townHallLevel \* (\d+);/);
+    // Village 2: min(MaxBuildingLevel, 2 + TownHall * 2).
+    const match = body.match(/return Math\.Min\(MaxBuildingLevel, (\d+) \+ Math\.Max\(0, townHallLevel\) \* (\d+)\);/);
     if (!match) throw new Error('could not find the ceiling formula - the pattern needs updating');
+    const cap = Number(village.match(/MaxBuildingLevel = (\d+);/)![1]);
 
-    for (let level = 0; level <= 5; level++) {
+    for (let level = 0; level <= 10; level++) {
       expect(townHallCeiling(level), `ceiling at Town Hall ${level}`).toBe(
-        Number(match[1]) + level * Number(match[2]),
+        Math.min(cap, Number(match[1]) + level * Number(match[2])),
       );
     }
   });

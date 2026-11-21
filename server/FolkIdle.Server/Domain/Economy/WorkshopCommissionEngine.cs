@@ -146,7 +146,7 @@ namespace FolkIdle.Server.Domain.Economy
                     region <= unlocked,
                     floor,
                     floor > 0 ? RarityTier.GetName(floor) : string.Empty,
-                    WorkshopCommissionRules.DurationSecondsFor(floor > 0 ? floor : RarityTier.Common),
+                    WorkshopCommissionRules.DurationSecondsFor(floor > 0 ? floor : RarityTier.Common, workshopLevel),
                     cost,
                     cost.All(c => c.Held >= c.Quantity),
                     (piecesByRegion.GetValueOrDefault(region) ?? new List<PieceView>()).ToArray()));
@@ -279,7 +279,7 @@ namespace FolkIdle.Server.Domain.Economy
                 FloorTier = floor,
                 StartedEpoch = nowEpoch,
                 MaterialDiscountPermille = discount,
-                CompletionEpoch = nowEpoch + WorkshopCommissionRules.DurationSecondsFor(floor),
+                CompletionEpoch = nowEpoch + WorkshopCommissionRules.DurationSecondsFor(floor, workshopLevel),
                 IsReady = false,
             });
 

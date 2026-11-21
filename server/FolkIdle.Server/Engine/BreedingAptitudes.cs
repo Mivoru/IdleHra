@@ -436,13 +436,27 @@ namespace FolkIdle.Server.Engine
         public static int[] RollVillager(int innLevel, Random rng)
         {
             int reach = Math.Max(0, innLevel) * 3 / 2;
+            int floor = VillagerFloorFor(innLevel);
             var v = new int[Count];
             for (int i = 0; i < Count; i++)
             {
-                v[i] = Math.Min(VillagerCeiling, 2 + rng.Next(reach + 1));
+                v[i] = Math.Min(VillagerCeiling, Math.Max(floor, 2 + rng.Next(reach + 1)));
             }
             return v;
         }
+
+        /// <summary>
+        /// The lowest aptitude a newcomer rolls: 2, then one more for each Inn
+        /// level past 12 (10 at Inn 20).
+        /// </summary>
+        /// <remarks>
+        /// Modul: VILLAGE 2 (2026-11-21). At Inn 12 the reach (18) already
+        /// touches the villager ceiling of 20, so a higher Inn could not raise
+        /// the best roll. It raises the worst one instead: fewer 2s and 3s in
+        /// the gene pool, so a good newcomer turns up more often.
+        /// </remarks>
+        public static int VillagerFloorFor(int innLevel)
+            => 2 + Math.Max(0, innLevel - Domain.Progression.VillageManagementEngine.LegacyBuildingCap);
 
         // --- what the player is choosing between --------------------------------
 

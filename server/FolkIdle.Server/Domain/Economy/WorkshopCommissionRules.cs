@@ -99,6 +99,21 @@ namespace FolkIdle.Server.Domain.Economy
         /// 1-8 h). Longer for a better floor, because the floor is what the
         /// player is buying.
         /// </summary>
+        /// <summary>
+        /// The commission time at this Workshop level: 10% shorter for each
+        /// level past 5, so half at Workshop 10.
+        /// </summary>
+        /// <remarks>
+        /// Modul: VILLAGE 2 (2026-11-21). The floor stops at Epic on purpose
+        /// (TiersBelowRegionRequirement: commissions never open a region), so
+        /// the levels past 5 buy time, not rarity.
+        /// </remarks>
+        public static long DurationSecondsFor(int floorTier, int workshopLevel)
+        {
+            int past = Math.Clamp(workshopLevel - VillageManagementEngine.LegacyStructuralCap, 0, 5);
+            return DurationSecondsFor(floorTier) * (10 - past) / 10;
+        }
+
         public static long DurationSecondsFor(int floorTier) => floorTier switch
         {
             <= RarityTier.Common => 1L * 3600L,

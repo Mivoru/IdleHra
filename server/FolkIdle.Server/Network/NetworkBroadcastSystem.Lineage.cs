@@ -73,6 +73,7 @@ namespace FolkIdle.Server.Network
 
                 var buildings = new List<(int Id, int Level, Domain.Progression.VillageManagementEngine.UpgradeCostLine[] Lines)>();
                 var wanted = new HashSet<string>();
+                int townHall = levels.FirstOrDefault(l => l.BuildingId == Domain.Progression.VillageManagementEngine.TownHallBuildingId)?.CurrentLevel ?? 0;
                 for (uint id = 1; id <= 10; id++)
                 {
                     if (!Domain.Progression.VillageManagementEngine.IsValidBuildingId(id)) continue;
@@ -105,6 +106,12 @@ namespace FolkIdle.Server.Network
                     {
                         BuildingId = b.Id,
                         CurrentLevel = b.Level,
+                        // Village 2: the cap and the timer come from the
+                        // server, so the screen keeps no copy of either rule.
+                        MaxLevel = Domain.Progression.VillageManagementEngine.MaxLevelFor(b.Id, townHall),
+                        AbsoluteMaxLevel = Domain.Progression.VillageManagementEngine.AbsoluteMaxLevelFor(b.Id),
+                        UpgradeSeconds = Domain.Progression.VillageManagementEngine.CalculateUpgradeDurationSeconds(
+                            Domain.Progression.VillageManagementEngine.DurationLevelFor(b.Id, b.Level)),
                         Lines = Array.ConvertAll(b.Lines, line => new
                         {
                             line.ItemId,

@@ -39,16 +39,86 @@ namespace FolkIdle.Server.Domain.Progression
         // Village Stash) instead of gold or the wood/stone commodity pair.
         public const int TownHallBuildingId = 9;
         public const int CraftingWorkshopBuildingId = 10;
-        public const int MaxStructuralBuildingLevel = 5;
+
+        /// <summary>The Town Hall's and the Workshop's last level.</summary>
+        /// <remarks>
+        /// Modul: VILLAGE 2 (owner, 2026-11-21). The three real accounts held
+        /// every building at its cap (Town Hall and Workshop 5, the rest 12)
+        /// while the whole village cost about 70 thousand gold a building
+        /// against an income of 6-44 billion a week. The caps rose to 10 and 20,
+        /// and the levels past the old caps are priced in region 4-5 materials
+        /// and in gold (EndgameGoldCost) - the late-gold sink the measurement
+        /// asked for. The old levels keep their old prices.
+        /// </remarks>
+        public const int MaxStructuralBuildingLevel = 10;
+
+        /// <summary>The structural cap before Village 2; levels past it are endgame-priced.</summary>
+        public const int LegacyStructuralCap = 5;
+
+        /// <summary>The cap of every other building (a Town Hall of 9 or more allows it).</summary>
+        public const int MaxBuildingLevel = 20;
+
+        /// <summary>The ceiling every other building had before Village 2; levels past it are endgame-priced.</summary>
+        public const int LegacyBuildingCap = 12;
+
+        /// <summary>
+        /// The Forge's own cap: its level is the fusion rarity ceiling, and
+        /// rarity stops at ForgeSplicingEngine.MaxQualityTier (14). A Forge
+        /// level past that would sell nothing.
+        /// </summary>
+        public const int MaxForgeLevel = 14;
 
         // Town Hall's structural gate: other buildings may not upgrade
         // beyond 2 + (TownHallLevel * 2) - level 0 Town Hall permits
-        // levels up to 2, a maxed (5) Town Hall permits 12, keeping the
-        // Town Hall on the critical path of village progression.
+        // levels up to 2, a level 5 Town Hall 12, level 9 the cap of 20 -
+        // keeping the Town Hall on the critical path of village progression.
         public static int GetMaxBuildingLevelCeiling(int townHallLevel)
         {
-            return 2 + townHallLevel * 2;
+            return Math.Min(MaxBuildingLevel, 2 + Math.Max(0, townHallLevel) * 2);
         }
+
+        /// <summary>
+        /// The highest level this building may reach with this Town Hall - the
+        /// one rule the upgrade handler, the bots and the screen all read.
+        /// </summary>
+        public static int MaxLevelFor(int buildingId, int townHallLevel)
+        {
+            if (IsStructuralBuilding(buildingId)) return MaxStructuralBuildingLevel;
+            int ceiling = GetMaxBuildingLevelCeiling(townHallLevel);
+            return buildingId == ForgeBuildingId ? Math.Min(MaxForgeLevel, ceiling) : ceiling;
+        }
+
+        /// <summary>The highest level this building can ever reach, whatever the Town Hall.</summary>
+        public static int AbsoluteMaxLevelFor(int buildingId)
+            => IsStructuralBuilding(buildingId) ? MaxStructuralBuildingLevel
+             : buildingId == ForgeBuildingId ? MaxForgeLevel
+             : MaxBuildingLevel;
+
+        /// <summary>How many levels past the pre-Village-2 cap this upgrade starts from; negative below it.</summary>
+        public static int EndgameStep(int buildingId, int currentLevel)
+            => currentLevel - (IsStructuralBuilding(buildingId) ? LegacyStructuralCap : LegacyBuildingCap);
+
+        /// <summary>Gold for an endgame level: 5 million, doubling each level (owner, 2026-11-21).</summary>
+        public const long EndgameGoldBase = 5_000_000L;
+
+        /// <summary>Logs and ore for an endgame level: 1,000, x1.5 each level.</summary>
+        public const long EndgameMaterialBase = 1_000L;
+
+        public static long EndgameGoldCost(int step)
+            => step < 0 ? 0L : EndgameGoldBase << Math.Min(step, 20);
+
+        public static long EndgameMaterialCost(int step)
+            => step < 0 ? 0L : (long)Math.Ceiling(EndgameMaterialBase * Math.Pow(1.5, step));
+
+        /// <summary>
+        /// The level whose duration an upgrade takes. A structural level past
+        /// the old cap counts as a building level past 12, so it takes hours,
+        /// not the eight minutes its own small number would give.
+        /// </summary>
+        public static int DurationLevelFor(int buildingId, int currentLevel)
+            => IsStructuralBuilding(buildingId) && currentLevel >= LegacyStructuralCap
+                ? LegacyBuildingCap + (currentLevel - LegacyStructuralCap)
+                : currentLevel;
 
         // Modul: Economy Polish, Part 2. Town Hall passive gold generation
         // rate in whole gold per hour, by building level. Pure integer
@@ -65,7 +135,14 @@ namespace FolkIdle.Server.Domain.Progression
                 2 => 150L,
                 3 => 450L,
                 4 => 1200L,
-                _ => 3000L
+                5 => 3000L,
+                // Village 2: past the old cap the trickle keeps growing, but
+                // stays a trickle - 30k/h is a rounding error against combat.
+                6 => 6000L,
+                7 => 10000L,
+                8 => 15000L,
+                9 => 22000L,
+                _ => 30000L
             };
         }
 
@@ -185,6 +262,25 @@ namespace FolkIdle.Server.Domain.Progression
         public static UpgradeCostLine[] QuoteUpgrade(int buildingId, int currentLevel)
         {
             bool structural = IsStructuralBuilding(buildingId);
+            int step = EndgameStep(buildingId, currentLevel);
+            if (step >= 0)
+            {
+                // Village 2: the levels past the old caps. Materials walk the
+                // same tier table (a building at 15-19 pays region 4, the
+                // Town Hall at 8-9 region 5), and every one of them pays gold.
+                var mats = structural ? GetTierMaterials((currentLevel / 2) * 5) : GetTierMaterials(currentLevel);
+                long materials = EndgameMaterialCost(step);
+                var lines = new System.Collections.Generic.List<UpgradeCostLine>
+                {
+                    new(mats.Log, materials),
+                    new(mats.Ore, materials),
+                };
+                if (buildingId == CraftingWorkshopBuildingId)
+                    lines.Add(new UpgradeCostLine(mats.RareLog, Math.Max(1L, materials / 10L)));
+                lines.Add(new UpgradeCostLine(GoldItemId, EndgameGoldCost(step)));
+                return lines.ToArray();
+            }
+
             long cost = CalculateProductionUpgradeCost(currentLevel);
 
             // Structural buildings walk one tier per TWO levels - see the
@@ -259,11 +355,11 @@ namespace FolkIdle.Server.Domain.Progression
         /// whole chest stack, hand-gathered material included, so anyone with a
         /// big stack got nothing from the Lumberjack at all. Each level now
         /// also pays +5%, the step the Mine's own mining-speed bonus uses.
-        /// Clamped to the highest level a building can reach (12, Town Hall 5),
+        /// Clamped to the highest level a building can reach (MaxBuildingLevel),
         /// so a test fixture's level 100 cannot multiply production by six.
         /// </remarks>
         public static int WarehouseBonusPermille(int warehouseLevel)
-            => Math.Clamp(warehouseLevel, 0, GetMaxBuildingLevelCeiling(5)) * WarehouseBonusPermillePerLevel;
+            => Math.Clamp(warehouseLevel, 0, MaxBuildingLevel) * WarehouseBonusPermillePerLevel;
 
         // ------------------------------------------------------------------
         // Modul: ONE PRODUCTION RULE, LIVE AND AWAY (owner decision 2026-09-30).
@@ -617,7 +713,9 @@ namespace FolkIdle.Server.Domain.Progression
                 // within the Town Hall's ceiling (2 + TownHallLevel * 2), so
                 // the Town Hall stays on the village's critical path.
                 bool isStructuralBuilding = targetBuildingId == TownHallBuildingId || targetBuildingId == CraftingWorkshopBuildingId;
-                if (isStructuralBuilding && infrastructure.CurrentLevel >= MaxStructuralBuildingLevel)
+                // Village 2: a building at its own last level (structural 10,
+                // Forge 14, the rest 20) is maxed, whatever the Town Hall says.
+                if (infrastructure.CurrentLevel >= AbsoluteMaxLevelFor((int)targetBuildingId))
                 {
                     await transaction.SafeRollbackAsync();
                     Reject(playerId, FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
@@ -632,7 +730,7 @@ namespace FolkIdle.Server.Domain.Progression
                         .Select(v => (int?)v.CurrentLevel)
                         .SingleOrDefaultAsync() ?? 0;
 
-                    if (infrastructure.CurrentLevel + 1 > GetMaxBuildingLevelCeiling(townHallLevel))
+                    if (infrastructure.CurrentLevel + 1 > MaxLevelFor((int)targetBuildingId, townHallLevel))
                     {
                         await transaction.SafeRollbackAsync();
                         Console.WriteLine($"Village upgrade rejected: building {targetBuildingId} at level {infrastructure.CurrentLevel} exceeds the Town Hall ceiling.");
@@ -731,7 +829,7 @@ namespace FolkIdle.Server.Domain.Progression
                 }
 
                 infrastructure.UpgradeTargetLevel = infrastructure.CurrentLevel + 1;
-                infrastructure.UpgradeCompletesAtEpoch = nowEpoch + CalculateUpgradeDurationSeconds(infrastructure.CurrentLevel);
+                infrastructure.UpgradeCompletesAtEpoch = nowEpoch + CalculateUpgradeDurationSeconds(DurationLevelFor((int)targetBuildingId, infrastructure.CurrentLevel));
 
                 await db.SaveChangesAsync();
                 var notification = await BuildInfrastructureNotificationAsync(db, playerId);

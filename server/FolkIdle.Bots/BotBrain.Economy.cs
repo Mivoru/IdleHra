@@ -275,9 +275,7 @@ namespace FolkIdle.Bots
                 // so every optimal bot sent "Town Hall to 6" every 15 game
                 // minutes for days (519 refused upgrades in one week) and the
                 // cheaper upgrades below it waited behind it.
-                int cap = FolkIdle.Server.Domain.Progression.VillageManagementEngine.IsStructuralBuilding(id)
-                    ? FolkIdle.Server.Domain.Progression.VillageManagementEngine.MaxStructuralBuildingLevel
-                    : FolkIdle.Server.Domain.Progression.VillageManagementEngine.GetMaxBuildingLevelCeiling(_state.TownHallLevel);
+                int cap = FolkIdle.Server.Domain.Progression.VillageManagementEngine.MaxLevelFor(id, _state.TownHallLevel);
                 if (level >= cap) continue;
                 var lines = b.Arr("Lines").Select(l => (l.Str("ItemId"), l.Int("Quantity"), l.Int("Held"))).ToList();
                 if (lines.Count == 0) continue;

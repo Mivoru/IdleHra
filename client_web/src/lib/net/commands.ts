@@ -226,11 +226,44 @@ export const ACTIVE_BOSS_INSTANCE_ID = 1;
  */
 export const TOWN_HALL_BUILDING_ID = 9;
 export const CRAFTING_WORKSHOP_BUILDING_ID = 10;
-export const MAX_STRUCTURAL_BUILDING_LEVEL = 5;
+export const FORGE_BUILDING_ID = 1;
+/** VillageManagementEngine.MaxStructuralBuildingLevel (Village 2: 10). */
+export const MAX_STRUCTURAL_BUILDING_LEVEL = 10;
+/** VillageManagementEngine.MaxBuildingLevel - every other building, at Town Hall 9+. */
+export const MAX_BUILDING_LEVEL = 20;
+/** VillageManagementEngine.MaxForgeLevel - fusion rarity stops at 14. */
+export const MAX_FORGE_LEVEL = 14;
+/** The structural cap before Village 2; DurationLevelFor counts from it. */
+export const LEGACY_STRUCTURAL_CAP = 5;
+export const LEGACY_BUILDING_CAP = 12;
 
-/** `2 + townHallLevel * 2` - the ceiling every non-structural building shares. */
+/** `min(20, 2 + townHallLevel * 2)` - the ceiling every non-structural building shares. */
 export function maxBuildingLevelCeiling(townHallLevel: number): number {
-  return 2 + Math.max(0, Math.floor(townHallLevel)) * 2;
+  return Math.min(MAX_BUILDING_LEVEL, 2 + Math.max(0, Math.floor(townHallLevel)) * 2);
+}
+
+function isStructuralBuilding(buildingId: number): boolean {
+  return buildingId === TOWN_HALL_BUILDING_ID || buildingId === CRAFTING_WORKSHOP_BUILDING_ID;
+}
+
+/** VillageManagementEngine.AbsoluteMaxLevelFor - the last level, whatever the Town Hall. */
+export function absoluteMaxLevelFor(buildingId: number): number {
+  if (isStructuralBuilding(buildingId)) return MAX_STRUCTURAL_BUILDING_LEVEL;
+  return buildingId === FORGE_BUILDING_ID ? MAX_FORGE_LEVEL : MAX_BUILDING_LEVEL;
+}
+
+/** VillageManagementEngine.MaxLevelFor - the level this building can reach with this Town Hall. */
+export function maxLevelFor(buildingId: number, townHallLevel: number): number {
+  if (isStructuralBuilding(buildingId)) return MAX_STRUCTURAL_BUILDING_LEVEL;
+  const ceiling = maxBuildingLevelCeiling(townHallLevel);
+  return buildingId === FORGE_BUILDING_ID ? Math.min(MAX_FORGE_LEVEL, ceiling) : ceiling;
+}
+
+/** VillageManagementEngine.DurationLevelFor - a structural level past 5 times like a building past 12. */
+export function villageDurationLevelFor(buildingId: number, currentLevel: number): number {
+  return isStructuralBuilding(buildingId) && currentLevel >= LEGACY_STRUCTURAL_CAP
+    ? LEGACY_BUILDING_CAP + (currentLevel - LEGACY_STRUCTURAL_CAP)
+    : currentLevel;
 }
 
 /**
@@ -244,16 +277,11 @@ export function villageUpgradeBlockedReason(
   currentLevel: number,
   townHallLevel: number,
 ): string | null {
-  const isStructural =
-    buildingId === TOWN_HALL_BUILDING_ID || buildingId === CRAFTING_WORKSHOP_BUILDING_ID;
+  const last = absoluteMaxLevelFor(buildingId);
+  if (currentLevel >= last) return `Level ${last} is as high as this one goes.`;
+  if (isStructuralBuilding(buildingId)) return null;
 
-  if (isStructural) {
-    return currentLevel >= MAX_STRUCTURAL_BUILDING_LEVEL
-      ? `Level ${MAX_STRUCTURAL_BUILDING_LEVEL} is as high as this one goes.`
-      : null;
-  }
-
-  const ceiling = maxBuildingLevelCeiling(townHallLevel);
+  const ceiling = maxLevelFor(buildingId, townHallLevel);
   return currentLevel + 1 > ceiling
     ? `The Town Hall caps this at level ${ceiling}. Raise the Town Hall first.`
     : null;
@@ -1684,6 +1712,16 @@ export function villageMaterialCost(currentLevel: number): number {
   return Math.ceil(100 * Math.pow(1.5, Math.max(0, levelInTier)));
 }
 
+/** Mirrors VillageManagementEngine.EndgameGoldCost - Village 2's levels: 5 M, doubling. */
+export function villageEndgameGoldCost(step: number): number {
+  return step < 0 ? 0 : 5_000_000 * Math.pow(2, Math.min(step, 20));
+}
+
+/** Mirrors VillageManagementEngine.EndgameMaterialCost - 1,000, x1.5 a level. */
+export function villageEndgameMaterialCost(step: number): number {
+  return step < 0 ? 0 : Math.ceil(1000 * Math.pow(1.5, step));
+}
+
 /**
  * Modul: ValidateVillageManagementRequest is the strictest validator on this
  * wire. It DISCONNECTS unless SIXTEEN unrelated fields are all zero, and it
@@ -1872,13 +1910,8 @@ export function purchaseLegacyUnlock(unlockId: number, ranks = 1): CommandOutcom
 
 // ---------------------------------------------------------------------------
 
-/**
- * Modul: the highest Forge level that can ever exist, so the highest rarity
- * fusion can ever produce (a fusion needs Forge level >= its result tier).
- * Mirrors VillageManagementEngine.GetMaxBuildingLevelCeiling(MaxStructuralBuildingLevel)
- * = 2 + 5 * 2. serverMirrors.test.ts compares it to the server source.
- */
-export const MAX_FORGE_LEVEL = 12;
+// MAX_FORGE_LEVEL (the highest rarity fusion can ever produce) lives with the
+// other village caps near the top: Village 2 made it its own cap, 14.
 
 // ---------------------------------------------------------------------------
 // Potion shelves (herbs and potions, 2026-10-31)

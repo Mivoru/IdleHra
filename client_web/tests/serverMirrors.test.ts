@@ -80,7 +80,10 @@ const read = (...parts: string[]) => readFileSync(join(...parts), 'utf8');
 function num(source: string, pattern: RegExp, what: string): number {
   const match = source.match(pattern);
   if (!match) throw new Error(`could not find ${what} - the pattern needs updating, not deleting`);
-  return Number(match[1]);
+  // Digit separators (5_000_000) are legal in both languages; Number() reads them as NaN.
+  const value = Number(match[1].replace(/_/g, ''));
+  if (Number.isNaN(value)) throw new Error(`${what} is not a number: ${match[1]}`);
+  return value;
 }
 
 /** The source from `marker` onward, so a pattern cannot match a different
@@ -199,6 +202,28 @@ describe('the numbers the client mirrors still match the server', () => {
     );
     expect(num(commands, /Math\.ceil\(\d+ \* Math\.pow\(([\d.]+),/, 'client village growth')).toBe(
       num(village, /BaseUpgradeCost \* Math\.Pow\(([\d.]+),/, 'server village growth'),
+    );
+  });
+
+  // Village 2 (2026-11-21): the caps and the endgame price live in both places.
+  it('village 2: caps and endgame prices', () => {
+    const village = read(serverRoot, 'Domain', 'Progression', 'VillageManagementEngine.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+    const pairs: [RegExp, RegExp, string][] = [
+      [/MAX_STRUCTURAL_BUILDING_LEVEL = (\d+)/, /MaxStructuralBuildingLevel = (\d+)/, 'structural cap'],
+      [/MAX_BUILDING_LEVEL = (\d+)/, /MaxBuildingLevel = (\d+)/, 'building cap'],
+      [/MAX_FORGE_LEVEL = (\d+)/, /MaxForgeLevel = (\d+)/, 'forge cap'],
+      [/LEGACY_STRUCTURAL_CAP = (\d+)/, /LegacyStructuralCap = (\d+)/, 'legacy structural cap'],
+      [/LEGACY_BUILDING_CAP = (\d+)/, /LegacyBuildingCap = (\d+)/, 'legacy building cap'],
+    ];
+    for (const [client, server, what] of pairs) {
+      expect(num(commands, client, `client ${what}`)).toBe(num(village, server, `server ${what}`));
+    }
+    expect(num(commands, /return step < 0 \? 0 : ([\d_]+) \* Math\.pow\(2/, 'client endgame gold')).toBe(
+      num(village, /EndgameGoldBase = ([\d_]+)L/, 'server endgame gold'),
+    );
+    expect(num(commands, /Math\.ceil\(([\d_]+) \* Math\.pow\(1\.5, step\)/, 'client endgame materials')).toBe(
+      num(village, /EndgameMaterialBase = ([\d_]+)L/, 'server endgame materials'),
     );
   });
 
@@ -895,12 +920,12 @@ describe('market price ceiling and Forge cap', () => {
     expect(Number(m![1].replace(/_/g, ''))).toBe(MAX_MARKET_PRICE);
   });
 
-  it('MAX_FORGE_LEVEL equals the Town Hall ceiling at the structural max', () => {
+  it('MAX_FORGE_LEVEL is the server Forge cap, and the Forge cap is the top rarity', () => {
+    // Village 2: the Forge has its own cap now, the highest rarity fusion makes.
     const village = read(serverRoot, 'Domain', 'Progression', 'VillageManagementEngine.cs');
-    const cap = Number(village.match(/MaxStructuralBuildingLevel\s*=\s*(\d+)/)![1]);
-    const ceiling = village.match(/GetMaxBuildingLevelCeiling\(int townHallLevel\)\s*\{\s*return\s+(\d+)\s*\+\s*townHallLevel\s*\*\s*(\d+)/);
-    expect(ceiling).not.toBeNull();
-    expect(Number(ceiling![1]) + cap * Number(ceiling![2])).toBe(MAX_FORGE_LEVEL);
+    const splicing = read(serverRoot, 'Domain', 'Economy', 'ForgeSplicingEngine.cs');
+    expect(Number(village.match(/MaxForgeLevel\s*=\s*(\d+)/)![1])).toBe(MAX_FORGE_LEVEL);
+    expect(Number(splicing.match(/MaxQualityTier\s*=\s*(\d+)/)![1])).toBe(MAX_FORGE_LEVEL);
   });
 });
 
