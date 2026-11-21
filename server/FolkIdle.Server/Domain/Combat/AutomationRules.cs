@@ -33,8 +33,20 @@ namespace FolkIdle.Server.Domain.Combat
 
         public const int SlotCount = 3;
 
-        /// <summary>The account level each slot opens at (owner decision, 2026-09-30).</summary>
-        public static readonly int[] UnlockLevels = { 20, 40, 60 };
+        /// <summary>The account level each slot opens at (owner decision, 2026-09-30; slot 1 from level 1, PROPOSED 2026-11-21).</summary>
+        /// <remarks>
+        /// Modul: THE FIRST ORDER IS FOR THE FIRST NIGHTS (measurement
+        /// 2026-11-21). A real character below level 20 - seven attribute
+        /// points a level, about 14 armour at level 7 - eats ~240 fish an hour
+        /// even against the Field Mouse. A level-7 bot logged out with 330 fish;
+        /// the offline window starved after 1.4 of 8 hours and the character
+        /// died and stood idle for the rest (level 7 -> 10, against 7 -> 16 with
+        /// enough food). Every casual and idle bot died this way on each of its
+        /// first nights. "Fish when the larder runs dry" is the game's own
+        /// answer to exactly this, and it was locked until level 20, after the
+        /// nights it matters for.
+        /// </remarks>
+        public static readonly int[] UnlockLevels = { 1, 40, 60 };
 
         private const int BitsPerSlot = 16;
         private const int TypeBits = 4;

@@ -1,6 +1,6 @@
 <script lang="ts">
   // Modul: TASK 85, "ORDERS" - up to three automation rules per character,
-  // one slot opening at each of level 20, 40 and 60.
+  // the first slot open from the start, the others at level 40 and 60.
   //
   // Everything here is the SERVER's (GET /api/v1/automation-rules): the level,
   // which slots are open, which spots are fishing spots, the highest fusion

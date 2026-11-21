@@ -592,8 +592,8 @@
           <h3 id="orders">Orders</h3>
           <p class="dim small">
             Each character can carry up to three standing orders, set on the
-            Character screen under Work &amp; orders. The slots open at account
-            level 20, 40 and 60, and an order acts the same whether you are watching
+            Character screen under Work &amp; orders. The first slot is open from the
+            start, the others at account level 40 and 60, and an order acts the same whether you are watching
             or away:
           </p>
           <ul class="styled-list">
