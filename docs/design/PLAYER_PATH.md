@@ -192,7 +192,8 @@ them in the same PR.
   top account 15 B. A balance decision for the owner, not tuned here.
 - **Region 3 boss is the week-1 wall.** Optimal bots spent 6-8 online hours
   each at level 61-70 in region 3 with nothing moving except gold (the stall
-  report). It is also where the Town Hall loop (fixed in #468) cost the most,
-  so re-read run B before tuning it.
+  report). Run B confirms it without the Town Hall loop: 5 stalls of 6-8
+  online hours, all at level 65-74 in region 3-4, and only 2 of 4 optimal
+  bots beat the region 3 boss in the week.
 - **Bots do not play situational builds** beyond binding one per activity, and
   never respec for gold. Real players don't either (task 130 data).
