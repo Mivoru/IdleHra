@@ -103,7 +103,7 @@ const BOSS_ACTIVE = 1;
  * says no. A level 0 Town Hall permits level 2.
  */
 function townHallCeiling(townHallLevel: number): number {
-  return 2 + Number(townHallLevel) * 2;
+  return Math.min(20, 2 + Number(townHallLevel) * 2);
 }
 
 /** The buildings that ceiling actually caps - not the two structural ones. */

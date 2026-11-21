@@ -115,11 +115,11 @@ namespace FolkIdle.Server.Tests
 
             Assert.Equal(0L, overflow);
 
-            // 1 hour at level 1 (200/hour), +60% (the Warehouse bonus stops at
-            // level 12) = 320, 90/10 split: 288 common + 32 rare, both nowhere
+            // 1 hour at level 1 (200/hour), +100% (the Warehouse bonus stops at
+            // level 20, Village 2) = 400, 90/10 split: 360 common + 40 rare, both nowhere
             // near a 100,000-capacity warehouse.
-            Assert.Equal(288L, await QuantityAsync(player.Id, "birch_log"));
-            Assert.Equal(32L, await QuantityAsync(player.Id, "golden_birch_log"));
+            Assert.Equal(360L, await QuantityAsync(player.Id, "birch_log"));
+            Assert.Equal(40L, await QuantityAsync(player.Id, "golden_birch_log"));
         }
 
         // The zero-elapsed and zero-production early returns must not report a

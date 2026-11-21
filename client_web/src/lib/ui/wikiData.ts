@@ -23,7 +23,21 @@
 // `src/routes/*.svelte` are the same set, so a new screen cannot ship
 // undocumented and unnoticed.
 
-import { villageGoldCost, villageMaterialCost } from '../net/commands';
+import {
+  villageGoldCost,
+  villageMaterialCost,
+  villageEndgameGoldCost,
+  villageEndgameMaterialCost,
+  villageUpgradeDurationSeconds,
+  villageDurationLevelFor,
+  shrineGoldCost,
+  SHRINE_BUILDING_ID,
+  SHRINE_MATERIAL_PER_LEVEL,
+  maxBuildingLevelCeiling,
+  MAX_STRUCTURAL_BUILDING_LEVEL,
+  LEGACY_STRUCTURAL_CAP,
+  LEGACY_BUILDING_CAP,
+} from '../net/commands';
 import { RAW_FISH_BASE_IDS } from '../net/content';
 
 // ---------------------------------------------------------------------------
@@ -73,28 +87,20 @@ export function villageTierIndex(currentLevel: number): number {
 
 /** VillageManagementEngine.GetMaxBuildingLevelCeiling. */
 export function townHallCeiling(townHallLevel: number): number {
-  return 2 + townHallLevel * 2;
+  return maxBuildingLevelCeiling(townHallLevel);
 }
 
 /** VillageManagementEngine.GetTownHallGoldRatePerHour. */
 export function townHallGoldPerHour(townHallLevel: number): number {
-  if (townHallLevel <= 1) return 50;
-  if (townHallLevel === 2) return 150;
-  if (townHallLevel === 3) return 450;
-  if (townHallLevel === 4) return 1200;
-  return 3000;
-}
-
-/** VillageManagementEngine.CalculateUpgradeDurationSeconds - cost/10, floor 30. */
-export function villageUpgradeSeconds(materialCost: number): number {
-  return Math.max(30, Math.floor(materialCost / 10));
+  const rates = [50, 50, 150, 450, 1200, 3000, 6000, 10000, 15000, 22000, 30000];
+  return rates[Math.min(Math.max(0, townHallLevel), rates.length - 1)];
 }
 
 /** CalculateWarehouseMaxStorage - 1,000 per level, per material. */
 export const WAREHOUSE_PER_LEVEL = 1000;
 
 /** VillageManagementEngine.MaxStructuralBuildingLevel. */
-export const STRUCTURAL_MAX_LEVEL = 5;
+export const STRUCTURAL_MAX_LEVEL = MAX_STRUCTURAL_BUILDING_LEVEL;
 
 /** CharacterSlotEngine: slot 2 at Town Hall 3, slot 3 at Town Hall 5. */
 export const SLOT2_TOWN_HALL = 3;
@@ -103,7 +109,7 @@ export const SLOT3_TOWN_HALL = 5;
 /** VillageManagementEngine.RareYieldPercent. */
 export const VILLAGE_RARE_YIELD_PCT = 10;
 
-export type VillageCostKind = 'service' | 'production' | 'structural';
+export type VillageCostKind = 'service' | 'production' | 'structural' | 'shrine';
 
 /**
  * What each building is, what its level actually changes, and how it is paid
@@ -125,7 +131,7 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'structural',
     cap: STRUCTURAL_MAX_LEVEL,
     effect:
-      'Sets the level ceiling every other building may reach (2 + 2 per level, so 2 at level 0 and 12 at level 5), unlocks the second character slot at level 3 and the third at level 5, and trickles gold on its own: 50/h up to level 1, then 150, 450, 1,200 and 3,000.',
+      'Sets the level ceiling every other building may reach (2 + 2 per level, so 2 at level 0, 12 at level 5 and the cap of 20 at level 9), unlocks the second character slot at level 3 and the third at level 5, and trickles gold on its own: 50/h up to level 1, rising to 3,000 at level 5 and 30,000 at level 10. Caps at 10; levels 6-10 cost gold (5 M, doubling) and region 3-5 materials.',
     source: 'GetMaxBuildingLevelCeiling, CharacterSlotEngine, GetTownHallGoldRatePerHour',
   },
   {
@@ -134,7 +140,7 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'structural',
     cap: STRUCTURAL_MAX_LEVEL,
     effect:
-      'The only building that also costs rare logs - a tenth of the material price, minimum one. Its level is the one building level nothing else reads today: crafted equipment always comes out Normal and is raised at the Forge instead.',
+      'The only building that also costs rare logs - a tenth of the material price, minimum one. Levels 1-5 raise the rarity floor of Workshop commissions (Common to Epic); levels 6-10 cut commission time by 10% each, to half at level 10. Caps at 10.',
     source: 'VillageManagementEngine, CraftingEngine.GrantCraftedOutputAsync',
   },
   {
@@ -143,7 +149,7 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'service',
     cap: null,
     effect:
-      'Its level is the rarity ceiling for fusion. A level 5 Forge fuses up to rarity 5 and refuses anything above, which is the single most common reason a fusion is turned down.',
+      'Its level is the rarity ceiling for fusion. A level 5 Forge fuses up to rarity 5 and refuses anything above, which is the single most common reason a fusion is turned down. Caps at 14, the highest rarity: levels 13 and 14 open the last two.',
     source: 'ForgeSplicingEngine, ClientCommandValidator.ValidateForgeSplicingRequest',
   },
   {
@@ -152,7 +158,7 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'service',
     cap: null,
     effect:
-      'The whole of your gene pool. Newcomers arrive every 48h minus 2h per level (floor 24h), the village holds 6 + level of them (cap 16), and their aptitudes roll 2 + up to the Inn level (ceiling 20).',
+      'The whole of your gene pool. Newcomers arrive every 48h minus 2h per level (floor 24h), the village holds 6 + level of them (cap 16), and their aptitudes roll 2 + up to 1.5 x the Inn level (ceiling 20). Past level 12 every level raises the lowest roll by one, to 10 at level 20.',
     source: 'VillagerArrivalRules, BreedingAptitudes.RollVillager',
   },
   {
@@ -196,21 +202,53 @@ export const VILLAGE_BUILDINGS: readonly {
       'Stores what the Lumberjack and the Mine make while you are away: 1,000 per level of each material, emptied into the chest when you return (what the chest already holds does not count). At level 0 they bank nothing away. Each level also adds 5% to their output, online and away.',
     source: 'CalculateWarehouseMaxStorage, WarehouseBonusPermille',
   },
+  {
+    id: 11,
+    name: 'Shrine',
+    costKind: 'shrine',
+    cap: null,
+    effect:
+      'The last building of Village 2: opens at Town Hall 10, and each level adds 2% damage and 2% max health to every character, online and away. It costs 1 billion gold for the first level and x1.5 each level after, plus region 5 logs and ore, so the price is the cap.',
+    source: 'VillageManagementEngine.ShrineBonusPct, SimulationEngine.EffectiveMilliAttackFor / EffectiveMaxMilliHpFor',
+  },
 ];
 
-/** Every building costs logs and ore. Only structural ones pay no gold. */
+/**
+ * VillageManagementEngine.QuoteUpgrade, one row. Every building costs logs and
+ * ore; structural ones pay no gold below level 5, and every level past the old
+ * caps (structural 5, the rest 12) pays the Village 2 gold price.
+ */
 export function villageCostRow(costKind: VillageCostKind, currentLevel: number) {
-  const materials = villageMaterialCost(currentLevel);
-  const tier = VILLAGE_TIER_MATERIALS[villageTierIndex(currentLevel)];
+  if (costKind === 'shrine') {
+    // VillageManagementEngine's Shrine branch of QuoteUpgrade.
+    const top = VILLAGE_TIER_MATERIALS[VILLAGE_TIER_MATERIALS.length - 1];
+    return {
+      level: `${currentLevel} → ${currentLevel + 1}`,
+      gold: shrineGoldCost(currentLevel),
+      materials: SHRINE_MATERIAL_PER_LEVEL * (currentLevel + 1),
+      log: top.log,
+      ore: top.ore,
+      rareLog: 0,
+      rareLogId: top.rareLog,
+      seconds: villageUpgradeDurationSeconds(villageDurationLevelFor(SHRINE_BUILDING_ID, currentLevel)),
+    };
+  }
+  const structural = costKind === 'structural';
+  const step = currentLevel - (structural ? LEGACY_STRUCTURAL_CAP : LEGACY_BUILDING_CAP);
+  const endgame = step >= 0;
+  const materials = endgame ? villageEndgameMaterialCost(step) : villageMaterialCost(currentLevel);
+  const tier = VILLAGE_TIER_MATERIALS[villageTierIndex(structural ? Math.floor(currentLevel / 2) * 5 : currentLevel)];
+  const durationLevel = structural && endgame ? LEGACY_BUILDING_CAP + step : currentLevel;
   return {
     level: `${currentLevel} → ${currentLevel + 1}`,
-    gold: costKind === 'structural' ? 0 : villageGoldCost(currentLevel),
+    gold: endgame ? villageEndgameGoldCost(step) : structural ? 0 : villageGoldCost(currentLevel),
     materials,
     log: tier.log,
     ore: tier.ore,
-    rareLog: costKind === 'structural' ? Math.max(1, Math.floor(materials / 10)) : 0,
+    // Only the Crafting Workshop pays rare logs; the table shows it on the structural row.
+    rareLog: structural ? Math.max(1, Math.floor(materials / 10)) : 0,
     rareLogId: tier.rareLog,
-    seconds: villageUpgradeSeconds(materials),
+    seconds: villageUpgradeDurationSeconds(durationLevel),
   };
 }
 

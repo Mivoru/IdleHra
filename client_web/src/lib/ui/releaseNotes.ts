@@ -35,6 +35,38 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.113.0',
+    date: '2026-11-21',
+    headline: 'A Shrine for the village.',
+    sections: [
+      {
+        title: 'Village',
+        items: [
+          'A new building, the Shrine, opens at Town Hall 10. Each level adds 2% damage and 2% max health to every character, online and away, and it has no level cap.',
+          'It is priced for the end of the game: 1 billion gold for the first level, x1.5 for each level after, plus region 5 logs and ore. Each level takes six hours.',
+        ],
+      },
+    ],
+  },
+  {
+    version: '1.112.0',
+    date: '2026-11-21',
+    headline: 'The village grows past its old walls.',
+    sections: [
+      {
+        title: 'Village',
+        items: [
+          'The Town Hall and the Crafting Workshop go to level 10, every other building to 20 (a Town Hall of 9 opens the full 20). The Forge stops at 14, the highest rarity.',
+          'The new levels cost region 3-5 logs and ore and gold: 5 million for the first, doubling each level. Each one takes hours to build.',
+          'Forge 13 and 14 fuse rarity 13 and 14, which no Forge could reach before.',
+          'Lumberjack and Mine keep producing more, region 4 materials from level 15 and region 5 at 20. The Warehouse keeps adding 5% a level.',
+          'Inn past 12: every level raises the lowest aptitude a newcomer rolls by one, to 10 at Inn 20.',
+          'Crafting Workshop past 5: each level cuts commission time by 10%, to half at 10. The Town Hall keeps raising its gold, to 30,000 an hour.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.111.0',
     date: '2026-11-21',
     sections: [

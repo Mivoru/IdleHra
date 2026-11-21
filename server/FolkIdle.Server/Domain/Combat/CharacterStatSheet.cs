@@ -140,6 +140,14 @@ namespace FolkIdle.Server.Domain.Combat
                 AtCap = renown >= RebirthRules.MaxDamageBonusPct - 1,
                 Note = Invariant($"Damage from rebirths taken at level {RebirthRules.RenownLevel}+. Approaches {RebirthRules.MaxDamageBonusPct}% and never reaches it."),
             });
+            if (payload.ShrineLevel > 0)
+            {
+                offence.Rows.Add(new StatSheetRow
+                {
+                    Key = "shrine", Label = "Shrine", Value = Domain.Progression.VillageManagementEngine.ShrineBonusPct(payload.ShrineLevel), Unit = "pct",
+                    Note = Invariant($"Village Shrine level {payload.ShrineLevel}: +{Domain.Progression.VillageManagementEngine.ShrinePctPerLevel}% damage and max health a level, for every character."),
+                });
+            }
             offence.Rows.Add(new StatSheetRow
             {
                 Key = "attack_speed", Label = "Attack speed", Value = Math.Round(stats.AttackSpeedPct, 1), Unit = "pct", Cap = maxSpeedPct,

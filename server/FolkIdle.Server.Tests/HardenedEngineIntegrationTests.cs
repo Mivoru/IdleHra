@@ -7034,6 +7034,12 @@ namespace FolkIdle.Server.Tests
                 ("willow_log", "iron_ore"),      // level 2 -> 3, unlocks slot 2
                 ("willow_log", "iron_ore"),      // level 3 -> 4
                 ("acacia_log", "sulfur_ore"),    // level 4 -> 5, unlocks slot 3
+                // Village 2 (2026-11-21): the levels past the old cap of 5.
+                ("acacia_log", "sulfur_ore"),    // level 5 -> 6
+                ("frostpine_log", "silver_ore"), // level 6 -> 7
+                ("frostpine_log", "silver_ore"), // level 7 -> 8
+                ("ebon_log", "darksteel_ore"),   // level 8 -> 9, the cap of 20 for the rest
+                ("ebon_log", "darksteel_ore"),   // level 9 -> 10
             };
             Assert.Equal(VillageManagementEngine.MaxStructuralBuildingLevel, expectedByStructuralLevel.Length);
 

@@ -33,10 +33,11 @@
 
   const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
 
-  const LEVELS = 20;
+  // Village 2: structural buildings stop at 10, the rest at 20; the Shrine has no cap, so the table shows its first 20.
+  const levels = $derived(costKind === 'structural' ? STRUCTURAL_MAX_LEVEL : 20);
 
   const rows = $derived(
-    Array.from({ length: LEVELS }, (_, level) => villageCostRow(costKind, level)),
+    Array.from({ length: levels }, (_, level) => villageCostRow(costKind, level)),
   );
 
   const ceilingRows = Array.from({ length: STRUCTURAL_MAX_LEVEL + 1 }, (_, level) => ({
@@ -144,7 +145,7 @@
 
 <h3 id="costs">Upgrade costs, level by level</h3>
 <div class="picker" role="group" aria-label="Building kind">
-  {#each [['service', 'Service (Forge, Inn, Breeding)'], ['production', 'Production (Lumberjack, Mine, Warehouse)'], ['structural', 'Structural (Town Hall, Workshop)']] as [kind, label]}
+  {#each [['service', 'Service (Forge, Inn, Breeding)'], ['production', 'Production (Lumberjack, Mine, Warehouse)'], ['structural', 'Structural (Town Hall, Workshop)'], ['shrine', 'Shrine']] as [kind, label]}
     <button
       type="button"
       class:active={costKind === kind}
@@ -156,9 +157,13 @@
 </div>
 
 <p class="dim small">
-  {#if costKind === 'structural'}
-    Structural buildings pay no gold - they are the ones the whole village is
-    gated behind, and doubling their price would deepen the wall. The Crafting
+  {#if costKind === 'shrine'}
+    The Shrine opens at Town Hall 10 and has no level cap: 1 billion gold for the
+    first level, x1.5 each level after, and region 5 logs and ore. Each level adds
+    2% damage and max health to every character.
+  {:else if costKind === 'structural'}
+    Structural buildings pay no gold up to level 5 - they are the ones the whole
+    village is gated behind. Levels 6-10 (Village 2) cost gold too. The Crafting
     Workshop additionally wants a tenth of the material cost in rare logs.
   {:else}
     Both gold and materials, every level. Gold is the thing players end up with
@@ -173,7 +178,7 @@
     <thead>
       <tr>
         <th>Level</th>
-        {#if costKind !== 'structural'}<th class="num">Gold</th>{/if}
+        <th class="num">Gold</th>
         <th class="num">Logs</th>
         <th class="num">Ore</th>
         {#if costKind === 'structural'}<th class="num">Rare logs</th>{/if}
@@ -184,7 +189,7 @@
       {#each rows as row, level}
         <tr class:tier-start={level % 5 === 0}>
           <td>{row.level}</td>
-          {#if costKind !== 'structural'}<td class="num" title={numberTitle(row.gold)}>{formatNumber(row.gold)}</td>{/if}
+          <td class="num" title={numberTitle(row.gold)}>{formatNumber(row.gold)}</td>
           <td class="num">{formatNumber(row.materials)} <span class="dim tiny">{prettifyBaseId(row.log)}</span></td>
           <td class="num">{formatNumber(row.materials)} <span class="dim tiny">{prettifyBaseId(row.ore)}</span></td>
           {#if costKind === 'structural'}

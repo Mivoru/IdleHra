@@ -12,10 +12,10 @@
     villageUpgradeDurationSeconds,
     formatDuration,
     villageUpgradeBlockedReason,
-    maxBuildingLevelCeiling,
-    MAX_STRUCTURAL_BUILDING_LEVEL,
+    maxLevelFor,
+    absoluteMaxLevelFor,
+    villageDurationLevelFor,
     TOWN_HALL_BUILDING_ID,
-    CRAFTING_WORKSHOP_BUILDING_ID,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import type { StateUpdate } from '../lib/net/protocol.generated';
@@ -35,7 +35,7 @@
   // started upgrade asks again by itself; the interval catches what gathering
   // adds while the screen is open.
   const levelSignature = $derived(
-    snap ? `${BUILDINGS.map((b) => levelOf(snap, b.stateField)).join('.')}:${snap.PendingUpgradeBuildingId}` : '',
+    snap ? `${BUILDINGS.map((b) => snapshotLevel(snap, b.stateField)).join('.')}:${snap.PendingUpgradeBuildingId}` : '',
   );
   const quote = createQuery(() => ({
     queryKey: [...queryKeys.villageQuote, levelSignature] as const,
@@ -65,9 +65,21 @@
     return missing.length > 0 ? `You need ${missing.join(', ')} more.` : null;
   }
 
-  function levelOf(state: StateUpdate, field: string): number {
+  function snapshotLevel(state: StateUpdate, field: string): number | null {
     const value = (state as unknown as Record<string, unknown>)[field];
-    return typeof value === 'number' ? value : 0;
+    return typeof value === 'number' ? value : null;
+  }
+
+  // Modul: THE SHRINE IS NOT ON THE WIRE (Village 2, 2026-11-21). Its level
+  // changes a few times a month, so it rides the quote rather than a byte on
+  // every snapshot; a building the snapshot does not carry reads the quote's
+  // CurrentLevel. The signature above reads the snapshot only, or the quote
+  // would key itself.
+  function levelOf(state: StateUpdate, field: string): number {
+    const fromSnapshot = snapshotLevel(state, field);
+    if (fromSnapshot !== null) return fromSnapshot;
+    const id = BUILDINGS.find((b) => b.stateField === field)?.id;
+    return quote.data?.Buildings.find((b) => b.BuildingId === id)?.CurrentLevel ?? 0;
   }
 
   // Modul: PendingUpgradeBuildingId == 0 means no upgrade is in flight. Only
@@ -103,7 +115,9 @@
 
   const pendingBuilding = $derived(BUILDINGS.find((b) => b.id === pendingId) ?? null);
   const pendingTotal = $derived(
-    pendingBuilding && snap ? villageUpgradeDurationSeconds(levelOf(snap, pendingBuilding.stateField)) : 0,
+    pendingBuilding && snap
+      ? villageUpgradeDurationSeconds(villageDurationLevelFor(pendingBuilding.id, levelOf(snap, pendingBuilding.stateField)))
+      : 0,
   );
   const pendingProgress = $derived(
     pendingTotal > 0 ? Math.max(0, Math.min(1, (pendingTotal - pendingRemaining) / pendingTotal)) : 0,
@@ -120,19 +134,14 @@
   type RowState = 'building' | 'ready' | 'short' | 'loading' | 'capped';
   const STATE_RANK: Record<RowState, number> = { building: 0, ready: 1, short: 2, loading: 2, capped: 3 };
 
-  function isStructural(buildingId: number): boolean {
-    return buildingId === TOWN_HALL_BUILDING_ID || buildingId === CRAFTING_WORKSHOP_BUILDING_ID;
-  }
-
-  /** The level this building can reach right now - the "/ 5" of "Lv 4 / 5". */
+  /** The level this building can reach right now - the "/ 10" of "Lv 4 / 10". */
   function ceilingOf(buildingId: number): number {
-    return isStructural(buildingId) ? MAX_STRUCTURAL_BUILDING_LEVEL : maxBuildingLevelCeiling(townHallLevel);
+    return maxLevelFor(buildingId, townHallLevel);
   }
 
   /** "Maxed" only when nothing can raise it further; otherwise it is the Town Hall that caps it. */
-  function cappedLabel(buildingId: number): string {
-    if (isStructural(buildingId)) return 'Maxed';
-    return townHallLevel >= MAX_STRUCTURAL_BUILDING_LEVEL ? 'Maxed' : 'Town Hall cap';
+  function cappedLabel(buildingId: number, level: number): string {
+    return level >= absoluteMaxLevelFor(buildingId) ? 'Maxed' : 'Town Hall cap';
   }
 
   const rows = $derived.by(() => {
@@ -273,7 +282,7 @@
               {#if row.state === 'building'}
                 <span class="status">{pendingRemaining > 0 ? formatDuration(pendingRemaining) : 'finishing...'}</span>
               {:else if row.state === 'capped'}
-                <span class="status dim">{cappedLabel(row.building.id)}</span>
+                <span class="status dim">{cappedLabel(row.building.id, row.level)}</span>
               {:else}
                 <button
                   type="button"

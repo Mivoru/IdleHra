@@ -166,6 +166,11 @@ namespace FolkIdle.Server.Domain.Combat
                 case VillageManagementEngine.WarehouseBuildingId:
                     payload.WarehouseLevel++;
                     break;
+                // Village 2: the Shrine's power counts from the moment the
+                // timer ends, not from the next village refresh.
+                case VillageManagementEngine.ShrineBuildingId:
+                    if (payload.ShrineLevel < byte.MaxValue) payload.ShrineLevel++;
+                    break;
             }
 
             payload.PendingUpgradeBuildingId = 0;

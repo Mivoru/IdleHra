@@ -1269,6 +1269,11 @@ export interface VillageQuoteLine {
 export interface VillageQuoteBuilding {
   BuildingId: number;
   CurrentLevel: number;
+  /** VillageManagementEngine.MaxLevelFor with the player's Town Hall (Village 2). */
+  MaxLevel: number;
+  AbsoluteMaxLevel: number;
+  /** How long the next level takes, in seconds. */
+  UpgradeSeconds: number;
   Lines: VillageQuoteLine[];
 }
 
