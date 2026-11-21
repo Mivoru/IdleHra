@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.109.0',
+    date: '2026-11-21',
+    sections: [
+      {
+        title: 'World boss',
+        items: [
+          'The damage milestones are lower: 7,500 / 20,000 / 45,000 / 110,000 / 300,000, and the Black Serpent at 750,000. The top milestone was out of reach in a week of strikes; now a strong week reaches it.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.108.0',
     date: '2026-11-21',
     headline: 'The quest line catches up with the game.',
