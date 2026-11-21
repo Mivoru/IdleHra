@@ -64,14 +64,21 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         // thresholds themselves wait for the first duel week's strikes - the
         // duel has no 3x weak plate and the tree now prices the strike, so the
         // per-strike damage they were sized from is about to change.
+        // Modul: THE THRESHOLDS, x0.75 (2026-11-20, TASK_BOARD 137). Measured on
+        // production after five duel strikes each (tree-priced since 11-16):
+        // 43k, 22k and 13k a strike. The method on the board: the strongest
+        // account reaches the top milestone with all seven strikes of the week
+        // (7 x 43k = 300k, where 400k needed 9.3 and nobody could reach it), the
+        // first stays one strike for anyone (13k > 7.5k), the 1M pet stays at
+        // 2.5x the top. Rounded; rewards per milestone unchanged.
         public static readonly IReadOnlyList<WorldBossMilestone> Milestones = new[]
         {
-            new WorldBossMilestone(0, 10_000, 15, 5, null, null, null),
-            new WorldBossMilestone(1, 25_000, 30, 5, null, null, null),
-            new WorldBossMilestone(2, 60_000, 60, 10, SvarogAvatar.Id, null, null),
-            new WorldBossMilestone(3, 150_000, 120, 10, SerpentAvatar.Id, SerpentBaneSlug, null),
-            new WorldBossMilestone(4, 400_000, 180, 15, ChernobogAvatar.Id, ChainerSlug, null),
-            new WorldBossMilestone(5, 1_000_000, 0, 0, null, null, Progression.PetRegistry.BlackSerpentId),
+            new WorldBossMilestone(0, 7_500, 15, 5, null, null, null),
+            new WorldBossMilestone(1, 20_000, 30, 5, null, null, null),
+            new WorldBossMilestone(2, 45_000, 60, 10, SvarogAvatar.Id, null, null),
+            new WorldBossMilestone(3, 110_000, 120, 10, SerpentAvatar.Id, SerpentBaneSlug, null),
+            new WorldBossMilestone(4, 300_000, 180, 15, ChernobogAvatar.Id, ChainerSlug, null),
+            new WorldBossMilestone(5, 750_000, 0, 0, null, null, Progression.PetRegistry.BlackSerpentId),
         };
 
         /// <summary>The kill reward: hours of income, and one Legendary cosmetic chest, to every registered player.</summary>

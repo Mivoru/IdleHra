@@ -98,7 +98,11 @@ namespace FolkIdle.Bots
             })
             {
                 if (characterId == Guid.Empty || slotIndex >= playable) continue;
-                long node = NodeFor(0, profession);
+                // A material the village or a tool is waiting for, on this
+                // character's kind of work, comes first: the main character
+                // may not gather it while this one does that kind of work.
+                long goalNode = _materialGoal is { } goal && Held(goal.ItemId) < goal.Quantity ? NodeFor(goal.ItemId, profession, NodeUser.Roster) : 0;
+                long node = goalNode > 0 ? goalNode : NodeFor(0, profession, NodeUser.Roster);
                 if (node <= 0 || node == activity || IsRefused(node + characterId.GetHashCode())) continue;
                 Enqueue(new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = node, TargetGuid = characterId },
                     $"roster: character {characterId.ToString()[..8]} to {(profession == ProfessionWoodcutting ? "woodcutting" : "mining")} at node {node}", 35,

@@ -44,6 +44,12 @@ export const RELEASE_NOTES: readonly Release[] = [
           'The first standing order is open from the start. Set "Fish when the larder runs dry" on the Character screen and a new character goes fishing instead of starving through the night.',
         ],
       },
+      {
+        title: 'World boss',
+        items: [
+          'The damage milestones are lower: 7,500 / 20,000 / 45,000 / 110,000 / 300,000, and the Black Serpent at 750,000. The top milestone was out of reach in a week of strikes; now a strong week reaches it.',
+        ],
+      },
     ],
   },
   {
