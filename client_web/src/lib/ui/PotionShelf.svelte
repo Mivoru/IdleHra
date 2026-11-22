@@ -4,7 +4,7 @@
   import { requestScreen } from '../stores/navigation';
   import { queryKeys, fetchMaterials } from '../net/rest';
   import { contentQuery } from '../net/registry.svelte';
-  import { stockPotionShelf, unloadPotionShelf, drinkPotion, setPotionAutoDrink } from '../net/commands';
+  import { stockPotionShelf, swapPotionShelf, unloadPotionShelf, drinkPotion, setPotionAutoDrink } from '../net/commands';
   import { formatNumber, numberTitle } from './format';
   import ItemIcon from './ItemIcon.svelte';
   import QueryError from './QueryError.svelte';
@@ -61,6 +61,12 @@
   function stock(slot: PotionSlotIndex, itemId: number, have: number, onShelf: number) {
     run(stockPotionShelf(slot, itemId, Math.min(have, SHELF_CAPACITY - onShelf)));
   }
+
+  // A different potion than the one shelved: the held ones go back to the
+  // chest first (see swapPotionShelf), so the whole shelf is free.
+  function swap(slot: PotionSlotIndex, itemId: number, have: number) {
+    run(swapPotionShelf(slot, itemId, Math.min(have, SHELF_CAPACITY)));
+  }
 </script>
 
 <section class="panel potions" data-testid="potion-shelf">
@@ -76,6 +82,7 @@
       {@const active = shelf.activeId > 0 ? potionInfo(baseIdOf(shelf.activeId)) : null}
       {@const held = shelf.shelfCount > 0 ? potionInfo(baseIdOf(shelf.shelfItem)) : null}
       {@const fits = chestPotions.filter((p) => p.info.row.slot === shelf.index && (shelf.shelfCount === 0 || p.id === shelf.shelfItem))}
+      {@const swaps = shelf.shelfCount > 0 ? chestPotions.filter((p) => p.info.row.slot === shelf.index && p.id !== shelf.shelfItem) : []}
       <li data-testid="potion-slot-{shelf.index}">
         <div class="head">
           <strong>{shelf.name}</strong>
@@ -132,6 +139,17 @@
           >
             <ItemIcon baseItemId={potion.baseId} name={potion.info.title} size="sm" />
             <span>Shelve {potion.info.title}<span class="dim tiny block">{potion.info.summary}</span></span>
+            <span class="dim">{formatNumber(potion.quantity)} in chest</span>
+          </button>
+        {/each}
+        {#each swaps as potion (potion.baseId)}
+          <button
+            class="stock"
+            data-testid="potion-swap-{shelf.index}"
+            onclick={() => swap(shelf.index as PotionSlotIndex, potion.id, potion.quantity)}
+          >
+            <ItemIcon baseItemId={potion.baseId} name={potion.info.title} size="sm" />
+            <span>Swap to {potion.info.title}<span class="dim tiny block">{potion.info.summary}; the shelved ones go back to the chest</span></span>
             <span class="dim">{formatNumber(potion.quantity)} in chest</span>
           </button>
         {/each}
