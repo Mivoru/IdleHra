@@ -35,6 +35,25 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.117.0',
+    date: '2026-11-22',
+    sections: [
+      {
+        title: 'Potions',
+        items: [
+          'A shelf that already holds a potion now offers every other potion of that slot as "Swap to". One tap puts the shelved ones back in the chest and shelves the new kind.',
+        ],
+      },
+      {
+        title: 'Hunting',
+        items: [
+          'Monsters two or more regions below the furthest region you have opened give half experience. Farming the first boss at level 60 no longer beats fighting where you belong, and the region you have reached now pays best.',
+          'Seasonal and codex rewards are unchanged.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.116.0',
     date: '2026-11-21',
     sections: [
