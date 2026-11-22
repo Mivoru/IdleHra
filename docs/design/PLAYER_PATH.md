@@ -205,6 +205,42 @@ What the shape says:
   about 15 billion after spending 52 billion). Late gold has no sink that
   moves power. See "Open findings".
 
+### Run D (half XP two regions down)
+
+`measure-d-20261122-1114`, 168 game hours, the same ten bots as run C, on
+the branch that adds `LowRegionXp` (a monster two or more regions below the
+highest open one pays half its base character XP) and the bot fix that
+sweeps every dungeon ticket (#477).
+
+| | run C | run D |
+|---|---:|---:|
+| optimal stalls (6+ online h, nothing moves) | 11, all on the region-1 boss (95) | 5, on 100, 103, 104 |
+| region 3 boss beaten in the week (optimal) | 2 of 4, at 106 h and 121 h | 3 of 4, at 96 h, 97 h and 110 h |
+| casual region 4 open in the week | 1 of 4, at 160 h | 3 of 4, at 128-152 h |
+| region 2 open (optimal, median) | 8.8 h | 8.3 h |
+| region 3 open (optimal, median) | 26.6 h | 26.2 h |
+| optimal median level at 12 / 24 / 48 / 72 / 96 h | 26.5 / 37 / 49.5 / 57.5 / 63 | 27 / 32 / 46.5 / 55.5 / 60.5 |
+| casual median level at 24 / 72 / 156 h | 26.5 / 54 / 68.5 | 27.5 / 51.5 / 67.5 |
+
+What it says:
+
+- **The farm-down trap is gone.** No bot stands on the region-1 boss any
+  more; the remaining stalls are on the region-2 boss once (Shadow Lynx,
+  one region down, still full XP) and on region 3-4 monsters, which is the
+  intended Renown wall.
+- **Optimal levels a little slower, but progresses faster.** It reaches the
+  same level two to three hours later in the middle game because the
+  region-1 boss no longer pays double, yet it beats the region 3 boss ten
+  hours sooner and one more bot gets there, because it now fights where the
+  boss drops are.
+- **The first day is unchanged where it counts.** Nothing is halved before
+  region 3 opens; the region-open times and casual levels match run C within
+  bot noise. The optimal day-1 median (37 vs 32) moved because one run-C bot
+  had already reached region 3 at the 24 h sample; the ranges overlap
+  (29-39 vs 30-40).
+- Optimal Ascension steps are lower (median 0-3 vs 10 from day 3); the bots
+  spent gold on the Town Hall and gear instead. Not caused by XP; watch it.
+
 ## The best order
 
 These are the rules the optimal bot follows, written for a person. Gates are
@@ -320,6 +356,9 @@ them in the same PR.
   exactly where the bots stall. Fix options (owner decision): make XP and
   gold per HP rise with the region, or at least stay flat; this inflates
   XP for the Malakor farmers unless their per-kill XP is held.
+  **Done 2026-11-22 (option A):** a monster two or more regions below the
+  highest open region pays half its base XP (`LowRegionXp`); run D cut the
+  optimal stalls from 11 to 5 and nobody farms 95 any more.
 - **Shrine in production (2026-11-22, one day after 1.0.2038):** village
   gold spent 120 M in total (Town Hall levels), no Shrine level bought. The
   richest account holds 17.9 B at Town Hall 7. Re-read after a week.
