@@ -110,10 +110,14 @@ namespace FolkIdle.Bots
 
                 if (best > 0 && (waiting || !pushOpen))
                 {
-                    var (status, body) = await _client.PostAsync("/api/v1/dungeon/run", new { Kind = kind, Stage = best, Sweep = true }, token);
+                    // Modul: one sweep spends every ticket held (#475), the way a
+                    // player presses "sweep all"; before, the bot sent no Count and
+                    // spent one ticket per chore pass, so tickets piled up.
+                    var (status, body) = await _client.PostAsync("/api/v1/dungeon/run", new { Kind = kind, Stage = best, Sweep = true, Count = tickets }, token);
                     string outcome = body is { } b ? b.Str("Outcome") : status.ToString();
-                    Event($"dungeon {d.Str("Name")}: swept stage {best} ({outcome})");
-                    if (outcome == "Ok") Count("dungeon_sweeps");
+                    int runs = body is { } rb ? Math.Max(1, rb.Obj("Reward").Int("Runs", 1)) : 1;
+                    Event($"dungeon {d.Str("Name")}: swept stage {best} x{runs} ({outcome})");
+                    if (outcome == "Ok") for (int i = 0; i < runs; i++) Count("dungeon_sweeps");
                     _inventoryDirty = true;
                     return; // one run per chore pass
                 }
