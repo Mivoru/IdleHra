@@ -88,6 +88,106 @@ deaths are unchanged (every casual and idle bot at its first one or two
 logins), as expected: #470 is not in this run. End gold: optimal 0.7-18 M
 (spent on rerolls), casual 24-59 M.
 
+### Run C (Village 2 + Shrine)
+
+2026-11-21/22, main at 3b97994f (prod 1.0.2038 / client 1.116.0): Village 2
+(Town Hall and Workshop to 10, other buildings to 20, Forge to 14, endgame
+levels 20 M gold doubling), the Shrine (Town Hall 10, 1 B x 1.5^level),
+4 Demonic -> Godly and 5 Godly -> Transcendent fusion, quiet reroll (#474),
+multi-ticket sweep server side (#475; the bot still sent one ticket per sweep
+in this run). 168 game hours in 123 wall minutes, all 10 bots ran to the end.
+Run folder: `bot-runs/measure-c-20261121-2302` in the measurement worktree.
+
+| Milestone | optimal | casual | idle |
+|---|---:|---:|---:|
+| Level 10 | 1.9 | 16 | 48 |
+| Region 1 boss | 8.8 | 24 | 72 |
+| Level 30 | 14 | 32 | 72 |
+| Region 2 boss (dungeons) | 27 | 56 | 132 |
+| Level 50 | 48 | 60 | 144 |
+| Level 60 | 74 | 104 | - |
+| Region 3 boss | 114 (2 of 4) | 160 (1 of 4) | - |
+| First rebirth | 138 (4 of 4) | - | - |
+| Level at the end of the week | 37-63 (reborn once) | 68-72 | 51, 52 |
+
+| Persona | 12h | 24h | 48h | 72h | 96h | 120h | 156h |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| optimal | 26.5 | 37 | 49.5 | 57.5 | 63 | 65.5 | 68 |
+| casual | 6 | 26.5 | 45 | 54 | 59 | 63.5 | 68.5 |
+| idle | 1 | 5.5 | 18.5 | 31 | 41.5 | 47.5 | 50.5 |
+
+The curve is run B's within a level or two at every column (casual a little
+faster on day 1-2, optimal a level or two lower on day 5-7 because it
+rebirthed six hours earlier). Village 2 did not move the pace in week 1, as the answers below
+explain.
+
+**Village 2 pace.** Town Hall at the end of the week: optimal 6, 6, 6, 5;
+casual 3, 3, 3, 3; idle 1, 1. Other buildings: optimal 7-9 (Forge 7-9, one
+Workshop 6), casual 1-3, idle 0-2. Three of four optimal bots bought Town
+Hall 6 (the first endgame level, 20 M gold + 1,000 acacia and sulfur) at
+95.5-99.5 h; one also bought Workshop 6 (20 M) at 143.6 h. **No bot ever
+sent Town Hall 7** (40 M + 1,500 materials). Gold is the binding cost for
+optimal: it ends the week with 0.7-10 M because fusion takes 10-34 M of it and
+the rebirth wipes the rest. Casual is bound by its check-ins, not by gold:
+it holds 37-68 M at the end and only reaches Town Hall 3 at 144 h (18 upgrades
+a week). Nothing maxed on day 1; nothing past level 9 was reached by anyone.
+By the measure's own rule ("a level never reached in a week is fine") the
+endgame prices are not too cheap.
+
+**Shrine.** Not reached. It needs Town Hall 10, which is 40 + 80 + 160 +
+320 = 600 M gold past Town Hall 6, against a week's total income of 50-65 M
+per optimal bot. For a bot-paced account it is month-plus content. For
+production it is a different story: the top account held ~15 B (Open
+findings), so it can buy Town Hall 7-10 and several Shrine levels the day it
+looks. The bots cannot answer whether the Shrine is a real sink for the
+existing rich accounts; production's `gold_spend_daily` (category 3) after a
+week of 1.0.2038 can.
+
+**Gold flow (week totals, million gold).**
+
+| Player id (persona) | income | of it combat | spent | reroll | fusion | village |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 (optimal1) | 64.6 | 54.5 | 50.5 | 0.1 | 10.3 | 40.1 |
+| 4 (optimal4, no Town Hall 6) | 52.0 | 44.3 | 35.1 | 0.7 | 34.3 | 0.1 |
+| 10 (optimal) | 49.7 | 42.0 | 45.2 | 0.2 | 24.8 | 20.1 |
+| 11 (optimal) | 63.3 | 51.7 | 44.5 | 1.4 | 23.0 | 20.1 |
+| 6-9 (casual) | 50.5-75.7 | 44.8-67.2 | 4.4-16.1 | 0.8-2.7 | 2.8-15.0 | 0.0 |
+| 2, 5 (idle) | 7.3, 9.0 | 6.5, 7.9 | 0.1, 0.8 | 0-0.8 | 0 | 0 |
+
+End balances (timeline.csv): optimal 0.7-10.4 M, casual 37-68 M, idle 6.0
+and 9.4 M. Optimal's income minus spend is larger than its end balance
+because the rebirth wipes gold and charges the keep price, which the spend
+ledger does not record. (Player ids are the measure DB's; 10 and 11 are
+optimal2 and optimal3 in some order.) Against runs A and B: optimal end gold fell from
+0.7-70 M (A) and 0.7-18 M (B) to 0.7-10 M, now with the village as the second
+sink after fusion. Casual is unchanged at 37-68 M (B: 24-59 M) and never
+spends on the village past its Town Hall ceiling.
+
+**Top fusions.** No fusion to Godly or Transcendent, as expected (no fusion
+to Demonic either). Godly items exist anyway: casual bots wear tier-13 drops
+(casual8 from 32 h), and hold six to ten Demonic-or-better pieces each.
+
+**Region 3-4 wall.** `analyze-stalls.py` finds 11 stalls (run B: 6, which
+the text above rounds to 5), all optimal, all 6-9 online hours at level
+61-70 in region 3-4, same shape as B. The village and the Shrine did not
+touch it: Town Hall 6 has no combat effect, and the Shrine was not reached.
+C's optimal bots sat at Town Hall 6 from ~100 h with nothing to buy next,
+and the stall rule counts a Town Hall level as progress, so some of the extra
+stalls are the village going quiet rather than combat getting harder. In
+every stall the bot fought monster 95 (Alpha Wolf, the region-1
+boss) at level 61-70: the bot's `ChooseMonster` takes the most XP/h among the
+fights the server projects as holding, so for these characters the region-1
+boss out-earns every region-3 monster they survive. That is either the
+projection or the region-3 XP curve; it was the same in B. Tuning stays the
+owner's call.
+
+**Regressions.** None. Refusals per bot: optimal 9/7/9/7 (B 7/9/11/9),
+casual 1 each, idle 0. No village refusal codes (MaxTierReached,
+TownHallCeilingReached) appear. `server.log` has 8 lines at error level, all
+"transient failure" database retries under lockstep load (6 village
+production rollbacks re-queued, 2 aborted stack fusions); no unhandled
+exception.
+
 What the shape says:
 
 - **The first day is fast and the curve flattens at Renown.** Optimal reaches
@@ -190,6 +290,13 @@ them in the same PR.
 
 - **Late gold has no sink.** 11-70 M gold per optimal bot after a week; prod's
   top account 15 B. A balance decision for the owner, not tuned here.
+  Run C (Village 2 + Shrine): optimal now spends it (Town Hall 6 at 20 M,
+  end balance 0.7-10 M) and never reaches Town Hall 7 or the Shrine in a
+  week; whether the Shrine drains the rich production accounts is a
+  production measurement, not a bot one.
+- **Optimal bots farm the region-1 boss at level 61-70** (runs B and C): the
+  most XP/h among fights the server projects as holding. Either the
+  projection or region 3's XP per hour; not investigated yet.
 - **Region 3 boss is the week-1 wall.** Optimal bots spent 6-8 online hours
   each at level 61-70 in region 3 with nothing moving except gold (the stall
   report). Run B confirms it without the Town Hall loop: 5 stalls of 6-8
