@@ -696,11 +696,13 @@ namespace FolkIdle.Server.Domain.Combat
                 // figure is not known until ProcessMonsterDeath has run, and a
                 // second copy of that arithmetic is exactly the drift this
                 // codebase keeps paying for.
+                // The base after LowRegionXp's cut: the figure this kill pays.
+                int killBaseXp = LowRegionXp.BaseXp(in payload, in activeMonster);
                 CombatEventFeed.Publish(
                     payload.PlayerId,
                     activeMonster.Id,
                     Network.ResponseCombatEventPacket.KindKill,
-                    activeMonster.BaseXpReward,
+                    killBaseXp,
                     0);
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
@@ -708,7 +710,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // own XP can lift it past a challenge's cap.
                 int levelAtKill = payload.CurrentLevel;
                 long victoryXpBefore = payload.CurrentXp;
-                ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward * paidKills, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
+                ProgressionEngine.ProcessMonsterDeath(ref payload, killBaseXp * paidKills, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
                 // Modul: what this ONE kill paid, for the victory card. Read as
                 // a delta rather than recomputed - ProcessMonsterDeath applies
                 // the event multiplier, the race passive and the level-up
