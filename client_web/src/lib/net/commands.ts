@@ -1970,6 +1970,27 @@ export function unloadPotionShelf(slot: number): CommandOutcome {
   return OK;
 }
 
+/**
+ * Puts a different potion on a shelf that holds one: the held potions go back
+ * to the chest, then `quantity` of the new one comes onto the shelf.
+ *
+ * Modul: A SWAP IS UNLOAD + STOCK, IN ORDER (2026-11-22). The server keeps one
+ * kind of potion per shelf and refuses to stock a second kind on top
+ * (PotionShelfTickCoordinator.HandleStock), and the screen used to hide every
+ * other potion of the slot until the shelf was emptied by a quiet "Unload"
+ * button - a player with Hunt elixirs shelved and Fortune draughts in the
+ * chest reported that potions "could not be swapped". Both commands go down
+ * one socket into the server's single FIFO command queue and both run on the
+ * tick, so the unload has emptied the shelf when the stock is checked.
+ */
+export function swapPotionShelf(slot: number, potionItemId: number, quantity: number): CommandOutcome {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 2) return refuse('Pick a shelf.');
+  if (!Number.isInteger(potionItemId) || potionItemId <= 0) return refuse('Pick a potion.');
+  if (!Number.isInteger(quantity) || quantity <= 0) return refuse('Pick how many.');
+  connection.send({ Command: CommandType.StockPotionShelf, TargetSlotIndex: slot, DepositQuantity: 0 });
+  return stockPotionShelf(slot, potionItemId, quantity);
+}
+
 /** Drinks the shelf's next potion; a running one in that slot is replaced. */
 export function drinkPotion(slot: number): CommandOutcome {
   if (!Number.isInteger(slot) || slot < 0 || slot > 2) return refuse('Pick a shelf.');
