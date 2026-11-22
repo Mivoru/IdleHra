@@ -295,8 +295,34 @@ them in the same PR.
   week; whether the Shrine drains the rich production accounts is a
   production measurement, not a bot one.
 - **Optimal bots farm the region-1 boss at level 61-70** (runs B and C): the
-  most XP/h among fights the server projects as holding. Either the
-  projection or region 3's XP per hour; not investigated yet.
+  most XP/h among fights the server projects as holding. Investigated
+  2026-11-22: the projection is faithful (HuntingProjection prices the live
+  tick, parity tests), and `monsters.json` is loaded as written. The cause is
+  the content: **XP per monster health point falls with the region**, and
+  gold per HP falls with it.
+
+  | Region | XP / HP | gold / HP | armour |
+  |---|---:|---:|---:|
+  | 1 (91-95) | 0.200 | 0.049 | 10 |
+  | 2 (96-100) | 0.147 | 0.037 | 20 |
+  | 3 (101-105) | 0.136 | 0.034 | 30 |
+  | 4 (106-110) | 0.127 | 0.032 | 40 |
+  | 5 (111-115) | 0.118 | 0.029 | 50 |
+
+  Every monster in a region has the same ratio, the boss included. So a
+  character that needs several swings per kill earns most per hour on the
+  lowest region it can farm quickly, and the region-1 boss (most XP per
+  kill at region 1's ratio, lowest armour, boss-only damage bonuses on top)
+  beats every region-3 monster. A character that one-shots everything is
+  paid per kill instead, so it farms the biggest monster: production's three
+  main characters all stand on Malakor (115). The trap is the middle game,
+  where a character neither one-shots region 3 nor beats its boss, which is
+  exactly where the bots stall. Fix options (owner decision): make XP and
+  gold per HP rise with the region, or at least stay flat; this inflates
+  XP for the Malakor farmers unless their per-kill XP is held.
+- **Shrine in production (2026-11-22, one day after 1.0.2038):** village
+  gold spent 120 M in total (Town Hall levels), no Shrine level bought. The
+  richest account holds 17.9 B at Town Hall 7. Re-read after a week.
 - **Region 3 boss is the week-1 wall.** Optimal bots spent 6-8 online hours
   each at level 61-70 in region 3 with nothing moving except gold (the stall
   report). Run B confirms it without the Town Hall loop: 5 stalls of 6-8
