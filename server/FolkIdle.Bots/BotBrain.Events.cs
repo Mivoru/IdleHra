@@ -258,6 +258,62 @@ namespace FolkIdle.Bots
 
         private readonly Dictionary<int, (int Step, int Level)> _ascensionFailed = new();
         private (int Region, int Step)? _ascensionPending;
+        private bool _ascensionArmedSeen;
+        private uint _ascensionSentAfterTick;
+        private bool _ascensionResultLogged;
+
+        /// <summary>
+        /// Modul: WATCH THE ATTEMPT, DO NOT GUESS IT (2026-11-22). Run D logged
+        /// region 1 step 1 "failed" over and over with the boss dying in a few
+        /// seconds and no time limit, and the log could not say why: the bot
+        /// held the character for 30 seconds and read the ladder three hours
+        /// later. Every turn this now reads the wire - the command's result
+        /// code, and AscensionStep, which is the armed step and drops to 0
+        /// when the attempt ends - so it logs the refusal or the activity the
+        /// attempt ended on, and releases the hold the moment it is over.
+        /// </summary>
+        private void WatchAscension()
+        {
+            if (_ascensionPending is not { } pending) return;
+
+            if (!_ascensionResultLogged)
+            {
+                foreach (var (code, tick) in new[]
+                {
+                    (_state.CommandResult0_Code, _state.CommandResult0_Tick), (_state.CommandResult1_Code, _state.CommandResult1_Tick),
+                    (_state.CommandResult2_Code, _state.CommandResult2_Tick), (_state.CommandResult3_Code, _state.CommandResult3_Tick),
+                })
+                {
+                    var result = (CommandResultCode)code;
+                    if (tick <= _ascensionSentAfterTick) continue;
+                    if (result is CommandResultCode.AscensionBossNotDefeated or CommandResultCode.AscensionStepLocked or CommandResultCode.NodeOccupied)
+                    {
+                        Event($"ascension: region {pending.Region} step {pending.Step} refused ({result})");
+                        _ascensionResultLogged = true;
+                        _busyUntil = Now;
+                    }
+                    else if (result == CommandResultCode.AscensionTooSlow)
+                    {
+                        Event($"ascension: region {pending.Region} step {pending.Step} kill too slow, still armed");
+                        _ascensionResultLogged = true;
+                    }
+                }
+            }
+
+            if (_state.AscensionStep == pending.Step) { _ascensionArmedSeen = true; return; }
+            if (_ascensionArmedSeen && _state.AscensionStep == 0)
+            {
+                // Over: cleared, died, or the activity moved. The ladder read
+                // says which of the first; the rest is on the wire now.
+                if (_state.ActiveActivityId != _ascensionBossId || _state.ActivityHaltReason != 0)
+                    Event($"ascension: region {pending.Region} step {pending.Step} ended off the boss (activity {_state.ActiveActivityId}, halt {_state.ActivityHaltReason})");
+                _ascensionArmedSeen = false;
+                _busyUntil = Now;
+                Expire("ascension"); // read the ladder on the next turn
+            }
+        }
+
+        private long _ascensionBossId;
 
         /// <summary>
         /// The next step of the lowest beaten boss's ladder, when the plain boss
@@ -278,6 +334,7 @@ namespace FolkIdle.Bots
                 if (row.Int("HighestStep") >= pending.Step) { Event($"ascension: region {pending.Region} step {pending.Step} CLEARED"); Count("ascension_steps"); }
                 else { _ascensionFailed[pending.Region] = (pending.Step, _state.CurrentLevel); Event($"ascension: region {pending.Region} step {pending.Step} failed"); }
                 _ascensionPending = null;
+                _ascensionArmedSeen = false;
             }
 
             foreach (var boss in v.Arr("Bosses").Where(b => b.Bool("BossDefeated")).OrderBy(b => b.Int("Region")))
@@ -294,7 +351,16 @@ namespace FolkIdle.Bots
                 if (limit > 0 && estimate.Num("SecondsPerKill") * 3 > limit) continue;
 
                 _ascensionPending = (region, step);
-                _busyUntil = Now + Math.Max(10, limit + 30) / 3600.0;
+                _ascensionBossId = boss.Int("BossMonsterId");
+                _ascensionArmedSeen = false;
+                _ascensionResultLogged = false;
+                _ascensionSentAfterTick = Math.Max(Math.Max(_state.CommandResult0_Tick, _state.CommandResult1_Tick), Math.Max(_state.CommandResult2_Tick, _state.CommandResult3_Tick));
+                // The hold: a step with no limit used to get 30 seconds, after
+                // which the fight loop could walk the character off the boss.
+                // Ten estimated kills plus a minute, at most 30 game minutes;
+                // WatchAscension releases it as soon as the attempt ends.
+                double holdSeconds = Math.Max(limit + 30, estimate.Num("SecondsPerKill") * 10 + 60);
+                _busyUntil = Now + Math.Min(holdSeconds, 1800) / 3600.0;
                 Enqueue(new ClientCommandPacket { Command = CommandType.StartBossAscension, TargetId = region, SecondaryId = step },
                     $"ascension: region {region} step {step} ({stepView.Str("Summary")}; boss dies in {estimate.Num("SecondsPerKill"):0.0} s, limit {limit} s)", 15);
                 Expire("ascension");
