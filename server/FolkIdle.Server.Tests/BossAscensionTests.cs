@@ -396,6 +396,22 @@ namespace FolkIdle.Server.Tests
             DrainClears();
         }
 
+        [Fact]
+        public void AStepClearsWhenTheBossPaysLowRegionXp()
+        {
+            // Modul: run D (2026-11-22) logged fewer Ascension clears after
+            // LowRegionXp halved the region-1 boss's XP once region 3 opened.
+            // The clear is judged by the kill, not by its XP; this pins that.
+            DrainClears();
+            var p = AboutToKill(region: 1, step: 1, fightTicks: 5);
+            p.HighestUnlockedRegion = 3;
+            Assert.True(LowRegionXp.Applies(in p, RaceUnlockRegistry.GetRegionBossMonsterId(1)));
+            TickUntilCleared(ref p);
+            Assert.Equal(1, BossAscensionRegistry.HighestStepOf(p.BossAscensionPacked, 1));
+            Assert.True(BossAscensionEngine.Clears.TryDequeue(out _));
+            DrainClears();
+        }
+
         // ---- the reward -----------------------------------------------------
 
         private async Task SeedAsync(long playerId, long guildId = 0)

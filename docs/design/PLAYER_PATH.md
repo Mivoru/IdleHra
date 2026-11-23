@@ -238,8 +238,14 @@ What it says:
   bot noise. The optimal day-1 median (37 vs 32) moved because one run-C bot
   had already reached region 3 at the 24 h sample; the ranges overlap
   (29-39 vs 30-40).
-- Optimal Ascension steps are lower (median 0-3 vs 10 from day 3); the bots
-  spent gold on the Town Hall and gear instead. Not caused by XP; watch it.
+- **Optimal Ascension steps are lower** (median 0-3 vs 10 from day 3).
+  Most attempts are region 1 step 1, the easiest step, "failed" with the
+  boss dying in 2-8 s and no time limit. Not the XP cut:
+  `BossAscensionTests.AStepClearsWhenTheBossPaysLowRegionXp` clears a step
+  on a boss paying half XP. Ascension in run C mostly cleared for bots that
+  already farmed the region-1 boss, so the suspect is the bot (its 30-second
+  hold on the character after starting a step with no limit); its command
+  result is not logged, so the next run should log it before this is tuned.
 
 ## The best order
 
@@ -321,8 +327,10 @@ them in the same PR.
   each of its first nights. Reproduced on a bot character loaded from the run
   database: 330 fish lasted 1.4 of 8 hours (level 7 -> 10); with enough food
   the same night is level 7 -> 16. The Orders rule "fish when the larder runs
-  dry" is the fix the game already has, but it opens at level 20. Proposal:
-  #470 (first Order from level 1), owner decision.
+  dry" is the fix the game already has, but it opened at level 20.
+  **Done:** #470 opens the first Order from level 1 (live since 2026-11-21);
+  the bots set it from the first check-in, idle bots die 0 times in the first
+  three days in runs C and D, casual bots 0 in run D.
 
 - **Late gold has no sink.** 11-70 M gold per optimal bot after a week; prod's
   top account 15 B. A balance decision for the owner, not tuned here.
