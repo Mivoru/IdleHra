@@ -258,6 +258,65 @@ namespace FolkIdle.Bots
 
         private readonly Dictionary<int, (int Step, int Level)> _ascensionFailed = new();
         private (int Region, int Step)? _ascensionPending;
+        private bool _ascensionArmedSeen;
+        private uint _ascensionSentAfterTick;
+        private bool _ascensionResultLogged;
+        private bool _ascensionOver;
+        private bool _ascensionRechecked;
+
+        /// <summary>
+        /// Modul: WATCH THE ATTEMPT, DO NOT GUESS IT (2026-11-22). Run D logged
+        /// region 1 step 1 "failed" over and over with the boss dying in a few
+        /// seconds and no time limit, and the log could not say why: the bot
+        /// held the character for 30 seconds and read the ladder three hours
+        /// later. Every turn this now reads the wire - the command's result
+        /// code, and AscensionStep, which is the armed step and drops to 0
+        /// when the attempt ends - so it logs the refusal or the activity the
+        /// attempt ended on, and releases the hold the moment it is over.
+        /// </summary>
+        private void WatchAscension()
+        {
+            if (_ascensionPending is not { } pending) return;
+
+            if (!_ascensionResultLogged)
+            {
+                foreach (var (code, tick) in new[]
+                {
+                    (_state.CommandResult0_Code, _state.CommandResult0_Tick), (_state.CommandResult1_Code, _state.CommandResult1_Tick),
+                    (_state.CommandResult2_Code, _state.CommandResult2_Tick), (_state.CommandResult3_Code, _state.CommandResult3_Tick),
+                })
+                {
+                    var result = (CommandResultCode)code;
+                    if (tick <= _ascensionSentAfterTick) continue;
+                    if (result is CommandResultCode.AscensionBossNotDefeated or CommandResultCode.AscensionStepLocked or CommandResultCode.NodeOccupied)
+                    {
+                        Event($"ascension: region {pending.Region} step {pending.Step} refused ({result})");
+                        _ascensionResultLogged = true;
+                        _busyUntil = Now;
+                    }
+                    else if (result == CommandResultCode.AscensionTooSlow)
+                    {
+                        Event($"ascension: region {pending.Region} step {pending.Step} kill too slow, still armed");
+                        _ascensionResultLogged = true;
+                    }
+                }
+            }
+
+            if (_state.AscensionStep == pending.Step) { _ascensionArmedSeen = true; return; }
+            if (_ascensionArmedSeen && !_ascensionOver && _state.AscensionStep == 0)
+            {
+                // Over: cleared, died, or the activity moved. The ladder read
+                // says which of the first; the rest is on the wire now.
+                if (_state.ActiveActivityId != _ascensionBossId || _state.ActivityHaltReason != 0)
+                    Event($"ascension: region {pending.Region} step {pending.Step} ended off the boss (activity {_state.ActiveActivityId}, halt {_state.ActivityHaltReason})");
+                _ascensionOver = true;
+                _busyUntil = Now;
+                Expire("ascension"); // read the ladder on the next turn
+            }
+        }
+
+        private long _ascensionBossId;
+        private byte _ascensionStartDeathTick;
 
         /// <summary>
         /// The next step of the lowest beaten boss's ladder, when the plain boss
@@ -276,8 +335,33 @@ namespace FolkIdle.Bots
             {
                 var row = v.Arr("Bosses").FirstOrDefault(b => b.Int("Region") == pending.Region);
                 if (row.Int("HighestStep") >= pending.Step) { Event($"ascension: region {pending.Region} step {pending.Step} CLEARED"); Count("ascension_steps"); }
-                else { _ascensionFailed[pending.Region] = (pending.Step, _state.CurrentLevel); Event($"ascension: region {pending.Region} step {pending.Step} failed"); }
+                else if (_state.LastDeathTick == _ascensionStartDeathTick && !_ascensionRechecked)
+                {
+                    // Modul: THE LADDER LAGS THE KILL (run G, 2026-11-24). The
+                    // step drops off the wire the tick the boss dies, but the
+                    // ladder is read from the database, which hears of the clear
+                    // a flush later. Half of run G's "failed, no death" steps were
+                    // followed straight away by the NEXT step - they had cleared.
+                    // Without a death, read the ladder once more a few game
+                    // minutes on before calling it a failure.
+                    _ascensionRechecked = true;
+                    _nextDue["ascension"] = Now + 5 / 60.0;
+                    return;
+                }
+                else
+                {
+                    _ascensionFailed[pending.Region] = (pending.Step, _state.CurrentLevel);
+                    // Modul: SAY HOW IT FAILED (run E, 2026-11-24). #482's watch
+                    // logged a reason for 2 of 63 failures; the rest ended between
+                    // two frames. The death tick and what the wire shows now name
+                    // the likely end: a death to the boss, or a disarm never seen.
+                    string died = _state.LastDeathTick != _ascensionStartDeathTick
+                        ? $"died to {MonsterName((long)_state.LastDeathMonsterId)}" : "no death";
+                    Event($"ascension: region {pending.Region} step {pending.Step} failed ({died}; armed seen {_ascensionArmedSeen}, wire step {_state.AscensionStep}, activity {_state.ActiveActivityId}, halt {_state.ActivityHaltReason}, hp {_state.PlayerHp})");
+                }
                 _ascensionPending = null;
+                _ascensionArmedSeen = false;
+                _ascensionOver = false;
             }
 
             foreach (var boss in v.Arr("Bosses").Where(b => b.Bool("BossDefeated")).OrderBy(b => b.Int("Region")))
@@ -292,9 +376,27 @@ namespace FolkIdle.Bots
                 var estimate = _projection is { } p ? p.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == boss.Int("BossMonsterId")) : default;
                 if (estimate.ValueKind != JsonValueKind.Object || !estimate.Bool("SurvivesWithoutFood")) continue;
                 if (limit > 0 && estimate.Num("SecondsPerKill") * 3 > limit) continue;
+                // Modul: NOT ON THE WAY OUT (run F, 2026-11-24). A logout ends
+                // the attempt, and 15 of run F's 18 failures were casual bots
+                // starting a step in the last minutes of a check-in and logging
+                // out on it. Start only when the hold fits before the bot leaves.
+                double holdSeconds = Math.Max(limit + 30, estimate.Num("SecondsPerKill") * 10 + 60);
+                double hoursLeft = Math.Min(_persona.HoursLeftInCheckIn(Now), _persona.HoursUntilAsleep(_time.GameUtc, _name));
+                if (hoursLeft * 3600 < Math.Min(holdSeconds, 1800)) { Count("ascension_skipped_logout"); return; }
 
                 _ascensionPending = (region, step);
-                _busyUntil = Now + Math.Max(10, limit + 30) / 3600.0;
+                _ascensionBossId = boss.Int("BossMonsterId");
+                _ascensionArmedSeen = false;
+                _ascensionResultLogged = false;
+                _ascensionOver = false;
+                _ascensionRechecked = false;
+                _ascensionStartDeathTick = _state.LastDeathTick;
+                _ascensionSentAfterTick = Math.Max(Math.Max(_state.CommandResult0_Tick, _state.CommandResult1_Tick), Math.Max(_state.CommandResult2_Tick, _state.CommandResult3_Tick));
+                // The hold: a step with no limit used to get 30 seconds, after
+                // which the fight loop could walk the character off the boss.
+                // Ten estimated kills plus a minute, at most 30 game minutes;
+                // WatchAscension releases it as soon as the attempt ends.
+                _busyUntil = Now + Math.Min(holdSeconds, 1800) / 3600.0;
                 Enqueue(new ClientCommandPacket { Command = CommandType.StartBossAscension, TargetId = region, SecondaryId = step },
                     $"ascension: region {region} step {step} ({stepView.Str("Summary")}; boss dies in {estimate.Num("SecondsPerKill"):0.0} s, limit {limit} s)", 15);
                 Expire("ascension");
