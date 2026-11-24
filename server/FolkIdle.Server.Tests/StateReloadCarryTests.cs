@@ -186,5 +186,54 @@ namespace FolkIdle.Server.Tests
 
             Assert.Equal(2L, reloaded.EquippedWeaponId);
         }
+        /// <summary>
+        /// Run E2 (2026-11-24): a fusion, equip or village upgrade right after
+        /// StartBossAscension reloaded the payload and dropped the armed step
+        /// while the fight carried on - the boss died at plain strength and the
+        /// ladder never moved. The attempt crosses with its fight.
+        /// </summary>
+        [Fact]
+        public void AReloadKeepsAnArmedAscensionAttempt()
+        {
+            var live = LiveFighter();
+            live.AscensionStep = 3;
+            live.AscensionRegion = 1;
+            live.AscensionCharacterId = Fielded;
+            live.AscensionWardQuarters = 2;
+            live.AscensionWardUntilTenths = 450L;
+            live.SeasonalBossTier = 2;
+            live.SeasonalBossCharacterId = Fielded;
+            live.SeasonalBossReturnActivityId = 3002L;
+            var reloaded = new TickStatePayload { PlayerId = 4711L, Slot1_CharacterId = Fielded };
+
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref reloaded);
+
+            Assert.Equal(3, reloaded.AscensionStep);
+            Assert.Equal(1, reloaded.AscensionRegion);
+            Assert.Equal(Fielded, reloaded.AscensionCharacterId);
+            Assert.Equal(2, reloaded.AscensionWardQuarters);
+            Assert.Equal(450L, reloaded.AscensionWardUntilTenths);
+            Assert.Equal(2, reloaded.SeasonalBossTier);
+            Assert.Equal(Fielded, reloaded.SeasonalBossCharacterId);
+            Assert.Equal(3002L, reloaded.SeasonalBossReturnActivityId);
+        }
+
+        [Fact]
+        public void AnArmedAttemptDoesNotFollowTheSlotOntoANewcomerOrThroughARebirth()
+        {
+            var live = LiveFighter();
+            live.AscensionStep = 3;
+            live.AscensionRegion = 1;
+            live.AscensionCharacterId = Fielded;
+            var newcomer = new System.Guid("24242424-0000-0000-0000-000000000002");
+            var benched = new TickStatePayload { PlayerId = 4711L, Slot1_CharacterId = newcomer };
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref benched);
+            Assert.Equal(0, benched.AscensionStep);
+
+            live.RebirthPending = true;
+            var reborn = new TickStatePayload { PlayerId = 4711L, Slot1_CharacterId = Fielded };
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref reborn);
+            Assert.Equal(0, reborn.AscensionStep);
+        }
     }
 }
