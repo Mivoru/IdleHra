@@ -247,21 +247,22 @@ What it says:
   hold on the character after starting a step with no limit); its command
   result is not logged, so the next run should log it before this is tuned.
 
-### Runs E and F (Ascension: the bot, then the server)
+### Runs E, F and G (Ascension: the bot, then the server)
 
 `measure-e-20261124-0036` and `measure-f-20261124-0332`, 168 game hours,
 the same ten bots. E is the bot fix #482: it holds an attempt until it ends
 and logs why it ended. F adds the server fix #483: a mid-session reload keeps
-the armed attempt.
+the armed attempt. G (`measure-g-20261124-0523`) adds the bot's logout guard
+and a failure line that says how the attempt ended.
 
-| | run D | run E (#482) | run F (+ #483) |
-|---|---:|---:|---:|
-| Ascension steps cleared (all bots) | 18 | 67 | 144 |
-| optimal steps at the end | 1 / 1 / 5 / 3 | 10 / 10 / 18 / 20 | 10 / 20 / 13 / 19 |
-| casual steps at the end | 0 / 5 / 3 / 0 | 2 / 1 / 4 / 2 | 19 / 10 / 20 / 20 |
-| "failed" with no reason logged | 54 | 63 | 0 (15 logout, 3 deaths) |
-| optimal stalls | 5 | 3 | 4 |
-| region 4 open, optimal / casual median | 103 h / 136 h | 120 h / 152 h | 112 h / 132 h |
+| | run D | run E (#482) | run F (+ #483) | run G (+ logout guard) |
+|---|---:|---:|---:|---:|
+| Ascension steps cleared (all bots) | 18 | 67 | 144 | 111 logged, 116 real |
+| optimal steps at the end | 1 / 1 / 5 / 3 | 10 / 10 / 18 / 20 | 10 / 20 / 13 / 19 | 18 / 10 / 27 / 20 |
+| casual steps at the end | 0 / 5 / 3 / 0 | 2 / 1 / 4 / 2 | 19 / 10 / 20 / 20 | 8 / 7 / 8 / 8 |
+| "failed" with no reason logged | 54 | 63 | 0 (15 logout, 3 deaths) | 12 (5 false, 2 deaths, 5 off the boss or logout) |
+| optimal stalls | 5 | 3 | 4 | 5 |
+| region 4 open, optimal / casual median | 103 h / 136 h | 120 h / 152 h | 112 h / 132 h | 98 h / 136 h |
 
 What it says:
 
@@ -278,6 +279,15 @@ What it says:
   started a step in the last minutes of a check-in and logged out on it (a
   logout disarms by design). The bot now starts a step only when the hold
   fits before it leaves.
+- **Run G: the ladder lags the kill.** The armed step leaves the wire the
+  tick the boss dies, but `/boss-ascension` reads the database, which hears
+  of the clear a flush later. Five of G's twelve "failures" were followed
+  at once by the next step, so they had cleared. The bot now reads the
+  ladder once more a few game minutes on before it calls a step failed.
+  Casual bots cleared fewer steps in G (7-8 each) than in F (10-20). The
+  likely cause is the logout guard: it skips a step that will not fit
+  before a short casual check-in ends. The skip logs no line, so this is
+  not measured yet.
 - **Ascension is not hard for a geared character.** With the attempts
   counted honestly, casual bots finish region 1's ten steps within the week.
   Production agrees: Mivoru holds 49 of 50 steps
