@@ -360,6 +360,13 @@ namespace FolkIdle.Bots
                 var estimate = _projection is { } p ? p.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == boss.Int("BossMonsterId")) : default;
                 if (estimate.ValueKind != JsonValueKind.Object || !estimate.Bool("SurvivesWithoutFood")) continue;
                 if (limit > 0 && estimate.Num("SecondsPerKill") * 3 > limit) continue;
+                // Modul: NOT ON THE WAY OUT (run F, 2026-11-24). A logout ends
+                // the attempt, and 15 of run F's 18 failures were casual bots
+                // starting a step in the last minutes of a check-in and logging
+                // out on it. Start only when the hold fits before the bot leaves.
+                double holdSeconds = Math.Max(limit + 30, estimate.Num("SecondsPerKill") * 10 + 60);
+                double hoursLeft = Math.Min(_persona.HoursLeftInCheckIn(Now), _persona.HoursUntilAsleep(_time.GameUtc, _name));
+                if (hoursLeft * 3600 < Math.Min(holdSeconds, 1800)) return;
 
                 _ascensionPending = (region, step);
                 _ascensionBossId = boss.Int("BossMonsterId");
@@ -371,7 +378,6 @@ namespace FolkIdle.Bots
                 // which the fight loop could walk the character off the boss.
                 // Ten estimated kills plus a minute, at most 30 game minutes;
                 // WatchAscension releases it as soon as the attempt ends.
-                double holdSeconds = Math.Max(limit + 30, estimate.Num("SecondsPerKill") * 10 + 60);
                 _busyUntil = Now + Math.Min(holdSeconds, 1800) / 3600.0;
                 Enqueue(new ClientCommandPacket { Command = CommandType.StartBossAscension, TargetId = region, SecondaryId = step },
                     $"ascension: region {region} step {step} ({stepView.Str("Summary")}; boss dies in {estimate.Num("SecondsPerKill"):0.0} s, limit {limit} s)", 15);
