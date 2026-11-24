@@ -257,10 +257,10 @@ and a failure line that says how the attempt ended.
 
 | | run D | run E (#482) | run F (+ #483) | run G (+ logout guard) |
 |---|---:|---:|---:|---:|
-| Ascension steps cleared (all bots) | 18 | 67 | 144 | 111 logged, 116 real |
+| Ascension steps cleared (all bots) | 18 | 67 | 144 | 111 logged, 118 in the server log |
 | optimal steps at the end | 1 / 1 / 5 / 3 | 10 / 10 / 18 / 20 | 10 / 20 / 13 / 19 | 18 / 10 / 27 / 20 |
 | casual steps at the end | 0 / 5 / 3 / 0 | 2 / 1 / 4 / 2 | 19 / 10 / 20 / 20 | 8 / 7 / 8 / 8 |
-| "failed" with no reason logged | 54 | 63 | 0 (15 logout, 3 deaths) | 12 (5 false, 2 deaths, 5 off the boss or logout) |
+| "failed" with no reason logged | 54 | 63 | 0 (15 logout, 3 deaths) | 12 (6 false, 2 deaths, 4 not cleared) |
 | optimal stalls | 5 | 3 | 4 | 5 |
 | region 4 open, optimal / casual median | 103 h / 136 h | 120 h / 152 h | 112 h / 132 h | 98 h / 136 h |
 
@@ -281,13 +281,22 @@ What it says:
   fits before it leaves.
 - **Run G: the ladder lags the kill.** The armed step leaves the wire the
   tick the boss dies, but `/boss-ascension` reads the database, which hears
-  of the clear a flush later. Five of G's twelve "failures" were followed
-  at once by the next step, so they had cleared. The bot now reads the
-  ladder once more a few game minutes on before it calls a step failed.
-  Casual bots cleared fewer steps in G (7-8 each) than in F (10-20). The
-  likely cause is the logout guard: it skips a step that will not fit
-  before a short casual check-in ends. The skip logs no line, so this is
-  not measured yet.
+  of the clear later. The server log has a clear for six of G's twelve
+  "failures". The bot now reads the ladder once more before it calls a step
+  failed. No run has tested that yet: run H (70 h) started the old bot build,
+  because `measure.ps1` does not build.
+- **Run G and H: another character's job ended the attempt.** The armed
+  fields are account-wide, and `DisarmAscension` ran for any slot's activity
+  change, so sending the second character to woodcutting dropped slot 1's
+  step. Three of the five deathless uncleared attempts in G and H had a
+  roster job between start and failure; the other two, casual7 region 1
+  step 8 (ended on a gathering node) and optimal1 region 2 step 9, are not
+  explained.
+- **Casual bots cleared fewer steps in G (7-8) than in F (10-20).** The
+  logout guard may be the cause, but that was not measured. The counter
+  `ascension_skipped_logout` will show it in the next run.
+- **The `roster job ... was refused` line is not a refusal.** The bot prints
+  it whenever the command was sent.
 - **Ascension is not hard for a geared character.** With the attempts
   counted honestly, casual bots finish region 1's ten steps within the week.
   Production agrees: Mivoru holds 49 of 50 steps

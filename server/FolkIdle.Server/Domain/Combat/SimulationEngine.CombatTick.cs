@@ -242,15 +242,34 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>Disarms an attempt (activity changed, character died). Silent: the wire's AscensionStep reads 0.</summary>
         internal static void DisarmAscension(ref TickStatePayload payload)
         {
-            payload.AscensionStep = 0;
-            payload.AscensionRegion = 0;
-            payload.AscensionCharacterId = System.Guid.Empty;
+            // Modul: ONLY THE CHARACTER THAT ARMED IT (runs G and H, 2026-11-24).
+            // The armed fields are account-wide, but this runs with ANY slot
+            // swapped into the active register. Sending the second character to
+            // woodcutting therefore ended slot 1's attempt: slot 1 went on
+            // hitting the boss at plain strength and the kill cleared nothing.
+            // An attempt whose character is in no slot any more is stale and
+            // is still cleared.
+            if (!HeldByParkedSlot(in payload, payload.AscensionCharacterId))
+            {
+                payload.AscensionStep = 0;
+                payload.AscensionRegion = 0;
+                payload.AscensionCharacterId = System.Guid.Empty;
+            }
             // The seasonal boss is armed the same way and ends the same way: a
             // change of activity or a death.
-            payload.SeasonalBossTier = 0;
-            payload.SeasonalBossCharacterId = System.Guid.Empty;
-            payload.SeasonalBossReturnActivityId = 0;
+            if (!HeldByParkedSlot(in payload, payload.SeasonalBossCharacterId))
+            {
+                payload.SeasonalBossTier = 0;
+                payload.SeasonalBossCharacterId = System.Guid.Empty;
+                payload.SeasonalBossReturnActivityId = 0;
+            }
         }
+
+        /// <summary>Whether this character is fielded, but is not the one in the active register now (ids travel with the slot swap).</summary>
+        private static bool HeldByParkedSlot(in TickStatePayload payload, System.Guid characterId)
+            => characterId != System.Guid.Empty
+                && characterId != payload.Slot1_CharacterId
+                && (characterId == payload.Slot2_CharacterId || characterId == payload.Slot3_CharacterId);
 
         /// <summary>
         /// A seasonal boss fight is over (won or lost): slot 1 goes back to the
