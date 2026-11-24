@@ -382,7 +382,7 @@ namespace FolkIdle.Bots
                 // out on it. Start only when the hold fits before the bot leaves.
                 double holdSeconds = Math.Max(limit + 30, estimate.Num("SecondsPerKill") * 10 + 60);
                 double hoursLeft = Math.Min(_persona.HoursLeftInCheckIn(Now), _persona.HoursUntilAsleep(_time.GameUtc, _name));
-                if (hoursLeft * 3600 < Math.Min(holdSeconds, 1800)) return;
+                if (hoursLeft * 3600 < Math.Min(holdSeconds, 1800)) { Count("ascension_skipped_logout"); return; }
 
                 _ascensionPending = (region, step);
                 _ascensionBossId = boss.Int("BossMonsterId");
