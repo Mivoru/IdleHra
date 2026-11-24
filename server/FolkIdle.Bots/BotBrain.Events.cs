@@ -261,6 +261,8 @@ namespace FolkIdle.Bots
         private bool _ascensionArmedSeen;
         private uint _ascensionSentAfterTick;
         private bool _ascensionResultLogged;
+        private bool _ascensionOver;
+        private bool _ascensionRechecked;
 
         /// <summary>
         /// Modul: WATCH THE ATTEMPT, DO NOT GUESS IT (2026-11-22). Run D logged
@@ -301,13 +303,13 @@ namespace FolkIdle.Bots
             }
 
             if (_state.AscensionStep == pending.Step) { _ascensionArmedSeen = true; return; }
-            if (_ascensionArmedSeen && _state.AscensionStep == 0)
+            if (_ascensionArmedSeen && !_ascensionOver && _state.AscensionStep == 0)
             {
                 // Over: cleared, died, or the activity moved. The ladder read
                 // says which of the first; the rest is on the wire now.
                 if (_state.ActiveActivityId != _ascensionBossId || _state.ActivityHaltReason != 0)
                     Event($"ascension: region {pending.Region} step {pending.Step} ended off the boss (activity {_state.ActiveActivityId}, halt {_state.ActivityHaltReason})");
-                _ascensionArmedSeen = false;
+                _ascensionOver = true;
                 _busyUntil = Now;
                 Expire("ascension"); // read the ladder on the next turn
             }
@@ -333,6 +335,19 @@ namespace FolkIdle.Bots
             {
                 var row = v.Arr("Bosses").FirstOrDefault(b => b.Int("Region") == pending.Region);
                 if (row.Int("HighestStep") >= pending.Step) { Event($"ascension: region {pending.Region} step {pending.Step} CLEARED"); Count("ascension_steps"); }
+                else if (_state.LastDeathTick == _ascensionStartDeathTick && !_ascensionRechecked)
+                {
+                    // Modul: THE LADDER LAGS THE KILL (run G, 2026-11-24). The
+                    // step drops off the wire the tick the boss dies, but the
+                    // ladder is read from the database, which hears of the clear
+                    // a flush later. Half of run G's "failed, no death" steps were
+                    // followed straight away by the NEXT step - they had cleared.
+                    // Without a death, read the ladder once more a few game
+                    // minutes on before calling it a failure.
+                    _ascensionRechecked = true;
+                    _nextDue["ascension"] = Now + 5 / 60.0;
+                    return;
+                }
                 else
                 {
                     _ascensionFailed[pending.Region] = (pending.Step, _state.CurrentLevel);
@@ -346,6 +361,7 @@ namespace FolkIdle.Bots
                 }
                 _ascensionPending = null;
                 _ascensionArmedSeen = false;
+                _ascensionOver = false;
             }
 
             foreach (var boss in v.Arr("Bosses").Where(b => b.Bool("BossDefeated")).OrderBy(b => b.Int("Region")))
@@ -372,6 +388,8 @@ namespace FolkIdle.Bots
                 _ascensionBossId = boss.Int("BossMonsterId");
                 _ascensionArmedSeen = false;
                 _ascensionResultLogged = false;
+                _ascensionOver = false;
+                _ascensionRechecked = false;
                 _ascensionStartDeathTick = _state.LastDeathTick;
                 _ascensionSentAfterTick = Math.Max(Math.Max(_state.CommandResult0_Tick, _state.CommandResult1_Tick), Math.Max(_state.CommandResult2_Tick, _state.CommandResult3_Tick));
                 // The hold: a step with no limit used to get 30 seconds, after
