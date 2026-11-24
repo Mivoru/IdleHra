@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.118.0',
+    date: '2026-11-24',
+    sections: [
+      {
+        title: 'Boss Ascension',
+        items: [
+          'Fusing, rerolling, crafting, the market or the village no longer cancels a started Ascension step. Before, the boss went back to its normal strength and killing it cleared nothing.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.117.0',
     date: '2026-11-22',
     sections: [
