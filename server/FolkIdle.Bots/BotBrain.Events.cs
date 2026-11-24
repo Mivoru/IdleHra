@@ -314,6 +314,7 @@ namespace FolkIdle.Bots
         }
 
         private long _ascensionBossId;
+        private byte _ascensionStartDeathTick;
 
         /// <summary>
         /// The next step of the lowest beaten boss's ladder, when the plain boss
@@ -332,7 +333,17 @@ namespace FolkIdle.Bots
             {
                 var row = v.Arr("Bosses").FirstOrDefault(b => b.Int("Region") == pending.Region);
                 if (row.Int("HighestStep") >= pending.Step) { Event($"ascension: region {pending.Region} step {pending.Step} CLEARED"); Count("ascension_steps"); }
-                else { _ascensionFailed[pending.Region] = (pending.Step, _state.CurrentLevel); Event($"ascension: region {pending.Region} step {pending.Step} failed"); }
+                else
+                {
+                    _ascensionFailed[pending.Region] = (pending.Step, _state.CurrentLevel);
+                    // Modul: SAY HOW IT FAILED (run E, 2026-11-24). #482's watch
+                    // logged a reason for 2 of 63 failures; the rest ended between
+                    // two frames. The death tick and what the wire shows now name
+                    // the likely end: a death to the boss, or a disarm never seen.
+                    string died = _state.LastDeathTick != _ascensionStartDeathTick
+                        ? $"died to {MonsterName((long)_state.LastDeathMonsterId)}" : "no death";
+                    Event($"ascension: region {pending.Region} step {pending.Step} failed ({died}; armed seen {_ascensionArmedSeen}, wire step {_state.AscensionStep}, activity {_state.ActiveActivityId}, halt {_state.ActivityHaltReason}, hp {_state.PlayerHp})");
+                }
                 _ascensionPending = null;
                 _ascensionArmedSeen = false;
             }
@@ -354,6 +365,7 @@ namespace FolkIdle.Bots
                 _ascensionBossId = boss.Int("BossMonsterId");
                 _ascensionArmedSeen = false;
                 _ascensionResultLogged = false;
+                _ascensionStartDeathTick = _state.LastDeathTick;
                 _ascensionSentAfterTick = Math.Max(Math.Max(_state.CommandResult0_Tick, _state.CommandResult1_Tick), Math.Max(_state.CommandResult2_Tick, _state.CommandResult3_Tick));
                 // The hold: a step with no limit used to get 30 seconds, after
                 // which the fight loop could walk the character off the boss.

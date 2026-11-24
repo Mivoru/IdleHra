@@ -132,7 +132,13 @@ namespace FolkIdle.Bots
             lock (_lock)
             {
                 if (!_progress.TryGetValue(bot, out var p)) return;
-                if (milestone.StartsWith("rebirth_", StringComparison.Ordinal)) { p.Rebirths++; p.Level = 0; }
+                // Modul: KEEP THE OLD LEVEL (run E, 2026-11-24). Zeroing it here
+                // logged every r1_level_N mark at once on the next frame, which
+                // still carried the pre-rebirth level (51), and again when the
+                // real climb passed level 2 - "r1_level_2 (5/4)". The observed
+                // drop to level 1 lowers p.Level by itself; the marks then
+                // fire as the new life climbs.
+                if (milestone.StartsWith("rebirth_", StringComparison.Ordinal)) p.Rebirths++;
                 Row(bot, milestone, s, p);
             }
         }
