@@ -49,6 +49,24 @@ namespace FolkIdle.Server.Engine
             reloaded.CommandResultRingWriteIndex = live.CommandResultRingWriteIndex;
             reloaded.CommandResultTickCounter = live.CommandResultTickCounter;
 
+            // Modul: A FORGE VISIT KILLED THE PLAYER A SECOND TIME (run G,
+            // 2026-11-24). LastDeathTick and LastVictoryTick are EDGES: the
+            // client shows a card whenever the byte CHANGES. A reload put them
+            // back to zero, which is a change, so the first reroll, equip or
+            // upgrade after a death raised the death card again - naming
+            // monster 0, with the death sound. The bots logged it 23 times in
+            // one week as "died to monster 0". The inverse loses a real card:
+            // a death answered by a reload before the next broadcast was never
+            // reported at all. The edges belong to the connection, like the
+            // result ring above, so they cross a rebirth too.
+            reloaded.LastDeathTick = live.LastDeathTick;
+            reloaded.LastDeathMonsterId = live.LastDeathMonsterId;
+            reloaded.LastVictoryTick = live.LastVictoryTick;
+            reloaded.LastVictoryMonsterId = live.LastVictoryMonsterId;
+            reloaded.LastVictoryDurationSeconds = live.LastVictoryDurationSeconds;
+            reloaded.LastVictoryGold = live.LastVictoryGold;
+            reloaded.LastVictoryXp = live.LastVictoryXp;
+
             // Modul: A REBIRTH CARRIES NOTHING OF THE OLD LIFE BUT ITS
             // BOOKKEEPING (task 88). The flushes in flight and the epoch are
             // facts about the writer, not the character, so they cross. The
@@ -121,6 +139,25 @@ namespace FolkIdle.Server.Engine
             reloaded.CachedStoneStock += live.PendingStoneDelta;
             reloaded.PendingIronDelta += live.PendingIronDelta;
             reloaded.CachedIronOreStock += live.PendingIronDelta;
+
+            // Modul: EVERY RELOAD THREW AWAY UP TO A MINUTE OF THE VILLAGE
+            // (2026-11-25). The Lumberjack's and the Mine's output waits on
+            // the payload and is handed to VillageProductionQueue once every
+            // 600 ticks. No table holds it and no flush writes it, so a reload
+            // dropped what was waiting AND restarted the minute: a player who
+            // reached any reload - a reroll, an equip, a claim - more often
+            // than once a minute was paid nothing at all while online. The
+            // fractions of the Town Hall's gold went the same way.
+            reloaded.LumberjackProductionAccumulator = live.LumberjackProductionAccumulator;
+            reloaded.MineProductionAccumulator = live.MineProductionAccumulator;
+            reloaded.VillageLogUnitsProduced = live.VillageLogUnitsProduced;
+            reloaded.VillageOreUnitsProduced = live.VillageOreUnitsProduced;
+            reloaded.PendingVillageLog = live.PendingVillageLog;
+            reloaded.PendingVillageRareLog = live.PendingVillageRareLog;
+            reloaded.PendingVillageOre = live.PendingVillageOre;
+            reloaded.PendingVillageRareOre = live.PendingVillageRareOre;
+            reloaded.VillageProductionTicksSinceGrant = live.VillageProductionTicksSinceGrant;
+            reloaded.TownHallGoldAccumulator = live.TownHallGoldAccumulator;
         }
 
         /// <summary>
@@ -169,6 +206,19 @@ namespace FolkIdle.Server.Engine
                 reloaded.GatheringProgressTicks = live.GatheringProgressTicks;
                 reloaded.HarvestLoopCount = live.HarvestLoopCount;
                 reloaded.ActivityHaltReason = live.ActivityHaltReason;
+
+                // The fight's counters (2026-11-25). In no table either, so a
+                // reload reset Golden Fleece's hundred kills to nothing, and
+                // also handed out a fresh Last Stand, an instant bite and a
+                // boss "fought without eating" after a meal.
+                reloaded.KillsSinceFleece = live.KillsSinceFleece;
+                reloaded.LastStandCooldownRemaining = live.LastStandCooldownRemaining;
+                reloaded.AutoEatCooldownTicks = live.AutoEatCooldownTicks;
+                reloaded.AteThisFight = live.AteThisFight;
+                reloaded.RationTicksSinceMeal = live.RationTicksSinceMeal;
+                reloaded.Hungry = live.Hungry;
+                reloaded.WarSwingCount = live.WarSwingCount;
+                reloaded.WarHitCount = live.WarHitCount;
 
                 // Modul: A FUSION ENDED THE ASCENSION ATTEMPT (run E2,
                 // 2026-11-24). The armed step and the seasonal boss tier are

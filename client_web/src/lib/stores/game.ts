@@ -1068,7 +1068,11 @@ export function startSession(token: string): void {
 
         // The Cailleach's window reports its own fight's death; the card
         // would only stack a second "you died" over it.
-        if (!isFirstPacket) {
+        //
+        // Monster 0 killed nobody: it is the byte going back to zero when the
+        // server builds the session's payload afresh (a reconnect), not a
+        // death. The victory card above has always asked the same question.
+        if (!isFirstPacket && Number(packet.LastDeathMonsterId) > 0) {
           if (!claimSeasonalDeath(Number(packet.LastDeathMonsterId))) {
             deathSummary.set({ monsterId: Number(packet.LastDeathMonsterId) });
           }
