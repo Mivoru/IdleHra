@@ -169,6 +169,27 @@ namespace FolkIdle.Server.Engine
                 reloaded.GatheringProgressTicks = live.GatheringProgressTicks;
                 reloaded.HarvestLoopCount = live.HarvestLoopCount;
                 reloaded.ActivityHaltReason = live.ActivityHaltReason;
+
+                // Modul: A FUSION ENDED THE ASCENSION ATTEMPT (run E2,
+                // 2026-11-24). The armed step and the seasonal boss tier are
+                // runtime-only like the fight above, so every reload zeroed
+                // them while the fight itself was carried: the character went
+                // on hitting the boss at its plain strength and the kill
+                // cleared nothing. Bots that fused, equipped or upgraded right
+                // after Start failed 63 steps in a week with no death and no
+                // halt; a player who starts a step and then rerolls or opens
+                // the Forge got the same silent nothing. The attempt is pinned
+                // to its character (AscensionCharacterId), so it crosses only
+                // with the fight it belongs to.
+                reloaded.AscensionStep = live.AscensionStep;
+                reloaded.AscensionRegion = live.AscensionRegion;
+                reloaded.AscensionCharacterId = live.AscensionCharacterId;
+                reloaded.AscensionWardQuarters = live.AscensionWardQuarters;
+                reloaded.AscensionWardUntilTenths = live.AscensionWardUntilTenths;
+                reloaded.AscensionPendingResult = live.AscensionPendingResult;
+                reloaded.SeasonalBossTier = live.SeasonalBossTier;
+                reloaded.SeasonalBossCharacterId = live.SeasonalBossCharacterId;
+                reloaded.SeasonalBossReturnActivityId = live.SeasonalBossReturnActivityId;
             }
 
             if (live.Slot2_CharacterId != System.Guid.Empty && live.Slot2_CharacterId == reloaded.Slot2_CharacterId)
