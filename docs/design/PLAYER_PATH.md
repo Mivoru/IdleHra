@@ -355,10 +355,16 @@ bots and seed; one run each, so small differences are noise.
     also accepts riskier fights, and 14 (50%) and 13 (70%) fights are deadly,
     none with a crit under 40% of the bar.
   - **Done (owner, 2026-11-25):** the advisor refuses a food fight when one
-    monster crit takes the auto-eat share (at most 50%) of the bar, and the
-    default share is 50%, not 30%. Stored settings are untouched. The rule had
+    monster crit takes the auto-eat share (at most 50%) of the bar. The rule had
     no false alarm in any of the three sets (one of its fights killed only
     from a bar that started at 40%); at 50% it catches 11 of the 14 deadly.
+  - **Held: the default auto-eat share at 50%.** Approved, then measured: the
+    boss walls are calibrated for a character eating at 30%
+    (`BossGearBenchmark`). At 50%, eight wall tests fail: regions 2, 4 and 5
+    lose their margin or fall to gear two tiers under the requirement, and
+    the seasonal tier 6 falls to region 5's wall gear. A player can set 50%
+    by hand today, so the walls are softer than the tests say. Either the
+    walls are retuned first or the softer walls are accepted.
 
 ## The best order
 
