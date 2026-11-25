@@ -306,6 +306,44 @@ What it says:
   on the next frame, which still carried the old level. Ignore the `r1_`
   rows of runs A-E. From F on, a mark is logged only when a frame sees it.
 
+### Runs I and J (2026-11-25: the Ascension fix, then the reload fix)
+
+`measure-i-20261125-0006` is main plus #485 (another character's job no longer
+ends the attempt) and the bot's second ladder read. `measure-j-20261125-0257`
+is main plus #485 and #486 (a reload keeps the death and victory edges, the
+village's pending output and the fight counters). 168 game hours, the same ten
+bots and seed; one run each, so small differences are noise.
+
+| | run G | run I (#485) | run J (#485 + #486) |
+|---|---:|---:|---:|
+| Ascension steps cleared, bot log / server log | 111 / 118 | 118 / 118 | 122 / 123 |
+| failed attempts | 12 | 1 (a death) | 6 (5 deaths, 1 fish order) |
+| optimal steps at the end | 18 / 10 / 27 / 20 | 20 / 20 / 20 / 20 | 20 / 20 / 20 / 20 |
+| casual steps at the end | 8 / 7 / 8 / 8 | 8 / 8 / 8 / 8 | 8 / 8 / 8 / 8 |
+| "died to monster 0" mid-session / at login | not split (23) | 12 / 7 | 0 / 11 |
+| deaths with a real killer, before / after the rebirth | 29 / 25 | 26 / 11 | 22 / 24 |
+| optimal stalls | 5 | 7 | 9 |
+| region 4 open, optimal / casual median | 98 h / 136 h | 97 h / 124 h | 88 h / 136 h |
+
+- **The unexplained failures are gone.** Run J's one deathless failure is
+  casual7, whose "fish when the larder runs dry" order took the character off
+  the boss with an empty larder. That is the order doing its job.
+- **Casual bots stop at step 8 because of the bot.** Each skipped 12-16 starts
+  (`ascension_skipped_logout`): the hold does not fit in a short check-in.
+- **#486 removes the phantom deaths in play.** The ones left at login are the
+  bot log's own: a new session starts at death tick 0 with no killer. #486
+  also fixes the log.
+- **#486's extra village output is not visible in `material_flow_daily`.**
+  Gathering moves hundreds of thousands of logs and ores a week between runs,
+  which hides it. The unit tests are the evidence for that part.
+- **Open: the hunting projection looks too optimistic after a rebirth.** A
+  freshly reborn optimal bot walks into region 4 around level 41-46 with a
+  full larder and dies within minutes, over and over (run J optimal1: 20
+  deaths in 5 hours to Desert Crab and Ashen Basilisk; run G optimal4 did the
+  same). These deaths are in G too, so neither fix caused them. The cause is
+  not known; the bot fights only what the projection says holds with food,
+  or its fallback when nothing holds.
+
 ## The best order
 
 These are the rules the optimal bot follows, written for a person. Gates are
