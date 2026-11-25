@@ -23,6 +23,22 @@ namespace FolkIdle.Server.Domain.Shared
     public static class AutoEatDefaults
     {
         public const int ThresholdPct = 30;
+
+        // Modul: "OFF" MUST SURVIVE A LOGIN. The column's 0 already means
+        // "never touched the slider" (every row created before the larder
+        // existed holds it), so a player who chose 0 - which the Larder
+        // offers as "never auto-eat" - was reloaded at the default and ate
+        // again after the next login. Off is stored as -1 instead; the live
+        // payload keeps 0 = off, and only the column translates. No
+        // migration: existing rows keep their meaning.
+        public const int StoredOff = -1;
+
+        /// <summary>The live threshold (0 = off) as the column stores it.</summary>
+        public static int ToStored(int livePct) => livePct <= 0 ? StoredOff : livePct;
+
+        /// <summary>The column's value as the live threshold: -1 off, 0 never set.</summary>
+        public static int FromStored(int storedPct)
+            => storedPct < 0 ? 0 : storedPct == 0 ? ThresholdPct : storedPct;
     }
 
     // Modul: multi-slot simulation. The two starting values every character
@@ -696,7 +712,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot2Count = state.Food2_Count;
                         player.LarderSlot3ItemId = state.Food3_Count > 0 ? state.Food3_ItemId : 0;
                         player.LarderSlot3Count = state.Food3_Count;
-                        player.AutoEatThresholdPct = state.AutoEatThreshold;
+                        player.AutoEatThresholdPct = AutoEatDefaults.ToStored(state.AutoEatThreshold);
                         player.LogicEpochCounter = state.LogicEpochCounter + 1;
                         // Modul: THE CHECKPOINT NO LONGER WRITES THE
                         // QUARANTINE FLAGS.
@@ -760,7 +776,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot2Count = state.Food2_Count;
                         player.LarderSlot3ItemId = state.Food3_Count > 0 ? state.Food3_ItemId : 0;
                         player.LarderSlot3Count = state.Food3_Count;
-                        player.AutoEatThresholdPct = state.AutoEatThreshold;
+                        player.AutoEatThresholdPct = AutoEatDefaults.ToStored(state.AutoEatThreshold);
                         await ApplyPendingGoldDeltaAsync(dbContext, state);
                         await ApplyPendingVillageProductionAsync(dbContext, state);
                         // Task 79: where the tick's gold came from, in THIS
@@ -1421,7 +1437,7 @@ namespace FolkIdle.Server.Domain.Shared
                 Food2_Count = player.LarderSlot2Count,
                 Food3_ItemId = player.LarderSlot3ItemId,
                 Food3_Count = player.LarderSlot3Count,
-                AutoEatThreshold = player.AutoEatThresholdPct > 0 ? player.AutoEatThresholdPct : AutoEatDefaults.ThresholdPct,
+                AutoEatThreshold = AutoEatDefaults.FromStored(player.AutoEatThresholdPct),
 
                 // Modul: the auto-salvage floor, so the loot engine can read it
                 // off the payload instead of querying per kill. Clamped on the
