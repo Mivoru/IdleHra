@@ -340,9 +340,10 @@ bots and seed; one run each, so small differences are noise.
   freshly reborn optimal bot walks into region 4 around level 41-46 with a
   full larder and dies within minutes, over and over (run J optimal1: 20
   deaths in 5 hours to Desert Crab and Ashen Basilisk; run G optimal4 did the
-  same). These deaths are in G too, so neither fix caused them. The cause is
-  not known; the bot fights only what the projection says holds with food,
-  or its fallback when nothing holds.
+  same). These deaths are in G too, so neither fix caused them. Suspected,
+  not tested: `HuntingProjection` replaces every roll by its expectation, so
+  a 4,700 HP bar that holds on average dies to one bad run of swings. The
+  same verdict is shown to players; a safety margin is the owner's call.
 
 ## The best order
 
