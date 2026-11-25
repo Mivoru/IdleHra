@@ -89,7 +89,15 @@ namespace FolkIdle.Bots
                 }
 
                 p.Gold = s.Gold;
-                if (s.LastDeathTick != p.LastDeathTick)
+                // Modul: A LOGIN RESETS THE EDGE (run J, 2026-11-25). A new session
+                // starts at tick 0 with no killer, and this log outlives the
+                // session: all 11 of run J's "died to monster 0" were the first
+                // frame after a login. The client ignores them the same way.
+                if (s.LastDeathTick != p.LastDeathTick && s.LastDeathMonsterId <= 0)
+                {
+                    p.LastDeathTick = s.LastDeathTick;
+                }
+                else if (s.LastDeathTick != p.LastDeathTick)
                 {
                     p.LastDeathTick = s.LastDeathTick;
                     p.Deaths++;
