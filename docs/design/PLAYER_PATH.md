@@ -354,10 +354,11 @@ bots and seed; one run each, so small differences are noise.
   - Eating at 50% instead saves 20 of those 23; at 70%, 21. The projection then
     also accepts riskier fights, and 14 (50%) and 13 (70%) fights are deadly,
     none with a crit under 40% of the bar.
-  - Not changed: the projection's verdict and the 30% default are the owner's
-    call. A rule "does not hold when a crit takes the auto-eat share (at most
-    50%) of the bar" had no false alarm in any of the three sets (one of its fights killed only
-    from a bar that started at 40%).
+  - **Done (owner, 2026-11-25):** the advisor refuses a food fight when one
+    monster crit takes the auto-eat share (at most 50%) of the bar, and the
+    default share is 50%, not 30%. Stored settings are untouched. The rule had
+    no false alarm in any of the three sets (one of its fights killed only
+    from a bar that started at 40%); at 50% it catches 11 of the 14 deadly.
 
 ## The best order
 
