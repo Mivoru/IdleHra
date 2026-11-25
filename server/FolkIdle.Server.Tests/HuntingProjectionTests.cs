@@ -119,6 +119,38 @@ namespace FolkIdle.Server.Tests
             Assert.False(estimate.SurvivesWithFood);
         }
 
+        /// <summary>
+        /// The crit rule (2026-11-25): a character resting just above the
+        /// auto-eat line dies to one crit the mean never shows. The sweep finds
+        /// fights whose verdict hangs on the line alone, and the live tick has
+        /// to agree with the refusal at 30%.
+        /// </summary>
+        [Fact]
+        public void AFightWhoseCritBeatsTheAutoEatLine_IsNotSaidToHold()
+        {
+            int found = 0, deadly = 0;
+            for (int con = 40; con <= 400 && found < 6; con += 20)
+            {
+                foreach (int monsterId in new[] { 97, 98, 101, 102, 103, 106, 107 })
+                {
+                    var at30 = Character(45, 200, 90, con, monsterId, food: 20000);
+                    at30.AutoEatThreshold = 30;
+                    var at50 = at30;
+                    at50.AutoEatThreshold = 50;
+                    var verdict30 = HuntingProjection.Project(in at30, monsterId, 100, 0);
+                    var verdict50 = HuntingProjection.Project(in at50, monsterId, 100, 0);
+                    if (verdict30.SurvivesWithFood || !verdict50.SurvivesWithFood) continue;
+                    found++;
+                    int deaths = 0;
+                    for (int i = 0; i < 5; i++) if (RunLive(at30).Died) deaths++;
+                    if (deaths > 0) deadly++;
+                    _output.WriteLine($"con {con} monster {monsterId}: live deaths at 30% {deaths}/5");
+                }
+            }
+            Assert.True(found > 0, "the sweep found no fight that hangs on the auto-eat line");
+            Assert.True(deadly * 2 > found, $"only {deadly} of {found} refused fights kill on the live tick");
+        }
+
         [Fact]
         public void XpAndGold_AreTheKillRatesTimesTheLivePerKillFigures()
         {

@@ -17,12 +17,15 @@ using FolkIdle.Server.Domain.Shared;
 namespace FolkIdle.Server.Domain.Shared
 {
     // Modul: larder. Where auto-eat kicks in for a player who has never
-    // touched the slider. 30 percent leaves enough headroom for one more
-    // monster hit to land before the heal resolves at 10Hz, without burning
-    // food on scratches.
+    // touched the slider. It was 30 until 2026-11-25: a monster crit takes 30
+    // to 50 percent of the bar in the hardest fights a larder can hold, so a
+    // bar resting at 31 percent was never fed and one crit emptied it (22 of 23
+    // such fights were deadly, PLAYER_PATH.md runs I and J). At 50 the same
+    // fights hold 20 times out of 23. Only an account with no stored threshold
+    // reads this; a stored 30 stays.
     public static class AutoEatDefaults
     {
-        public const int ThresholdPct = 30;
+        public const int ThresholdPct = 50;
     }
 
     // Modul: multi-slot simulation. The two starting values every character
