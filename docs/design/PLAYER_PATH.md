@@ -340,10 +340,31 @@ bots and seed; one run each, so small differences are noise.
   freshly reborn optimal bot walks into region 4 around level 41-46 with a
   full larder and dies within minutes, over and over (run J optimal1: 20
   deaths in 5 hours to Desert Crab and Ashen Basilisk; run G optimal4 did the
-  same). These deaths are in G too, so neither fix caused them. Suspected,
-  not tested: `HuntingProjection` replaces every roll by its expectation, so
-  a 4,700 HP bar that holds on average dies to one bad run of swings. The
-  same verdict is shown to players; a safety margin is the owner's call.
+  same). These deaths are in G too, so neither fix caused them. Measured
+  the same day (`HuntingSurvivalHarness`: the ten run J characters, attributes
+  at 100/80/60/45%, every monster the projection says holds with food, 20
+  seeded live hours each):
+  - 665 fights; 23 killed at least one seed, 19 killed half or more. All 23 are
+    fights that need food. No "holds without food" verdict (420) was wrong.
+  - The marker is one monster crit against the auto-eat line. Every bot eats at
+    the default 30%. Of the 23 fights whose crit takes 30% of the bar or more,
+    22 were deadly; of the other 642, one (3 of 20 seeds). A bar just above
+    the line is not fed, and the next crit empties it. The projection swings
+    for the mean, so it never sees that.
+  - Eating at 50% instead saves 20 of those 23; at 70%, 21. The projection then
+    also accepts riskier fights, and 14 (50%) and 13 (70%) fights are deadly,
+    none with a crit under 40% of the bar.
+  - **Done (owner, 2026-11-25):** the advisor refuses a food fight when one
+    monster crit takes the auto-eat share (at most 50%) of the bar. The rule had
+    no false alarm in any of the three sets (one of its fights killed only
+    from a bar that started at 40%); at 50% it catches 11 of the 14 deadly.
+  - **Held: the default auto-eat share at 50%.** Approved, then measured: the
+    boss walls are calibrated for a character eating at 30%
+    (`BossGearBenchmark`). At 50%, eight wall tests fail: regions 2, 4 and 5
+    lose their margin or fall to gear two tiers under the requirement, and
+    the seasonal tier 6 falls to region 5's wall gear. A player can set 50%
+    by hand today, so the walls are softer than the tests say. Either the
+    walls are retuned first or the softer walls are accepted.
 
 ## The best order
 

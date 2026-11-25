@@ -123,7 +123,7 @@ namespace FolkIdle.Server.Domain.Combat
                 SecondsPerKillHigh = Math.Max(secondsPerKill, highSwings * playerIntervalMs / 1000.0),
                 XpPerHour = (long)(killsPerHour * xpPerKill),
                 GoldPerHour = (long)(killsPerHour * goldPerKill),
-                SurvivesWithFood = !withFood.Died,
+                SurvivesWithFood = !withFood.Died && (!noFood.Died || !CritBeatsAutoEat(in payload, in setup)),
                 SurvivesWithoutFood = !noFood.Died,
                 KillsBeforeDeathWithoutFood = noFood.Died ? (int)noFood.Kills : 0,
                 // Bites and rations both leave the larder.
@@ -131,6 +131,36 @@ namespace FolkIdle.Server.Domain.Combat
                     ? (withFood.Bites + withFood.Rations) * (3600.0 / Math.Max(1.0, withFood.Ticks * TickMs / 1000.0))
                     : withFood.Bites + withFood.Rations,
             };
+        }
+
+        /// <summary>The auto-eat share past which a later bite no longer adds safety: the bite's cooldown, not the line, decides.</summary>
+        private const double CritRuleCapShare = 0.5;
+
+        /// <summary>
+        /// One monster crit takes the auto-eat line's share of the bar.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE MEAN NEVER SEES THE CRIT (HuntingSurvivalHarness,
+        /// 2026-11-25, owner approved). The projection swings for the mean, so a
+        /// fight "held" whose live character rests just above the auto-eat line,
+        /// is not fed, and loses the rest of the bar to one crit. Measured over
+        /// 665 fights said to hold: at the 30% line 22 of the 23 with this
+        /// property killed, and 1 of the 642 without it; no fight that always
+        /// held was marked at 30, 50 or 70%. Only fights that NEED food are
+        /// asked: none of the 420 that hold without it ever killed. The larder's
+        /// cap is there because above 50% a second blow lands inside the bite's
+        /// cooldown whatever the line says. The offline projection does not read
+        /// this; it runs the swings.
+        /// </remarks>
+        private static bool CritBeatsAutoEat(in TickStatePayload payload, in FightSetup setup)
+        {
+            double share = Math.Min(payload.AutoEatThreshold / 100.0, CritRuleCapShare);
+            if (share <= 0.0) return false; // never eats: the food-less verdict already answers
+            CombatStats stats = setup.Stats;
+            long attack = BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, setup.Monster.Id);
+            long crit = SimulationEngine.LandedMonsterMilliDamage(
+                attack, SimulationEngine.MonsterCritMultiplier(in stats), in stats, setup.Monster.RegionTier, setup.MaxMilliHp);
+            return crit >= share * setup.MaxMilliHp;
         }
 
         /// <summary>

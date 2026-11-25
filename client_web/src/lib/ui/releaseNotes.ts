@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.120.0',
+    date: '2026-11-25',
+    sections: [
+      {
+        title: 'Hunting',
+        items: [
+          'A fight where one critical hit from the monster can empty your health before you eat is now marked "you would die" instead of "needs food". Raise "When to eat" in the Larder, or your armour and health, to hold it.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.119.0',
     date: '2026-11-25',
     sections: [
