@@ -35,6 +35,31 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.119.0',
+    date: '2026-11-25',
+    sections: [
+      {
+        title: 'Boss Ascension',
+        items: [
+          'Giving another character a job no longer cancels the Ascension step your main character is fighting.',
+        ],
+      },
+      {
+        title: 'Village',
+        items: [
+          'Fusing, rerolling, crafting or upgrading no longer throws away the logs and ores the village was about to deliver. If you play actively, you now get the full amount.',
+        ],
+      },
+      {
+        title: 'Combat',
+        items: [
+          'The death window no longer appears when nothing killed you, and it no longer goes missing after a real death.',
+          'Cooldowns and counters of the current fight, such as Last Stand, now survive fusing, rerolling and crafting instead of starting over.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.118.0',
     date: '2026-11-24',
     sections: [
