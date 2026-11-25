@@ -385,6 +385,52 @@ namespace FolkIdle.Server.Tests
             Assert.False(BossAscensionEngine.Clears.TryDequeue(out _));
         }
 
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        public void AnotherSlotsJobOrDeathDoesNotEndSlotOnesAttempt(int slot)
+        {
+            DrainClears();
+            var p = AboutToKill(region: 1, step: 1, fightTicks: 5);
+            var owner = p.Slot1_CharacterId = Guid.NewGuid();
+            p.AscensionCharacterId = owner;
+            p.Slot2_CharacterId = Guid.NewGuid();
+            p.Slot3_CharacterId = Guid.NewGuid();
+            p.SeasonalBossTier = 2;
+            p.SeasonalBossCharacterId = owner;
+            p.SeasonalBossReturnActivityId = 7;
+
+            // What the ActivityChangeQueue drain does for a roster job...
+            SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+            SimulationEngine.ApplyActivityChangeToPayload(ref p, 1001);
+            SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+            // ...and what a parked slot's own death does.
+            SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+            SimulationEngine.ApplyCombatDeath(ref p, 91, 1000);
+            SimulationEngine.SwapSlotIntoActiveRegister(ref p, slot);
+
+            Assert.Equal(1, p.AscensionStep);
+            Assert.Equal(owner, p.AscensionCharacterId);
+            Assert.Equal(2, p.SeasonalBossTier);
+            Assert.Equal(7, p.SeasonalBossReturnActivityId);
+
+            p.SeasonalBossTier = 0;
+            p.SeasonalBossCharacterId = Guid.Empty;
+            TickUntilCleared(ref p);
+            Assert.True(BossAscensionEngine.Clears.TryDequeue(out var clear));
+            Assert.Equal(1, clear.Step);
+            DrainClears();
+        }
+
+        [Fact]
+        public void AnAttemptWhoseCharacterLeftTheRosterIsStillDisarmed()
+        {
+            var p = AboutToKill(region: 1, step: 1, fightTicks: 5);
+            p.AscensionCharacterId = Guid.NewGuid(); // in no slot
+            SimulationEngine.ApplyActivityChangeToPayload(ref p, 1);
+            Assert.Equal(0, p.AscensionStep);
+        }
+
         [Fact]
         public void ANoLimitStepClearsAtAnyPace()
         {

@@ -257,10 +257,10 @@ and a failure line that says how the attempt ended.
 
 | | run D | run E (#482) | run F (+ #483) | run G (+ logout guard) |
 |---|---:|---:|---:|---:|
-| Ascension steps cleared (all bots) | 18 | 67 | 144 | 111 logged, 116 real |
+| Ascension steps cleared (all bots) | 18 | 67 | 144 | 111 logged, 118 in the server log |
 | optimal steps at the end | 1 / 1 / 5 / 3 | 10 / 10 / 18 / 20 | 10 / 20 / 13 / 19 | 18 / 10 / 27 / 20 |
 | casual steps at the end | 0 / 5 / 3 / 0 | 2 / 1 / 4 / 2 | 19 / 10 / 20 / 20 | 8 / 7 / 8 / 8 |
-| "failed" with no reason logged | 54 | 63 | 0 (15 logout, 3 deaths) | 12 (5 false, 2 deaths, 5 off the boss or logout) |
+| "failed" with no reason logged | 54 | 63 | 0 (15 logout, 3 deaths) | 12 (6 false, 2 deaths, 4 not cleared) |
 | optimal stalls | 5 | 3 | 4 | 5 |
 | region 4 open, optimal / casual median | 103 h / 136 h | 120 h / 152 h | 112 h / 132 h | 98 h / 136 h |
 
@@ -281,13 +281,22 @@ What it says:
   fits before it leaves.
 - **Run G: the ladder lags the kill.** The armed step leaves the wire the
   tick the boss dies, but `/boss-ascension` reads the database, which hears
-  of the clear a flush later. Five of G's twelve "failures" were followed
-  at once by the next step, so they had cleared. The bot now reads the
-  ladder once more a few game minutes on before it calls a step failed.
-  Casual bots cleared fewer steps in G (7-8 each) than in F (10-20). The
-  likely cause is the logout guard: it skips a step that will not fit
-  before a short casual check-in ends. The skip logs no line, so this is
-  not measured yet.
+  of the clear later. The server log has a clear for six of G's twelve
+  "failures". The bot now reads the ladder once more before it calls a step
+  failed. No run has tested that yet: run H (70 h) started the old bot build,
+  because `measure.ps1` does not build.
+- **Run G and H: another character's job ended the attempt.** The armed
+  fields are account-wide, and `DisarmAscension` ran for any slot's activity
+  change, so sending the second character to woodcutting dropped slot 1's
+  step. Three of the five deathless uncleared attempts in G and H had a
+  roster job between start and failure; the other two, casual7 region 1
+  step 8 (ended on a gathering node) and optimal1 region 2 step 9, are not
+  explained.
+- **Casual bots cleared fewer steps in G (7-8) than in F (10-20).** The
+  logout guard may be the cause, but that was not measured. The counter
+  `ascension_skipped_logout` will show it in the next run.
+- **The `roster job ... was refused` line is not a refusal.** The bot prints
+  it whenever the command was sent.
 - **Ascension is not hard for a geared character.** With the attempts
   counted honestly, casual bots finish region 1's ten steps within the week.
   Production agrees: Mivoru holds 49 of 50 steps
@@ -296,6 +305,45 @@ What it says:
   zeroed the level at the rebirth, so every `r1_level_N` mark fired at once
   on the next frame, which still carried the old level. Ignore the `r1_`
   rows of runs A-E. From F on, a mark is logged only when a frame sees it.
+
+### Runs I and J (2026-11-25: the Ascension fix, then the reload fix)
+
+`measure-i-20261125-0006` is main plus #485 (another character's job no longer
+ends the attempt) and the bot's second ladder read. `measure-j-20261125-0257`
+is main plus #485 and #486 (a reload keeps the death and victory edges, the
+village's pending output and the fight counters). 168 game hours, the same ten
+bots and seed; one run each, so small differences are noise.
+
+| | run G | run I (#485) | run J (#485 + #486) |
+|---|---:|---:|---:|
+| Ascension steps cleared, bot log / server log | 111 / 118 | 118 / 118 | 122 / 123 |
+| failed attempts | 12 | 1 (a death) | 6 (5 deaths, 1 fish order) |
+| optimal steps at the end | 18 / 10 / 27 / 20 | 20 / 20 / 20 / 20 | 20 / 20 / 20 / 20 |
+| casual steps at the end | 8 / 7 / 8 / 8 | 8 / 8 / 8 / 8 | 8 / 8 / 8 / 8 |
+| "died to monster 0" mid-session / at login | not split (23) | 12 / 7 | 0 / 11 |
+| deaths with a real killer, before / after the rebirth | 29 / 25 | 26 / 11 | 22 / 24 |
+| optimal stalls | 5 | 7 | 9 |
+| region 4 open, optimal / casual median | 98 h / 136 h | 97 h / 124 h | 88 h / 136 h |
+
+- **The unexplained failures are gone.** Run J's one deathless failure is
+  casual7, whose "fish when the larder runs dry" order took the character off
+  the boss with an empty larder. That is the order doing its job.
+- **Casual bots stop at step 8 because of the bot.** Each skipped 12-16 starts
+  (`ascension_skipped_logout`): the hold does not fit in a short check-in.
+- **#486 removes the phantom deaths in play.** The ones left at login are the
+  bot log's own: a new session starts at death tick 0 with no killer. #486
+  also fixes the log.
+- **#486's extra village output is not visible in `material_flow_daily`.**
+  Gathering moves hundreds of thousands of logs and ores a week between runs,
+  which hides it. The unit tests are the evidence for that part.
+- **Open: the hunting projection looks too optimistic after a rebirth.** A
+  freshly reborn optimal bot walks into region 4 around level 41-46 with a
+  full larder and dies within minutes, over and over (run J optimal1: 20
+  deaths in 5 hours to Desert Crab and Ashen Basilisk; run G optimal4 did the
+  same). These deaths are in G too, so neither fix caused them. Suspected,
+  not tested: `HuntingProjection` replaces every roll by its expectation, so
+  a 4,700 HP bar that holds on average dies to one bad run of swings. The
+  same verdict is shown to players; a safety margin is the owner's call.
 
 ## The best order
 
