@@ -106,7 +106,21 @@ namespace FolkIdle.Server.Domain.Combat
         //
         // 1.87 and 3.17 sat on the new upper edges, so regions 2 and 3 move to
         // the centres (1.86, 3.15): first-clear boss attack about 0.5% lower.
-        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.86f, 3.15f, 5.13f, 7.15f };
+        // Modul: 2026-11-26, auto-eat default 30% -> 50%. The benchmark eats at
+        // the default, and a character that heals at half health outlasts a
+        // boss that one healing at 30% could not:
+        //
+        //   region   1            2            3            4            5
+        //   30% (11-01) 2.112-2.828  1.851-1.87   3.122-3.178  4.502-5.976  6.203-7.937
+        //   at 50%   2.149-2.871  1.86-1.879   3.126-3.182  5.553-6.9    9.51-12.173
+        //
+        // Region 4 and 5 were outside their windows, and the bot week N showed
+        // what that means: a level-54 character in region-3 gear beat the
+        // region 3, 4 AND 5 bosses inside two game hours. They move to the
+        // centres (6.2, 10.8); region 2 moves off its new lower edge (1.87).
+        // A player who keeps eating at 30% meets a harder region 4 and 5 than
+        // before - the wall is sized for the default, as it always was.
+        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.87f, 3.15f, 6.2f, 10.8f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at
