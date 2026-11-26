@@ -92,7 +92,7 @@ namespace FolkIdle.Server.Engine
             var player = await context.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) return;
 
-            player.AutoEatThresholdPct = thresholdPct;
+            player.AutoEatThresholdPct = AutoEatDefaults.ToStored(thresholdPct);
             await context.SaveChangesAsync();
         }
 
