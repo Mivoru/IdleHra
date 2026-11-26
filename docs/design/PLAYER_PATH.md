@@ -405,6 +405,12 @@ slider, so every bot eats at the default.
 - **Bot artifact, not fixed:** about 15,000 `larder:` events a run. The bot
   re-sends a food load before the next snapshot shows the first, and loads
   each fishing catch separately.
+- **Decision, 2026-11-26 (1.121.0, #492):** the default goes to 50% and
+  the walls are rescanned for it: region 2 1.86 -> 1.87, region 4
+  5.13 -> 6.2, region 5 7.15 -> 10.8; seasonal tier 6 stays at AttackPct 35
+  (its window at the new region-5 wall is 15-50). Stored thresholds are not
+  migrated, so the 17 accounts at 30% keep it and meet the harder region 4
+  and 5 first clear.
 
 ## The best order
 
