@@ -263,6 +263,7 @@ namespace FolkIdle.Bots
                         case "--seed": o.Seed = int.Parse(next(), CultureInfo.InvariantCulture); break;
                         case "--lockstep": o.Lockstep = true; break;
                         case "--no-sleep": Persona.SleepDisabled = true; break;
+                        case "--learn-auto-eat": BotBrain.LearnAutoEat = true; break;
                         case "--start-utc": WallBotTime.GameStartUtc = DateTime.Parse(next(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal); break;
                         default:
                             Console.Error.WriteLine($"unknown argument {args[i]}");
