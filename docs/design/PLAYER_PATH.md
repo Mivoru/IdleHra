@@ -366,6 +366,46 @@ bots and seed; one run each, so small differences are noise.
     by hand today, so the walls are softer than the tests say. Either the
     walls are retuned first or the softer walls are accepted.
 
+### Runs K-Q (2026-11-26: the crit rule, and the auto-eat default)
+
+Seven 168-hour runs, the same ten bots. K, M and O are main after #489 (the
+crit rule in the hunting projection) at the 30% auto-eat default, seeds 1-3.
+L, N and P change only the default to 50%, seeds 1-3; Q is 80%, seed 1. The
+50% and 80% builds were local and never committed. Bots never touch the
+slider, so every bot eats at the default.
+
+| | 30% (K, M, O) | 50% (L, N, P) | 80% (Q) |
+|---|---:|---:|---:|
+| deaths, all bots | 11 / 7 / 14 | 20 / 8 / 15 | 8 |
+| hunting deaths (not a region boss) | 0 / 0 / 0 | 5 / 0 / 1 | 0 |
+| region 3 boss, optimal: bots, median | 8 of 12, 132 h | 12 of 12, 92 h | 4 of 4, 101 h |
+| region 3 boss, casual: bots, median | 10 of 12, 156 h | 12 of 12, 128 h | 4 of 4, 132 h |
+| region 4 boss beaten | 0 of 24 | 1 of 24 | 0 of 8 |
+
+- **The crit rule ended the hunting deaths.** Run J, before it, had 57 deaths,
+  21 of them in ordinary hunting and 11 with no killer logged. At 30% the
+  three runs have no hunting death; every death left is a region boss,
+  mostly region 2's (its wall has no margin).
+- **The rule makes bosses wait.** At 30% the optimal bots first try the
+  region 3 boss at level 65-69, against 54-60 in run J. In J those early
+  attempts lost 7 of 9. Waiting costs about 40 game hours to region 4, but
+  not the rebirth: it came as early or earlier in all three runs.
+- **At 50% the bosses come sooner, and one wall broke.** Run N optimal3, level
+  54 in region 3 gear, beat the region 3, 4 and 5 bosses inside two game
+  hours. No bot at 30% beat region 4 in 24 bot-weeks. It is one case, but it
+  is what the failing wall tests predict for a character eating at 50%.
+- **At 50% the crit rule misses some deaths.** The harness on run L's ten
+  characters at 50%: 839 fights said to hold with food, 5 deadly, all with a
+  monster crit of 38-41% of the bar, so under the rule's 50% cap. A 35% cap
+  would catch all five but also refuse 18 fights that hold, on two players'
+  data, so it was not shipped.
+- **Production, read 2026-11-26:** 17 accounts store 30%, one each 0, 25, 50
+  and 80% (the 80% account is level 137). The softer walls are live for
+  anyone who moves the slider.
+- **Bot artifact, not fixed:** about 15,000 `larder:` events a run. The bot
+  re-sends a food load before the next snapshot shows the first, and loads
+  each fishing catch separately.
+
 ## The best order
 
 These are the rules the optimal bot follows, written for a person. Gates are
