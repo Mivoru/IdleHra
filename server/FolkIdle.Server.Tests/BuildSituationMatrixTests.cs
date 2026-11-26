@@ -166,6 +166,13 @@ namespace FolkIdle.Server.Tests
             for (int seed = 1; seed <= 3; seed++)
             {
                 var p = Dressed(bossId, ranks);
+                // Modul: the boss as a FARM, 2026-11-26. Character() beats only the
+                // bosses BEHIND the region, so this column was the first-clear wall,
+                // which is calibrated to be a near-even fight for exactly this gear.
+                // When region 5's wall moved 7.15 -> 10.8 (auto-eat default 50%) most
+                // builds stopped winning it at all and the column measured the wall,
+                // not the build. What a boss lane is FOR is farming the boss.
+                p.DefeatedRegionBossMask = BossFirstClearRules.MarkDefeated(p.DefeatedRegionBossMask, bossId);
                 // Three hours a seed: a boss falls about 15-20 times an hour, too few to tell builds apart in one.
                 bossKills += CombatSimulator.Run(ref p, 3 * Hour, new Random(seed)).Tally.Kills / 3.0;
             }
