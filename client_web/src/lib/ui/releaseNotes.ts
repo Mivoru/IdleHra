@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.122.0',
+    date: '2026-11-27',
+    sections: [
+      {
+        title: 'Larder',
+        items: [
+          'If "When to eat" was still at the old 30% default, it is now at the new 50%. Any other setting you chose stays. You can set it back in the Larder.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.121.0',
     date: '2026-11-26',
     sections: [
