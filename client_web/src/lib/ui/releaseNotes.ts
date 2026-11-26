@@ -35,6 +35,25 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.121.0',
+    date: '2026-11-26',
+    sections: [
+      {
+        title: 'Larder',
+        items: [
+          'New players now eat at half health instead of at 30%, so one heavy hit no longer kills before the food lands. Your own setting stays as it is; you can move "When to eat" in the Larder any time.',
+          'Turning auto-eat off now stays off after you log in again.',
+        ],
+      },
+      {
+        title: 'Bosses',
+        items: [
+          'The first fight against the region 4 and region 5 bosses hits harder. Eating at half health made them beatable in gear from two regions earlier.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.120.0',
     date: '2026-11-25',
     sections: [

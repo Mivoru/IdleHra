@@ -17,12 +17,17 @@ using FolkIdle.Server.Domain.Shared;
 namespace FolkIdle.Server.Domain.Shared
 {
     // Modul: larder. Where auto-eat kicks in for a player who has never
-    // touched the slider. 30 percent leaves enough headroom for one more
-    // monster hit to land before the heal resolves at 10Hz, without burning
-    // food on scratches.
+    // touched the slider.
+    // Modul: 30 -> 50, 2026-11-26. At 30% one monster crit could take a
+    // character from above the threshold to dead before the heal resolved
+    // (the HuntingSurvivalHarness found 22 of 23 deadly "safe" fights were
+    // exactly that), and the bot weeks K-Q measured 50% at 12 of 12 region-3
+    // bosses against 8 of 12. Every boss wall and seasonal tier is calibrated
+    // against THIS number through BossGearBenchmark, so the walls were
+    // retuned in the same change (BossFirstClearRules, SeasonalBossRegistry).
     public static class AutoEatDefaults
     {
-        public const int ThresholdPct = 30;
+        public const int ThresholdPct = 50;
 
         // Modul: "OFF" MUST SURVIVE A LOGIN. The column's 0 already means
         // "never touched the slider" (every row created before the larder

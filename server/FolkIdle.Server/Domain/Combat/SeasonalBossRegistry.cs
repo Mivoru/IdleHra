@@ -58,6 +58,9 @@ namespace FolkIdle.Server.Domain.Combat
             // zone gone, region 5's wall gear stopped dying to tier 6 at 20
             // (WallWindowScanTests: the rule "wall gear loses, best gear wins
             // inside an hour" holds for 25-50); 35 is the middle of that.
+            // Modul: re-measured 2026-11-26 after the auto-eat default went 30 -> 50
+            // and region 5's first-clear attack 7.15 -> 10.8: the rule holds for
+            // 15-50, so 35 stays.
             new SeasonalBossTier(6, 5, new AscensionModifiers(AttackPct: 35, BossHpPct: 50, TimeLimitPctOfSwift: 0),
                 30, 2_000_000, 1500, BreakerTitleSlug, "pet_mini_vampire"),
         };
