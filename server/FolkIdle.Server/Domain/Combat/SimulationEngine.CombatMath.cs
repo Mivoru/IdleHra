@@ -367,7 +367,8 @@ namespace FolkIdle.Server.Domain.Combat
         /// 1,000 milli-HP floor, then the Eternal Dreadnought per-hit ceiling.
         /// </summary>
         internal static long LandedMonsterMilliDamage(
-            long attackPower, float monsterCritMult, in CombatStats combatStats, int monsterRegionTier, long effectiveMaxMilliHp)
+            long attackPower, float monsterCritMult, in CombatStats combatStats, int monsterRegionTier, long effectiveMaxMilliHp,
+            bool firstClearSwing = false)
         {
             long rawDamage = (long)(attackPower * 1000L * monsterCritMult);
             long armorMitigatedDamage = CombatDamageModel.Mitigate(
@@ -375,7 +376,12 @@ namespace FolkIdle.Server.Domain.Combat
                 combatStats.FlatPhysicalArmor,
                 CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
             long finalDamage = Math.Max(1000L, (long)(armorMitigatedDamage * (1f - PlayerBlockFraction(in combatStats))));
-            if (combatStats.SetDamageCapActive)
+            // Modul: THE BULWARK DOES NOT HOLD A WALL, 2026-11-27 (option A, #496).
+            // A defence set's cap of 20% of the bar, with food that heals a
+            // share of the bar, made every first-clear boss unable to kill its
+            // wearer, so no attack multiplier could keep a region walled. The cap
+            // stays everywhere else, including a boss once it has been beaten.
+            if (combatStats.SetDamageCapActive && !firstClearSwing)
             {
                 long damageCeiling = (long)(effectiveMaxMilliHp * SetDamageCapMaxHpFraction);
                 if (damageCeiling > 0 && finalDamage > damageCeiling)
@@ -398,8 +404,9 @@ namespace FolkIdle.Server.Domain.Combat
             int region = ContentRegistry.GetMonsterRegionTier(monsterId);
             long attackPower = BossFirstClearRules.AttackPowerFor(defeatedRegionBossMask, monsterId);
             float critChance = MonsterCritChance(region);
-            double normal = LandedMonsterMilliDamage(attackPower, 1.0f, in combatStats, region, effectiveMaxMilliHp);
-            double crit = LandedMonsterMilliDamage(attackPower, MonsterCritMultiplier(in combatStats), in combatStats, region, effectiveMaxMilliHp);
+            bool firstClear = BossFirstClearRules.IsFirstClearPending(defeatedRegionBossMask, monsterId);
+            double normal = LandedMonsterMilliDamage(attackPower, 1.0f, in combatStats, region, effectiveMaxMilliHp, firstClear);
+            double crit = LandedMonsterMilliDamage(attackPower, MonsterCritMultiplier(in combatStats), in combatStats, region, effectiveMaxMilliHp, firstClear);
             return MonsterHitChance(in combatStats) * (((1.0 - critChance) * normal) + (critChance * crit));
         }
 

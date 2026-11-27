@@ -228,7 +228,8 @@ namespace FolkIdle.Server.Domain.Combat
             if (bossbanePct > 0) playerMilliDamagePerSwing *= 1.0 + bossbanePct / 100.0;
             int playerIntervalMs = CombatDamageModel.AttackIntervalMs(in stats);
 
-            double bossMilliDamagePerSwing = ExpectedBossMilliDamagePerSwing(in stats, in boss, bossAttackPower, playerMaxMilliHp);
+            double bossMilliDamagePerSwing = ExpectedBossMilliDamagePerSwing(in stats, in boss, bossAttackPower, playerMaxMilliHp,
+                BossFirstClearRules.IsFirstClearPending(defeatedMask, bossMonsterId));
             int bossIntervalMs = boss.AttackIntervalMs > 0 ? boss.AttackIntervalMs : 2000;
 
             // The best food the boss's own region offers, on the reasoning that
@@ -355,7 +356,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// uncapped landing for the dungeon and Nav callers, whose own fights
         /// never asked for the cap.
         /// </remarks>
-        internal static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower, long playerMaxMilliHp = 0)
+        internal static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower, long playerMaxMilliHp = 0, bool firstClearSwing = false)
         {
             // The tick's own curve, not a copy of it - a copy is what would have
             // kept the old dead zone here after the tick lost it.
@@ -366,8 +367,8 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (playerMaxMilliHp > 0)
             {
-                double cappedNormal = SimulationEngine.LandedMonsterMilliDamage(bossAttackPower, 1.0f, in stats, boss.RegionTier, playerMaxMilliHp);
-                double cappedCrit = SimulationEngine.LandedMonsterMilliDamage(bossAttackPower, critMultiplier, in stats, boss.RegionTier, playerMaxMilliHp);
+                double cappedNormal = SimulationEngine.LandedMonsterMilliDamage(bossAttackPower, 1.0f, in stats, boss.RegionTier, playerMaxMilliHp, firstClearSwing);
+                double cappedCrit = SimulationEngine.LandedMonsterMilliDamage(bossAttackPower, critMultiplier, in stats, boss.RegionTier, playerMaxMilliHp, firstClearSwing);
                 return hitChance * (((1.0 - critChance) * cappedNormal) + (critChance * cappedCrit));
             }
 
