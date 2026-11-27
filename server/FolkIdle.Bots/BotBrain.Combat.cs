@@ -99,6 +99,10 @@ namespace FolkIdle.Bots
             _projectionDirty = true;
             if (first) return;
             long monster = _state.LastDeathMonsterId;
+            // The verdict the bot fought under (the projection is re-read only
+            // after this), so every death can be checked against its advisor.
+            if (monster > 0 && _projection?.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == monster) is { } verdict)
+                Event(FormattableString.Invariant($"death verdict {MonsterName(monster)}: projected safe {verdict.Bool("SurvivesWithoutFood")}, with food {verdict.Bool("SurvivesWithFood")}, larder {LarderCount}, level {_state.CurrentLevel}"));
             if (_deathLevel != _state.CurrentLevel || _lastDeathMonster != monster)
             {
                 _deathLevel = _state.CurrentLevel;
@@ -589,7 +593,14 @@ namespace FolkIdle.Bots
             if (bossId > 0 && !BossFirstClearRules.IsDefeated(_state.DefeatedRegionBossMask, bossId))
             {
                 var boss = estimates.FirstOrDefault(e => e.Id == bossId);
-                if (boss != null && boss.CanDamage && (boss.Safe || (hasFood && boss.WithFood))) return bossId;
+                if (boss != null && boss.CanDamage && (boss.Safe || (hasFood && boss.WithFood)))
+                {
+                    // What the advisor promised, logged with the attempt, so a death
+                    // to a boss can be held against the projection that sent the bot.
+                    if (_state.ActiveActivityId != bossId && proj.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == bossId) is { } raw)
+                        Event(FormattableString.Invariant($"boss attempt {MonsterName(bossId)}: projected safe {boss.Safe}, with food {boss.WithFood}, {raw.Num("SecondsPerKill"):0.#} s a kill, food {raw.Num("FoodPerHour"):0.#}/h, kills before death without food {raw.Int("KillsBeforeDeathWithoutFood")}"));
+                    return bossId;
+                }
             }
 
             // Modul: LEAVING, PICK A FIGHT THAT HOLDS WITHOUT FOOD (x100 run,
