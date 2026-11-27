@@ -426,6 +426,7 @@ region 3 101-105, and so on; the fifth of each is the region boss.
 | S | R + crit-vs-bite + bot larder fix | 1 | 1 | 4 / 4, 120 h; 4 / 4, 124 h | casual7 at 96 h / 112 h |
 | T | S + verdict logging | 2 | 2 | 3 / 4, 127 h; 4 / 4, 152 h | none |
 | U | main + option A (#496: the cap skips first-clear swings) | 1 | 4 (all Ascension steps) | 4 / 4, 78 h; 4 / 4, 144 h | none |
+| V | U + #497 (night is not a stall) | 3 | 1 | 3 / 4, 122 h; 4 / 4, 144 h | none |
 
 - **Crit vs bite.** Same seed, R to S: 15 deaths to 1, nearly all of them first
   clears of the region 2 and 3 bosses that the advisor had called "holds with
@@ -448,6 +449,13 @@ region 3 101-105, and so on; the fifth of each is the region boss.
   all-day personas ran through their sleep, so they were reborn on waking
   (T: rebirth median 72 h, optimal3 at level 52 with 10 Ascension steps).
   Rebirth hours before #497 are not comparable with those after it.
+- **Deaths by seed.** Seeds 1 / 2 / 3: 15 / 8 / 15 before crit-vs-bite (R, N,
+  P), 1 / 2 / 1 after it (S, T, V). The cost is the region 3 boss: optimal
+  median 120-127 h against 92-106 h, because the advisor now refuses the
+  fights that used to kill.
+- **Rebirth in week 1 after #497:** 1 of 4 optimal bots (V, at 132 h), against
+  3-4 of 4 before; the optimal bots end the week at level 71-74 instead of
+  50-66.
 
 ## The best order
 
