@@ -173,6 +173,10 @@ namespace FolkIdle.Server.Domain.Combat
             // 50% (all 5 deadly; the other 6 have crit within 3% of the bite and
             // short fights). At 30% it catches the one fight the line missed and
             // adds no false alarm (23 of 23 deadly, 1 false; was 22 and 1).
+            // Out of sample (runs N and P, 50%, crit >= 30% of the bar): 77 fights
+            // held under the old rule, 11 of them deadly - several killed in 20 of
+            // 20 seeds. The new rule flags 17: all 11 deadly and 6 false alarms,
+            // each a crit at most 5% of the bar above the bite.
             long bite = 0;
             if (payload.Food1_Count > 0) bite = Math.Max(bite, setup.Heal1);
             if (payload.Food2_Count > 0) bite = Math.Max(bite, setup.Heal2);
