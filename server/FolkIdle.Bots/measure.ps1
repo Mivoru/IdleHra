@@ -5,7 +5,8 @@ param(
     [string]$Mix = "optimal:4,casual:4,idle:2",
     [int]$Hours = 168,
     [int]$Seed = 1,
-    [string]$Tag = "a"
+    [string]$Tag = "a",
+    [string[]]$BotArgs = @()
 )
 $ErrorActionPreference = 'Stop'
 $out = Join-Path $Repo "bot-runs\measure-$Tag-$(Get-Date -Format yyyyMMdd-HHmm)"
@@ -36,7 +37,7 @@ for ($i = 0; $i -lt 300; $i++) {
 if (-not $ready) { throw "server not ready" }
 "start $(Get-Date -Format o) mix $Mix hours $Hours seed $Seed db $db" | Out-File "$out\measure.txt"
 try {
-    & $botExe --lockstep --mix $Mix --hours $Hours --seed $Seed --out $out *> "$out\bots.log"
+    & $botExe --lockstep --mix $Mix --hours $Hours --seed $Seed --out $out @BotArgs *> "$out\bots.log"
     "bots exit $LASTEXITCODE at $(Get-Date -Format o)" | Out-File -Append "$out\measure.txt"
 } finally {
     if (-not $srv.HasExited) { Stop-Process -Id $srv.Id -Force }

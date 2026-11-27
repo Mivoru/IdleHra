@@ -99,6 +99,10 @@ namespace FolkIdle.Bots
             _projectionDirty = true;
             if (first) return;
             long monster = _state.LastDeathMonsterId;
+            // The verdict the bot fought under (the projection is re-read only
+            // after this), so every death can be checked against its advisor.
+            if (monster > 0 && _projection?.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == monster) is { } verdict)
+                Event(FormattableString.Invariant($"death verdict {MonsterName(monster)}: projected safe {verdict.Bool("SurvivesWithoutFood")}, with food {verdict.Bool("SurvivesWithFood")}, larder {LarderCount}, level {_state.CurrentLevel}"));
             if (_deathLevel != _state.CurrentLevel || _lastDeathMonster != monster)
             {
                 _deathLevel = _state.CurrentLevel;
@@ -107,11 +111,36 @@ namespace FolkIdle.Bots
             }
             _deathsAtLevel++;
             _projectionDirty = true;
+            LearnFromHuntingDeath(monster);
             if (_deathsAtLevel >= 2 && monster > 0)
             {
                 _avoidUntilLevel[monster] = _state.CurrentLevel + 1;
                 Event($"died twice to {MonsterName(monster)} at level {_state.CurrentLevel}: leaving it until level {_state.CurrentLevel + 1}");
             }
+        }
+
+        /// <summary>
+        /// --learn-auto-eat. No bot ever touched the Larder's "when to eat"
+        /// slider, but a player who dies while hunting does: one live account
+        /// eats at 80%. With the flag, a death to a regular monster (not a
+        /// region boss) raises the bot's threshold by 10 points, up to 80, so a
+        /// run can measure what that player gets - fewer hunting deaths, at
+        /// what food cost - against bots that leave the default.
+        /// </summary>
+        public static bool LearnAutoEat { get; set; }
+        public const int LearnedAutoEatStep = 10;
+        public const int LearnedAutoEatCap = 80;
+
+        private void LearnFromHuntingDeath(long monster)
+        {
+            if (!LearnAutoEat || monster <= 0) return;
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+                if (RaceUnlockRegistry.GetRegionBossMonsterId(region) == monster) return;
+            int now = _state.AutoEatThreshold;
+            if (now <= 0 || now >= LearnedAutoEatCap) return;
+            int next = Math.Min(LearnedAutoEatCap, now + LearnedAutoEatStep);
+            Enqueue(new ClientCommandPacket { Command = CommandType.UpdateAutoEatThreshold, LimitPrice = next },
+                $"auto-eat {now}% -> {next}% after dying to {MonsterName(monster)} while hunting", 5);
         }
 
         private bool Avoided(long monsterId)
@@ -166,9 +195,32 @@ namespace FolkIdle.Bots
         /// loaded slot replaces that slot (StockFoodSlot sends the old food
         /// back to the chest), and a food already loaded is topped up.
         /// </summary>
+        // Modul: ONE LOAD, ONE COMMAND (2026-11-27). A run logged ~12,000
+        // "larder:" loads: the inventory is re-read over REST right after the
+        // command, usually before the tick has moved the food, so the chest
+        // still showed it and the same load went out again - plus a separate
+        // load for every one or two fish a kill dropped. A load now waits until
+        // the larder shows it (or a short timeout), and a slot that already
+        // holds a day's worth is topped up only in batches.
+        private (int ItemId, int Index, int CountBefore, double At)? _pendingLoad;
+        private const double PendingLoadTimeoutHours = 0.02;
+        private const int TopUpBatch = 25;
+        private const int ComfortableSlot = 500;
+
+        private int SlotCount(int index) => index switch { 0 => _state.Food1_Count, 1 => _state.Food2_Count, _ => _state.Food3_Count };
+        private int SlotItem(int index) => index switch { 0 => _state.Food1_ItemId, 1 => _state.Food2_ItemId, _ => _state.Food3_ItemId };
+
         private bool TryFoodCommand(out ClientCommandPacket packet)
         {
             packet = default;
+            if (_pendingLoad is { } pending)
+            {
+                bool landed = SlotItem(pending.Index) == pending.ItemId && SlotCount(pending.Index) != pending.CountBefore;
+                if (!landed && Now - pending.At < PendingLoadTimeoutHours) return false;
+                _pendingLoad = null;
+                _inventoryDirty = true;
+                return false;
+            }
             var slots = new[]
             {
                 (Index: 0, ItemId: _state.Food1_ItemId, Count: _state.Food1_Count),
@@ -206,6 +258,8 @@ namespace FolkIdle.Bots
                 }
                 int quantity = Math.Min(food.Quantity, room);
                 if (quantity <= 0) continue;
+                if (same.ItemId != 0 && same.Count >= ComfortableSlot && quantity < TopUpBatch) continue;
+                _pendingLoad = (food.ItemId, index, same.ItemId != 0 ? same.Count : -1, Now);
                 Event($"larder: {quantity} x {food.BaseId} (tier {tier}) into slot {index}");
                 packet = new ClientCommandPacket
                 {
@@ -539,7 +593,14 @@ namespace FolkIdle.Bots
             if (bossId > 0 && !BossFirstClearRules.IsDefeated(_state.DefeatedRegionBossMask, bossId))
             {
                 var boss = estimates.FirstOrDefault(e => e.Id == bossId);
-                if (boss != null && boss.CanDamage && (boss.Safe || (hasFood && boss.WithFood))) return bossId;
+                if (boss != null && boss.CanDamage && (boss.Safe || (hasFood && boss.WithFood)))
+                {
+                    // What the advisor promised, logged with the attempt, so a death
+                    // to a boss can be held against the projection that sent the bot.
+                    if (_state.ActiveActivityId != bossId && proj.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == bossId) is { } raw)
+                        Event(FormattableString.Invariant($"boss attempt {MonsterName(bossId)}: projected safe {boss.Safe}, with food {boss.WithFood}, {raw.Num("SecondsPerKill"):0.#} s a kill, food {raw.Num("FoodPerHour"):0.#}/h, kills before death without food {raw.Int("KillsBeforeDeathWithoutFood")}"));
+                    return bossId;
+                }
             }
 
             // Modul: LEAVING, PICK A FIGHT THAT HOLDS WITHOUT FOOD (x100 run,
