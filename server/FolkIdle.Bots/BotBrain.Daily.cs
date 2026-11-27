@@ -122,6 +122,10 @@ namespace FolkIdle.Bots
             int circle = Math.Max(1, v.Int("Circle", 1));
             var best = v.Arr("Roster").OrderByDescending(r => r.Int("ExpectedDepth")).FirstOrDefault();
             int slot = best.ValueKind == JsonValueKind.Object ? best.Int("Slot") : 0;
+            // Modul: a character the server expects to fall before depth 1 does
+            // not descend (run S: casual7 opened Nav through a soft boss wall and
+            // spent 84 charges falling at depth 0). Its charges wait for gear.
+            if (best.ValueKind == JsonValueKind.Object && best.Int("ExpectedDepth") <= 0) return;
 
             for (int charges = v.Int("Charges"), guard = 0; charges > 0 && guard < 12 && !token.IsCancellationRequested; charges--, guard++)
             {
@@ -137,6 +141,7 @@ namespace FolkIdle.Bots
                 Event($"nav: circle {circle} slot {slot} cleared to depth {run.Int("DeepestCleared")} for {run.Long("Souls")} souls ({run.Str("EndedBy")})");
                 Count("nav_descents");
                 _inventoryDirty = true;
+                if (run.Int("DeepestCleared") <= 0) break;
             }
 
             await SpendSoulsAsync(token);

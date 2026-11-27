@@ -17,6 +17,13 @@ namespace FolkIdle.Bots
         internal int AscensionSteps { get; private set; }
         private double _lastProgressAt;
 
+        private void PauseStallClocks(double offlineHours)
+        {
+            if (offlineHours <= 0) return;
+            _lastLevelUpAt = Math.Min(Now, _lastLevelUpAt + offlineHours);
+            _lastProgressAt = Math.Min(Now, _lastProgressAt + offlineHours);
+        }
+
         private void NoteProgress(int dungeon = -1, int ascension = -1)
         {
             if (dungeon > DungeonBest) { DungeonBest = dungeon; _lastProgressAt = Now; }
