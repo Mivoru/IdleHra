@@ -425,6 +425,7 @@ region 3 101-105, and so on; the fifth of each is the region boss.
 | R | 1.121.0 (50%, new walls) | 1 | 15 (9 r2 boss, 5 r3 boss, 1 r1 boss) | 4 / 4, 106 h; 4 / 4, 124 h | none |
 | S | R + crit-vs-bite + bot larder fix | 1 | 1 | 4 / 4, 120 h; 4 / 4, 124 h | casual7 at 96 h / 112 h |
 | T | S + verdict logging | 2 | 2 | 3 / 4, 127 h; 4 / 4, 152 h | none |
+| U | main + option A (#496: the cap skips first-clear swings) | 1 | 4 (all Ascension steps) | 4 / 4, 78 h; 4 / 4, 144 h | none |
 
 - **Crit vs bite.** Same seed, R to S: 15 deaths to 1, nearly all of them first
   clears of the region 2 and 3 bosses that the advisor had called "holds with
@@ -442,6 +443,7 @@ region 3 101-105, and so on; the fifth of each is the region boss.
   wall benchmark used its own damage step without that cap, which is why
   the wall tests never saw it. With the cap no attack multiplier walls
   regions 2-5. Nobody in production wears a full defence set yet.
+  Run U, option A on the same seed as S: no region 4 or 5 boss fell.
 - **The night was a stall (bot bug, #497).** The six-hour stall clock of the
   all-day personas ran through their sleep, so they were reborn on waking
   (T: rebirth median 72 h, optimal3 at level 52 with 10 Ascension steps).
