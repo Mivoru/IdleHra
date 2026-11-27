@@ -137,7 +137,8 @@ namespace FolkIdle.Server.Domain.Combat
         private const double CritRuleCapShare = 0.5;
 
         /// <summary>
-        /// One monster crit takes the auto-eat line's share of the bar.
+        /// One monster crit takes the auto-eat line's share of the bar, or more
+        /// than the best bite in the larder heals.
         /// </summary>
         /// <remarks>
         /// Modul: THE MEAN NEVER SEES THE CRIT (HuntingSurvivalHarness,
@@ -160,7 +161,23 @@ namespace FolkIdle.Server.Domain.Combat
             long attack = BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, setup.Monster.Id);
             long crit = SimulationEngine.LandedMonsterMilliDamage(
                 attack, SimulationEngine.MonsterCritMultiplier(in stats), in stats, setup.Monster.RegionTier, setup.MaxMilliHp);
-            return crit >= share * setup.MaxMilliHp;
+            if (crit >= share * setup.MaxMilliHp) return true;
+
+            // Modul: A CRIT ONE BITE CANNOT REPAIR (HuntingSurvivalHarness on run
+            // L's characters, 2026-11-27). At the 50% line the rule above caught
+            // none of the 5 fights that killed while marked "holds with food":
+            // their crits took 38-42% of the bar, under the line. What all five
+            // shared is a crit bigger than the best bite in the larder (36%), so
+            // one eat cannot undo one crit and a long fight walks the bar down
+            // between bites. Measured, "crit > bite" flags 11 of 839 fights at
+            // 50% (all 5 deadly; the other 6 have crit within 3% of the bite and
+            // short fights). At 30% it catches the one fight the line missed and
+            // adds no false alarm (23 of 23 deadly, 1 false; was 22 and 1).
+            long bite = 0;
+            if (payload.Food1_Count > 0) bite = Math.Max(bite, setup.Heal1);
+            if (payload.Food2_Count > 0) bite = Math.Max(bite, setup.Heal2);
+            if (payload.Food3_Count > 0) bite = Math.Max(bite, setup.Heal3);
+            return bite > 0 && crit > bite;
         }
 
         /// <summary>
