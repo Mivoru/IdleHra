@@ -349,7 +349,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// LandedMonsterMilliDamage applies. So every wall rule about sets -
         /// "a full defence set one region behind loses at every quality" - was
         /// checked against a fight the game does not have: run S's casual7, in a
-        /// region-2 defence set at level 59, beat the region 4 boss in ten
+        /// region-1 steel defence set at level 59, beat the region 4 boss in ten
         /// minutes and the region 5 boss offline. The landing now goes through
         /// the live function. <paramref name="playerMaxMilliHp"/> 0 keeps the old
         /// uncapped landing for the dungeon and Nav callers, whose own fights
