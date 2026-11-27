@@ -412,6 +412,41 @@ slider, so every bot eats at the default.
   migrated, so the 17 accounts at 30% keep it and meet the harder region 4
   and 5 first clear.
 
+### Runs R-V (2026-11-26/27: the retuned walls, crit vs bite, and the defence set)
+
+Deployed 1.121.0-1.123.0 between the runs: the 50% default with the walls
+rescanned (region 2 1.87, region 4 6.2, region 5 10.8), stored 30% moved to 50%
+(#493), and the projection rule "a crit bigger than the best bite does not
+hold with food" (#494). Monster ids: region 1 is 91-95, region 2 96-100,
+region 3 101-105, and so on; the fifth of each is the region boss.
+
+| run | build | seed | deaths | region 3 boss, optimal / casual | region 4 / 5 boss |
+|---|---|---:|---:|---|---|
+| R | 1.121.0 (50%, new walls) | 1 | 15 (9 r2 boss, 5 r3 boss, 1 r1 boss) | 4 / 4, 106 h; 4 / 4, 124 h | none |
+| S | R + crit-vs-bite + bot larder fix | 1 | 1 | 4 / 4, 120 h; 4 / 4, 124 h | casual7 at 96 h / 112 h |
+| T | S + verdict logging | 2 | 2 | 3 / 4, 127 h; 4 / 4, 152 h | none |
+
+- **Crit vs bite.** Same seed, R to S: 15 deaths to 1, nearly all of them first
+  clears of the region 2 and 3 bosses that the advisor had called "holds with
+  food". The bosses come about 3 (r2) and 14 (r3) game hours later for the
+  optimal bots. The harness out of sample (runs N and P at 50%): 11 of 11
+  deadly fights caught, 6 false alarms, every one a crit within 5% of the bar
+  of the bite.
+- **The larder fix.** 14,746 `larder:` events in R, 3,030 in S.
+- **The walls do not hold against a full defence set (#496).** S casual7, level
+  59, five pieces of region-1 steel, beat the region 4 boss live in ten
+  minutes and the region 5 boss offline; run N's optimal3 had done the same
+  with region-3 obsidian (finished the set at 53.3 h, region 4 boss at
+  53.6 h). The defence set caps every hit at 20% of the bar, food heals 36%
+  or more of the bar, so the wearer cannot die to any boss it can damage. The
+  wall benchmark used its own damage step without that cap, which is why
+  the wall tests never saw it. With the cap no attack multiplier walls
+  regions 2-5. Nobody in production wears a full defence set yet.
+- **The night was a stall (bot bug, #497).** The six-hour stall clock of the
+  all-day personas ran through their sleep, so they were reborn on waking
+  (T: rebirth median 72 h, optimal3 at level 52 with 10 Ascension steps).
+  Rebirth hours before #497 are not comparable with those after it.
+
 ## The best order
 
 These are the rules the optimal bot follows, written for a person. Gates are
