@@ -454,8 +454,8 @@ region 3 101-105, and so on; the fifth of each is the region boss.
   median 120-127 h against 92-106 h, because the advisor now refuses the
   fights that used to kill.
 - **Rebirth in week 1 after #497:** 1 of 4 optimal bots (V, at 132 h), against
-  3-4 of 4 before; the optimal bots end the week at level 71-74 instead of
-  50-66.
+  3-4 of 4 before; three of V's four optimal bots end the week at level
+  71-74 (R: 62-66).
 
 ## The best order
 
