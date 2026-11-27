@@ -427,6 +427,7 @@ region 3 101-105, and so on; the fifth of each is the region boss.
 | T | S + verdict logging | 2 | 2 | 3 / 4, 127 h; 4 / 4, 152 h | none |
 | U | main + option A (#496: the cap skips first-clear swings) | 1 | 4 (all Ascension steps) | 4 / 4, 78 h; 4 / 4, 144 h | none |
 | V | U + #497 (night is not a stall) | 3 | 1 | 3 / 4, 122 h; 4 / 4, 144 h | none |
+| W | main + option A, **336 h** | 1 | 3 | 4 / 4, 105 h; 4 / 4 by 176 h | none in two weeks, and no attempt |
 
 - **Crit vs bite.** Same seed, R to S: 15 deaths to 1, nearly all of them first
   clears of the region 2 and 3 bosses that the advisor had called "holds with
@@ -453,6 +454,12 @@ region 3 101-105, and so on; the fifth of each is the region boss.
   P), 1 / 2 / 1 after it (S, T, V). The cost is the region 3 boss: optimal
   median 120-127 h against 92-106 h, because the advisor now refuses the
   fights that used to kill.
+- **Two weeks without region 4 (W).** With the walls honest (option A), no bot
+  beat or even attempted the region 4 boss in 336 game hours: the advisor
+  never called it a fight that holds. The optimal bots were reborn twice
+  each instead (rebirth 2 at 198-318 h, levels 70-81). Whether region 4
+  should open inside two weeks of optimal play is the open pace question for
+  the 6.2 wall.
 - **Rebirth in week 1 after #497:** 1 of 4 optimal bots (V, at 132 h), against
   3-4 of 4 before; three of V's four optimal bots end the week at level
   71-74 (R: 62-66).
