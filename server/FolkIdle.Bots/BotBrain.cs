@@ -153,6 +153,12 @@ namespace FolkIdle.Bots
                         double lateMinutes = _persona.CheckInEveryGameHours > 0 ? (Now % _persona.CheckInEveryGameHours) * 60.0 : 0;
                         Event($"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}, {lateMinutes:0.#} of {_persona.CheckInGameMinutes:0} check-in game min already gone");
                         Count("logins");
+                        // Modul: THE NIGHT IS NOT A STALL (run T, 2026-11-27). A persona
+                        // that plays all day is offline only while it sleeps, and its
+                        // six-hour stall clock ran through the night: optimal3 woke at
+                        // level 52 and was reborn on the spot with ten Ascension steps.
+                        // Its clocks pause while it is away.
+                        if (_persona.AlwaysOn) PauseStallClocks(back.OfflineElapsedSeconds / 3600.0);
                         if (back.OfflineCapSeconds > 0 && back.OfflineElapsedSeconds >= back.OfflineCapSeconds) Count("offline_caps_hit");
                     }
                 }
@@ -300,6 +306,12 @@ namespace FolkIdle.Bots
                         _time.Bind(back.PlayerId);
                         Event($"logged in: offline {back.OfflineElapsedSeconds / 3600.0:0.00} game h (cap {back.OfflineCapSeconds / 3600.0:0.#} h), +{back.OfflineXpEarned} XP, +{back.OfflineGoldEarned} gold, level {back.CurrentLevel}");
                         Count("logins");
+                        // Modul: THE NIGHT IS NOT A STALL (run T, 2026-11-27). A persona
+                        // that plays all day is offline only while it sleeps, and its
+                        // six-hour stall clock ran through the night: optimal3 woke at
+                        // level 52 and was reborn on the spot with ten Ascension steps.
+                        // Its clocks pause while it is away.
+                        if (_persona.AlwaysOn) PauseStallClocks(back.OfflineElapsedSeconds / 3600.0);
                         if (back.OfflineCapSeconds > 0 && back.OfflineElapsedSeconds >= back.OfflineCapSeconds) Count("offline_caps_hit");
                     }
 

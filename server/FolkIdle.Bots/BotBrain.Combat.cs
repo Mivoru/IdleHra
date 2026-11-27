@@ -100,8 +100,10 @@ namespace FolkIdle.Bots
             if (first) return;
             long monster = _state.LastDeathMonsterId;
             // The verdict the bot fought under (the projection is re-read only
-            // after this), so every death can be checked against its advisor.
-            if (monster > 0 && _projection?.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == monster) is { } verdict)
+            // after this), so every death can be checked against its advisor. Not
+            // for an Ascension step: it is fought under modifiers this projection
+            // does not price (run U logged two "safe" deaths that were steps).
+            if (monster > 0 && _ascensionPending == null && _projection?.Arr("Monsters").FirstOrDefault(e => e.Int("MonsterId") == monster) is { } verdict)
                 Event(FormattableString.Invariant($"death verdict {MonsterName(monster)}: projected safe {verdict.Bool("SurvivesWithoutFood")}, with food {verdict.Bool("SurvivesWithFood")}, larder {LarderCount}, level {_state.CurrentLevel}"));
             if (_deathLevel != _state.CurrentLevel || _lastDeathMonster != monster)
             {
