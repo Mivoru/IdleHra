@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.124.0',
+    date: '2026-11-27',
+    sections: [
+      {
+        title: 'Bosses',
+        items: [
+          'A full defence set no longer caps how hard a region boss hits you the first time you fight it. Once the boss is beaten, the set protects you against it as before, and everywhere else.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.123.0',
     date: '2026-11-27',
     sections: [
