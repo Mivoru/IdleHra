@@ -35,6 +35,18 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.123.0',
+    date: '2026-11-27',
+    sections: [
+      {
+        title: 'Hunting',
+        items: [
+          'A fight where one critical hit from the monster takes more health than one bite of your best food heals is now marked "you would die" instead of "needs food". Better food or more health turns it back.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.122.0',
     date: '2026-11-27',
     sections: [
