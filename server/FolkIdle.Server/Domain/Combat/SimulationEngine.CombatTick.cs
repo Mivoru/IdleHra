@@ -1546,7 +1546,8 @@ namespace FolkIdle.Server.Domain.Combat
                     monsterCritMult,
                     in combatStats,
                     monsterRegionTier,
-                    effectiveMaxHp);
+                    effectiveMaxHp,
+                    BossFirstClearRules.IsFirstClearPending(FightBossMask(in payload), payload.CurrentMonsterId));
 
                 // Modul: floored, because a lethal hit can be enormous. Any
                 // value at or below zero is death, so flooring the result costs

@@ -651,7 +651,7 @@
             <strong>Burn</strong> adds a quarter of each hit again as fire,
             <strong>thorns</strong> returns a fifth of each hit taken, and
             <strong>bulwark</strong> stops any single hit taking more than 20% of
-            your health. The Character screen shows what your sets pay right now.
+            your health, except from a region boss you have not beaten yet. The Character screen shows what your sets pay right now.
             The families in the catalogue:
           </p>
           <div class="badge-list">

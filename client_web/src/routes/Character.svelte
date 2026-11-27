@@ -741,7 +741,7 @@
                 {@const left = set.NextTierPieces > 0 ? set.NextTierPieces - set.Pieces : 0}
                 <li>
                   <Hint
-                    text={`${set.Offensive ? 'Offence' : 'Defence'} set. ${set.Burn ? 'Burn: each hit adds a quarter again as fire. ' : ''}${set.Thorns ? 'Thorns: a fifth of each hit taken is returned. ' : ''}${set.DamageCap ? 'Bulwark: no single hit takes more than 20% of your health. ' : ''}${left > 0 ? `${left} more piece${left === 1 ? '' : 's'} for the next tier.` : 'Top tier.'} Rarity scales it: x${set.QualityScale.toFixed(2)}.`}
+                    text={`${set.Offensive ? 'Offence' : 'Defence'} set. ${set.Burn ? 'Burn: each hit adds a quarter again as fire. ' : ''}${set.Thorns ? 'Thorns: a fifth of each hit taken is returned. ' : ''}${set.DamageCap ? 'Bulwark: no single hit takes more than 20% of your health (not from a region boss you have not beaten yet). ' : ''}${left > 0 ? `${left} more piece${left === 1 ? '' : 's'} for the next tier.` : 'Top tier.'} Rarity scales it: x${set.QualityScale.toFixed(2)}.`}
                   >
                     <span class="set-name">Set: {set.Family} {set.Pieces}/5</span>
                   </Hint>

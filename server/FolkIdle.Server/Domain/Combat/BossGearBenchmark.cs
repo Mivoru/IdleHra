@@ -228,7 +228,8 @@ namespace FolkIdle.Server.Domain.Combat
             if (bossbanePct > 0) playerMilliDamagePerSwing *= 1.0 + bossbanePct / 100.0;
             int playerIntervalMs = CombatDamageModel.AttackIntervalMs(in stats);
 
-            double bossMilliDamagePerSwing = ExpectedBossMilliDamagePerSwing(in stats, in boss, bossAttackPower);
+            double bossMilliDamagePerSwing = ExpectedBossMilliDamagePerSwing(in stats, in boss, bossAttackPower, playerMaxMilliHp,
+                BossFirstClearRules.IsFirstClearPending(defeatedMask, bossMonsterId));
             int bossIntervalMs = boss.AttackIntervalMs > 0 ? boss.AttackIntervalMs : 2000;
 
             // The best food the boss's own region offers, on the reasoning that
@@ -342,7 +343,20 @@ namespace FolkIdle.Server.Domain.Combat
         /// its crit roll, in the live tick's order: dodge, then the monster crit,
         /// then armour, then block, then the 1000 milli-HP floor.
         /// </summary>
-        internal static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower)
+        /// <remarks>
+        /// Modul: THE BULWARK WAS MISSING HERE, 2026-11-27. This used its own
+        /// copy of the landing step and the copy had no defensive set damage cap
+        /// (SetDamageCapActive: no hit over 20% of the bar), which the live
+        /// LandedMonsterMilliDamage applies. So every wall rule about sets -
+        /// "a full defence set one region behind loses at every quality" - was
+        /// checked against a fight the game does not have: run S's casual7, in a
+        /// region-1 steel defence set at level 59, beat the region 4 boss in ten
+        /// minutes and the region 5 boss offline. The landing now goes through
+        /// the live function. <paramref name="playerMaxMilliHp"/> 0 keeps the old
+        /// uncapped landing for the dungeon and Nav callers, whose own fights
+        /// never asked for the cap.
+        /// </remarks>
+        internal static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower, long playerMaxMilliHp = 0, bool firstClearSwing = false)
         {
             // The tick's own curve, not a copy of it - a copy is what would have
             // kept the old dead zone here after the tick lost it.
@@ -350,6 +364,13 @@ namespace FolkIdle.Server.Domain.Combat
 
             float critChance = 0.05f + (boss.RegionTier * 0.005f);
             float critMultiplier = Math.Max(1.0f, 1.5f - (stats.CritMitigationPct / 100f));
+
+            if (playerMaxMilliHp > 0)
+            {
+                double cappedNormal = SimulationEngine.LandedMonsterMilliDamage(bossAttackPower, 1.0f, in stats, boss.RegionTier, playerMaxMilliHp, firstClearSwing);
+                double cappedCrit = SimulationEngine.LandedMonsterMilliDamage(bossAttackPower, critMultiplier, in stats, boss.RegionTier, playerMaxMilliHp, firstClearSwing);
+                return hitChance * (((1.0 - critChance) * cappedNormal) + (critChance * cappedCrit));
+            }
 
             double normal = AfterPlayerDefences(bossAttackPower, 1.0f, in stats, in boss);
             double crit = AfterPlayerDefences(bossAttackPower, critMultiplier, in stats, in boss);

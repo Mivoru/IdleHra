@@ -160,7 +160,8 @@ namespace FolkIdle.Server.Domain.Combat
             CombatStats stats = setup.Stats;
             long attack = BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, setup.Monster.Id);
             long crit = SimulationEngine.LandedMonsterMilliDamage(
-                attack, SimulationEngine.MonsterCritMultiplier(in stats), in stats, setup.Monster.RegionTier, setup.MaxMilliHp);
+                attack, SimulationEngine.MonsterCritMultiplier(in stats), in stats, setup.Monster.RegionTier, setup.MaxMilliHp,
+                BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, setup.Monster.Id));
             if (crit >= share * setup.MaxMilliHp) return true;
 
             // Modul: A CRIT ONE BITE CANNOT REPAIR (HuntingSurvivalHarness on run
