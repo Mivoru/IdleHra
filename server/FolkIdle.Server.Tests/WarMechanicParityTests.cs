@@ -81,7 +81,12 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "counterstroke + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Counterstroke }, new byte[] { 5, 3 }, true };
             yield return new object[] { "know your prey r3", 3, r3, new[] { WarTreeRegistry.KnowYourPrey }, new byte[] { 3 } };
             // Skill tree v3 step B: the fight-shaped mechanics (hidden nodes, set directly).
-            yield return new object[] { "sunder r3", 3, r3, new[] { WarTreeRegistry.Sunder }, new byte[] { 3 } };
+            // Modul: TOO SMALL FOR THE 1% BAR (2026-11-27). Eight local runs moved
+            // kills 1.2-2.3% (173-174 against 170-171), and CI failed the bar on
+            // #491 and #498 with no combat change (172 vs 171). Its wiring is
+            // proved exactly by Sunder_moves_the_live_tick_under_the_same_dice;
+            // this row holds parity.
+            yield return new object[] { "sunder r3", 3, r3, new[] { WarTreeRegistry.Sunder }, new byte[] { 3 }, true };
             yield return new object[] { "lacerate r3", 3, r3, new[] { WarTreeRegistry.Lacerate }, new byte[] { 3 } };
             yield return new object[] { "momentum r3", 3, r3, new[] { WarTreeRegistry.Momentum }, new byte[] { 3 } };
             yield return new object[] { "lacerate r5", 5, r5, new[] { WarTreeRegistry.Lacerate }, new byte[] { 3 } };
@@ -172,6 +177,47 @@ namespace FolkIdle.Server.Tests
             var sw = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in wall);
             Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in counter, in sw)
                 > FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in wall, in sw));
+        }
+
+        /// <summary>
+        /// Sunder rolls no dice of its own either: a landed hit adds a stack and
+        /// the stacks thin the monster's armour for the next hit. On the same
+        /// seed the two runs tick identically until the first thinned hit, and
+        /// from there the Sunder run must be ahead. Unwired, they never differ.
+        /// </summary>
+        [Fact]
+        public void Sunder_moves_the_live_tick_under_the_same_dice()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3, (WarTreeRegistry.Sunder, 3));
+            var without = War(3, r3);
+            var guildWar = new System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent>();
+            var sessions = new System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext>();
+            var diceWith = new Random(2026);
+            var diceWithout = new Random(2026);
+            int killsWith = 0, killsWithout = 0;
+            try
+            {
+                for (int tick = 0; tick < HuntingProjection.HorizonTicks; tick++)
+                {
+                    int fleeceWith = with.KillsSinceFleece, fleeceWithout = without.KillsSinceFleece;
+                    SimulationEngine.RunCombatTick(ref with, 100, 100, guildWar, sessions, diceWith);
+                    SimulationEngine.RunCombatTick(ref without, 100, 100, guildWar, sessions, diceWithout);
+                    if (with.KillsSinceFleece != fleeceWith) killsWith++;
+                    if (without.KillsSinceFleece != fleeceWithout) killsWithout++;
+                    if (killsWith == killsWithout && with.CurrentMonsterHp == without.CurrentMonsterHp) continue;
+
+                    bool ahead = killsWith > killsWithout
+                        || (killsWith == killsWithout && with.CurrentMonsterHp < without.CurrentMonsterHp);
+                    Assert.True(ahead, $"tick {tick}: the first difference puts Sunder behind (kills {killsWith} vs {killsWithout}, monster {with.CurrentMonsterHp} vs {without.CurrentMonsterHp})");
+                    return;
+                }
+                Assert.Fail("an hour on the same dice never told Sunder from no Sunder: the live tick does not use it");
+            }
+            finally
+            {
+                while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
+            }
         }
 
         /// <summary>
